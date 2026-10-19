@@ -1,0 +1,10 @@
+# Sviluppo in locale: si applica sopra la release attiva (o sopra i file di seme).
+# Fusione profonda; le liste si sostituiscono; "*" vale per tutte le voci di una sezione.
+connections:
+  fal:
+    delivery: polling          # fal non consegna webhook a indirizzi locali o privati
+
+roles:
+  camera_operator:
+    routing:
+      policy: cheap            # in sviluppo si spende il meno possibile

@@ -1,0 +1,40 @@
+# Fotografia del film: lo stile di ripresa. L'utente vede label e description;
+# il direttore della fotografia usa camera, lighting, lens e grade (in inglese, vedi D15).
+version: 1
+
+cinematography:
+  - id: handheld_warm
+    label: Camera a mano, luce calda
+    description: Vicina ai personaggi, intima, un po' mossa
+    camera: "handheld camera, subtle natural shake, close and medium shots"
+    lighting: "warm practical lights, soft shadows"
+    lens: "35mm, shallow depth of field"
+    grade: "warm tones, gentle contrast"
+    enabled: true
+
+  - id: classic_still
+    label: Classica e composta
+    description: Inquadrature ferme e simmetriche
+    camera: "locked-off tripod shots, symmetrical framing, slow dolly moves"
+    lighting: "soft key light, balanced exposure"
+    lens: "50mm"
+    grade: "neutral, clean"
+    enabled: true
+
+  - id: noir
+    label: Noir
+    description: Ombre nette, contrasto forte
+    camera: "low angles, slow push-ins"
+    lighting: "hard side light, deep shadows, venetian blind patterns"
+    lens: "40mm"
+    grade: "high contrast, desaturated"
+    enabled: true
+
+  - id: dreamy
+    label: Sognante
+    description: Luce morbida, movimenti lenti
+    camera: "slow floating camera, gentle crane moves"
+    lighting: "backlight, light haze, soft lens flares"
+    lens: "85mm, very shallow depth of field"
+    grade: "pastel tones, soft highlights"
+    enabled: true

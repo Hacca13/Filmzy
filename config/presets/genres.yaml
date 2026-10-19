@@ -1,0 +1,18 @@
+# Generi e toni proposti nel wizard "Idea".
+version: 1
+
+genres:
+  - { id: comedy, label: Commedia }
+  - { id: drama, label: Drammatico }
+  - { id: thriller, label: Thriller }
+  - { id: fantasy, label: Fantasy }
+  - { id: sci_fi, label: Fantascienza }
+  - { id: horror, label: Horror }
+  - { id: romance, label: Sentimentale }
+  - { id: adventure, label: Avventura }
+
+tones:
+  - { id: light, label: Leggero }
+  - { id: moving, label: Commovente }
+  - { id: dark, label: Cupo }
+  - { id: ironic, label: Ironico }

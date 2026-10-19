@@ -1,0 +1,9 @@
+# Funzioni attive. Seme: in esercizio si modificano dal pannello admin.
+version: 1
+
+features:
+  real_people: false     # cast personale: dopo il test sui volti reali e la consulenza legale (D4)
+  dialogue: false        # dialoghi parlati: Fase 2
+  dubbing: false         # doppiaggio: Fase 3
+  music: false           # musica: quando è scelto il fornitore (M5)
+  preview_gate: false    # anteprima video economica prima del take finale (idea da valutare)

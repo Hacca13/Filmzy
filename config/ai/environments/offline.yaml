@@ -1,0 +1,5 @@
+# Tutto con il fornitore finto: per lavorare senza rete e senza costi (TROUPE_ENV=offline).
+connections:
+  "*":
+    adapter: fake
+    fixtures: packages/troupe/test/fixtures

@@ -1,0 +1,5 @@
+# Nei test tutto passa dal fornitore finto: zero rete, zero costi.
+connections:
+  "*":
+    adapter: fake
+    fixtures: packages/troupe/test/fixtures

@@ -1,0 +1,60 @@
+# Test di coerenza dei personaggi (settimana 1): piano di lavoro, task T1.7.
+# Due personaggi inventati, sei inquadrature, tre modelli, tre take per combinazione.
+name: coerenza-personaggi-v1
+budget_usd: 50                   # il bench si ferma prima di partire se la stima supera il budget
+style: realistic
+cinematography: handheld_warm
+
+characters:
+  - id: anna
+    name: Anna
+    brief: "donna sui 35 anni, capelli ricci rossi raccolti, lentiggini, giacca di jeans chiara"
+  - id: tomas
+    name: Tomás
+    brief: "uomo sui 60 anni, barba grigia corta, occhiali tondi, maglione verde scuro"
+
+sheet:
+  model: nano-banana-2
+  angles: [front, profile, three_quarter]
+  attempts_per_angle: 5          # si sceglie a mano l'immagine migliore per ogni angolazione
+
+shots:
+  - id: close_front
+    action: "Anna guarda in camera e sorride appena"
+    framing: close_up
+    characters: [anna]
+  - id: profile
+    action: "Tomás, di profilo, legge una lettera"
+    framing: medium_close_up
+    characters: [tomas]
+  - id: wide
+    action: "Anna attraversa una piazza al tramonto, piccola nell'inquadratura"
+    framing: wide
+    characters: [anna]
+  - id: action
+    action: "Anna corre giù per una scalinata"
+    framing: medium
+    characters: [anna]
+  - id: night_neon
+    action: "Tomás sotto un'insegna al neon, di notte, sotto la pioggia"
+    framing: medium_close_up
+    lighting: "night, neon, rain"
+    characters: [tomas]
+  - id: two_shot
+    action: "Anna e Tomás seduti allo stesso tavolo, parlano"
+    framing: medium
+    characters: [anna, tomas]
+
+models: [kling-o3-standard, seedance-2, gemini-omni-flash]
+takes_per_shot: 3
+duration_s: 5
+
+voting:
+  voters: 3
+  blind: true                    # chi vota non sa quale modello ha generato il take
+  criteria: [face, clothing, style]
+  scale: [1, 5]
+  usable_threshold: 4            # un take è usabile se la media dei voti è almeno 4
+
+success:
+  usable_takes_per_shot: 2       # su 3, per ogni tipo di inquadratura, per almeno un modello

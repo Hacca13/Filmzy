@@ -1,0 +1,106 @@
+# Ruoli: CHI fa cosa nella troupe, con quali parametri e istruzioni.
+# Gli schemi di input e output di ogni ruolo stanno nel codice (packages/contracts/src/roles.ts).
+# Le riserve (fallbacks) entrano solo per errori tecnici, mai per un rifiuto sul contenuto.
+version: 1
+
+roles:
+  moderator:
+    label: Moderatore
+    kind: llm
+    model: claude-haiku
+    params: { temperature: 0, max_tokens: 500 }
+    instructions: moderator@1
+    output_strategy: auto
+    retries: { invalid_output: 1, technical_error: 2 }
+    budget: { max_usd_per_call: 0.01 }
+
+  casting:
+    label: Direttore del casting
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.8, max_tokens: 4000 }
+    instructions: casting@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.15 }
+
+  screenwriter:
+    label: Sceneggiatore
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.9, max_tokens: 8000 }
+    instructions: screenwriter@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.50 }
+
+  shot_planner:
+    label: Aiuto regista
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.4, max_tokens: 6000 }
+    instructions: shot_planner@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.30 }
+
+  cinematographer:
+    label: Direttore della fotografia
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.5, max_tokens: 1500 }
+    instructions: cinematographer@1           # varianti per famiglia: v1.seedance.md, v1.image_generic.md
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.05 }
+
+  script_supervisor:
+    label: Segretaria di edizione
+    kind: llm
+    model: claude-haiku
+    params: { temperature: 0.1, max_tokens: 3000 }
+    instructions: script_supervisor@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.10 }
+
+  character_designer:
+    label: Character designer
+    kind: image
+    model: nano-banana-2
+    fallbacks: [seedream-lite]
+    params: { resolution: 1k, aspect_ratio: "3:4" }
+    instructions: character_designer@1        # template del prompt immagine, senza LLM
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.20 }
+
+  storyboard_artist:
+    label: Storyboard
+    kind: image
+    routing:
+      policy: cheap
+      candidates: [seedream-lite, nano-banana-2]   # con due personaggi servono due riferimenti: il router passa a Nano Banana
+    prompt_from: cinematographer
+    params: { variants: 3, aspect_ratio: "16:9", resolution: 1k }
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.30 }
+
+  camera_operator:
+    label: Operatore di ripresa
+    kind: video
+    routing:
+      policy: balanced                        # cheap | balanced | quality
+      candidates: [kling-o3-standard, seedance-2, gemini-omni-flash]
+    prompt_from: cinematographer
+    params: { resolution: 720p, aspect_ratio: "16:9", audio: false }
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 2.00 }
+
+  composer:
+    label: Compositore
+    kind: music
+    enabled: false                            # fornitore da scegliere in M5

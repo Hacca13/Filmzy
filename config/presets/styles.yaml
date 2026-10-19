@@ -1,0 +1,28 @@
+# Stili visivi. "hint" è la frase che i ruoli aggiungono ai prompt (in inglese, vedi D15).
+# Nell'MVP è attivo un solo stile, come da contesto; gli altri si accendono dopo averli provati.
+version: 1
+
+styles:
+  - id: realistic
+    label: Realistico
+    description: Ripresa dal vero, colori naturali
+    hint: "photorealistic live-action film still, natural skin tones"
+    enabled: true
+
+  - id: animation_3d
+    label: Animazione 3D
+    description: Personaggi in stile film d'animazione
+    hint: "high-quality 3D animated feature film look, soft global illumination"
+    enabled: false
+
+  - id: illustrated
+    label: Illustrato
+    description: Come un libro illustrato ad acquerello
+    hint: "hand-painted watercolor illustration, visible paper texture"
+    enabled: false
+
+  - id: anime
+    label: Anime
+    description: Animazione giapponese disegnata a mano
+    hint: "2D hand-drawn anime style, clean line art, cel shading"
+    enabled: false

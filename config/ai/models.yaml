@@ -1,0 +1,129 @@
+# Catalogo: COSA sa fare ogni modello e quanto costa.
+# Prezzi, identificativi e capacità vanno verificati sul sito del fornitore: "checked" è la data dell'ultima verifica.
+# Un identificativo tra < > è un segnaposto: ammesso solo con status "testing", blocca le chiamate reali.
+# status: active | testing | retired
+# real_faces: "no" | verified_assets | allowed | unknown
+version: 1
+
+models:
+  # --- LLM -----------------------------------------------------------------
+  # Prezzi Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (verificati il 19/10/2026)
+  claude-sonnet:
+    kind: llm
+    connection: anthropic
+    provider_model: claude-sonnet-5-5
+    capabilities: [structured_output, vision]
+    params:
+      temperature: { min: 0, max: 1 }
+      max_tokens: { min: 1, max: 128000 }
+    pricing: { unit: per_mtok, input: 2.00, output: 10.00, checked: 2026-10-19 }
+    status: active
+
+  claude-haiku:
+    kind: llm
+    connection: anthropic
+    provider_model: claude-haiku-5-5
+    capabilities: [structured_output, vision]
+    params:
+      temperature: { min: 0, max: 1 }
+      max_tokens: { min: 1, max: 128000 }
+    pricing:
+      unit: per_mtok
+      input: 0.10
+      output: 0.50
+      tiers:                                   # prezzo più alto oltre i 100.000 token di prompt
+        - { above_prompt_tokens: 100000, input: 0.50, output: 2.50 }
+      checked: 2026-10-19
+    status: active
+
+  # --- Immagini --------------------------------------------------------------
+  nano-banana-2:
+    kind: image
+    connection: fal
+    provider_model: fal-ai/nano-banana-2      # da verificare sul catalogo fal
+    family: image_generic
+    capabilities:
+      max_reference_images: 4                 # prudente, da verificare
+    params:
+      resolution: { values: [1k, 2k, 4k] }
+      aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
+      variants: { min: 1, max: 4 }
+    request_fields: { prompt: prompt, references: image_urls, variants: num_images }
+    pricing: { unit: per_image, value: 0.08, note: "a 1K", checked: 2026-10-13 }
+    status: testing
+
+  seedream-lite:
+    kind: image
+    connection: fal
+    provider_model: "<Seedream 5.0 Lite su fal: id da verificare>"
+    family: image_generic
+    capabilities:
+      max_reference_images: 1
+    params:
+      resolution: { values: [1k, 2k] }
+      aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
+      variants: { min: 1, max: 4 }
+    request_fields: { prompt: prompt, references: image_urls, variants: num_images }
+    pricing: { unit: per_image, value: 0.032, checked: 2026-10-13 }
+    status: testing
+
+  # --- Video -----------------------------------------------------------------
+  kling-o3-standard:
+    kind: video
+    connection: fal
+    provider_model: "<Kling O3 Standard reference-to-video su fal: id da verificare>"
+    family: kling
+    capabilities:
+      durations_s: { min: 3, max: 15 }
+      max_reference_images: 7
+      max_characters: 3
+      native_audio: true
+      real_faces: unknown
+      minors: false
+    params:
+      resolution: { values: [720p, 1080p] }   # da verificare
+      aspect_ratio: { values: ["16:9", "9:16", "1:1"] }
+      audio: { values: [true, false] }
+    pricing: { unit: per_second, value: 0.224, note: "Standard con audio, su fal", checked: 2026-10-13 }
+    quality: {}                               # lo compila il bench
+    status: testing
+
+  seedance-2:
+    kind: video
+    connection: fal
+    provider_model: "<Seedance 2.0 reference-to-video su fal: id da verificare>"
+    family: seedance
+    capabilities:
+      durations_s: { min: 4, max: 15 }
+      max_reference_images: 12                # riferimenti totali dichiarati: da verificare per le sole immagini
+      max_characters: 2
+      native_audio: true
+      real_faces: verified_assets             # solo dopo una verifica dal vivo del soggetto
+      minors: false
+    params:
+      resolution: { values: [480p, 720p, 1080p] }
+      aspect_ratio: { values: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"] }
+      audio: { values: [true, false] }
+    pricing: { unit: per_second, value: 0.15, note: "stima: 0,125–0,18 $/s a 720p secondo il fornitore", checked: 2026-10-13 }
+    quality: {}
+    status: testing
+
+  gemini-omni-flash:
+    kind: video
+    connection: fal
+    provider_model: "<Gemini Omni Flash reference-to-video su fal: id da verificare>"
+    family: gemini_omni
+    capabilities:
+      durations_s: { max: 10 }
+      max_reference_images: 7
+      max_characters: 3
+      native_audio: true
+      real_faces: "no"
+      minors: false
+    params:
+      resolution: { values: [360p, 720p, 1080p] }
+      aspect_ratio: { values: ["16:9", "9:16"] }
+      audio: { values: [true, false] }
+    pricing: { unit: per_second, value: 0.10, note: "720p, prezzo ufficiale Google; su fal da verificare", checked: 2026-10-13 }
+    quality: {}
+    status: testing

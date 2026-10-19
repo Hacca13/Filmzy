@@ -1,0 +1,42 @@
+# Connessioni: COME si raggiunge un fornitore.
+# Seme della configurazione: in esercizio si modifica dal pannello admin (docs/architettura.md §4.5).
+# Le chiavi non stanno mai qui: solo "env:NOME" (obbligatoria) o "env:NOME?" (facoltativa).
+version: 1
+
+connections:
+  anthropic:
+    adapter: anthropic
+    api_key: env:ANTHROPIC_API_KEY
+    # base_url: https://gateway.esempio.it/anthropic/v1   # facoltativo: gateway o proxy LLM
+    http_proxy: env:HTTPS_PROXY?                          # proxy di rete, se serve
+    timeout_s: 120
+    max_concurrency: 4
+    enabled: true
+
+  openrouter:
+    adapter: openai_compatible        # una chiave, molti modelli
+    base_url: https://openrouter.ai/api/v1
+    api_key: env:OPENROUTER_API_KEY?
+    timeout_s: 120
+    max_concurrency: 4
+    enabled: false                    # da accendere quando serve
+
+  local:
+    adapter: openai_compatible        # Ollama, vLLM, LM Studio, gateway compatibili
+    base_url: http://localhost:11434/v1
+    api_key: none
+    timeout_s: 300
+    max_concurrency: 1
+    enabled: false
+
+  fal:
+    adapter: fal
+    api_key: env:FAL_KEY
+    http_proxy: env:HTTPS_PROXY?
+    delivery: webhook                 # webhook | polling
+    webhook_path: /webhooks/fal
+    media_retention: short            # durata minima dei file sul CDN del fornitore
+    data_region: us
+    timeout_s: 900                    # un video può impiegare minuti
+    max_concurrency: 3
+    enabled: true

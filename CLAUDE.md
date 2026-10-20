@@ -27,7 +27,7 @@ pnpm install
 pnpm dev                                  # api e web in locale
 pnpm test                                 # fornitore finto: zero costi
 pnpm lint && pnpm typecheck
-pnpm check                                # lint, typecheck, test, build e stile: tutto insieme (D34)
+pnpm check                                # lint, typecheck, test, build, stile e confini del codice (D34)
 pnpm troupe check                         # valida la configurazione (file o bozza)
 pnpm troupe import config/ai              # crea una bozza dai file di seme
 pnpm troupe export config/ai              # salva la release attiva su file
@@ -119,7 +119,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 ## "Fatto" significa
 
 - Il criterio del task è soddisfatto.
-- `pnpm check` verde (lint, typecheck, test, build e stile); `pnpm troupe check` verde se hai toccato la configurazione. Attenzione: `pnpm lint typecheck test` non lancia tre script, solo il primo.
+- `pnpm check` verde (lint, typecheck, test, build, stile e confini del codice); `pnpm troupe check` verde se hai toccato la configurazione. Attenzione: `pnpm lint typecheck test` non lancia tre script, solo il primo.
 - Schemi e documenti aggiornati se è cambiato un contratto; una voce in `docs/decisioni.md` se hai deciso qualcosa.
 - Nessuna chiamata reale ai fornitori nei test.
 - Il diff è stato riletto con i criteri di «Qualità del codice» prima di aprire la pull request.

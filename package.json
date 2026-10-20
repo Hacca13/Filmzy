@@ -16,12 +16,13 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "turbo run lint typecheck test build && pnpm format:check",
+    "check": "turbo run lint typecheck test build && pnpm format:check && node scripts/check-code-boundaries.mjs",
     "troupe": "turbo run build --filter=@filmzy/troupe --output-logs=errors-only && node --env-file-if-exists=.env packages/troupe/dist/cli/bin.js"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
     "@eslint/js": "10.0.1",
+    "@filmzy/troupe": "workspace:*",
     "@types/node": "24.19.2",
     "eslint": "10.12.0",
     "prettier": "3.9.9",

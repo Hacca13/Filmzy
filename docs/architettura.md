@@ -159,15 +159,15 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 |---|---|---|
 | **Connessioni** | come si raggiunge un fornitore? | `adapter` (famiglia di protocollo), `base_url` (anche un gateway o un proxy LLM), `api_key` (`env:NOME` o `secret:NOME`), `http_proxy`, `timeout_s`, `max_concurrency`, `delivery` (in locale sempre `polling`), `media_retention`, `data_region`, `monthly_cap_usd` (tetto di spesa mensile, facoltativo), `enabled` |
 | **Catalogo dei modelli** | cosa sa fare, e quanto costa? | `label` (il nome che vede l'utente, D36), `kind`, `connection`, `provider_model`, `family`, `capabilities`, `params` accettati con i limiti, `pricing` con data di verifica, `quality` (voti delle prove), `status` (`active`, `testing`, `retired`), `monthly_cap_usd` (facoltativo) |
-| **Ruoli** | chi fa cosa, e come? | `model` + `fallbacks` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `budget` (tetto per chiamata), `enabled` |
+| **Ruoli** | chi fa cosa, e come? | `model` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `budget` (tetto per chiamata), `enabled` |
 
 **Un punto d'accesso, un modo (D20).** Ogni voce del catalogo è un punto d'accesso, cioè un id presso il fornitore, e dichiara in `capabilities.input_modes` le combinazioni di ingressi che accetta: `references`, `first_frame`, `first_frame+last_frame`, `references+first_frame`… Un modello che si usa in più modi ha più voci, con lo stesso `family` e il proprio prezzo. Per i modelli immagine, `image_edit` dice se modificano un'immagine data (serve al ritocco e all'ultimo fotogramma) e `mask_edit` se accettano una maschera vera. Il valore `unknown` conta come «no» per il router: solo il bench può provarlo.
 
 **Le scelte dell'utente non sono configurazione tecnica (D36).** Connessioni, catalogo e ruoli sono JSON validato dentro le release, uguale per ogni tipo di servizio (immagini, video, musica): non c'è una tabella per tipo, solo il campo `kind`, e le Impostazioni raggruppano per tipo. Quello che l'utente cambia ogni giorno sta invece nella tabella `settings` (§6) e vale subito, senza una pubblicazione:
 
 - i **servizi attivati** (`enabledModelIds`): quelli che il router può usare e che compaiono in «Cambia servizio», di ogni tipo (anche i modelli di testo). Si attivano scegliendoli quando si collega un fornitore («Collega un fornitore», passo 3), che propone già quelli usati dai ruoli della release, o dalla scheda del fornitore. Si attivano solo voci `active` o `testing` (queste ultime con un avviso), con la connessione attiva e la chiave presente (col fornitore finto la chiave non serve); `retired` e gli id segnaposto no. Si può disattivare un servizio: se era l'unico utilizzabile per un ruolo, l'interfaccia lo dice e chiede conferma, e il ruolo si ferma con `no_eligible_model` finché non se ne attiva un altro; un predefinito scelto dall'utente per quel ruolo torna a quello della release;
-- il **servizio predefinito** (`defaultModels`) per ruolo o per tipo; se ci sono sia la voce del ruolo sia quella del tipo, vince il ruolo. Si sceglie tra i servizi attivati, dello stesso tipo del ruolo e con le capacità che il ruolo richiede (§4.6, punto 9). Nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
-- i **tetti di spesa** (film, conferma, mensile per connessione e modello: D30). I valori scritti nella release (`limits.film_budget_usd`, `limits.confirm_above_usd`, `monthly_cap_usd`) sono i valori iniziali; quelli di `settings` li sostituiscono. `pnpm troupe export` scrive solo la release, mai le scelte dell'utente.
+- il **servizio predefinito** di ogni gruppo (`defaultModels`: testo, immagini, video, musica ed effetti, voci) e il **modello predefinito di ogni fornitore** (`defaultModelByConnection`); un ruolo può avere il suo, e allora vince. Si sceglie tra i servizi attivati, dello stesso tipo del ruolo e con le capacità che il ruolo richiede (§4.6, punto 9). Nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
+- i **limiti di spesa** (mensile per fornitore e per modello, per film, «conferma sopra una cifra»: D30). Sono tutti facoltativi e **nessuno è preimpostato** (D36): il limite mensile si sceglie quando si aggiunge un fornitore, gli altri si accendono dalle impostazioni. Se un valore è scritto nella release (`limits.*`, `monthly_cap_usd`) è solo un valore iniziale; quello di `settings` lo sostituisce. Per ogni fornitore l'interfaccia mostra quanto è stato speso nel mese e, se c'è un limite, quanto manca, con un avviso all'80% e al raggiungimento. `pnpm troupe export` scrive solo la release, mai le scelte dell'utente.
 
 Senza scelte dell'utente (file di seme, test, bench, `pnpm troupe check`) valgono come attivate tutte le voci `active` o `testing` della release: il filtro sugli attivati si applica solo quando le impostazioni esistono.
 
@@ -179,7 +179,7 @@ Con le stesse regole (validazione, pubblicazione, storico) si gestiscono anche:
 
 - i **preset**: stili, generi, toni, fotografia, tag dei personaggi e movimenti di macchina. L'interfaccia li mostra, i ruoli li usano. Un nuovo stile è un dato, non codice;
 - le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `sound_effects`, `preview_gate`, `keyframes`, `image_upload`, `retouch`, `c2pa_marking`;
-- i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend; `film_budget_usd` (tetto di spesa per film) e `confirm_above_usd` (chiede conferma sopra questa cifra), che l'utente regola o elimina (D30): nella release sono i valori iniziali, quelli scelti dall'utente stanno in `settings` (D36).
+- i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend; `film_budget_usd` (tetto di spesa per film) e `confirm_above_usd` (chiede conferma sopra questa cifra), che sono facoltativi e senza valori preimpostati (D30, D36): li sceglie l'utente e stanno in `settings`.
 
 Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `config/features.yaml`.
 
@@ -222,7 +222,7 @@ La stessa funzione valida file, bozze e release (`pnpm troupe check` e impostazi
 
 1. **Struttura** di ogni sezione (schemi in `packages/contracts/src/config`).
 2. **Riferimenti:** ogni ruolo punta a modelli esistenti, ogni modello a una connessione attiva, i tipi combaciano (un ruolo LLM non usa un modello video); `prompt_from` punta a un ruolo LLM che restituisce un prompt visivo.
-3. **Parametri:** i `params` del ruolo sono accettati da *ogni* modello che può servirlo (principale, riserve, candidati) e rispettano i limiti. Esempio: un modello che non accetta `temperature` dà un errore che nomina ruolo, modello e parametro.
+3. **Parametri:** i `params` del ruolo sono accettati da *ogni* modello che può servirlo (principale e candidati; per i servizi che l'utente può scegliere il controllo si ripete al momento della scelta, §4.8) e rispettano i limiti. Esempio: un modello che non accetta `temperature` dà un errore che nomina ruolo, modello e parametro.
 4. **Istruzioni:** la versione esiste, l'intestazione combacia, e un rendering di prova in modalità rigorosa, con un input di esempio generato dallo schema, non trova variabili inesistenti.
 5. **Segreti:** esistono le variabili d'ambiente (`env:`) e le chiavi nel portachiavi (`secret:`) delle connessioni attive (tranne in test e con il fornitore finto).
 6. **Prezzi:** un prezzo mancante è un avviso nei file di seme e un errore alla pubblicazione; avviso se la verifica ha più di 30 giorni.
@@ -276,45 +276,54 @@ Per i ruoli con `routing` (storyboard e operatore):
 
 1. **Filtra** i candidati per stato, tipo e capacità richieste: durata, numero di personaggi e di riferimenti, audio, volti reali, minori, prezzo entro il budget, modo d'ingresso scelto dall'utente (`input_modes`) e `image_edit` per il ritocco e l'ultimo fotogramma. Sono esclusi i servizi che l'utente non ha attivato (D36).
 2. **Ordina** secondo la politica (`cheap`, `balanced`, `quality`), pesando qualità (voti delle prove per tipo di inquadratura), costo e tempo. Il servizio predefinito dell'utente, se adatto, passa in testa.
-3. **Restituisce** una lista: il primo è il principale, gli altri sono riserve **solo per errori tecnici**.
+3. **Restituisce** il principale (il primo della lista ordinata). Gli altri candidati servono a `troupe.options`: **non sono riserve**, perché se il servizio fallisce il lavoro si ferma e decide l'utente (D36).
 
-A parità di richiesta, di release e di scelte dell'utente il risultato è sempre lo stesso. Regola pratica: `routing` quando le richieste cambiano forma (una o due persone in scena), `model` + `fallbacks` quando sono tutte uguali.
+A parità di richiesta, di release e di scelte dell'utente il risultato è sempre lo stesso. Regola pratica: `routing` quando le richieste cambiano forma (una o due persone in scena), `model` quando sono tutte uguali.
 
-**Il servizio scelto per una generazione è un requisito (D36).** Il filtro del punto 1 vale per tutti i ruoli di immagini, video e suoni, anche per quelli con `model` + `fallbacks`: per loro non c'è un ordinamento, l'elenco è il modello principale più le riserve, ma il predefinito dell'utente e un `modelId` scelto passano dagli stessi controlli.
+**Il servizio scelto per una generazione è un requisito (D36).** Il filtro del punto 1 vale per tutti i ruoli di immagini, video e suoni, anche per quelli con `model`: per loro non c'è un ordinamento, il principale è il modello indicato, ma il predefinito dell'utente e un `modelId` scelto passano dagli stessi controlli.
 
 - Se la richiesta porta un `modelId`, il router lo verifica tra tutti i servizi attivati e del tipo giusto, non solo tra i candidati del ruolo: l'utente può scegliere anche un servizio che il ruolo non usa di solito.
 - **«Adatto»** vuol dire che passa i filtri del punto 1 e anche i controlli di §4.6 che altrimenti valgono solo per i candidati del ruolo: i `params` del ruolo sono accettati dal servizio (punto 3), esiste un traduttore per la sua famiglia e ha le capacità che il ruolo richiede (punto 9). Una variante delle istruzioni per la sua famiglia non serve: senza, vale la base.
 - Se è adatto, è il principale. Se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, combinazione di immagini non accettata, parametri non accettati) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Se costa più del tetto per chiamata del ruolo, `budget_exceeded` con la cifra (§4.10): il tetto si alza dalle impostazioni avanzate. Non si passa mai a un altro servizio in silenzio.
-- **Le riserve** valgono solo per errori tecnici (§4.10) e sono quelle del ruolo che rispettano gli stessi requisiti. Per un servizio scelto dall'utente entrano solo se il loro costo stimato non supera quello che l'utente ha già confermato; altrimenti il lavoro si ferma con l'errore tecnico e l'utente decide se riprovare o cambiare servizio. Lo scontrino dice quale servizio ha lavorato davvero.
+- **Nessuna riserva.** Se il servizio fallisce, il lavoro si ferma con l'errore e l'utente decide se riprovare o cambiare servizio (§4.10). Lo scontrino dice quale servizio ha lavorato.
 
 `troupe.options(role, input, ctx)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro né quelli oltre il tetto per chiamata; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
 
-**Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione, e le riserve devono rispettarla. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
+**Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
 
 ### 4.9 Output strutturati
 
 - `output_strategy: auto` usa l'output strutturato nativo se il modello lo dichiara (`capabilities: [structured_output]`), altrimenti JSON con validazione.
 - Se la risposta non è valida, si riprova passando al modello l'errore di validazione, fino a `retries.invalid_output` volte; poi errore `invalid_output`.
 
-### 4.10 Errori e riserve
+### 4.10 Errori
 
-| Codice | Significato | Riprova | Passa alla riserva |
+Non ci sono riserve automatiche (D36): se un servizio fallisce, il lavoro si ferma e l'utente decide. Restano solo pochi nuovi tentativi sullo stesso servizio (`retries`) per gli errori passeggeri.
+
+Ogni errore arriva all'interfaccia con un **codice**, l'indicazione `retryable` (ha senso riprovare?) e i **dettagli** utili: ruolo, servizio, connessione, campo, attesa consigliata. L'interfaccia li usa per dire perché la chiamata è fallita e cosa si può fare; i testi per l'utente stanno nell'interfaccia, non nel server.
+
+| Codice | Significato | Riprova da solo | Cosa può fare l'utente |
 |---|---|---|---|
-| `provider_unavailable`, `timeout`, `rate_limited` | problema tecnico | sì, con attesa crescente | sì, finiti i tentativi |
-| `invalid_output` | risposta fuori schema | sì, con riparazione | sì |
-| `content_rejected` | il fornitore rifiuta il contenuto | no | **no**: ci si ferma, con un messaggio semplice |
-| `budget_exceeded` | stima oltre il tetto per chiamata del ruolo (anche per il servizio scelto dall'utente, D36) | no | no |
-| `spend_cap_reached` | la stima supera il tetto del film o del mese e l'utente non conferma | no | no |
-| `no_eligible_model` | nessun candidato soddisfa i requisiti, compreso il servizio scelto dall'utente (D36) | no | no |
-| `config_invalid`, `role_disabled` | configurazione | no | no |
+| `provider_unavailable`, `timeout`, `rate_limited` | problema tecnico o troppe richieste | sì, poche volte e con attesa crescente | riprovare più tardi o cambiare servizio |
+| `provider_auth_failed` | chiave non valida o scaduta | no | sostituire la chiave |
+| `provider_quota_exhausted` | credito o limite esauriti presso il fornitore | no | ricaricare il conto o cambiare servizio |
+| `secret_missing` | la chiave non è stata inserita o è stata tolta | no | inserirla in Impostazioni > Connessioni |
+| `invalid_output` | risposta fuori schema | sì, con riparazione | riprovare |
+| `content_rejected` | il fornitore rifiuta il contenuto | no | cambiare la richiesta: non si aggira con un altro servizio |
+| `image_rejected` | immagine caricata con persone, marchi o minori (D19) | no | usare un'altra immagine |
+| `budget_exceeded` | stima oltre il tetto per chiamata del ruolo (anche per il servizio scelto, D36) | no | scegliere un servizio meno caro |
+| `spend_cap_reached` | la stima supera un limite scelto dall'utente (film o mese) e lui non conferma | no | alzare il limite o proseguire |
+| `no_eligible_model` | nessun servizio soddisfa i requisiti, compreso quello scelto dall'utente (D36) | no | cambiare scelta o attivare un altro servizio |
+| `config_invalid`, `role_disabled` | configurazione | no | correggere le impostazioni |
+| `invalid_request`, `not_found` | richiesta sbagliata o elemento che non esiste più | no | ricaricare |
 
 ### 4.11 Scontrini
 
 Ogni chiamata a un fornitore scrive uno scontrino: prodotto, prove dalle impostazioni, valutazioni, bench, tentativi falliti. Contiene:
 
 - **chi e perché:** ruolo, scopo (`product`, `draft_test`, `eval`, `bench`), progetto, inquadratura;
-- **con cosa:** release, hash della configurazione del ruolo, modello (quello che ha lavorato davvero) con il suo nome (`label`) di quel momento e, se l'utente ne ha scelto uno, il servizio scelto (D36), connessione, id del modello presso il fornitore, versione e variante delle istruzioni, parametri;
-- **cosa è successo:** hash dell'input, richiesta (conservata 90 giorni), id della richiesta presso il fornitore, esito, codice d'errore, tentativi, riserva usata;
+- **con cosa:** release, hash della configurazione del ruolo, modello con il suo nome (`label`) di quel momento (D36), connessione, id del modello presso il fornitore, versione e variante delle istruzioni, parametri;
+- **cosa è successo:** hash dell'input, richiesta (conservata 90 giorni), id della richiesta presso il fornitore, esito, codice d'errore, tentativi;
 - **quanto:** uso (token, secondi, immagini), costo stimato e reale, tempi.
 
 Serve per la spesa e i tetti (D30), il debug e il confronto tra modelli, per ricostruire come è nato un take e per rigirare un film con un modello migliore.
@@ -422,13 +431,16 @@ AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, 
 ```ts
 GenerationContext { projectId?, shotId?, purpose, modelId? }            // il ctx di §4.1
 ModelOption { modelId, label, estimatedCostUsd, quality?, isDefault }   // risposta di troupe.options
-UserSettings { enabledModelIds: string[], defaultModels: Partial<Record<RoleId | ModelKind, string>>, spendCaps: SpendCap }
+UserSettings { enabledModelIds: string[], defaultModels: Partial<Record<RoleId | ModelKind, string>>,
+               defaultModelByConnection: Record<ConnectionId, string>, spendCaps: SpendCap }   // tutti i limiti facoltativi
+DomainErrorBody { code, retryable, details?: { role?, modelId?, connectionId?, field?, retryAfterS? } }  // §4.10
 ```
 
 - `modelId` è facoltativo nel `GenerationContext` di ogni richiesta di generazione (storyboard, fotogrammi, schede, immagini del set, ritocchi, take, musica, effetti): senza, decide il predefinito o il router. Con `modelId` il servizio è un requisito (§4.8). Non sta negli schemi di input dei ruoli (§5.3), ma entra nella chiave di idempotenza e nell'hash della richiesta.
 - `quality` è il voto delle prove del bench per quel tipo di lavoro, assente se il servizio non è stato provato; l'interfaccia lo traduce in un giudizio semplice.
-- Lo scontrino porta `modelId` (il servizio che ha lavorato), `modelLabel` (il suo nome in quel momento, perché il catalogo può cambiare) e `requestedModelId` (quello scelto dall'utente, nullo se non ha scelto): i due id sono diversi solo se è subentrata una riserva. Take, immagini e varianti audio rimandano al loro scontrino (`generation_id`) e non ne copiano i campi.
-- `defaultModels` ha come chiave un ruolo o un tipo (`image`, `video`, …), e per un ruolo vince la sua voce.
+- Lo scontrino porta `modelId` (il servizio che ha lavorato) e `modelLabel` (il suo nome in quel momento, perché il catalogo può cambiare). Take, immagini e varianti audio rimandano al loro scontrino (`generation_id`) e non ne copiano i campi.
+- `defaultModels` ha come chiave un ruolo o un gruppo (`llm`, `image`, `video`, `music`, …): il predefinito del gruppo vale per tutti i suoi ruoli, e la voce di un ruolo, se c'è, vince. `defaultModelByConnection` è il modello predefinito di ogni fornitore: scegliendo un altro fornitore in «Cambia servizio» si parte da quello.
+- Tutti i limiti di `spendCaps` sono facoltativi e non hanno valori preimpostati (D36).
 - `UserSettings` si valida con gli stessi schemi della configurazione (§4.3): un predefinito deve essere un servizio attivato, dello stesso tipo del ruolo e con le capacità che il ruolo richiede.
 
 ## 6. Dati (SQLite)
@@ -440,7 +452,7 @@ Un solo file nella cartella dell'app; i file dei progetti stanno in cartelle acc
 | Impostazioni | `settings` | scelte dell'utente che valgono subito, senza pubblicare: funzioni, limiti e tetti di spesa, servizi attivati e servizio predefinito per ruolo o tipo (D36). Non ci sono utenti, crediti né caparre: la spesa si calcola dagli scontrini (D30) |
 | Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
-| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), `model_label` e `requested_model_id` (D36) |
+| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), e `model_label` (D36) |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
 | Esportazioni | `exports` | |
@@ -475,7 +487,7 @@ sequenceDiagram
 3. Un controllo periodico (polling) chiede a fal se il lavoro è finito. La coda è salvata in SQLite: se l'app si chiude, al riavvio i lavori ripartono dal polling.
 4. Appena è pronto, l'app copia il video nella cartella del progetto, crea asset e take (collegati allo scontrino, che dice il servizio che ha lavorato), chiude lo scontrino con costo reale e tempi (che alimentano la spesa del film) e pubblica `take.ready`.
 5. L'interfaccia riceve l'evento via SSE e mostra il take nella card.
-6. Se qualcosa va storto: errori tecnici → nuovi tentativi e riserve; `content_rejected` → take rifiutato con un messaggio semplice; nessuna risposta entro il tempo massimo → `failed`.
+6. Se qualcosa va storto: errori tecnici → pochi nuovi tentativi sullo stesso servizio, poi il lavoro si ferma e l'interfaccia dice perché e cosa fare (§4.10), senza passare a un altro servizio; `content_rejected` → take rifiutato con un messaggio semplice; nessuna risposta entro il tempo massimo → `failed`.
 
 Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa: la chiave di idempotenza sta nello scontrino.
 

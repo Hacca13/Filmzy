@@ -15,5 +15,6 @@ features:
 
 limits:
   max_characters: 2      # personaggi principali per film (MVP); lo applica il backend
-  film_budget_usd: 50    # tetto di spesa predefinito per film: l'utente lo cambia o lo toglie (D30)
-  confirm_above_usd: 2   # chiede conferma prima di una generazione che costa di più: l'utente lo cambia (D30)
+  # Nessun tetto di spesa è preimpostato (D36): li accende l'utente dalle impostazioni, se li vuole.
+  # film_budget_usd: 50    # tetto di spesa per film (facoltativo)
+  # confirm_above_usd: 2   # chiede conferma prima di una generazione che costa di più (facoltativo)

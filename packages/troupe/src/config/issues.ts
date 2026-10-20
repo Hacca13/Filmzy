@@ -22,3 +22,8 @@ export interface ConfigIssue {
 export function hasErrors(issues: readonly ConfigIssue[]): boolean {
   return issues.some((issue) => issue.severity === 'error');
 }
+
+/** Il motivo di un errore in forma leggibile, da mettere dentro un messaggio. */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

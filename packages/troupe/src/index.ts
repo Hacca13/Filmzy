@@ -8,7 +8,7 @@ export type { ConfigEnvironment } from './config/environments.js';
 export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
 export { parseInstructionFile, validateInstructions } from './config/instructions.js';
 export type { InstructionFile, ValidateInstructionsOptions } from './config/instructions.js';
-export { hasErrors } from './config/issues.js';
+export { hasErrors, messageOf } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';
 export { loadBenchPlan, loadConfigFiles, parseConfigFile } from './config/load-files.js';
 export type { LoadFilesResult, TroupeConfig, TroupePresets } from './config/load-files.js';

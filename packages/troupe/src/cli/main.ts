@@ -15,7 +15,7 @@ import { validateConfig } from '../config/validate.js';
 
 const USAGE = `Uso: pnpm troupe check [cartella] [--env <ambiente>]
 
-  cartella   la cartella della configurazione (per difetto: config)
+  cartella   la cartella che contiene ai/, presets/ e features.yaml (per difetto: config)
   --env      ${CONFIG_ENVIRONMENTS.join(' | ')}; senza, vale TROUPE_ENV, e senza quello
              nessun adattamento d'ambiente
 

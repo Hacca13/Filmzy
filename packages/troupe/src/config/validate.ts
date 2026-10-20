@@ -332,7 +332,10 @@ function checkSecrets(
   }
 }
 
-/** Punto 6: avviso se la verifica di un prezzo ha più di 30 giorni. */
+/**
+ * Punto 6: avviso se la verifica di un prezzo ha più di 30 giorni. Un prezzo *mancante* non si
+ * controlla qui perché non può esistere: lo schema del catalogo lo pretende già.
+ */
 function checkPrices(config: TroupeConfig, options: ValidateOptions, issues: ConfigIssue[]): void {
   const now = options.now ?? new Date();
 

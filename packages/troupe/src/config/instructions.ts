@@ -11,7 +11,7 @@ import {
 import { Liquid } from 'liquidjs';
 import { parse as parseYaml } from 'yaml';
 
-import type { ConfigIssue } from './issues.js';
+import { messageOf, type ConfigIssue } from './issues.js';
 import type { TroupeConfig } from './load-files.js';
 
 /** Le sezioni ammesse nel corpo di un file di istruzioni (architettura §4.4). */
@@ -420,8 +420,4 @@ function roleIssue(
   field?: string,
 ): ConfigIssue {
   return { severity: 'error', code, message, section: 'instructions', role: roleId, key: roleId, file, field };
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

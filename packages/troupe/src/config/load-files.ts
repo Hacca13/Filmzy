@@ -28,7 +28,7 @@ import {
 import { parse as parseYaml } from 'yaml';
 import type { z } from 'zod';
 
-import type { ConfigIssue } from './issues.js';
+import { messageOf, type ConfigIssue } from './issues.js';
 
 /** I preset come li leggono i ruoli: in camelCase, convertiti dalla forma dei file (§5.3). */
 export interface TroupePresets {
@@ -216,8 +216,4 @@ export async function loadBenchPlan(
   }
   const parsed = parseConfigFile(benchPlanSchema, planPath, raw, 'bench');
   return { plan: parsed.data, issues: parsed.issues };
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

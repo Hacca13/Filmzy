@@ -171,7 +171,8 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 **Le scelte dell'utente non sono configurazione tecnica (D36).** Connessioni, catalogo e ruoli sono JSON validato dentro le release, uguale per ogni tipo di servizio (immagini, video, musica): non c'è una tabella per tipo, solo il campo `kind`, e le Impostazioni raggruppano per tipo. Quello che l'utente cambia ogni giorno sta invece nella tabella `settings` (§6) e vale subito, senza una pubblicazione:
 
 - i **servizi attivati** (`enabledModelIds`): quelli che il router può usare e che compaiono in «Cambia servizio», di ogni tipo (anche i modelli di testo). Si attivano scegliendoli quando si collega un fornitore («Collega un fornitore», passo 3), che propone già quelli usati dai ruoli della release, o dalla scheda del fornitore. Si attivano solo voci `active` o `testing` (queste ultime con un avviso), con la connessione attiva e la chiave presente (col fornitore finto la chiave non serve); `retired` e gli id segnaposto no. Si può disattivare un servizio: se era l'unico utilizzabile per un ruolo, l'interfaccia lo dice e chiede conferma, e il ruolo si ferma con `no_eligible_model` finché non se ne attiva un altro; un predefinito scelto dall'utente per quel ruolo torna a quello della release;
-- il **servizio predefinito** di ogni gruppo (`defaultModels`: testo, immagini, video, musica ed effetti, voci) e il **modello predefinito di ogni fornitore** (`defaultModelByConnection`); un ruolo può avere il suo, e allora vince. Si sceglie tra i servizi attivati, dello stesso tipo del ruolo e con le capacità che il ruolo richiede (§4.6, punto 9). Nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
+- il **servizio predefinito** di ogni gruppo (`defaultModels`) e il **modello predefinito di ogni fornitore** (`defaultModelByConnection`). I gruppi sono: testo, lettura immagini, immagini, video, musica ed effetti, voci. Un ruolo appartiene al gruppo del suo `kind`; i ruoli di testo che dichiarano `requires: [vision]` (oggi `image_analyst`) formano il gruppo «Lettura immagini», con le stesse connessioni e chiavi del gruppo testo (un fornitore già collegato non si reinserisce) ma con modelli che hanno la capacità `vision`;
+- le **regolazioni di un ruolo** (`roleSettings`, D38): fornitore e modello, creatività (`params.temperature`, dentro i limiti del modello scelto) e versione delle istruzioni (§4.4). Se ci sono, vincono sul predefinito del gruppo. Cambiando modello, le regolazioni che il nuovo non accetta si scartano e l'interfaccia lo dice; Si sceglie tra i servizi attivati, dello stesso tipo del ruolo e con le capacità che il ruolo richiede (§4.6, punto 9). Nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
 - i **limiti di spesa** (mensile per fornitore e per modello, per film, «conferma sopra una cifra»: D30). Sono tutti facoltativi e **nessuno è preimpostato** (D36): il limite mensile si sceglie quando si aggiunge un fornitore, gli altri si accendono dalle impostazioni. Se un valore è scritto nella release (`limits.*`, `monthly_cap_usd`) è solo un valore iniziale; quello di `settings` lo sostituisce. Per ogni fornitore l'interfaccia mostra quanto è stato speso nel mese e, se c'è un limite, quanto manca, con un avviso all'80% e al raggiungimento. `pnpm troupe export` scrive solo la release, mai le scelte dell'utente.
 
 Senza scelte dell'utente (file di seme, test, bench, `pnpm troupe check`) valgono come attivate tutte le voci `active` o `testing` della release: il filtro sugli attivati si applica solo quando le impostazioni esistono.
@@ -190,11 +191,13 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 
 ### 4.4 Le istruzioni
 
-- `screenwriter@1` corrisponde al file `config/ai/instructions/screenwriter/v1.md`. L'intestazione contiene `id`, `version`, `description`, `variables` e `changelog`; il corpo, le sezioni `## system` e `## user`. I template per le immagini hanno `kind: image_prompt`, quelli per i suoni `kind: audio_prompt`, e una sola sezione `## prompt`.
+- `screenwriter@1` corrisponde al file `config/ai/instructions/screenwriter/v1.md`. L'intestazione contiene `id`, `version`, `description`, `variables` e `changelog`; il corpo, le sezioni `## system` e `## user`. I template per le immagini hanno `kind: image_prompt`, quelli per i suoni `kind: audio_prompt`, e una sola sezione `## prompt`. Accanto ai file di ogni ruolo c'è un `manifest.json` con l'elenco delle versioni (`version`, `file`, e le varianti per famiglia) e quale è la consigliata (`recommended`). I testi stanno in file di testo e non in JSON perché un prompt lungo, con gli a capo scritti `\n`, è illeggibile e facile da rompere (D38).
 - Template LiquidJS. Le variabili sono i campi dell'input del ruolo (camelCase). Le variabili facoltative arrivano sempre, con valore `null` quando mancano, mai assenti: così la modalità rigorosa segnala solo i veri errori e `{% if scene %}` funziona anche senza scena.
 - **Varianti per famiglia:** `v1.seedance.md` si usa quando il modello di destinazione è della famiglia `seedance`. Può aggiungere regole alla base (`mode: append`) o sostituirla (`mode: replace`). Servono soprattutto al direttore della fotografia, perché ogni famiglia "capisce" i prompt a modo suo.
-- Una versione pubblicata non si modifica più: si crea la successiva. Lo scontrino registra versione e variante usate.
-- Nelle impostazioni avanzate: editor, elenco delle variabili disponibili, anteprima con un input di esempio.
+- Una versione pubblicata non si modifica più: si crea la successiva. Lo scontrino registra versione e variante usate. Le versioni vecchie non si cancellano.
+- **Un aggiornamento non cambia la scelta dell'utente (D38).** Il ruolo usa la versione che l'utente ha scelto in «Chi fa cosa» (`roleSettings.instructions`, `id@versione`); chi non ha mai scelto segue la consigliata del manifest. Quando arriva una versione nuova, l'interfaccia lo dice con il registro dei cambiamenti, e l'utente può provarla o restare sulla vecchia.
+- **Istruzioni proprie.** L'utente carica un file nel nostro formato (con un modello da scaricare); il programma lo controlla come gli altri, con la stessa prova di rendering in modalità rigorosa, e se una variabile non esiste dà un errore che la nomina. Si salva come versione sua (`origin: user`, nella tabella `instruction_versions`), si può scegliere per un ruolo e modificare creando la versione successiva. Per il moderatore c'è un'avvertenza, perché cambiarne le istruzioni indebolisce un'impostazione prudente (§10).
+- «Chi fa cosa» e le impostazioni avanzate: scelta della versione, caricamento di un file, editor, elenco delle variabili disponibili, anteprima con un input di esempio.
 
 ### 4.5 Dove vive la configurazione
 
@@ -210,7 +213,7 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 **Precedenze al momento dell'uso, dalla più debole alla più forte:**
 
 1. release attiva (o file di seme);
-2. scelte dell'utente (tabella `settings`, D36): servizi attivati, predefiniti per ruolo o tipo, tetti di spesa. Se non ci sono (test, bench, file di seme) vale la release, con tutti i servizi attivi (§4.3);
+2. scelte dell'utente (tabella `settings`, D36): servizi attivati, predefiniti dei gruppi, regolazioni dei ruoli (modello, creatività, versione delle istruzioni), limiti di spesa. Se non ci sono (test, bench, file di seme) vale la release, con tutti i servizi attivi (§4.3);
 3. adattamento d'ambiente (`config/ai/environments/<env>.yaml`, nel repository): per esempio il fornitore finto nei test e in `offline`. Sta sopra le scelte dell'utente, così `TROUPE_ENV=offline` usa sempre il fornitore finto, qualunque servizio l'utente abbia attivato. La fusione è profonda, le liste si sostituiscono, la chiave `"*"` vale per tutte le voci di una sezione;
 4. in futuro, esperimenti A/B;
 5. override della singola chiamata, solo per bench e "Prova".
@@ -390,7 +393,7 @@ ContinuityState { locationId, timeOfDay, present: CharacterId[], costumes: Recor
 ShotImage { use: 'reference' | 'first_frame' | 'last_frame', from: 'upload' | 'generate' | 'take_frame' | 'moodboard', assetId?, takeId?, atS? }
 ```
 
-`upload` è un'immagine caricata (luogo o oggetto, mai persone: D19) e porta `assetId`. `generate` chiede di generarla: il risultato è un take `keyframe` e vale quello scelto. `take_frame` è il fotogramma al secondo `atS` del take `takeId`, estratto con ffmpeg. `moodboard` è un'immagine del moodboard del film (D37) e porta `assetId`. Il ruolo `first_frame` o `last_frame` è un requisito per il router (§4.8). Il `shot_planner` non compila `images`: le imposta l'utente.
+`upload` è un'immagine caricata (luogo o oggetto, mai persone: D19) e porta `assetId`. `generate` chiede di generarla: il risultato è un take `keyframe` e vale quello scelto. `take_frame` è il fotogramma al secondo `atS` del take `takeId`, estratto con ffmpeg. `moodboard` è un'immagine del moodboard del film (D37) e porta `assetId`; non vale per quelle segnate «solo per l'analisi» (D38). Il ruolo `first_frame` o `last_frame` è un requisito per il router (§4.8). Il `shot_planner` non compila `images`: le imposta l'utente.
 
 I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `kind` (`storyboard`, `keyframe`, `preview`, `final`), `generationId`, `assetId`, `chosen`, `checks`.
 
@@ -439,15 +442,18 @@ AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, 
 ```ts
 GenerationContext { projectId?, shotId?, purpose, modelId? }            // il ctx di §4.1
 ModelOption { modelId, label, estimatedCostUsd, quality?, isDefault }   // risposta di troupe.options
-UserSettings { enabledModelIds: string[], defaultModels: Partial<Record<RoleId | ModelKind, string>>,
-               defaultModelByConnection: Record<ConnectionId, string>, spendCaps: SpendCap }   // tutti i limiti facoltativi
+UserSettings { enabledModelIds: string[], defaultModels: Partial<Record<ModelGroup, string>>,
+               defaultModelByConnection: Record<ConnectionId, string>, spendCaps: SpendCap,   // tutti i limiti facoltativi
+               roleSettings: Partial<Record<RoleId, RoleSettings>> }
+RoleSettings { modelId?, params?: { temperature? }, instructions?: string }   // 'id@versione', anche di un file caricato dall'utente
+InstructionsManifest { id, recommended: number, versions: { version, file, variants?: { family, file, mode }[] }[] }
 DomainErrorBody { code, retryable, details?: { role?, modelId?, connectionId?, field?, retryAfterS? } }  // §4.10
 ```
 
 - `modelId` è facoltativo nel `GenerationContext` di ogni richiesta di generazione (storyboard, fotogrammi, schede, immagini del set, ritocchi, take, musica, effetti): senza, decide il predefinito o il router. Con `modelId` il servizio è un requisito (§4.8). Non sta negli schemi di input dei ruoli (§5.3), ma entra nella chiave di idempotenza e nell'hash della richiesta.
 - `quality` è il voto delle prove del bench per quel tipo di lavoro, assente se il servizio non è stato provato; l'interfaccia lo traduce in un giudizio semplice.
 - Lo scontrino porta `modelId` (il servizio che ha lavorato) e `modelLabel` (il suo nome in quel momento, perché il catalogo può cambiare). Take, immagini e varianti audio rimandano al loro scontrino (`generation_id`) e non ne copiano i campi.
-- `defaultModels` ha come chiave un ruolo o un gruppo (`llm`, `image`, `video`, `music`, …): il predefinito del gruppo vale per tutti i suoi ruoli, e la voce di un ruolo, se c'è, vince. `defaultModelByConnection` è il modello predefinito di ogni fornitore: scegliendo un altro fornitore in «Cambia servizio» si parte da quello.
+- `defaultModels` ha come chiave un gruppo (`ModelGroup`: `text`, `vision`, `image`, `video`, `audio`, `voice`) e vale per tutti i suoi ruoli; le regolazioni di un ruolo stanno in `roleSettings` e, se ci sono, vincono. `temperature` si accetta solo se il modello scelto la dichiara e dentro i suoi limiti. `defaultModelByConnection` è il modello predefinito di ogni fornitore: scegliendo un altro fornitore in «Cambia servizio» si parte da quello.
 - Tutti i limiti di `spendCaps` sono facoltativi e non hanno valori preimpostati (D36).
 
 ### 5.7 Moodboard (D37)
@@ -456,14 +462,14 @@ DomainErrorBody { code, retryable, details?: { role?, modelId?, connectionId?, f
 Moodboard      { projectId, film: MoodboardPart, scenes: ({ sceneId } & MoodboardPart)[] }
 MoodboardPart  { palette: Color[], notes: string, references: MoodReference[] }
 Color          { hex, name?, use?: 'dominante' | 'accento' | 'ombra' | ... }
-MoodReference  { assetId, origin: 'generated' | 'uploaded', description, moodTags: string[], palette: Color[], generationId? }
+MoodReference  { assetId, origin: 'generated' | 'uploaded', analysisOnly: boolean, description, moodTags: string[], palette: Color[], generationId? }
 MoodboardBrief { palette, notes, referenceDescriptions[], scene?: { palette, notes } }   // la vista di testo che leggono i ruoli
 ```
 
 - Un moodboard di una scena, se è vuoto, non toglie nulla: vale quello del film. Palette e consigli sono modificabili a mano.
 - `palette` di un'immagine caricata la calcola il codice (colori dominanti, senza modelli); il modello descrive atmosfera, luce e composizione (`image_analyst`). `origin: 'generated'` ha un `generationId` (scontrino), `uploaded` no.
 - `MoodboardBrief` contiene solo testo: le immagini non vanno da sole ai modelli di generazione. Le immagini scelte come immagine di un'inquadratura passano da `ShotImage` (`from: 'moodboard'`, §5.2).
-- Le immagini caricate si salvano nella cartella del progetto e passano dal controllo di D19 (§10) prima di entrare nel moodboard.
+- Le immagini caricate si salvano nella cartella del progetto e passano dal controllo di §10 prima di entrare nel moodboard. Se mostrano persone, entrano con `analysisOnly: true`: servono per descrizione, atmosfera e colori, non si possono scegliere come immagine di un'inquadratura e non vanno mai a un modello di generazione (D38).
 - `UserSettings` si valida con gli stessi schemi della configurazione (§4.3): un predefinito deve essere un servizio attivato, dello stesso tipo del ruolo e con le capacità che il ruolo richiede.
 
 ## 6. Dati (SQLite)
@@ -546,7 +552,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - **Chiavi (D25, D29):** nel portachiavi del sistema operativo, in sola scrittura per l'interfaccia («Chiave collegata ••••1a2b»), mai nei log né negli export (`pnpm troupe export` scrive solo i riferimenti). Per i test e lo sviluppo valgono le variabili d'ambiente (`env:`).
 - **Responsabilità (D28):** il programma è software libero (AGPL-3.0), fornito «così com'è». L'utente risponde dei file che carica, dei contenuti che crea e di come li pubblica, e rispetta le condizioni dei fornitori che ha scelto. Il README spiega l'uso responsabile.
 - **Impostazioni prudenti di default.** In un programma aperto non si possono imporre, ma proteggono l'account dell'utente dai blocchi dei fornitori: moderatore sui testi prima di ogni spesa (persone reali o famose, minori, contenuti vietati; la politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata), solo persone generate da Filmzy (D19) e dicitura «Contiene contenuti generati con intelligenza artificiale» nei titoli. L'utente può cambiarle dalle impostazioni avanzate, e un'avvertenza spiega cosa rischia.
-- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload`. Anche le immagini caricate nel moodboard (D37) passano dallo stesso controllo, fatto dal ruolo `image_analyst` insieme alla descrizione, e l'interfaccia dice che una copia dell'immagine viene inviata al servizio di testo scelto.
+- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload`. Anche le immagini caricate nel moodboard (D37) passano dal controllo, fatto dal ruolo `image_analyst` insieme alla descrizione. Qui le persone non fanno rifiutare l'immagine: entra solo per l'analisi (D38). Marchi, personaggi noti e minori sospetti si rifiutano (`image_rejected`). L'interfaccia dice che una copia dell'immagine viene inviata al servizio scelto per leggere le immagini.
 - **File audio caricati (D27):** l'utente può caricarne di propri su qualunque traccia. Restano nella cartella del progetto e **non vanno mai a un fornitore AI**: servono solo al mix con ffmpeg. Il testo che descrive un suono passa dal moderatore.
 - **Volti e voci reali:** `real_people` resta spenta (D4). Chi la accendesse per conto proprio risponde del consenso delle persone e delle regole dei fornitori; le tabelle dei consensi restano per questo.
 - **Limiti di spesa (D30):** stima prima di ogni generazione e tre tetti regolabili dall'utente. Il programma ricorda anche di impostare un limite di spesa nel pannello di ogni fornitore.
@@ -583,7 +589,6 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è (D21, D15).
 - Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori, e elenco definitivo dei tag (D22).
 - Modifica vera del video (`video_edit`): da provare dopo l'MVP su 3–4 clip (D21).
-- Immagini con persone nel moodboard (D37): per ora si rifiutano come tutte le immagini caricate (D19). Da decidere se, con l'impostazione prudente accesa, possano entrare solo per l'analisi (descrizione e colori) senza mai andare ai modelli di generazione.
 - Come si traduce il voto delle prove (`quality`) in un giudizio semplice per «Cambia servizio» (scala, parole, cosa fare per i servizi mai provati): da decidere con i dati del bench (T1.7, D36).
 - Una modalità server (account, hosting, pagamenti) non è prevista (D29): le interfacce `ConfigSource`, `AssetStore`, `ReceiptSink` e la coda restano pulite per non escluderla.
 

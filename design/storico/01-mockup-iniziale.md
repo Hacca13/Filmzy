@@ -3,7 +3,7 @@
 - **Stato:** inviato
 - **Registrato il:** 20/10/2026
 - **Cosa chiede:** i 6 schermi base (Home, La tua idea, Casting, Sceneggiatura, Le scene, Montaggio ed esporta), lo stile visivo e una scheda di componenti (stato vuoto, caricamento, errore).
-- **Note:** il testo è identico a quello dato a Figma; sono stati aggiunti solo gli a capo, per leggerlo meglio. L'ordine dei passi (Casting prima di Sceneggiatura) è stato superato: vedi il prompt 02.
+- **Note:** il testo è identico a quello dato a Figma; sono stati aggiunti solo gli a capo, per leggerlo meglio. Alcune scelte sono state superate dopo l'invio (ordine dei passi con la sceneggiatura prima del cast, crediti, interruttore della musica): le corregge il prompt successivo, in `../prossimo-prompt.md`.
 
 ## Prompt
 

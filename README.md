@@ -11,7 +11,7 @@ Programma libero (AGPL-3.0) per creare cortometraggi con la gen AI, pensato per 
 | `docs/decisioni.md` | perché è fatto così |
 | `docs/ricerca-ottobre-2026.md` | ricerca su modelli, prezzi e aspetti legali (13/10/2026) |
 | `config/` | seme della configurazione: troupe, preset, funzioni, prove sui modelli |
-| `design/` | prompt dati a Figma (con registro) e riferimenti grafici esportati |
+| `design/` | il prossimo prompt per Figma, lo storico di quelli lanciati e i riferimenti grafici esportati |
 
 Sviluppo (dopo M0; Docker non serve):
 

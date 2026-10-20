@@ -135,7 +135,7 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 - Musica ed effetti si generano con modelli a parte (ruoli `composer` e `sfx_artist`). Il ruolo `sound_planner` propone i suoni dal copione («Suggerisci i suoni»): l'utente accetta o scarta ogni proposta.
 - L'audio generato dentro i video si silenzia: dove possibile si chiede ai modelli di non produrlo (`audio: false`) e in ogni caso lo toglie ffmpeg all'esportazione, a meno che l'utente lo accenda per un take.
 - Il mix si rifà con ffmpeg a ogni esportazione, con livellamento del volume. Musica per scena ed effetti per inquadratura: la timeline libera resta in Fase 3.
-- Nell'MVP non si caricano file audio.
+- Nell'MVP non si caricano file audio. _Sostituito da D27._
 
 **Perché:** cambiare una musica o un effetto costa pochi centesimi e non tocca il video. È il principio di indipendenza dai modelli applicato al suono.
 **Scartate:** l'audio nativo dei modelli video (cambia con il modello e non si può sostituire); una timeline libera già nell'MVP (troppo lavoro); il caricamento di file audio (diritti della musica e voci di persone reali, come D19).
@@ -157,4 +157,19 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 
 **Sostituisce D23**, che diceva 40–57.
 **Decisione:** per D24 e D25 il piano sale a 47–68 giornate (circa 9½–13½ settimane): le tracce audio con i suggerimenti (+5–8, in M5) e le connessioni guidate con le chiavi cifrate (+2–3, in M2). Le due opzioni di D23 restano fuori dalla stima base; con entrambe sono 52–75 giornate.
-**Conseguenze:** stime grossolane, da rivedere dopo il test reale di M1.
+**Conseguenze:** stime grossolane, da rivedere dopo il test reale di M1. _Aggiornata da D27._
+
+## D27 · Il caricamento di file audio è ammesso, con condizioni — 20/10/2026
+
+**Sostituisce** la parte di D24 che escludeva i file audio dall'MVP e **aggiorna** la stima di D26.
+**Decisione:** l'utente può caricare file audio propri (musica, effetti, registrazioni di voce) su qualunque traccia, compresa Dialoghi: una registrazione caricata funziona da voce fuori campo, senza sincronizzazione del labiale. La generazione delle voci resta Fase 2. La responsabilità di ciò che si carica è dell'utente, come in un programma di montaggio. Condizioni:
+- al caricamento l'utente dichiara di avere i diritti sul file e, se c'è la voce di un'altra persona, il suo consenso; la dichiarazione resta nel registro;
+- i file restano privati nel progetto: nessuna galleria e nessun link pubblico nell'MVP, solo esportazione e download con URL firmato;
+- i file caricati **non vanno mai a un fornitore AI** (niente voce clonata, labiale o riferimento audio): servono solo al mix con ffmpeg;
+- c'è un modo per segnalare e rimuovere un contenuto (tabella `reports`, già prevista) e le condizioni d'uso vietano i contenuti che violano diritti altrui o che ingannano;
+- l'esportazione tiene la dicitura «Contiene contenuti generati con intelligenza artificiale» e la marcatura.
+
+**Perché:** un programma di montaggio non verifica i diritti dei file dell'utente, e riconoscere l'audio uno per uno è sproporzionato per l'MVP. Bastano gli strumenti di sempre: dichiarazione, condizioni d'uso, segnalazione e rimozione. Inviare i file ai fornitori sarebbe invece un rischio per l'account API (come D19 per i volti).
+**Differenza dai programmi di montaggio:** un editor gira sul computer dell'utente; Filmzy, se lo gestisce l'autore, ospita i file sui suoi server. Chi ospita risponde dei contenuti che conosce o che gli vengono segnalati, e deve rimuoverli. Il codice aperto non cambia questo obbligo per il servizio gestito dall'autore; cambia per chi lo installa per conto proprio. Prima di aprire il servizio al pubblico serve una consulenza legale, come già per i volti reali (questa non è consulenza legale).
+**Scartate:** controllare i file con un riconoscimento dell'audio (costo e falsi positivi); escludere i file audio (D24).
+**Conseguenze:** nuova origine `uploaded` per le clip audio; la traccia Dialoghi funziona per le registrazioni caricate; il pannello del blocco ha «Carica un file»; funzione `audio_upload`, che l'amministratore può spegnere. Circa +1–2 giornate: l'MVP sale a 48–70 giornate (53–77 con le due opzioni). `CLAUDE.md`: tolto il divieto di file audio, aggiunto quello di inviarli ai fornitori.

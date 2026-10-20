@@ -120,5 +120,5 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - Non accettare immagini con persone caricate dall'utente e non ritoccare foto di persone: i personaggi li crea Filmzy (D19).
 - Non declassare in silenzio una scelta dell'utente sulle immagini dell'inquadratura (primo o ultimo fotogramma): se nessun modello la accetta, si ferma con un messaggio semplice (D20).
 - Non mostrare né registrare mai una chiave dopo l'inserimento: né nell'interfaccia, né nei log, né negli export (D25).
-- Non accettare file audio caricati dall'utente nell'MVP (D24).
+- Non inviare mai a un fornitore AI i file audio caricati dall'utente (D27): servono solo al mix. Il caricamento richiede la dichiarazione dei diritti.
 - Non cambiare un contratto senza aggiornare schemi, test e documenti nello stesso commit.

@@ -18,28 +18,28 @@ _Versione 2 · 20 ottobre 2026 (la versione 1 è del 19 ottobre) · Stime in gio
 | **M2** Pannello della troupe | accesso admin, configurazione nel database, prova, pubblicazione, storico, connessioni guidate con chiavi cifrate | 7–10 |
 | **M3** Storia, personaggi e luoghi | utenti e crediti, progetto, moderatore, bozza, casting, schede, luoghi, riepilogo, stesura, inquadrature | 11–15 |
 | **M4** Storyboard, immagini e video | storyboard, immagini dell'inquadratura, take video con caparra e webhook, aggiornamenti live, costi | 8–12 |
-| **M5** Continuità, suoni e montaggio | giallo, segretaria di edizione, tracce audio (musica ed effetti), esportazione con etichetta AI | 10–15 |
+| **M5** Continuità, suoni e montaggio | giallo, segretaria di edizione, tracce audio (musica, effetti, file propri), esportazione con etichetta AI | 11–17 |
 | **M6** Beta chiusa | rifiniture, privacy, deploy, 5–10 tester | 3–5 |
-| **Totale MVP** (senza opzioni) | | **47–68** (circa 9½–13½ settimane) |
+| **Totale MVP** (senza opzioni) | | **48–70** (circa 9½–14 settimane) |
 | Opzione: caricamento di luoghi e oggetti | T4.8 | +2–3 |
 | Opzione: ritocco col pennello | T4.9 | +3–4 |
-| **Con tutte le opzioni** | | **52–75** (circa 10½–15 settimane) |
+| **Con tutte le opzioni** | | **53–77** (circa 10½–15½ settimane) |
 
 ### Cosa è cambiato il 20/10/2026 (D18–D26)
 
-La versione 1 diceva 32–45 giornate. Le novità valgono 15–23 giornate (stime grossolane, da rivedere dopo il test reale di M1):
+La versione 1 diceva 32–45 giornate. Le novità valgono 16–25 giornate (stime grossolane, da rivedere dopo il test reale di M1):
 
 - flusso con bozza, riepilogo e stesura ufficiale, scheda personaggio più ricca: +3–4 (in M3);
 - passo «Luoghi» con le immagini del set: +2–3 (in M3);
 - immagini dell'inquadratura (primo e ultimo fotogramma scelti dall'utente): +3–5 (+1 in M1, +2–4 in M4);
-- tracce audio per musica ed effetti, con i suggerimenti dal copione: +5–8 (in M5);
+- tracce audio per musica ed effetti, con i suggerimenti dal copione e il caricamento di file propri: +6–10 (in M5);
 - connessioni guidate con le chiavi dei fornitori cifrate nel database: +2–3 (in M2).
 
 ### Perimetro dell'MVP (proposta, da confermare)
 
-- **Dentro:** il flusso con bozza e stesura, i luoghi, il controllo dei fotogrammi, «usa un fotogramma del video come punto di partenza», le tracce di musica ed effetti con «Suggerisci i suoni», la pagina Connessioni con le chiavi cifrate.
+- **Dentro:** il flusso con bozza e stesura, i luoghi, il controllo dei fotogrammi, «usa un fotogramma del video come punto di partenza», le tracce di musica ed effetti con «Suggerisci i suoni» e il caricamento di file audio propri (anche una voce fuori campo), la pagina Connessioni con le chiavi cifrate.
 - **Opzioni con la funzione spenta** (si decide a metà di M4, dopo T4.7): caricamento di luoghi e oggetti, ritocco col pennello.
-- **Fuori, dopo l'MVP:** la modifica vera del video (`video_edit`), da provare su 3–4 clip; i dialoghi e le voci (Fase 2); il caricamento di file audio; la timeline libera (Fase 3).
+- **Fuori, dopo l'MVP:** la modifica vera del video (`video_edit`), da provare su 3–4 clip; la generazione delle voci e il labiale (Fase 2); la timeline libera (Fase 3).
 
 ## Prima di iniziare
 
@@ -188,7 +188,7 @@ _Fatto quando:_ una foto di una stanza si carica; una foto con una persona viene
 **T4.9 Ritocco col pennello** (+3–4 giornate). Funzione `retouch`: editor con maschera, `retoucher` (togli, sostituisci, cambia colore), regole R3 e R6, controllo del testo (D21).
 _Fatto quando:_ si toglie un oggetto da un'immagine del set e le inquadrature che la usano diventano gialle.
 
-## M5 — Continuità, suoni e montaggio (10–15 giornate)
+## M5 — Continuità, suoni e montaggio (11–17 giornate)
 
 _Leggere: architettura §5.5, §8 e §9._
 
@@ -197,9 +197,9 @@ _Leggere: architettura §5.5, §8 e §9._
 **T5.3** Azioni sul giallo: Rigenera o Ignora.
 **T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.
 _Fatto quando:_ musica ed effetti hanno un fornitore scelto e collegato dalla pagina Connessioni, e la scelta è registrata in `docs/decisioni.md`.
-**T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`.
-_Fatto quando:_ la musica di una scena e un effetto su un'inquadratura si generano, si cambiano tra le varianti e si eliminano senza toccare il video.
-**T5.6** Editor delle tracce: Video (audio originale spento), Dialoghi (spenta), Musica ed Effetti, con muto e volume; pannello del blocco (descrizione, «Genera», «Cambia», «Elimina»).
+**T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`. Caricamento di file propri (funzione `audio_upload`) con dichiarazione dei diritti registrata e collegamento alla segnalazione e rimozione (D27); i file caricati non vanno mai a un fornitore AI.
+_Fatto quando:_ la musica di una scena e un effetto su un'inquadratura si generano, si cambiano tra le varianti e si eliminano senza toccare il video; un file caricato finisce nel mix senza uscire dal nostro server.
+**T5.6** Editor delle tracce: Video (audio originale spento), Dialoghi (registrazioni caricate, come voce fuori campo), Musica ed Effetti, con muto e volume; pannello del blocco (descrizione, «Genera», «Cambia», «Carica un file», «Elimina»).
 **T5.7** Montaggio: normalizzazione con l'audio originale tolto, concatenazione, mix delle tracce con livellamento del volume, titoli con la dicitura AI.
 **T5.8** Marcatura C2PA: scelta dello strumento; metadati dei fornitori conservati.
 **T5.9** Esportazione e download con URL firmato.
@@ -209,7 +209,7 @@ _Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con musica,
 ## M6 — Beta chiusa (3–5 giornate)
 
 **T6.1** Onboarding e rifinitura dell'interfaccia.
-**T6.2** Privacy, termini, segnalazione e rimozione.
+**T6.2** Privacy, termini d'uso (con la responsabilità sui file caricati), segnalazione e rimozione.
 **T6.3** Limiti di spesa per utente.
 **T6.4** Deploy (Docker + Caddy), backup del database, tracciamento degli errori.
 **T6.5** Test con 5–10 persone non tecniche: dove si bloccano, cosa non capiscono.
@@ -224,6 +224,7 @@ _Fatto quando:_ almeno 5 persone non tecniche finiscono un corto da sole.
 - [ ] Mockup in Figma e loro esportazione in `design/riferimenti/`
 - [ ] Privacy policy e termini prima della beta
 - [ ] Consulenza legale prima di accendere i volti reali
+- [ ] Consulenza legale prima di aprire il servizio al pubblico: file caricati, termini d'uso, segnalazione e rimozione
 - [ ] 5–10 tester non tecnici
 - [x] Nome del prodotto: Filmzy (D17)
 
@@ -231,5 +232,5 @@ _Fatto quando:_ almeno 5 persone non tecniche finiscono un corto da sole.
 
 - **Cast personale:** test dedicato sui volti reali; poi consenso dato dalla persona stessa (link, selfie dal vivo, frase per la voce) e router limitato ai modelli che accettano volti verificati.
 - **Modifica vera del video** (`video_edit`): prova su 3–4 clip, con costo e affidabilità misurati.
-- **Fase 2:** voci per personaggio (la traccia Dialoghi) e labiale, pagamenti.
+- **Fase 2:** generazione delle voci per personaggio (nella traccia Dialoghi) e labiale, pagamenti.
 - **Fase 3:** timeline modificabile, luoghi ricorrenti, doppiaggio.

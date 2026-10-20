@@ -1,6 +1,6 @@
 # Filmzy — Architettura
 
-_Versione 1 · 19 ottobre 2026 · aggiornata il 20 ottobre 2026 (decisioni D17–D26)_
+_Versione 1 · 19 ottobre 2026 · aggiornata il 20 ottobre 2026 (decisioni D17–D27)_
 
 Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e perché sta in `contesto-progetto.md` (l'originale nel progetto Claude, una copia in `docs/`); le scelte e le alternative scartate in `decisioni.md`; l'ordine dei lavori in `piano-di-lavoro.md`.
 
@@ -95,7 +95,7 @@ Il progetto avanza per fasi (D18). Si può sempre tornare a una fase precedente:
 | `review` | il codice confronta la bozza con le scelte: una differenza è un personaggio o un luogo che la bozza cita e la Bibbia non ha, o viceversa (li collega il `proposalId`). Per ognuna: «Adatta la storia», «Cambia la mia scelta» o «Va bene così» (l'elemento resta come comparsa o luogo generico). Senza differenze il passo si salta | nessuno: la scelta pesa sulla stesura |
 | `final` | stesura ufficiale, che usa solo cast e luoghi scelti più gli elementi accettati; poi modificabile come testo, con versioni | `screenwriter` (`final`) |
 | `shots` | inquadrature, storyboard, immagini dell'inquadratura, take | `shot_planner`, `cinematographer`, `storyboard_artist`, `camera_operator`, `script_supervisor` |
-| `sound` | tracce audio: musica per scena, effetti per inquadratura, suggerimenti dal copione («Suggerisci i suoni»); l'audio originale dei take è spento | `sound_planner`, `composer`, `sfx_artist` |
+| `sound` | tracce audio: musica per scena, effetti per inquadratura, suggerimenti dal copione («Suggerisci i suoni»), file audio propri; l'audio originale dei take è spento | `sound_planner`, `composer`, `sfx_artist` |
 | `export` | montaggio, mix delle tracce ed esportazione | |
 
 «Bozza» ha due significati: la bozza della sceneggiatura (utente) e la bozza della troupe (`TroupeDraft`, admin).
@@ -376,12 +376,12 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 
 ```ts
 AudioTrack { id, projectId, kind: 'native' | 'dialogue' | 'music' | 'sfx', muted, volume }
-AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, fadeOutS, description, chosenVariantId?, source: 'generated' | 'native' }
+AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, fadeOutS, description, chosenVariantId?, source: 'generated' | 'native' | 'uploaded' }
 ```
 
-- La traccia `native` porta l'audio originale dei take: spenta di default, si accende per un take. La traccia `dialogue` esiste ma resta vuota fino alla Fase 2.
+- La traccia `native` porta l'audio originale dei take: spenta di default, si accende per un take. La traccia `dialogue` accetta registrazioni caricate dall'utente (una voce fuori campo, senza labiale); la generazione delle voci è Fase 2.
 - Una clip di musica sta su una scena (`shotId` vuoto); una clip di effetto sta su un'inquadratura e `startS` conta dall'inizio di quell'inquadratura. Niente timeline libera nell'MVP.
-- Ogni clip generata ha delle varianti, come i take: `chosenVariantId` è quella in uso. Cambiare una variante non tocca i video.
+- Ogni clip generata ha delle varianti, come i take: `chosenVariantId` è quella in uso. Cambiare una variante non tocca i video. Una clip caricata ha un solo file (D27).
 - Il mix si rifà a ogni esportazione (§9). Il testo di `description` passa dal moderatore.
 
 ## 6. Dati (PostgreSQL)
@@ -460,7 +460,7 @@ sequenceDiagram
 - **Moderatore** sui testi dell'utente prima di ogni spesa: persone reali o famose, minori, contenuti vietati. La politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata.
 - **Immagini caricate (D19):** sono ammessi luoghi e oggetti. Prima di salvarle, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti; l'esito resta nell'asset. Un'immagine con persone si rifiuta con un messaggio semplice. Con i fornitori vale la regola 11: copia subito e retention breve. La funzione `image_upload` resta spenta finché questo controllo non c'è.
 - **Ritocchi (D21):** sono lo strumento classico per alterare persone reali, quindi operano solo su immagini generate da noi o già approvate dal controllo. Il testo libero dell'utente passa dal moderatore prima di ogni spesa.
-- **Suoni (D24):** il testo che descrive un suono passa dal moderatore. Nell'MVP non si caricano file audio, per i diritti della musica e le voci di persone reali.
+- **Suoni (D24, D27):** il testo che descrive un suono passa dal moderatore. L'utente può caricare file audio propri, come in un programma di montaggio, ma: al caricamento dichiara di avere i diritti (e il consenso, se c'è la voce di un'altra persona) e la dichiarazione resta nel registro; i file restano privati nel progetto, senza link pubblici; **non vanno mai a un fornitore AI** (servono solo al mix con ffmpeg); un file segnalato si rimuove (tabella `reports`). Il servizio gestito dall'autore ospita i file: risponde di ciò che conosce o che gli viene segnalato, anche se il codice è aperto. Funzione `audio_upload`, spegnibile dall'amministratore.
 - **Chiavi (D25):** cifrate nel database e in sola scrittura, mai nei log né negli export. La chiave principale sta solo in una variabile d'ambiente. Solo gli `admin` le gestiscono e ogni azione va nel registro.
 - **Limiti di spesa:** per utente al giorno e globali al giorno, più quelli impostati sui cruscotti dei fornitori.
 - **GDPR:** esportazione e cancellazione dei dati dell'utente. I corpi delle richieste negli scontrini si conservano 90 giorni, i metadati restano.

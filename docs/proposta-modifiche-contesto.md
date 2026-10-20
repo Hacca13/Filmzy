@@ -1,6 +1,6 @@
 # Filmzy — Proposta di modifiche al contesto del progetto
 
-_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D26 in `docs/decisioni.md`.
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D27 in `docs/decisioni.md`.
 
 ## 1. Titolo e nome
 
@@ -44,10 +44,11 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 
 ### Nuova sezione: Suono
 
-> - Il suono sta su **tracce separate dal video**: Video (l'audio originale dei take, spento di default), Dialoghi (presente ma spenta fino alla Fase 2), Musica (un blocco per scena) ed Effetti (agganciati a un'inquadratura, con il secondo in cui partono). Ogni traccia ha muto e volume.
+> - Il suono sta su **tracce separate dal video**: Video (l'audio originale dei take, spento di default), Dialoghi (registrazioni caricate dall'utente, come una voce fuori campo; la generazione delle voci è Fase 2), Musica (un blocco per scena) ed Effetti (agganciati a un'inquadratura, con il secondo in cui partono). Ogni traccia ha muto e volume.
 > - Musica ed effetti si generano con modelli a parte. «Suggerisci i suoni» propone musica ed effetti leggendo il copione, e l'utente accetta o scarta ogni proposta. Per ogni blocco si può descrivere il suono («abbaio di un cane»), generarlo, scegliere tra tre varianti o eliminarlo.
 > - Cambiare una musica o un effetto costa pochi centesimi e non tocca il video: il mix si rifà a ogni esportazione. L'audio generato dentro i video viene silenziato.
-> - Nell'MVP non si caricano file audio (diritti della musica, voci di persone reali). La timeline libera resta in Fase 3.
+> - L'utente può caricare file audio propri (musica, effetti, registrazioni di voce) su qualunque traccia, dichiarando di averne i diritti, come in un programma di montaggio. I file restano privati nel progetto e non vanno mai a un fornitore AI. Chi gestisce il servizio resta tenuto a rimuovere un contenuto segnalato.
+> - La timeline libera resta in Fase 3.
 
 ### Pannello admin della troupe: aggiungere
 
@@ -63,7 +64,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 
 ## 6. Roadmap: sostituire la voce MVP
 
-> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi e le tracce di musica ed effetti. **Stima: 47–68 giornate di lavoro pieno, circa 9½–13½ settimane** (cambiato il 20/10, D26: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 52–75.
+> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi e le tracce di musica ed effetti. **Stima: 48–70 giornate di lavoro pieno, circa 9½–14 settimane** (cambiato il 20/10, D27: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 53–77.
 
 ## 7. Rischi e note: aggiungere
 
@@ -79,8 +80,9 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Fornitore degli effetti sonori: la ricerca del 13/10 copre solo la musica (ElevenLabs Music ha un'API, Suno è da evitare).
 > - **Modello di guadagno e licenza:** crediti a pagamento, oppure servizio aperto con donazioni? Un film da 60 s costa 11–66 $ di API, quindi un servizio gratuito per tutti non si regge sulle donazioni. Le strade sono crediti, codice aperto da installare in proprio con servizio a pagamento a parte, o un periodo di prova con crediti regalati. La licenza si sceglie prima di rendere pubblico il repository.
 > - Chiavi per utente («porta la tua chiave»): rimandate, dipendono dal modello di guadagno.
+> - Condizioni d'uso e dichiarazione dei diritti sui file caricati: da far rivedere a un legale prima di aprire il servizio al pubblico.
 > - Per chi non è tecnico basta il percorso con i crediti, oppure serve anche una modalità per chi vuole usare i propri account presso i fornitori?
 
 ## 9. Registro modifiche: aggiungere
 
-> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; tracce audio separate dal video (musica, effetti, dialoghi in Fase 2) con «Suggerisci i suoni»; pagina Connessioni con chiavi cifrate nel database; stima dell'MVP a 47–68 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D26 in `docs/decisioni.md`.
+> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; tracce audio separate dal video (musica, effetti, dialoghi in Fase 2) con «Suggerisci i suoni» e caricamento di file audio propri; pagina Connessioni con chiavi cifrate nel database; stima dell'MVP a 48–70 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D27 in `docs/decisioni.md`.

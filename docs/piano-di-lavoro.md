@@ -7,7 +7,7 @@ _Versione 3 · 20 ottobre 2026 · Filmzy è software libero e gira in locale (D2
 - Un task alla volta, nell'ordine. Ogni task dice cosa leggere prima e quando è "fatto".
 - Ogni task ha il suo ramo, da `main`. Si unisce con una pull request dopo l'ok.
 - Per i task grandi, prima un piano (la modalità piano di Claude Code), poi il codice.
-- A fine task: `pnpm lint typecheck test` verdi, `pnpm troupe check` verde se hai toccato la configurazione, documenti aggiornati se è cambiato un contratto, una voce in `docs/decisioni.md` se hai deciso qualcosa.
+- A fine task: `pnpm check` verde (lint, typecheck, test, build e stile), `pnpm troupe check` verde se hai toccato la configurazione, documenti aggiornati se è cambiato un contratto, una voce in `docs/decisioni.md` se hai deciso qualcosa.
 
 ## Riepilogo
 
@@ -51,7 +51,7 @@ Le cifre sono stime grossolane, da rivedere dopo M1 e dopo il primo installatore
 _Leggere: architettura §2, §3, §4.3–4.6._
 
 **T0.1 Monorepo.** pnpm workspaces + Turborepo, TypeScript strict, ESLint + Prettier, Vitest, GitHub Actions.
-_Fatto quando:_ `pnpm lint typecheck test build` passa in locale e in CI.
+_Fatto quando:_ `pnpm check` (lint, typecheck, test, build e stile) passa in locale e in CI, su Ubuntu e su Windows, e ognuno dei controlli fallisce davvero se introduci un errore apposta.
 
 **T0.2 Ambiente locale.** `.env.example` per lo sviluppo; `apps/api` (server locale) e `apps/web` vuote ma avviabili.
 _Fatto quando:_ da un clone pulito, `pnpm install && pnpm dev` avvia tutto, senza Docker.

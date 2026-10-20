@@ -5,6 +5,7 @@ export {
   loadEnvironmentOverlay,
 } from './config/environments.js';
 export type { ConfigEnvironment } from './config/environments.js';
+export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
 export { hasErrors } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';
 export { loadBenchPlan, loadConfigFiles, parseConfigFile } from './config/load-files.js';
@@ -18,3 +19,5 @@ export type {
 } from './config/secrets.js';
 export { FileConfigSource } from './config/source.js';
 export type { ConfigSource, LoadedConfig } from './config/source.js';
+export { validateConfig } from './config/validate.js';
+export type { ValidateOptions } from './config/validate.js';

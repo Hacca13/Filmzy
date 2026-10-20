@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { isoDaySchema, modelEntrySchema, modelsFileSchema } from './models.js';
+import { isoDaySchema, modelEntrySchema, modelsFileSchema, paramSpecSchema } from './models.js';
+
+describe('paramSpecSchema', () => {
+  it('tiene distinti un elenco di valori e un intervallo', () => {
+    const values = paramSpecSchema.parse({ values: ['1k', '2k'] });
+    expect(values).toEqual({ values: ['1k', '2k'] });
+
+    const range = paramSpecSchema.parse({ min: 0, max: 1 });
+    expect(range).toEqual({ min: 0, max: 1 });
+  });
+
+  it('non lascia passare un campo inventato in un intervallo', () => {
+    expect(paramSpecSchema.safeParse({ min: 0, step: 0.1 }).success).toBe(false);
+  });
+});
 
 describe('isoDaySchema', () => {
   it('accetta la data come la scrive il seme', () => {

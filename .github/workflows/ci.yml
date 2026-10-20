@@ -34,3 +34,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      # La configurazione si valida sempre (architettura §12). Con l'ambiente offline rispondono i
+      # fornitori finti, quindi in CI non serve nessuna chiave.
+      - run: pnpm troupe check --env offline

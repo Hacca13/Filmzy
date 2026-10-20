@@ -8,9 +8,12 @@ describe('portSchema', () => {
     expect(portSchema.parse('8080')).toBe(8080);
   });
 
-  it.each([0, 65536, 3.5, 'abc', ''])('rifiuta %j', (invalidPort) => {
-    expect(portSchema.safeParse(invalidPort).success).toBe(false);
-  });
+  it.each([0, 65536, 3.5, 'abc', '', '0', '65536', '0x50', '1e3', ' 80 ', '80.5', '-80'])(
+    'rifiuta %j',
+    (invalidPort) => {
+      expect(portSchema.safeParse(invalidPort).success).toBe(false);
+    },
+  );
 });
 
 describe('readApiPort', () => {

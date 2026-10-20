@@ -9,8 +9,20 @@ export const API_PREFIX = 'api';
 /** Porta predefinita del server locale. Si cambia con la variabile d'ambiente `FILMZY_API_PORT`. */
 export const DEFAULT_API_PORT = 3001;
 
-/** Numero di porta valido. Accetta anche il testo di una variabile d'ambiente ("3001"). */
-export const portSchema = z.coerce.number().int().min(1).max(65535);
+const portNumberSchema = z.number().int().min(1).max(65535);
+
+/**
+ * Porta valida (1-65535). Se arriva come testo, per esempio da una variabile d'ambiente, ammette
+ * solo cifre decimali: niente "0x50", "1e3" o spazi, che una conversione permissiva accetterebbe.
+ */
+export const portSchema = z.union([
+  portNumberSchema,
+  z
+    .string()
+    .regex(/^\d{1,5}$/)
+    .transform(Number)
+    .pipe(portNumberSchema),
+]);
 
 /**
  * Legge la porta del server locale dalle variabili d'ambiente.

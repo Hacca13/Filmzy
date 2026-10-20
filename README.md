@@ -20,7 +20,7 @@ pnpm install
 pnpm dev    # server locale su http://127.0.0.1:3001 e interfaccia su http://localhost:5173
 ```
 
-Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta). Prima di una pull request: `pnpm check`.
+Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta); `pnpm dev` lo legge. Una variabile già impostata nel terminale ha la precedenza sul file. Prima di una pull request: `pnpm check`.
 
 ## Licenza
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLocalHostHeader } from './local-host.js';
+import { isLocalHostHeader, isLocalOrigin } from './local-access.js';
 
 describe('isLocalHostHeader', () => {
   it.each([
@@ -28,5 +28,28 @@ describe('isLocalHostHeader', () => {
     ' localhost',
   ])('rifiuta %j', (hostHeader) => {
     expect(isLocalHostHeader(hostHeader)).toBe(false);
+  });
+});
+
+describe('isLocalOrigin', () => {
+  it.each([
+    'http://localhost:5173',
+    'http://127.0.0.1:3001',
+    'http://[::1]:5173',
+    'http://LOCALHOST',
+  ])('accetta %s', (origin) => {
+    expect(isLocalOrigin(origin)).toBe(true);
+  });
+
+  it.each([
+    'null',
+    '',
+    'https://evil.example',
+    'http://localhost.evil.example',
+    'http://evil.example@localhost',
+    'http://user:password@localhost',
+    'localhost',
+  ])('rifiuta %j', (origin) => {
+    expect(isLocalOrigin(origin)).toBe(false);
   });
 });

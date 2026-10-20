@@ -59,6 +59,24 @@ export default defineConfig(
     },
   },
 
+  // Il codice dell'interfaccia gira nel browser: niente moduli né variabili di Node. (La
+  // configurazione di Vite sta fuori da `src/` e può usarli.) I tipi di Node restano visibili a
+  // TypeScript perché servono a `vite.config.ts`, quindi questo controllo lo fa ESLint.
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['node:*'], message: 'Il codice del browser non può usare Node.' }] },
+      ],
+      'no-restricted-globals': [
+        'error',
+        { name: 'process', message: 'Il codice del browser non ha `process`.' },
+        { name: 'Buffer', message: 'Il codice del browser non ha `Buffer`.' },
+      ],
+    },
+  },
+
   // I file JavaScript (come questo) non hanno tipi: niente regole che li richiedono.
   {
     files: ['**/*.{js,mjs,cjs}'],

@@ -1,11 +1,7 @@
 import { LOCAL_API_HOST, readApiPort } from '@filmzy/contracts';
 import { Logger } from '@nestjs/common';
 
-import { loadEnvFileIfPresent } from './config/load-env-file.js';
 import { createApp } from './create-app.js';
-
-// Solo per lo sviluppo: il file `.env` sta nella radice del repository, tre livelli sopra `dist/`.
-loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
 
 const logger = new Logger('Filmzy');
 

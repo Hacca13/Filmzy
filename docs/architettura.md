@@ -419,6 +419,13 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | `sfx_artist` | `cue` (`description`, `durationS`), `variants` | effetti sonori |
 | `sound_planner` | `screenplay`, `scenes`, `shots`, `genre`, `tone`, `style`, `language` | `cues[]`: `kind` (`music`, `sfx`), `sceneId`, `shotId?`, `atS?`, `durationS`, `mood?` (in inglese), `description` |
 
+**Come arrivano i campi.** La tabella dà i nomi, non la forma; le istruzioni (§4.4) sono il vincolo vero, perché il rendering rigoroso fallisce su un percorso che non esiste:
+
+- **I preset arrivano come oggetti, non come id:** `genre`, `tone`, `style`, `cinematography`, `movement` e i `tags` del casting portano almeno `id` e `label`, perché le istruzioni scrivono `{{ genre.label }}`, `{{ movement.hint }}`, `{{ style.hint }}`. Nei campi dei preset vale il camelCase delle variabili (`endFrameHint`), non lo snake_case dei file di `config/presets/` (`end_frame_hint`): la conversione la fa il caricatore.
+- **Le scene che un ruolo riceve portano il loro `id`** (le inquadrature le citano con `sceneId`); quelle che lo sceneggiatore *scrive* no, come le inquadrature proposte dall'aiuto regista: l'id lo assegna il codice.
+- **Dove la tabella dice `scene`, `bible` o `shots` si intende l'oggetto intero** (`Scene`, `StoryBible`, `ShotSpec[]`): la segretaria di edizione legge `shot.continuity`, l'aiuto regista `bible.cinematography`, il direttore della fotografia `shot.intent`.
+- **I campi facoltativi dell'input arrivano sempre, con valore `null`** (§4.4), mai assenti; negli *output*, invece, un campo facoltativo può mancare.
+
 `accepted` è l'elenco degli elementi della bozza che l'utente ha deciso di tenere così come sono (`kind`, `name`), vuoto fuori dal modo `final`. Nel ritocco l'`instruction` dell'utente va al modello così com'è, in italiano (D21). I ruoli che scrivono o generano immagini (`shot_planner`, `cinematographer`, `character_designer`, `set_designer`, `storyboard_artist`) ricevono anche `moodboard?` (`MoodboardBrief`, nullo se non c'è): come le altre variabili facoltative arriva sempre, con valore `null` (§4.4).
 
 ### 5.4 Eventi

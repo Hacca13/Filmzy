@@ -3,6 +3,10 @@
 # Un identificativo tra < > è un segnaposto: ammesso solo con status "testing", blocca le chiamate reali.
 # status: active | testing | retired
 # real_faces: "no" | verified_assets | allowed | unknown
+# Una voce è un punto d'accesso (un id presso il fornitore) e vale per un solo modo d'ingresso (D20):
+#   input_modes: combinazioni di ingressi accettate dai video: references | first_frame | first_frame+last_frame | references+first_frame
+#   image_edit: l'immagine modifica un'immagine data (serve al ritocco e all'ultimo fotogramma); mask_edit: accetta una maschera vera
+# true | false | unknown: "unknown" conta come "no" per il router; solo il bench può provarlo.
 version: 1
 
 models:
@@ -44,6 +48,8 @@ models:
     family: image_generic
     capabilities:
       max_reference_images: 4                 # prudente, da verificare
+      image_edit: true                        # da verificare su fal
+      mask_edit: unknown                      # senza maschera vera si evidenzia la zona sull'immagine
     params:
       resolution: { values: [1k, 2k, 4k] }
       aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
@@ -59,6 +65,8 @@ models:
     family: image_generic
     capabilities:
       max_reference_images: 1
+      image_edit: unknown
+      mask_edit: unknown
     params:
       resolution: { values: [1k, 2k] }
       aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
@@ -75,6 +83,7 @@ models:
     family: kling
     capabilities:
       durations_s: { min: 3, max: 15 }
+      input_modes: [references]               # reference-to-video; i modi con primo e ultimo fotogramma sono voci a parte, da aggiungere dopo averne verificato l'id
       max_reference_images: 7
       max_characters: 3
       native_audio: true
@@ -95,6 +104,7 @@ models:
     family: seedance
     capabilities:
       durations_s: { min: 4, max: 15 }
+      input_modes: [references]
       max_reference_images: 12                # riferimenti totali dichiarati: da verificare per le sole immagini
       max_characters: 2
       native_audio: true
@@ -115,6 +125,7 @@ models:
     family: gemini_omni
     capabilities:
       durations_s: { max: 10 }
+      input_modes: [references]
       max_reference_images: 7
       max_characters: 3
       native_audio: true

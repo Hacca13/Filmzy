@@ -1,6 +1,6 @@
-# Film Gen Ai — Architettura
+# Filmzy — Architettura
 
-_Versione 1 · 19 ottobre 2026_
+_Versione 1 · 19 ottobre 2026 · aggiornata il 20 ottobre 2026 (decisioni D17–D23)_
 
 Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e perché sta in `contesto-progetto.md` (l'originale nel progetto Claude, una copia in `docs/`); le scelte e le alternative scartate in `decisioni.md`; l'ordine dei lavori in `piano-di-lavoro.md`.
 
@@ -34,14 +34,15 @@ Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e per
 | Python | più avanti, come servizio separato | controllo dei volti, modelli locali: la troupe lo vede come una connessione in più |
 
 ```
-film-gen-ai/
+filmzy/
 ├─ CLAUDE.md                regole per Claude Code
 ├─ docs/                    architettura, piano di lavoro, decisioni
+├─ design/                  prompt dati a Figma e riferimenti grafici
 ├─ config/
 │  ├─ ai/                   seme della troupe: connessioni, modelli, ruoli, istruzioni
 │  │  └─ environments/      adattamenti per development, offline e test
-│  ├─ presets/              stili, generi, toni, fotografia
-│  ├─ features.yaml         funzioni attive
+│  ├─ presets/              stili, generi, toni, fotografia, tag dei personaggi, movimenti di macchina
+│  ├─ features.yaml         funzioni attive e limiti
 │  └─ bench/                piani delle prove sui modelli
 ├─ apps/
 │  ├─ api/                  NestJS: HTTP, accesso, dominio, webhook, eventi
@@ -62,12 +63,12 @@ film-gen-ai/
 |---|---|---|
 | `auth` | api | registrazione, accesso, ruoli `user` e `admin` |
 | `credits` | api, worker | registro dei crediti: accrediti, caparre, addebiti, rilasci |
-| `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, durata |
-| `bible` | api | personaggi, luoghi, schede; assembla la Bibbia per i ruoli |
-| `screenplay` | api, worker | sceneggiatura con versioni |
+| `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, durata, fase (§3.1) |
+| `bible` | api | personaggi (con tag e dettagli), luoghi (con immagini), schede; assembla la Bibbia per i ruoli |
+| `screenplay` | api, worker | sceneggiatura con versioni e fase (bozza o finale), richieste di modifica, riepilogo con le scelte |
 | `scenes` | api | scene, inquadrature (ShotSpec), take |
 | `generations` | worker | esegue i ruoli tramite la troupe, gestisce webhook e scontrini |
-| `assets` | api, worker | file: caricamento, copia dai fornitori, URL firmati |
+| `assets` | api, worker | file: caricamento con controllo delle immagini, ritocchi, copia dai fornitori, URL firmati |
 | `continuity` | api, worker | stati di entrata e uscita, regole, segnalazioni gialle |
 | `export` | worker | montaggio, titoli, etichetta e marcatura AI |
 | `consents` | api | persone reali e consensi: tabelle presenti, funzione spenta nell'MVP |
@@ -79,6 +80,23 @@ film-gen-ai/
 - Solo `packages/troupe/src/adapters/**` importa le librerie dei fornitori (`ai`, `@ai-sdk/*`, `@fal-ai/client`, …).
 - `packages/troupe` non importa `packages/db`. Riceve la configurazione da una `ConfigSource` e scrive gli scontrini su un `ReceiptSink`: il worker li implementa con il database, il bench e i test con file o memoria. Così la troupe gira identica ovunque.
 - Nel codice di `apps/` e `packages/` (test esclusi) non compaiono identificativi di modelli né URL di fornitori. Il controllo usa il catalogo stesso come elenco dei termini vietati.
+
+### 3.1 Le fasi di un progetto
+
+Il progetto avanza per fasi (D18). Si può sempre tornare a una fase precedente: le scelte successive restano e le differenze si ricalcolano al riepilogo.
+
+| Fase | Cosa succede | Ruoli |
+|---|---|---|
+| `idea` | genere, tono, stile, fotografia, durata; il moderatore controlla il testo | `moderator` |
+| `draft` | bozza breve della sceneggiatura; richieste di modifica a turno singolo («Parla con lo sceneggiatore»), moderate, che creano una nuova versione | `screenwriter` (`draft`, `revise`), `moderator` |
+| `cast` | numero di personaggi (non oltre `limits.max_characters`), proposte dalla bozza con tag e dettagli facoltativi, schede a 3 angolazioni, volto bloccato | `casting`, `character_designer` |
+| `locations` | 3–4 immagini del set per luogo, scelta e, se `retouch` è attiva, ritocco | `set_designer`, `retoucher` |
+| `review` | il codice confronta la bozza con le scelte: una differenza è un personaggio o un luogo che la bozza cita e la Bibbia non ha, o viceversa (li collega il `proposalId`). Per ognuna: «Adatta la storia», «Cambia la mia scelta» o «Va bene così» (l'elemento resta come comparsa o luogo generico). Senza differenze il passo si salta | nessuno: la scelta pesa sulla stesura |
+| `final` | stesura ufficiale, che usa solo cast e luoghi scelti più gli elementi accettati; poi modificabile come testo, con versioni | `screenwriter` (`final`) |
+| `shots` | inquadrature, storyboard, immagini dell'inquadratura, take | `shot_planner`, `cinematographer`, `storyboard_artist`, `camera_operator`, `script_supervisor` |
+| `export` | montaggio ed esportazione | |
+
+«Bozza» ha due significati: la bozza della sceneggiatura (utente) e la bozza della troupe (`TroupeDraft`, admin).
 
 ## 4. La troupe
 
@@ -100,12 +118,14 @@ troupe.estimate(role, input)      // costo previsto, per la caparra
 | Id | Nome | Tipo | Riceve → restituisce | Quando |
 |---|---|---|---|---|
 | `moderator` | Moderatore | LLM | testo dell'utente → verdetto | MVP |
-| `casting` | Direttore del casting | LLM | idea e cast attuale → proposte di personaggi | MVP |
-| `screenwriter` | Sceneggiatore | LLM | idea e Bibbia → sceneggiatura in scene | MVP |
+| `casting` | Direttore del casting | LLM | idea, bozza e cast attuale → proposte di personaggi, con tag e dettagli facoltativi | MVP |
+| `screenwriter` | Sceneggiatore | LLM | tre modi: idea → bozza breve con personaggi e luoghi proposti; bozza + richiesta → bozza nuova; bozza + Bibbia → stesura ufficiale | MVP |
 | `shot_planner` | Aiuto regista | LLM | scena e Bibbia → inquadrature (ShotSpec) | MVP |
 | `cinematographer` | Direttore della fotografia | LLM | inquadratura + famiglia del modello → prompt visivo | MVP |
 | `character_designer` | Character designer | immagine | personaggio e stile → scheda a 3 angolazioni | MVP |
-| `storyboard_artist` | Storyboard | immagine | prompt visivo + riferimenti → 2–3 varianti | MVP |
+| `set_designer` | Scenografo | immagine | luogo e stile → 3–4 immagini del set, senza persone | MVP |
+| `retoucher` | Ritocco | immagine | immagine + maschera + operazione → immagine ritoccata | opzione dell'MVP (`retouch`) |
+| `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
 | `script_supervisor` | Segretaria di edizione | LLM | scene e inquadrature → incoerenze con motivo | MVP |
 | `composer` | Compositore | musica | atmosfera e durata → traccia | MVP, spento finché non si sceglie il fornitore |
@@ -127,19 +147,22 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 | **Catalogo dei modelli** | cosa sa fare, e quanto costa? | `kind`, `connection`, `provider_model`, `family`, `capabilities`, `params` accettati con i limiti, `pricing` con data di verifica, `quality` (voti delle prove), `status` (`active`, `testing`, `retired`) |
 | **Ruoli** | chi fa cosa, e come? | `model` + `fallbacks` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `budget`, `enabled` |
 
+**Un punto d'accesso, un modo (D20).** Ogni voce del catalogo è un punto d'accesso, cioè un id presso il fornitore, e dichiara in `capabilities.input_modes` le combinazioni di ingressi che accetta: `references`, `first_frame`, `first_frame+last_frame`, `references+first_frame`… Un modello che si usa in più modi ha più voci, con lo stesso `family` e il proprio prezzo. Per i modelli immagine, `image_edit` dice se modificano un'immagine data (serve al ritocco e all'ultimo fotogramma) e `mask_edit` se accettano una maschera vera. Il valore `unknown` conta come «no» per il router: solo il bench può provarlo.
+
 I parametri dei ruoli usano un vocabolario nostro, normalizzato (`temperature`, `max_tokens`, `resolution: 720p`, `aspect_ratio: "16:9"`…). Adapter e traduttori li convertono nei nomi e nei valori di ciascun fornitore.
 
 Con le stesse regole (validazione, pubblicazione, storico) si gestiscono anche:
 
-- i **preset**: stili, generi, toni e fotografia. L'interfaccia li mostra, i ruoli li usano. Un nuovo stile è un dato, non codice;
-- le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `preview_gate`.
+- i **preset**: stili, generi, toni, fotografia, tag dei personaggi e movimenti di macchina. L'interfaccia li mostra, i ruoli li usano. Un nuovo stile è un dato, non codice;
+- le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `preview_gate`, `keyframes`, `image_upload`, `retouch`;
+- i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend.
 
 Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `config/features.yaml`.
 
 ### 4.4 Le istruzioni
 
 - `screenwriter@1` corrisponde al file `config/ai/instructions/screenwriter/v1.md`. L'intestazione contiene `id`, `version`, `description`, `variables` e `changelog`; il corpo, le sezioni `## system` e `## user`. I template per le immagini hanno `kind: image_prompt` e una sola sezione `## prompt`.
-- Template LiquidJS. Le variabili sono i campi dell'input del ruolo (camelCase).
+- Template LiquidJS. Le variabili sono i campi dell'input del ruolo (camelCase). Le variabili facoltative arrivano sempre, con valore `null` quando mancano, mai assenti: così la modalità rigorosa segnala solo i veri errori e `{% if scene %}` funziona anche senza scena.
 - **Varianti per famiglia:** `v1.seedance.md` si usa quando il modello di destinazione è della famiglia `seedance`. Può aggiungere regole alla base (`mode: append`) o sostituirla (`mode: replace`). Servono soprattutto al direttore della fotografia, perché ogni famiglia "capisce" i prompt a modo suo.
 - Una versione pubblicata non si modifica più: si crea la successiva. Lo scontrino registra versione e variante usate.
 - Nel pannello: editor, elenco delle variabili disponibili, anteprima con un input di esempio.
@@ -178,6 +201,7 @@ La stessa funzione valida file, bozze e release (`pnpm troupe check` e pannello)
 6. **Prezzi:** un prezzo mancante è un avviso nei file di seme e un errore alla pubblicazione; avviso se la verifica ha più di 30 giorni.
 7. **Stato:** nessun ruolo usa modelli `retired`; i modelli `testing` danno un avviso. Un identificativo segnaposto (`<…>`) è ammesso solo con `status: testing` e blocca la chiamata reale.
 8. **Funzioni:** se `real_people` è attiva, ogni ruolo video ha almeno un candidato che accetta volti reali verificati.
+9. **Capacità:** un ruolo che richiede una capacità ha almeno un candidato che la dichiara vera. Oggi: `retoucher` e il modo `end_frame` di `storyboard_artist` chiedono `image_edit`; se `keyframes` è attiva, il catalogo ha almeno una voce video con `first_frame+last_frame`.
 
 Una configurazione non valida non si pubblica. Se una release caricata risulta non valida (per esempio perché manca una chiave), il servizio tiene la precedente e manda un avviso.
 
@@ -216,16 +240,19 @@ interface Translator {
 1. Il **direttore della fotografia** (LLM, istruzioni con variante per famiglia) scrive il prompt e indica i personaggi con segnaposto neutri: `[[char:anna]]`.
 2. Il **traduttore** sostituisce i segnaposto con la sintassi della famiglia (per esempio `@Image1`, `<<<element_1>>>`, `<IMAGE_REF_0>`), ordina le immagini di riferimento, porta durata, formato e risoluzione ai valori ammessi e costruisce il payload.
 3. Le immagini usano il traduttore generico `image_generic`, guidato dai campi del catalogo (`request_fields`).
+4. Il traduttore conosce il modo d'ingresso della voce scelta (`input_modes`) e mette riferimenti, primo e ultimo fotogramma nei campi giusti. Per il ritocco `image_generic` passa l'immagine e, se `mask_edit` è vero, la maschera; altrimenti evidenzia la zona sull'immagine e lo dice nel prompt. Nel prompt del direttore della fotografia `target.inputs` elenca gli ingressi scelti e `target.frame` dice se è una clip (`clip`) o un fotogramma (`start`, `end`).
 
 ### 4.8 Router
 
 Per i ruoli con `routing` (storyboard e operatore):
 
-1. **Filtra** i candidati per stato, tipo e capacità richieste: durata, numero di personaggi e di riferimenti, audio, volti reali, minori, prezzo entro il budget.
+1. **Filtra** i candidati per stato, tipo e capacità richieste: durata, numero di personaggi e di riferimenti, audio, volti reali, minori, prezzo entro il budget, modo d'ingresso scelto dall'utente (`input_modes`) e `image_edit` per il ritocco e l'ultimo fotogramma.
 2. **Ordina** secondo la politica (`cheap`, `balanced`, `quality`), pesando qualità (voti delle prove per tipo di inquadratura), costo e tempo.
 3. **Restituisce** una lista: il primo è il principale, gli altri sono riserve **solo per errori tecnici**.
 
 A parità di richiesta e di release il risultato è sempre lo stesso. Regola pratica: `routing` quando le richieste cambiano forma (una o due persone in scena), `model` + `fallbacks` quando sono tutte uguali.
+
+**Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione, e le riserve devono rispettarla. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
 
 ### 4.9 Output strutturati
 
@@ -281,57 +308,69 @@ StoryBible {
   project: { id, title, idea, genre, tone, language, durationS }
   style: StylePreset
   cinematography: CinematographyPreset
-  characters: Character[]   // id, name, role, description, appearance, sheet: AssetRef[], voiceId?
-  locations: Location[]     // id, name, description, references: AssetRef[]
+  characters: Character[]   // id, name, tag, role, description, profile?, appearance, sheet: AssetRef[], voiceId?, proposalId?
+  locations: Location[]     // id, name, description, prompt, references: AssetRef[], proposalId?
+  limits: { maxCharacters }
 }
 ```
 
+Il `profile` del personaggio (`personality?`, `behavior?`, `goal?`) è facoltativo (D22) e `tag` è l'id di un preset `character_tags`. `proposalId` collega i personaggi e i luoghi scelti alle proposte della bozza (D18): è ciò che usa il riepilogo per trovare le differenze. Il `prompt` del luogo è la sua descrizione in inglese, scritta dallo sceneggiatore.
+
 ### 5.2 ShotSpec 0.2
 
-È la scheda inquadratura del contesto, nella versione 0.2:
+È la scheda inquadratura del contesto, nella versione 0.2 (aggiornata il 20/10/2026 con le immagini dell'inquadratura, D20; non è mai stata usata nel codice):
 
 ```ts
 ShotSpec {
   schema: 'shot-spec/0.2'
   id, sceneId, order
-  intent: { action, emotion, framing, cameraMovement, lighting, durationS }
+  intent: { action, emotion, framing, cameraMovement, lighting, durationS }   // cameraMovement: id di camera_movements
   characters: { characterId, costume, references: AssetRef[] }[]
   location: { locationId, references: AssetRef[] }
+  images: ShotImage[]                                       // scelte dell'utente (D20); vuoto = decide l'aiuto regista
   dialogue: { characterId, text, voiceId?, language }[]     // vuoto nell'MVP
   cinematography: 'inherit' | CinematographyOverride
   continuity: { entry: ContinuityState, exit: ContinuityState }
 }
 
 ContinuityState { locationId, timeOfDay, present: CharacterId[], costumes: Record<CharacterId, string>, props: string[] }
+
+ShotImage { use: 'reference' | 'first_frame' | 'last_frame', from: 'upload' | 'generate' | 'take_frame', assetId?, takeId?, atS? }
 ```
 
-I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `kind` (`storyboard`, `preview`, `final`), `generationId`, `assetId`, `chosen`, `checks`.
+`upload` è un'immagine caricata (luogo o oggetto, mai persone: D19) e porta `assetId`. `generate` chiede di generarla: il risultato è un take `keyframe` e vale quello scelto. `take_frame` è il fotogramma al secondo `atS` del take `takeId`, estratto con ffmpeg. Il ruolo `first_frame` o `last_frame` è un requisito per il router (§4.8). Il `shot_planner` non compila `images`: le imposta l'utente.
+
+I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `kind` (`storyboard`, `keyframe`, `preview`, `final`), `generationId`, `assetId`, `chosen`, `checks`.
 
 ### 5.3 Input e output dei ruoli
 
 | Ruolo | Input | Output |
 |---|---|---|
 | `moderator` | `text`, `context` (`idea`, `character`, `scene`), `language` | `allowed`, `category?`, `reason`, `suggestion?` |
-| `casting` | `mode` (`initial`, `scene`), `idea`, `genre`, `tone`, `style`, `cast`, `scene?`, `language` | `suggestions[]`: `action` (`new`, `reuse`), `characterId?`, `name`, `role`, `motivation`, `relationToProtagonist`, `description`, `appearance` (`apparentAge`, `build`, `hair`, `face`, `clothing`, `distinctive`, `prompt` in inglese), `why` |
-| `screenwriter` | `idea`, `genre`, `tone`, `style`, `durationS`, `language`, `characters`, `locations`, `dialogueEnabled` | `title`, `logline`, `scenes[]` (`number`, `heading`, `locationId?`, `timeOfDay`, `characterIds`, `summary`, `beats`, `durationS`), `notes?` |
-| `shot_planner` | `scene`, `bible`, `shotDurationS` (`min`, `max`), `previousExit?`, `language` | `shots[]` (ShotSpec senza id), `notes?` |
-| `cinematographer` | `shot`, `characters` (con `costume`), `location`, `style`, `cinematography`, `target` (`family`, `kind`, `maxPromptChars`) | `prompt`, `negativePrompt?`, `notes?` |
+| `casting` | `mode` (`initial`, `scene`), `idea`, `genre`, `tone`, `style`, `screenplay?` (la bozza), `cast`, `scene?`, `count`, `tags`, `language` | `suggestions[]`: `action` (`new`, `reuse`), `characterId?`, `proposalId?`, `name`, `tag`, `role`, `relationToProtagonist`, `description`, `profile?` (`personality?`, `behavior?`, `goal?`), `appearance` (`apparentAge`, `build`, `hair`, `face`, `clothing`, `distinctive`, `prompt` in inglese), `why` |
+| `screenwriter` | `mode` (`draft`, `revise`, `final`), `idea`, `genre`, `tone`, `style`, `durationS`, `language`, `maxCharacters`, `dialogueEnabled`, `characters`, `locations`, `draft?`, `request?`, `accepted` | `title`, `logline`, `characters[]` (`id`, `name`, `role`) e `locations[]` (`id`, `name`, `description`, `prompt` in inglese): proposte, vuote nel modo `final`; `scenes[]` (`number`, `heading`, `locationId?`, `timeOfDay`, `characterIds`, `summary`, `beats` vuoti nella bozza, `durationS`), `notes?` |
+| `shot_planner` | `scene`, `bible`, `shotDurationS` (`min`, `max`), `previousExit?`, `cameraMovements`, `language` | `shots[]` (ShotSpec senza id, senza `images` e senza i `references`, che aggiunge il codice), `notes?` |
+| `cinematographer` | `shot`, `characters` (con `costume`), `location`, `style`, `cinematography`, `movement`, `target` (`family`, `kind`, `maxPromptChars`, `frame`: `clip`, `start` o `end`; `inputs`: gli ingressi scelti) | `prompt`, `negativePrompt?`, `notes?` |
 | `script_supervisor` | `screenplay`, `scenes`, `shots`, `language` | `issues[]` (`sceneId?`, `shotId?`, `code`, `severity`, `reason`) |
 | `character_designer` | `character`, `style`, `angle` (`front`, `profile`, `three_quarter`) | immagine |
-| `storyboard_artist` | prompt visivo, riferimenti, `variants` | immagini |
+| `set_designer` | `location`, `style`, `variants` | immagini |
+| `retoucher` | `image`, `mask`, `operation` (`remove`, `replace`, `recolor`), `instruction?`, `style` | immagine |
+| `storyboard_artist` | `mode` (`storyboard`, `end_frame`), prompt visivo, riferimenti, `variants`, `baseImage?` (per `end_frame`) | immagini |
 | `camera_operator` | prompt visivo, riferimenti, `durationS` | video |
+
+`accepted` è l'elenco degli elementi della bozza che l'utente ha deciso di tenere così come sono (`kind`, `name`), vuoto fuori dal modo `final`. Nel ritocco l'`instruction` dell'utente va al modello così com'è, in italiano (D21).
 
 ### 5.4 Eventi
 
-`generation.queued`, `generation.running`, `take.ready`, `take.failed`, `take.rejected`, `continuity.flagged`, `export.ready`. Partono dal worker via Redis e arrivano all'interfaccia via SSE.
+`generation.queued`, `generation.running`, `take.ready`, `take.failed`, `take.rejected`, `image.ready`, `image.failed` (immagini del set, ritocchi, fotogrammi chiave), `continuity.flagged`, `export.ready`. Partono dal worker via Redis e arrivano all'interfaccia via SSE.
 
 ## 6. Dati (PostgreSQL)
 
 | Gruppo | Tabelle | Note |
 |---|---|---|
 | Utenti e crediti | `users`, `credit_ledger` | registro con `grant`, `purchase`, `hold` (caparra), `capture` (addebito), `void` (rilascio), `refund`; il saldo è la somma |
-| Film | `projects`, `characters`, `character_assets`, `locations`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `shots.spec` è JSONB (ShotSpec) |
-| File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, checksum, stato dell'etichetta AI |
+| Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSONB), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSONB (ShotSpec) |
+| File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini |
 | Esportazioni | `exports` | |
 | Consensi (spenti) | `real_people`, `consents`, `provider_assets` | ambito (volto, voce), metodo, prove, revoca; asset registrati presso i fornitori, da cancellare alla revoca |
@@ -375,8 +414,11 @@ sequenceDiagram
 - **Regole deterministiche**, immediate e gratuite:
   - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato;
   - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono;
-  - **R3:** se la scheda di un personaggio cambia dopo un take, diventano gialli i take con quel personaggio;
-  - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero.
+  - **R3:** se la scheda di un personaggio cambia dopo un take (anche per un ritocco che tocca volto o abiti), diventano gialli i take con quel personaggio;
+  - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero;
+  - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli;
+  - **R6:** se l'immagine scelta di un luogo cambia o viene ritoccata, diventano gialle le inquadrature che lo usano;
+  - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano.
 - **Segretaria di edizione** (LLM): incoerenze di trama tra le scene ("Marco parla di una lettera che non ha ancora ricevuto").
 - Ogni segnalazione ha un codice, un motivo in italiano e un'origine (`rule`, `llm`, più avanti `vision`). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
 
@@ -392,6 +434,8 @@ sequenceDiagram
 - Ogni lettura del dominio è filtrata per proprietario. Il pannello della troupe è riservato agli `admin` e registra ogni azione.
 - Storage privato con URL firmati; copia immediata dai CDN dei fornitori e retention breve dove il fornitore lo permette.
 - **Moderatore** sui testi dell'utente prima di ogni spesa: persone reali o famose, minori, contenuti vietati. La politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata.
+- **Immagini caricate (D19):** sono ammessi luoghi e oggetti. Prima di salvarle, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti; l'esito resta nell'asset. Un'immagine con persone si rifiuta con un messaggio semplice. Con i fornitori vale la regola 11: copia subito e retention breve. La funzione `image_upload` resta spenta finché questo controllo non c'è.
+- **Ritocchi (D21):** sono lo strumento classico per alterare persone reali, quindi operano solo su immagini generate da noi o già approvate dal controllo. Il testo libero dell'utente passa dal moderatore prima di ogni spesa.
 - **Limiti di spesa:** per utente al giorno e globali al giorno, più quelli impostati sui cruscotti dei fornitori.
 - **GDPR:** esportazione e cancellazione dei dati dell'utente. I corpi delle richieste negli scontrini si conservano 90 giorni, i metadati restano.
 - **Cast personale:** tabelle pronte, funzione `real_people` spenta. Quando si accende: verifica dal vivo fatta dalla persona stessa; router limitato ai modelli che accettano volti verificati; la revoca blocca le nuove generazioni e cancella gli asset presso i fornitori.
@@ -423,6 +467,10 @@ sequenceDiagram
 - Fornitore della musica (M5).
 - Esperimenti A/B dal pannello (dopo l'MVP).
 - Dialoghi: audio nativo del modello o voce nostra + labiale (Fase 2).
+- Id e capacità dei punti d'accesso con primo e ultimo fotogramma (`input_modes`): da verificare sulla documentazione dei fornitori e con il bench (D20).
+- Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è (D21, D15).
+- Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori, e elenco definitivo dei tag (D22).
+- Modifica vera del video (`video_edit`): da provare dopo l'MVP su 3–4 clip (D21).
 
 ## Fonti
 

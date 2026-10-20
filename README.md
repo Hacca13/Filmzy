@@ -1,4 +1,4 @@
-# Film Gen Ai
+# Filmzy
 
 Piattaforma per creare cortometraggi con la gen AI, pensata per chi non sa programmare.
 

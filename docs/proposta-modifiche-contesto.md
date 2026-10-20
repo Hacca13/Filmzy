@@ -1,0 +1,71 @@
+# Filmzy — Proposta di modifiche al contesto del progetto
+
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D23 in `docs/decisioni.md`.
+
+## 1. Titolo e nome
+
+Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen Ai» diventa «Filmzy» (D17). Togliere dalle «Domande aperte» il nome del prodotto, se c'è.
+
+## 2. Principi: aggiungere il sesto
+
+> 6. **Il controllo sta nelle immagini:** l'utente può guidare il risultato (da dove parte un'inquadratura, dove finisce, cosa togliere da un'immagine) sulle immagini, dove un tentativo costa centesimi. Il video si spende per ultimo.
+
+## 3. Flusso utente: sostituire l'elenco
+
+> 1. **Idea:** tema, genere, stile visivo, fotografia.
+> 2. **La storia:** una bozza breve della sceneggiatura (titolo, trama in una riga, scene riassunte). Se non convince, l'utente chiede una modifica allo sceneggiatore con una frase.
+> 3. **Personaggi:** l'utente sceglie quanti personaggi vuole; il suggeritore li propone partendo dalla bozza, con un tag (protagonista, antagonista…) e dettagli facoltativi (carattere, comportamento, obiettivo). L'utente approva e il volto viene «bloccato».
+> 4. **Luoghi:** per ogni luogo della storia, 3–4 immagini del set tra cui scegliere (e, se la funzione è attiva, il ritocco col pennello).
+> 5. **Riepilogo:** il sistema confronta la bozza con cast e luoghi scelti. Per ogni differenza l'utente sceglie «Adatta la storia», «Cambia la mia scelta» o «Va bene così». Se non ci sono differenze il passo non compare. Poi la stesura ufficiale, modificabile come testo normale.
+> 6. **Scene:** una fila di card, come una striscia a fumetti. Per ognuna: storyboard → 2–3 varianti → scelta → (facoltativo) «Imposta le immagini» → video → scena successiva.
+> 7. **Film:** voci, musica, montaggio, esportazione, eventuale doppiaggio in altre lingue.
+
+## 4. Feature decise
+
+### Personaggi e suggeritore: sostituire i due momenti
+
+> - Il suggeritore lavora in due momenti:
+>   - **all'inizio:** dalla bozza della storia propone il cast, nel numero che l'utente ha chiesto (al massimo 2 nell'MVP), con ruolo nella storia, tag, rapporto con il protagonista e aspetto coerente con lo stile visivo;
+>   - **durante:** leggendo la scena successiva suggerisce un nuovo personaggio o propone di riusarne uno esistente.
+> - Riceve sempre il cast attuale, per non proporre doppioni.
+> - Ogni personaggio ha un nucleo obbligatorio (nome, tag, ruolo, descrizione breve, aspetto) e dettagli facoltativi (carattere, comportamento, obiettivo). I dettagli servono a tenerlo coerente lungo il film; per uno spot o un corto breve si possono ignorare. I tag sono una lista di dati che potrà crescere.
+
+### Nuova sezione: Luoghi e ritocco
+
+> - Per ogni luogo della storia il sistema genera 3–4 immagini del set; l'utente sceglie, e l'immagine scelta diventa il riferimento del luogo nelle inquadrature.
+> - **Ritocco col pennello** (funzione opzionale): l'utente evidenzia un elemento di un'immagine, per esempio una lampada, e lo toglie, lo sostituisce o ne cambia il colore. Vale per le immagini (luoghi, storyboard, fotogrammi chiave). Per un video si corregge il fotogramma e si rigenera, oppure si parte da un fotogramma del video. La modifica vera del video si prova dopo l'MVP.
+> - Un luogo ritoccato o cambiato fa ingiallire le inquadrature che lo usano.
+
+### Nuova sezione: Immagini dell'inquadratura
+
+> - Per ogni inquadratura l'utente può, se vuole, impostare un'immagine come **ispirazione**, come **primo fotogramma** («da qui parte») o come **ultimo fotogramma** («qui finisce»). Le immagini si generano o si caricano. Se manca l'ultimo fotogramma, il sistema lo genera partendo dal primo, in base al movimento di macchina scelto (resta fermo, avvicinati, allontanati, panoramica).
+> - La scelta dell'utente è un requisito: se nessun modello disponibile la accetta, il sistema lo dice con un messaggio semplice e non la cambia in silenzio.
+> - Di default decide l'aiuto regista; l'impostazione manuale è facoltativa.
+
+### Cast personale, consenso e privacy: aggiornare l'ultimo punto
+
+> - **Nell'MVP solo personaggi generati da Filmzy** (D4, D19). L'utente può caricare luoghi e oggetti; un'immagine con persone viene rifiutata con un messaggio semplice. Il cast personale si accende dopo un test dedicato sui volti reali e la consulenza legale. Le tabelle dei consensi sono già previste, la funzione è spenta.
+
+## 5. Scheda inquadratura: aggiungere
+
+> La scheda ha un campo per le immagini scelte dall'utente: a ogni immagine corrisponde un uso (ispirazione, primo o ultimo fotogramma) e un'origine (caricata, generata o presa da un fotogramma di un take). Il movimento di macchina si sceglie da una lista. Il risultato scelto per i fotogrammi generati è un take di tipo «fotogramma chiave». La versione resta la 0.2 perché non è mai stata usata nel codice.
+
+## 6. Roadmap: sostituire la voce MVP
+
+> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi e il controllo dei fotogrammi. **Stima: 40–57 giornate di lavoro pieno, circa 8–11½ settimane** (cambiato il 20/10, D23: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 45–64.
+
+## 7. Rischi e note: aggiungere
+
+> - **Fotogrammi molto diversi:** quando il primo e l'ultimo fotogramma differiscono molto, i modelli tendono a «sciogliere» un'immagine nell'altra. Uno zoom con differenze piccole è il caso facile. Va misurato nel bench.
+> - **Strumenti di ritocco:** sono il modo più semplice di alterare una persona reale. Per questo il ritocco opera solo su immagini generate da noi o già controllate, e i testi passano dal moderatore.
+
+## 8. Domande aperte: aggiungere
+
+> - Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori; elenco definitivo dei tag.
+> - Id e capacità dei modelli con primo e ultimo fotogramma: da verificare con i fornitori e con il bench.
+> - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è.
+> - Quando provare la modifica vera del video (dopo l'MVP, su 3–4 clip).
+
+## 9. Registro modifiche: aggiungere
+
+> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; stima dell'MVP a 40–57 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D23 in `docs/decisioni.md`.

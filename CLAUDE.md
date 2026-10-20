@@ -62,6 +62,14 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - Niente `any` senza un commento che spieghi perché.
 - `.env` e `bench-output/` (video e report delle prove) restano fuori da git.
 
+## Qualità del codice
+
+- **Poca ripetizione.** Se due pezzi di codice fanno quasi la stessa cosa, valuta una funzione condivisa. Né funzioni ultra specifiche (a meno che serva davvero), né troppo generiche: se una funzione diventa lunga e piena di controlli per capire in che caso si trova, vanno separate in due.
+- **Leggibile.** Nomi parlanti per variabili e funzioni; funzioni corte con una sola responsabilità. I commenti spiegano il *perché* (una scelta, un vincolo, un rischio), non ripetono cosa fa la riga.
+- **Efficiente.** Niente lavoro ripetuto in un ciclo, niente file letti due volte, niente attese inutili; le operazioni indipendenti si lanciano insieme.
+- **Sicuro, anche se gira in locale.** Il server ascolta solo su `127.0.0.1` e rifiuta richieste con un `Host` che non è locale (contro il DNS rebinding); gli input si validano al confine con lo schema Zod; le chiavi non finiscono mai nei log, negli errori o negli export; nessun `eval`, nessun comando di shell costruito con testo dell'utente (si passano gli argomenti a parte); i percorsi dei file si controllano prima di leggerli o scriverli.
+- **Prima della pull request si rilegge tutto il diff** con questi criteri (e con le skill `simplify` e `code-review` se è grande), si correggono i problemi e si scrive nel resoconto cosa è cambiato.
+
 ## Glossario
 
 | Prodotto (italiano) | Codice |
@@ -110,6 +118,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - `pnpm check` verde (lint, typecheck, test, build e stile); `pnpm troupe check` verde se hai toccato la configurazione. Attenzione: `pnpm lint typecheck test` non lancia tre script, solo il primo.
 - Schemi e documenti aggiornati se è cambiato un contratto; una voce in `docs/decisioni.md` se hai deciso qualcosa.
 - Nessuna chiamata reale ai fornitori nei test.
+- Il diff è stato riletto con i criteri di «Qualità del codice» prima di aprire la pull request.
 
 ## Da non fare
 

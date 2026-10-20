@@ -78,6 +78,25 @@ roles:
     retries: { technical_error: 2 }
     budget: { max_usd_per_call: 0.20 }
 
+  set_designer:
+    label: Scenografo
+    kind: image
+    model: nano-banana-2
+    fallbacks: [seedream-lite]
+    params: { resolution: 1k, aspect_ratio: "16:9", variants: 3 }
+    instructions: set_designer@1              # template del prompt immagine, senza LLM; il luogo porta già il suo prompt in inglese
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.30 }
+
+  retoucher:
+    label: Ritocco
+    kind: image
+    model: nano-banana-2                      # richiede image_edit; nessuna riserva finché la capacità degli altri è "unknown"
+    params: { resolution: 1k }
+    instructions: retoucher@1
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.20 }
+
   storyboard_artist:
     label: Storyboard
     kind: image
@@ -85,6 +104,7 @@ roles:
       policy: cheap
       candidates: [seedream-lite, nano-banana-2]   # con due personaggi servono due riferimenti: il router passa a Nano Banana
     prompt_from: cinematographer
+    # Due modi: "storyboard" (varianti da riferimenti) e "end_frame" (ultimo fotogramma, modifica il primo: richiede image_edit, quindi il router lascia solo i modelli che lo dichiarano)
     params: { variants: 3, aspect_ratio: "16:9", resolution: 1k }
     retries: { technical_error: 2 }
     budget: { max_usd_per_call: 0.30 }
@@ -103,4 +123,27 @@ roles:
   composer:
     label: Compositore
     kind: music
-    enabled: false                            # fornitore da scegliere in M5
+    model: music-elevenlabs
+    instructions: composer@1                  # template del prompt audio, senza LLM
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.60 }        # circa 3 minuti di musica
+    enabled: false                            # si accende in T5.4, quando il fornitore è verificato
+
+  sfx_artist:
+    label: Rumorista
+    kind: sfx
+    instructions: sfx_artist@1
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.10 }
+    enabled: false                            # il fornitore degli effetti sonori è da ricercare (T5.4)
+
+  sound_planner:
+    label: Sound designer
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.6, max_tokens: 3000 }
+    instructions: sound_planner@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.15 }

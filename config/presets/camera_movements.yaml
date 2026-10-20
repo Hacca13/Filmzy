@@ -1,0 +1,32 @@
+# Movimenti di macchina (D20). L'utente vede label e description. "hint" descrive il movimento nel prompt della clip;
+# "end_frame_hint" dice come cambia l'inquadratura alla fine, per generare l'ultimo fotogramma (in inglese, vedi D15).
+version: 1
+
+camera_movements:
+  - id: static
+    label: Resta fermo
+    description: La camera non si muove
+    hint: "locked-off camera, no camera movement"
+    end_frame_hint: "the camera has not moved: same framing, only the subjects have moved"
+    enabled: true
+
+  - id: push_in
+    label: Avvicinati
+    description: La camera si avvicina piano al soggetto
+    hint: "slow, steady push-in, the camera moves closer to the subject"
+    end_frame_hint: "the camera has moved closer: tighter framing on the subject, same angle"
+    enabled: true
+
+  - id: pull_out
+    label: Allontanati
+    description: La camera si allontana e mostra più ambiente
+    hint: "slow, steady pull-out, the camera moves away from the subject"
+    end_frame_hint: "the camera has moved back: wider framing that shows more of the surroundings, same angle"
+    enabled: true
+
+  - id: pan
+    label: Panoramica
+    description: La camera ruota da un lato all'altro
+    hint: "smooth horizontal pan from left to right"
+    end_frame_hint: "the camera has panned to the right: the framing has shifted sideways and shows new space on the right"
+    enabled: true

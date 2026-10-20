@@ -1,0 +1,10 @@
+# Tag dei personaggi: il ruolo che hanno nella storia (D22). L'utente vede label e description;
+# il casting e gli altri ruoli usano l'id. Un nuovo tag è un dato. Elenco iniziale: da approfondire.
+version: 1
+
+character_tags:
+  - { id: protagonist, label: Protagonista, description: La storia segue lui o lei, enabled: true }
+  - { id: antagonist, label: Antagonista, description: Si oppone al protagonista, enabled: true }
+  - { id: ally, label: Alleato, description: Aiuta il protagonista, enabled: true }
+  - { id: mentor, label: Mentore, description: Guida il protagonista, enabled: true }
+  - { id: supporting, label: Comprimario, description: Arricchisce la storia senza esserne il centro, enabled: true }

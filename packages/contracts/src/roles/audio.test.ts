@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { exampleGenre, exampleStyle, exampleTone } from '../examples.fixtures.js';
+import { exampleGenre, exampleStyle, exampleTone } from '../examples.js';
 import { composerInputSchema, sfxArtistInputSchema } from './audio.js';
 
 describe('composer', () => {

@@ -51,6 +51,14 @@ export default defineConfig(
     },
   },
 
+  // In NestJS una classe può essere vuota e contare solo per il decoratore (es. `@Module()`).
+  {
+    files: ['apps/api/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
+    },
+  },
+
   // I file JavaScript (come questo) non hanno tipi: niente regole che li richiedono.
   {
     files: ['**/*.{js,mjs,cjs}'],

@@ -17,7 +17,7 @@ Ogni prompt dato a Figma si aggiunge qui. Stati: `inviato`, `pronto da inviare`,
 |---|---|---|---|---|
 | 01 | [`prompts/01-mockup-iniziale.md`](prompts/01-mockup-iniziale.md) | i 6 schermi base, lo stile (scuro, ambra), i componenti | inviato | Registrato il 20/10/2026, testo identico a quello dato. L'ordine dei passi è superato dal 02 |
 | 02 | [`prompts/02-flusso-luoghi-ritocco.md`](prompts/02-flusso-luoghi-ritocco.md) | nuovo ordine dei passi, schermo Luoghi, ritocco col pennello, "Imposta le immagini" | pronto da inviare | Scritto il 20/10/2026 |
-| 03 | — | bozza della sceneggiatura, confronto con cast e luoghi, scheda personaggio con carattere e tag | da scrivere | Dopo che il flusso è deciso |
+| 03 | [`prompts/03-bozza-riepilogo-personaggi.md`](prompts/03-bozza-riepilogo-personaggi.md) | bozza della storia, riepilogo con cast e luoghi, scheda personaggio con tag e dettagli facoltativi | pronto da inviare | Scritto il 20/10/2026. Si può incollare insieme al 02 in un solo invio, se i crediti di Figma scarseggiano: dove si contraddicono prevale il 03 |
 
 ## Come si aggiunge un prompt
 

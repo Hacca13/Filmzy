@@ -41,27 +41,7 @@ export {
 } from './model-kind.js';
 export type { ModelGroup, ModelKind } from './model-kind.js';
 
-export {
-  cameraMovementSchema,
-  cameraMovementsFileSchema,
-  characterTagSchema,
-  characterTagsFileSchema,
-  cinematographyFileSchema,
-  cinematographyPresetSchema,
-  genreSchema,
-  genresFileSchema,
-  stylePresetSchema,
-  stylesFileSchema,
-  toneSchema,
-} from './config/presets.js';
-export type {
-  CameraMovement,
-  CharacterTag,
-  CinematographyPreset,
-  Genre,
-  StylePreset,
-  Tone,
-} from './config/presets.js';
+export * from './config/index.js';
 export { PROJECT_PHASES, projectPhaseSchema, projectSummarySchema } from './project.js';
 export type { ProjectPhase, ProjectSummary } from './project.js';
 export {

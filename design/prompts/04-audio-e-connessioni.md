@@ -1,12 +1,12 @@
 # 04 · Tracce audio nel montaggio e area Connessioni
 
-- **Stato:** bozza, da confermare (le domande aperte sono in fondo)
+- **Stato:** pronto da inviare
 - **Scritto il:** 20/10/2026
 - **Cosa chiede:** nello schermo "Montaggio ed esporta" una sezione audio con quattro tracce (video, dialoghi, musica, effetti), con l'audio originale dei video spento di default, e un'area di impostazioni riservata all'amministratore per collegare fornitori e modelli con la chiave API.
 - **Da dare dopo il 03.** Se i crediti di Figma scarseggiano si può incollare insieme a 02 e 03: dove si contraddicono prevale il più recente.
 - **Idea dietro questo prompt:** la musica, gli effetti e i dialoghi si generano con modelli a parte e stanno su tracce separate, così si può cambiare un suono (la musica, il verso di un animale) senza rigenerare il video. L'audio generato dentro i video si silenzia.
 - **Note:** i dialoghi non ci sono nell'MVP (funzione `dialogue` spenta): la traccia compare spenta, con "In arrivo". L'area Connessioni è solo per l'amministratore: lì si possono usare parole tecniche come "modello" e "chiave API". Il resto dell'app no.
-- **Domande aperte:** (1) le chiavi le inserisce solo l'amministratore della piattaforma o ogni utente porta le proprie? Il prompt assume solo l'amministratore. (2) "Suggerisci i suoni" entra nell'MVP? Se no, si toglie il pulsante.
+- **Decisioni dietro questo prompt (20/10/2026):** le chiavi le inserisce solo l'amministratore e restano cifrate nel database; "Suggerisci i suoni" entra nell'MVP; non si caricano file audio (il pannello del blocco non ha il caricamento di file); musica per scena ed effetti per inquadratura, senza timeline libera.
 
 ## Prompt
 
@@ -19,7 +19,7 @@ Under the video timeline add a sound section with four lanes, like a simple mult
 - "Dialoghi": an empty, disabled lane with a soft "In arrivo" label.
 - "Musica": one block per scene, each with a name (for example "Musica tesa") and a mood label.
 - "Effetti": small blocks attached to a shot and placed along the shot, each with a short label and the second where it starts (for example "Abbaio di un cane · 2 s").
-Every lane has a mute toggle and a volume slider. Clicking a block opens a side panel with: a text field "Com'è questo suono?", a primary button "Genera" with the friendly credit cost ("Genera · 2 crediti"), a button "Cambia" that shows 3 variants to listen to (each with a play button and a small waveform and a "Scegli" button), a button "Carica un file" and a button "Elimina". At the top of the section add a button "Suggerisci i suoni" that fills the lanes with proposed blocks that the user can accept or discard one by one.
+Every lane has a mute toggle and a volume slider. Clicking a block opens a side panel with: a text field "Com'è questo suono?", a primary button "Genera" with the friendly credit cost ("Genera · 2 crediti"), a button "Cambia" that shows 3 variants to listen to (each with a play button and a small waveform and a "Scegli" button) and a button "Elimina". At the top of the section add a button "Suggerisci i suoni" that fills the lanes with proposed blocks that the user can accept or discard one by one.
 Also design: an empty lane state ("Nessun effetto: aggiungi il primo"), a loading state for a sound being generated, and a friendly error ("Questo suono non si può generare così, prova a descriverlo in un altro modo").
 
 PART 2 - Admin area "Impostazioni" > "Connessioni" (only for the administrator; technical words like "chiave API" and "modello" are allowed here)

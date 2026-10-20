@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { modelEntrySchema, modelsFileSchema } from './models.js';
+import { isoDaySchema, modelEntrySchema, modelsFileSchema } from './models.js';
+
+describe('isoDaySchema', () => {
+  it('accetta la data come la scrive il seme', () => {
+    expect(isoDaySchema.parse('2026-10-19')).toBe('2026-10-19');
+  });
+
+  it('accetta anche un Date, perché alcuni parser YAML lo producono', () => {
+    expect(isoDaySchema.parse(new Date('2026-10-19T00:00:00.000Z'))).toBe('2026-10-19');
+  });
+
+  it('rifiuta una data con l\'ora o scritta all\'italiana', () => {
+    expect(isoDaySchema.safeParse('2026-10-19T10:00:00Z').success).toBe(false);
+    expect(isoDaySchema.safeParse('19/10/2026').success).toBe(false);
+  });
+});
 
 describe('modelEntrySchema', () => {
   it('accetta un LLM con i tier di prezzo di claude-haiku', () => {

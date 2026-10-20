@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { stylePresetSchema } from '../config/presets.js';
+import { genreSchema, stylePresetSchema, toneSchema } from '../presets.js';
 
 /** `composer`: musica per una scena, dall'atmosfera e dalla durata (architettura §5.3). */
 export const composerInputSchema = z.object({
@@ -9,8 +9,8 @@ export const composerInputSchema = z.object({
     mood: z.string().min(1),
     durationS: z.number().positive(),
   }),
-  genre: z.string().min(1),
-  tone: z.string().min(1),
+  genre: genreSchema,
+  tone: toneSchema,
   style: stylePresetSchema,
 });
 

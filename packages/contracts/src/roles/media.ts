@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { assetRefSchema } from '../asset.js';
 import { characterSchema, locationSchema } from '../bible.js';
-import { stylePresetSchema } from '../config/presets.js';
-import { referenceImageSchema, roleMoodboardFieldSchema, visualPromptSchema } from './shared.js';
+import { stylePresetSchema } from '../presets.js';
+import { roleMoodboardFieldSchema, visualPromptSchema } from './shared.js';
 
 /** `character_designer`: scheda a tre angolazioni su fondo neutro (architettura §5.3). */
 export const characterDesignerInputSchema = z.object({
@@ -35,10 +36,10 @@ export type MoodboardArtistInput = z.infer<typeof moodboardArtistInputSchema>;
 
 /** `retoucher`: togli, sostituisci o cambia colore su un'immagine data (architettura §5.3, D21). */
 export const retoucherInputSchema = z.object({
-  image: referenceImageSchema,
-  mask: referenceImageSchema,
+  image: assetRefSchema,
+  mask: assetRefSchema,
   operation: z.enum(['remove', 'replace', 'recolor']),
-  instruction: z.string().min(1).optional(),
+  instruction: z.string().min(1).nullable(),
   style: stylePresetSchema,
 });
 
@@ -47,14 +48,14 @@ export type RetoucherInput = z.infer<typeof retoucherInputSchema>;
 /**
  * `storyboard_artist`: due modi (architettura §5.3). `storyboard` genera varianti dai riferimenti;
  * `end_frame` modifica il primo fotogramma (`baseImage`) per generare l'ultimo, in base al
- * movimento di macchina.
+ * movimento di macchina già descritto nel prompt visivo.
  */
 export const storyboardArtistInputSchema = z.object({
   mode: z.enum(['storyboard', 'end_frame']),
   visualPrompt: visualPromptSchema,
-  references: z.array(referenceImageSchema),
+  references: z.array(assetRefSchema),
   variants: z.number().int().positive(),
-  baseImage: referenceImageSchema.optional(),
+  baseImage: assetRefSchema.nullable(),
   moodboard: roleMoodboardFieldSchema,
 });
 
@@ -63,7 +64,7 @@ export type StoryboardArtistInput = z.infer<typeof storyboardArtistInputSchema>;
 /** `camera_operator`: prompt visivo e riferimenti verso un take video (architettura §5.3). */
 export const cameraOperatorInputSchema = z.object({
   visualPrompt: visualPromptSchema,
-  references: z.array(referenceImageSchema),
+  references: z.array(assetRefSchema),
   durationS: z.number().positive(),
 });
 

@@ -1,24 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
+import { exampleGenre, exampleStyle, exampleTone } from '../examples.fixtures.js';
 import { composerInputSchema, sfxArtistInputSchema } from './audio.js';
 
-const style = {
-  id: 'realistic',
-  label: 'Realistico',
-  description: 'Ripresa dal vero',
-  hint: 'photorealistic live-action film still',
-  enabled: true,
-};
-
 describe('composer', () => {
-  it('accetta un cue con atmosfera e durata', () => {
-    const input = {
+  it('dà alle istruzioni genere, tono e stile come oggetti (`{{ genre.id }}`)', () => {
+    const parsed = composerInputSchema.parse({
       cue: { description: 'tema malinconico per il finale', mood: 'bittersweet', durationS: 30 },
-      genre: 'drama',
-      tone: 'moving',
-      style,
-    };
-    expect(composerInputSchema.parse(input).cue.durationS).toBe(30);
+      genre: exampleGenre,
+      tone: exampleTone,
+      style: exampleStyle,
+    });
+    expect(parsed.genre.id).toBe('drama');
+    expect(parsed.tone.id).toBe('moving');
+    expect(parsed.style.id).toBe('realistic');
+    expect(parsed.cue.durationS).toBe(30);
+  });
+
+  it('rifiuta un genere passato come stringa', () => {
+    expect(
+      composerInputSchema.safeParse({
+        cue: { description: 'x', mood: 'x', durationS: 30 },
+        genre: 'drama',
+        tone: exampleTone,
+        style: exampleStyle,
+      }).success,
+    ).toBe(false);
   });
 });
 

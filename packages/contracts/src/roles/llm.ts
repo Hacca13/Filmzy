@@ -1,18 +1,14 @@
 import { z } from 'zod';
 
+import { assetRefSchema } from '../asset.js';
 import {
   characterAppearanceSchema,
   characterProfileSchema,
   characterSchema,
   locationSchema,
+  storyBibleSchema,
 } from '../bible.js';
 import {
-  cameraMovementSchema,
-  cinematographyPresetSchema,
-  stylePresetSchema,
-} from '../config/presets.js';
-import {
-  assetIdSchema,
   characterIdSchema,
   idSchema,
   locationIdSchema,
@@ -20,9 +16,30 @@ import {
   shotIdSchema,
 } from '../ids.js';
 import { colorSchema, moodboardPartSchema } from '../moodboard.js';
-import { acceptedElementSchema, screenplaySceneSchema, screenplaySchema } from '../screenplay.js';
-import { continuityStateSchema, shotCharacterSchema, shotIntentSchema } from '../shot.js';
+import {
+  cameraMovementSchema,
+  characterTagSchema,
+  cinematographyPresetSchema,
+  genreSchema,
+  stylePresetSchema,
+  toneSchema,
+} from '../presets.js';
+import { acceptedElementSchema, sceneSchema, screenplaySchema } from '../screenplay.js';
+import {
+  continuityStateSchema,
+  shotCharacterSchema,
+  shotIntentSchema,
+  shotSpecSchema,
+} from '../shot.js';
 import { promptTargetSchema, roleMoodboardFieldSchema, visualPromptSchema } from './shared.js';
+
+/**
+ * Gli input dei ruoli sono anche le variabili delle istruzioni (architettura §4.4): quelle
+ * facoltative **arrivano sempre, con valore `null`**, mai assenti, così il rendering in modalità
+ * rigorosa segnala solo i veri errori e `{% if scene %}` funziona anche senza scena. Per questo i
+ * campi facoltativi di primo livello sono `.nullable()` e non `.optional()`. Negli **output**,
+ * invece, un campo facoltativo è `.optional()`: lì è il modello che può ometterlo.
+ */
 
 /** `moderator`: controllo di un testo dell'utente prima di ogni spesa (architettura §5.3, §10). */
 export const moderatorInputSchema = z.object({
@@ -46,14 +63,14 @@ export type ModeratorOutput = z.infer<typeof moderatorOutputSchema>;
 export const castingInputSchema = z.object({
   mode: z.enum(['initial', 'scene']),
   idea: z.string().min(1),
-  genre: z.string().min(1),
-  tone: z.string().min(1),
+  genre: genreSchema,
+  tone: toneSchema,
   style: stylePresetSchema,
-  screenplay: screenplaySchema.optional(),
+  screenplay: screenplaySchema.nullable(),
   cast: z.array(characterSchema),
-  scene: screenplaySceneSchema.optional(),
+  scene: sceneSchema.nullable(),
   count: z.number().int().positive(),
-  tags: z.array(idSchema),
+  tags: z.array(characterTagSchema),
   language: z.string().min(1),
 });
 
@@ -85,8 +102,8 @@ export type CastingOutput = z.infer<typeof castingOutputSchema>;
 export const screenwriterInputSchema = z.object({
   mode: z.enum(['draft', 'revise', 'final']),
   idea: z.string().min(1),
-  genre: z.string().min(1),
-  tone: z.string().min(1),
+  genre: genreSchema,
+  tone: toneSchema,
   style: stylePresetSchema,
   durationS: z.number().positive(),
   language: z.string().min(1),
@@ -94,8 +111,8 @@ export const screenwriterInputSchema = z.object({
   dialogueEnabled: z.boolean(),
   characters: z.array(characterSchema),
   locations: z.array(locationSchema),
-  draft: screenplaySchema.optional(),
-  request: z.string().min(1).optional(),
+  draft: screenplaySchema.nullable(),
+  request: z.string().min(1).nullable(),
   accepted: z.array(acceptedElementSchema),
 });
 
@@ -107,13 +124,10 @@ export type ScreenwriterOutput = z.infer<typeof screenwriterOutputSchema>;
 
 /** `shot_planner`: scena e Bibbia verso le inquadrature (architettura §5.3). */
 export const shotPlannerInputSchema = z.object({
-  scene: screenplaySceneSchema,
-  bible: z.object({
-    characters: z.array(characterSchema),
-    locations: z.array(locationSchema),
-  }),
+  scene: sceneSchema,
+  bible: storyBibleSchema,
   shotDurationS: z.object({ min: z.number().positive(), max: z.number().positive() }),
-  previousExit: continuityStateSchema.optional(),
+  previousExit: continuityStateSchema.nullable(),
   cameraMovements: z.array(cameraMovementSchema),
   language: z.string().min(1),
   moodboard: roleMoodboardFieldSchema,
@@ -152,10 +166,23 @@ export const shotPlannerOutputSchema = z.object({
 
 export type ShotPlannerOutput = z.infer<typeof shotPlannerOutputSchema>;
 
+/**
+ * Il personaggio come lo vede il direttore della fotografia: `id` serve al segnaposto
+ * `[[char:id]]`, `name` e `costume` al prompt. Non riceve i riferimenti visivi: quelli li
+ * aggiunge il traduttore (architettura §4.7).
+ */
+export const promptCharacterSchema = z.object({
+  id: characterIdSchema,
+  name: z.string().min(1),
+  costume: z.string().min(1),
+});
+
+export type PromptCharacter = z.infer<typeof promptCharacterSchema>;
+
 /** `cinematographer`: inquadratura verso il prompt visivo per la famiglia di destinazione. */
 export const cinematographerInputSchema = z.object({
-  shot: shotIntentSchema,
-  characters: z.array(shotCharacterSchema.omit({ references: true })),
+  shot: shotSpecSchema,
+  characters: z.array(promptCharacterSchema),
   location: locationSchema,
   style: stylePresetSchema,
   cinematography: cinematographyPresetSchema.pick({
@@ -179,8 +206,8 @@ export type CinematographerOutput = z.infer<typeof cinematographerOutputSchema>;
 /** `script_supervisor`: incoerenze di trama tra le scene (architettura §5.3, §8). */
 export const scriptSupervisorInputSchema = z.object({
   screenplay: screenplaySchema,
-  scenes: z.array(screenplaySceneSchema),
-  shots: z.array(z.object({ id: shotIdSchema, sceneId: sceneIdSchema, intent: shotIntentSchema })),
+  scenes: z.array(sceneSchema),
+  shots: z.array(shotSpecSchema),
   language: z.string().min(1),
 });
 
@@ -205,10 +232,10 @@ export type ScriptSupervisorOutput = z.infer<typeof scriptSupervisorOutputSchema
 /** `sound_planner`: proposte di musica ed effetti dal copione (architettura §5.3). */
 export const soundPlannerInputSchema = z.object({
   screenplay: screenplaySchema,
-  scenes: z.array(screenplaySceneSchema),
-  shots: z.array(z.object({ id: shotIdSchema, sceneId: sceneIdSchema })),
-  genre: z.string().min(1),
-  tone: z.string().min(1),
+  scenes: z.array(sceneSchema),
+  shots: z.array(shotSpecSchema),
+  genre: genreSchema,
+  tone: toneSchema,
   style: stylePresetSchema,
   language: z.string().min(1),
 });
@@ -237,12 +264,12 @@ export type SoundPlannerOutput = z.infer<typeof soundPlannerOutputSchema>;
 export const moodboardDesignerInputSchema = z.object({
   scope: z.enum(['film', 'scene']),
   idea: z.string().min(1),
-  genre: z.string().min(1),
-  tone: z.string().min(1),
+  genre: genreSchema,
+  tone: toneSchema,
   style: stylePresetSchema,
   cinematography: cinematographyPresetSchema,
   screenplay: screenplaySchema,
-  sceneId: sceneIdSchema.optional(),
+  sceneId: sceneIdSchema.nullable(),
   moodboard: moodboardPartSchema.nullable(),
   referenceCount: z.number().int().positive(),
   language: z.string().min(1),
@@ -260,9 +287,9 @@ export type MoodboardDesignerOutput = z.infer<typeof moodboardDesignerOutputSche
 
 /** `image_analyst`: descrizione, atmosfera e controllo di persone e marchi (D19, D38). */
 export const imageAnalystInputSchema = z.object({
-  image: z.object({ assetId: assetIdSchema }),
+  image: assetRefSchema,
   purpose: z.literal('moodboard'),
-  context: z.string().min(1).optional(),
+  context: z.string().min(1).nullable(),
   language: z.string().min(1),
 });
 

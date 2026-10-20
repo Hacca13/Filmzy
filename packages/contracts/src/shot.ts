@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { assetRefSchema } from './asset.js';
 import {
   assetIdSchema,
   characterIdSchema,
@@ -44,7 +45,7 @@ export type ContinuityState = z.infer<typeof continuityStateSchema>;
 export const shotCharacterSchema = z.object({
   characterId: characterIdSchema,
   costume: z.string().min(1),
-  references: z.array(z.object({ assetId: assetIdSchema })),
+  references: z.array(assetRefSchema),
 });
 
 export type ShotCharacter = z.infer<typeof shotCharacterSchema>;
@@ -85,7 +86,7 @@ export const shotSpecSchema = z.object({
   characters: z.array(shotCharacterSchema),
   location: z.object({
     locationId: locationIdSchema,
-    references: z.array(z.object({ assetId: assetIdSchema })),
+    references: z.array(assetRefSchema),
   }),
   images: z.array(shotImageSchema),
   dialogue: z.array(

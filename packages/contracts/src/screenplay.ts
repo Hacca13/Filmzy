@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
-import { characterIdSchema, idSchema, locationIdSchema } from './ids.js';
+import { characterIdSchema, idSchema, locationIdSchema, sceneIdSchema } from './ids.js';
 
-/** Una scena della sceneggiatura (architettura §5.3). `beats` è vuoto nella bozza. */
+/**
+ * Una scena come la **scrive** lo sceneggiatore (architettura §5.3): senza `id`, che lo assegna
+ * il codice quando la salva, come per le inquadrature proposte dall'aiuto regista. `beats` è
+ * vuoto nella bozza.
+ */
 export const screenplaySceneSchema = z.object({
   number: z.number().int().positive(),
   heading: z.string().min(1),
@@ -15,6 +19,15 @@ export const screenplaySceneSchema = z.object({
 });
 
 export type ScreenplayScene = z.infer<typeof screenplaySceneSchema>;
+
+/**
+ * Una scena **salvata**, con il suo `id`: è quella che entra negli input dei ruoli, perché le
+ * inquadrature la citano con `sceneId` e le istruzioni la cercano così
+ * (`{% if sh.sceneId == s.id %}` nella segretaria di edizione e nel sound designer).
+ */
+export const sceneSchema = screenplaySceneSchema.extend({ id: sceneIdSchema });
+
+export type Scene = z.infer<typeof sceneSchema>;
 
 /** Proposta di personaggio della sceneggiatura, scelta o scartata al riepilogo (D18). */
 export const screenplayCharacterProposalSchema = z.object({

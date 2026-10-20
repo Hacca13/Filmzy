@@ -1,16 +1,10 @@
 import { z } from 'zod';
 
-import { cinematographyPresetSchema, stylePresetSchema } from './config/presets.js';
-import { assetIdSchema, characterIdSchema, idSchema, locationIdSchema } from './ids.js';
+import { assetRefSchema } from './asset.js';
+import { characterIdSchema, idSchema, locationIdSchema } from './ids.js';
 import { moodboardBriefSchema } from './moodboard.js';
+import { cinematographyPresetSchema, stylePresetSchema } from './presets.js';
 import { projectSummarySchema } from './project.js';
-
-/** Un file prodotto da un ruolo o caricato dall'utente (schede, immagini del set, ritocchi). */
-export const assetRefSchema = z.object({
-  assetId: assetIdSchema,
-});
-
-export type AssetRef = z.infer<typeof assetRefSchema>;
 
 /** Dettagli facoltativi del personaggio (D22): si possono ignorare. */
 export const characterProfileSchema = z.object({

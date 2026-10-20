@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { assetIdSchema, configKeySchema } from '../ids.js';
+import { configKeySchema } from '../ids.js';
 import { moodboardBriefSchema } from '../moodboard.js';
 
 /**
@@ -27,14 +27,6 @@ export const promptTargetSchema = z.object({
 });
 
 export type PromptTarget = z.infer<typeof promptTargetSchema>;
-
-/**
- * Riferimento a un'immagine di ispirazione (scheda personaggio, immagine del set...) passata a un
- * ruolo immagine o video, senza i campi dell'editor di ritocco.
- */
-export const referenceImageSchema = z.object({ assetId: assetIdSchema });
-
-export type ReferenceImage = z.infer<typeof referenceImageSchema>;
 
 /**
  * Il campo `moodboard?` che arriva ai ruoli che scrivono o generano immagini (architettura §5.3):

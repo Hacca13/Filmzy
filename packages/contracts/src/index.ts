@@ -58,8 +58,25 @@ export type {
   MoodboardPart,
   MoodReference,
 } from './moodboard.js';
+export { assetRefSchema } from './asset.js';
+export type { AssetRef } from './asset.js';
 export {
-  assetRefSchema,
+  cameraMovementSchema,
+  characterTagSchema,
+  cinematographyPresetSchema,
+  genreSchema,
+  stylePresetSchema,
+  toneSchema,
+} from './presets.js';
+export type {
+  CameraMovement,
+  CharacterTag,
+  CinematographyPreset,
+  Genre,
+  StylePreset,
+  Tone,
+} from './presets.js';
+export {
   bibleLimitsSchema,
   characterAppearanceSchema,
   characterProfileSchema,
@@ -68,7 +85,6 @@ export {
   storyBibleSchema,
 } from './bible.js';
 export type {
-  AssetRef,
   BibleLimits,
   Character,
   CharacterAppearance,
@@ -96,6 +112,7 @@ export type {
 } from './shot.js';
 export {
   acceptedElementSchema,
+  sceneSchema,
   screenplayCharacterProposalSchema,
   screenplayLocationProposalSchema,
   screenplaySceneSchema,
@@ -103,6 +120,7 @@ export {
 } from './screenplay.js';
 export type {
   AcceptedElement,
+  Scene,
   Screenplay,
   ScreenplayCharacterProposal,
   ScreenplayLocationProposal,

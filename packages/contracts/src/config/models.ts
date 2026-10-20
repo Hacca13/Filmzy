@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 import { configKeySchema, connectionIdSchema } from '../ids.js';
 
+/**
+ * Una data senza ora (`checked: 2026-10-19`), normalizzata a `YYYY-MM-DD`. Accetta anche un
+ * `Date`, perché i parser YAML non concordano: con js-yaml una data non quotata diventa un
+ * oggetto `Date`, con `yaml` resta una stringa. Così la scelta del parser (T0.4) non cambia la
+ * validazione.
+ */
+export const isoDaySchema = z
+  .union([z.iso.date(), z.date()])
+  .transform((value) => (typeof value === 'string' ? value : value.toISOString().slice(0, 10)));
+
 /** Un intervallo numerico accettato da un parametro (`config/ai/models.yaml`). */
 export const paramRangeSchema = z.object({
   min: z.number().optional(),
@@ -34,7 +44,7 @@ export const pricingPerMtokSchema = z.object({
       }),
     )
     .optional(),
-  checked: z.iso.date(),
+  checked: isoDaySchema,
 });
 
 function pricingPerUnitSchema<Unit extends string>(unit: Unit) {
@@ -42,7 +52,7 @@ function pricingPerUnitSchema<Unit extends string>(unit: Unit) {
     unit: z.literal(unit),
     value: z.number().nonnegative(),
     note: z.string().min(1).optional(),
-    checked: z.iso.date(),
+    checked: isoDaySchema,
   });
 }
 

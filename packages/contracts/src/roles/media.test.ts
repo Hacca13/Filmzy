@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { exampleCharacter, exampleLocation, exampleStyle } from '../examples.fixtures.js';
 import {
   cameraOperatorInputSchema,
   characterDesignerInputSchema,
@@ -9,37 +10,12 @@ import {
   storyboardArtistInputSchema,
 } from './media.js';
 
-const style = {
-  id: 'realistic',
-  label: 'Realistico',
-  description: 'Ripresa dal vero',
-  hint: 'photorealistic live-action film still',
-  enabled: true,
-};
-
-const character = {
-  id: 'anna',
-  name: 'Anna',
-  tag: 'protagonist',
-  role: 'protagonist',
-  description: 'Una donna sui 35 anni',
-  appearance: {
-    apparentAge: '35',
-    build: 'media',
-    hair: 'riccia rossa',
-    face: 'lentiggini',
-    clothing: 'giacca di jeans',
-    prompt: 'a woman in her mid-30s with curly red hair',
-  },
-  sheet: [],
-};
-
 describe('character_designer', () => {
-  it("accetta un'angolazione con moodboard assente (§4.4)", () => {
+  it("accetta un'angolazione con moodboard a null (§4.4)", () => {
     expect(
       characterDesignerInputSchema.parse({
-        character,
-        style,
+        character: exampleCharacter,
+        style: exampleStyle,
         angle: 'three_quarter',
         moodboard: null,
       }).angle,
@@ -48,46 +24,63 @@ describe('character_designer', () => {
 
   it("rifiuta un'angolazione inventata", () => {
     expect(
-      characterDesignerInputSchema.safeParse({ character, style, angle: 'back', moodboard: null })
-        .success,
+      characterDesignerInputSchema.safeParse({
+        character: exampleCharacter,
+        style: exampleStyle,
+        angle: 'back',
+        moodboard: null,
+      }).success,
     ).toBe(false);
   });
 });
 
 describe('set_designer', () => {
   it('accetta un luogo con tre varianti', () => {
-    const location = {
-      id: 'piazza',
-      name: 'La piazza',
-      description: 'Piazza centrale',
-      prompt: 'a small town square at sunset',
-      references: [],
-    };
-    expect(
-      setDesignerInputSchema.parse({ location, style, variants: 3, moodboard: null }).variants,
-    ).toBe(3);
+    const parsed = setDesignerInputSchema.parse({
+      location: exampleLocation,
+      style: exampleStyle,
+      variants: 3,
+      moodboard: null,
+    });
+    // Le istruzioni leggono location.prompt e style.hint.
+    expect(parsed.location.prompt).toContain('sunset');
+    expect(parsed.style.hint).toContain('photorealistic');
   });
 });
 
 describe('moodboard_artist', () => {
   it('accetta un prompt in inglese dal moodboard designer', () => {
     expect(
-      moodboardArtistInputSchema.parse({ prompt: 'a warm lit alley at dusk', style, variants: 2 })
-        .variants,
+      moodboardArtistInputSchema.parse({
+        prompt: 'a warm lit alley at dusk',
+        style: exampleStyle,
+        variants: 2,
+      }).variants,
     ).toBe(2);
   });
 });
 
 describe('retoucher', () => {
-  it("accetta un'operazione di sostituzione con istruzione in italiano (D21)", () => {
-    const input = {
+  it('accetta una sostituzione con istruzione in italiano (D21)', () => {
+    const parsed = retoucherInputSchema.parse({
       image: { assetId: 'asset-1' },
       mask: { assetId: 'asset-2' },
-      operation: 'replace' as const,
+      operation: 'replace',
       instruction: 'sostituisci la lampada con un lampione',
-      style,
+      style: exampleStyle,
+    });
+    expect(parsed.operation).toBe('replace');
+  });
+
+  it("pretende instruction come null quando non c'è (§4.4)", () => {
+    const base = {
+      image: { assetId: 'asset-1' },
+      mask: { assetId: 'asset-2' },
+      operation: 'remove' as const,
+      style: exampleStyle,
     };
-    expect(retoucherInputSchema.parse(input).operation).toBe('replace');
+    expect(retoucherInputSchema.parse({ ...base, instruction: null }).instruction).toBeNull();
+    expect(retoucherInputSchema.safeParse(base).success).toBe(false);
   });
 
   it("rifiuta un'operazione inventata", () => {
@@ -96,7 +89,8 @@ describe('retoucher', () => {
         image: { assetId: 'asset-1' },
         mask: { assetId: 'asset-2' },
         operation: 'blur',
-        style,
+        instruction: null,
+        style: exampleStyle,
       }).success,
     ).toBe(false);
   });
@@ -104,36 +98,38 @@ describe('retoucher', () => {
 
 describe('storyboard_artist', () => {
   it('accetta il modo storyboard con riferimenti', () => {
-    const input = {
-      mode: 'storyboard' as const,
+    const parsed = storyboardArtistInputSchema.parse({
+      mode: 'storyboard',
       visualPrompt: { prompt: 'close up, woman smiles' },
       references: [{ assetId: 'asset-1' }],
       variants: 3,
+      baseImage: null,
       moodboard: null,
-    };
-    expect(storyboardArtistInputSchema.parse(input).mode).toBe('storyboard');
+    });
+    expect(parsed.mode).toBe('storyboard');
   });
 
   it('accetta il modo end_frame con il primo fotogramma (D20)', () => {
-    const input = {
-      mode: 'end_frame' as const,
+    const parsed = storyboardArtistInputSchema.parse({
+      mode: 'end_frame',
       visualPrompt: { prompt: 'the camera has moved closer' },
       references: [],
       variants: 1,
       baseImage: { assetId: 'asset-1' },
       moodboard: null,
-    };
-    expect(storyboardArtistInputSchema.parse(input).baseImage?.assetId).toBe('asset-1');
+    });
+    expect(parsed.baseImage?.assetId).toBe('asset-1');
   });
 });
 
 describe('camera_operator', () => {
   it('accetta prompt visivo, riferimenti e durata', () => {
-    const input = {
-      visualPrompt: { prompt: 'close up, woman smiles, golden hour light' },
-      references: [{ assetId: 'asset-1' }],
-      durationS: 5,
-    };
-    expect(cameraOperatorInputSchema.parse(input).durationS).toBe(5);
+    expect(
+      cameraOperatorInputSchema.parse({
+        visualPrompt: { prompt: 'close up, woman smiles, golden hour light' },
+        references: [{ assetId: 'asset-1' }],
+        durationS: 5,
+      }).durationS,
+    ).toBe(5);
   });
 });

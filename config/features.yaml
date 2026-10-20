@@ -5,7 +5,8 @@ features:
   real_people: false     # cast personale: dopo il test sui volti reali e la consulenza legale (D4, D19)
   dialogue: false        # dialoghi parlati: Fase 2
   dubbing: false         # doppiaggio: Fase 3
-  music: false           # musica: quando è scelto il fornitore (M5)
+  music: false           # musica per scena: dopo la scelta del fornitore (T5.4)
+  sound_effects: false   # effetti sonori e "Suggerisci i suoni": dopo la scelta del fornitore (T5.4)
   preview_gate: false    # anteprima video economica prima del take finale (idea da valutare)
   keyframes: false       # "Imposta le immagini": primo e ultimo fotogramma scelti dall'utente (D20); si accende in M4
   image_upload: false    # caricare luoghi e oggetti, con controllo delle immagini (D19); opzione dell'MVP

@@ -15,35 +15,38 @@ _Versione 2 · 20 ottobre 2026 (la versione 1 è del 19 ottobre) · Stime in gio
 |---|---|---|
 | **M0** Fondamenta | repository, contratti, validatore della configurazione, fornitore finto | 2–3 |
 | **M1** Troupe e test di coerenza | troupe funzionante su file, bench, test reale (circa 45 $) | 6–8 |
-| **M2** Pannello della troupe | accesso admin, configurazione nel database, prova, pubblicazione, storico | 5–7 |
+| **M2** Pannello della troupe | accesso admin, configurazione nel database, prova, pubblicazione, storico, connessioni guidate con chiavi cifrate | 7–10 |
 | **M3** Storia, personaggi e luoghi | utenti e crediti, progetto, moderatore, bozza, casting, schede, luoghi, riepilogo, stesura, inquadrature | 11–15 |
 | **M4** Storyboard, immagini e video | storyboard, immagini dell'inquadratura, take video con caparra e webhook, aggiornamenti live, costi | 8–12 |
-| **M5** Continuità e montaggio | giallo, segretaria di edizione, esportazione con etichetta AI | 5–7 |
+| **M5** Continuità, suoni e montaggio | giallo, segretaria di edizione, tracce audio (musica ed effetti), esportazione con etichetta AI | 10–15 |
 | **M6** Beta chiusa | rifiniture, privacy, deploy, 5–10 tester | 3–5 |
-| **Totale MVP** (senza opzioni) | | **40–57** (circa 8–11½ settimane) |
+| **Totale MVP** (senza opzioni) | | **47–68** (circa 9½–13½ settimane) |
 | Opzione: caricamento di luoghi e oggetti | T4.8 | +2–3 |
 | Opzione: ritocco col pennello | T4.9 | +3–4 |
-| **Con tutte le opzioni** | | **45–64** (circa 9–13 settimane) |
+| **Con tutte le opzioni** | | **52–75** (circa 10½–15 settimane) |
 
-### Cosa è cambiato il 20/10/2026 (D18–D23)
+### Cosa è cambiato il 20/10/2026 (D18–D26)
 
-La versione 1 diceva 32–45 giornate. Le novità valgono 8–12 giornate (stime grossolane, da rivedere dopo il test reale di M1):
+La versione 1 diceva 32–45 giornate. Le novità valgono 15–23 giornate (stime grossolane, da rivedere dopo il test reale di M1):
 
 - flusso con bozza, riepilogo e stesura ufficiale, scheda personaggio più ricca: +3–4 (in M3);
 - passo «Luoghi» con le immagini del set: +2–3 (in M3);
-- immagini dell'inquadratura (primo e ultimo fotogramma scelti dall'utente): +3–5 (+1 in M1, +2–4 in M4).
+- immagini dell'inquadratura (primo e ultimo fotogramma scelti dall'utente): +3–5 (+1 in M1, +2–4 in M4);
+- tracce audio per musica ed effetti, con i suggerimenti dal copione: +5–8 (in M5);
+- connessioni guidate con le chiavi dei fornitori cifrate nel database: +2–3 (in M2).
 
 ### Perimetro dell'MVP (proposta, da confermare)
 
-- **Dentro:** il flusso con bozza e stesura, i luoghi, il controllo dei fotogrammi, «usa un fotogramma del video come punto di partenza».
+- **Dentro:** il flusso con bozza e stesura, i luoghi, il controllo dei fotogrammi, «usa un fotogramma del video come punto di partenza», le tracce di musica ed effetti con «Suggerisci i suoni», la pagina Connessioni con le chiavi cifrate.
 - **Opzioni con la funzione spenta** (si decide a metà di M4, dopo T4.7): caricamento di luoghi e oggetti, ritocco col pennello.
-- **Fuori, dopo l'MVP:** la modifica vera del video (`video_edit`), da provare su 3–4 clip.
+- **Fuori, dopo l'MVP:** la modifica vera del video (`video_edit`), da provare su 3–4 clip; i dialoghi e le voci (Fase 2); il caricamento di file audio; la timeline libera (Fase 3).
 
 ## Prima di iniziare
 
 - Account fal con **limite di spesa** impostato, e la chiave API.
 - La chiave di un fornitore LLM (nel seme: Anthropic).
 - Node.js LTS, pnpm e Docker.
+- Una chiave principale per cifrare i segreti (`SECRETS_MASTER_KEY`), da generare all'inizio di M2 e da conservare fuori dal repository.
 
 ## M0 — Fondamenta (2–3 giornate)
 
@@ -93,7 +96,7 @@ _Fatto quando:_ report e punteggi si generano con il fornitore finto.
 _Fatto quando:_ sono scelti i modelli immagine e video per l'MVP e la scelta è registrata in `docs/decisioni.md`.
 Nota: Seedance potrebbe rifiutare anche volti realistici inventati, se non sono registrati come asset virtuali. È una delle cose che il test misura.
 
-## M2 — Pannello della troupe (5–7 giornate)
+## M2 — Pannello della troupe (7–10 giornate)
 
 _Leggere: architettura §4.5, §4.6, §10._
 
@@ -114,6 +117,9 @@ _Fatto quando:_ si vede il risultato prima di pubblicare.
 
 **T2.6 Pubblica, storico, ripristino.** Differenze rispetto alla release attiva, nota obbligatoria, ripristino come nuova release, registro delle azioni.
 _Fatto quando:_ un ripristino riporta la configurazione precedente in meno di un minuto.
+
+**T2.7 Connessioni e chiavi.** Solo per gli `admin` (D25). Tabella `secrets` con cifratura (AES-256-GCM, chiave principale `SECRETS_MASTER_KEY`) e riferimenti `secret:NOME` accanto a `env:NOME`; chiavi in sola scrittura, mai nei log né negli export; registro delle azioni. Pagina «Impostazioni > Connessioni»: «Collega un fornitore» in tre passi (fornitore, chiave con «Prova la connessione», modelli da aggiungere), dettaglio del fornitore (Modelli, Chiave, Chi lo usa) e pagina «Chi fa cosa» per assegnare i modelli ai ruoli. Ogni adapter ha una prova di connessione che non costa.
+_Fatto quando:_ da una chiave incollata nella pagina il worker chiama il fornitore senza riavvii; la chiave non si rivede più dopo l'inserimento e non compare in nessun log né export; una chiave sbagliata dà «Chiave non valida».
 
 ## M3 — Storia, personaggi e luoghi (11–15 giornate)
 
@@ -182,18 +188,23 @@ _Fatto quando:_ una foto di una stanza si carica; una foto con una persona viene
 **T4.9 Ritocco col pennello** (+3–4 giornate). Funzione `retouch`: editor con maschera, `retoucher` (togli, sostituisci, cambia colore), regole R3 e R6, controllo del testo (D21).
 _Fatto quando:_ si toglie un oggetto da un'immagine del set e le inquadrature che la usano diventano gialle.
 
-## M5 — Continuità e montaggio (5–7 giornate)
+## M5 — Continuità, suoni e montaggio (10–15 giornate)
 
-_Leggere: architettura §8 e §9._
+_Leggere: architettura §5.5, §8 e §9._
 
-**T5.1** Regole R1–R7, con segnalazioni gialle e motivo.
+**T5.1** Regole R1–R8, con segnalazioni gialle (R4 e R8 con avviso leggero) e motivo.
 **T5.2** Segretaria di edizione sulle incoerenze di trama.
 **T5.3** Azioni sul giallo: Rigenera o Ignora.
-**T5.4** Montaggio: normalizzazione, concatenazione, titoli con la dicitura AI; musica se `music` è attiva, dopo aver scelto il fornitore.
-**T5.5** Marcatura C2PA: scelta dello strumento; metadati dei fornitori conservati.
-**T5.6** Esportazione e download con URL firmato.
+**T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.
+_Fatto quando:_ musica ed effetti hanno un fornitore scelto e collegato dalla pagina Connessioni, e la scelta è registrata in `docs/decisioni.md`.
+**T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`.
+_Fatto quando:_ la musica di una scena e un effetto su un'inquadratura si generano, si cambiano tra le varianti e si eliminano senza toccare il video.
+**T5.6** Editor delle tracce: Video (audio originale spento), Dialoghi (spenta), Musica ed Effetti, con muto e volume; pannello del blocco (descrizione, «Genera», «Cambia», «Elimina»).
+**T5.7** Montaggio: normalizzazione con l'audio originale tolto, concatenazione, mix delle tracce con livellamento del volume, titoli con la dicitura AI.
+**T5.8** Marcatura C2PA: scelta dello strumento; metadati dei fornitori conservati.
+**T5.9** Esportazione e download con URL firmato.
 
-_Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con titoli, dicitura e marcatura, e una modifica a monte accende il giallo giusto con il motivo giusto.
+_Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con musica, effetti, titoli, dicitura e marcatura; una modifica a monte accende il giallo giusto con il motivo giusto; cambiare la musica o un effetto e riesportare non rigenera i video.
 
 ## M6 — Beta chiusa (3–5 giornate)
 
@@ -209,6 +220,7 @@ _Fatto quando:_ almeno 5 persone non tecniche finiscono un corto da sole.
 
 - [ ] Account fal con limite di spesa, fornitore LLM, Cloudflare R2, dominio
 - [ ] Budget del test di coerenza: circa 45 $
+- [ ] Decidere il modello di guadagno (crediti a pagamento o servizio aperto con donazioni) e la licenza del codice, prima di rendere pubblico il repository
 - [ ] Mockup in Figma e loro esportazione in `design/riferimenti/`
 - [ ] Privacy policy e termini prima della beta
 - [ ] Consulenza legale prima di accendere i volti reali
@@ -219,5 +231,5 @@ _Fatto quando:_ almeno 5 persone non tecniche finiscono un corto da sole.
 
 - **Cast personale:** test dedicato sui volti reali; poi consenso dato dalla persona stessa (link, selfie dal vivo, frase per la voce) e router limitato ai modelli che accettano volti verificati.
 - **Modifica vera del video** (`video_edit`): prova su 3–4 clip, con costo e affidabilità misurati.
-- **Fase 2:** voci per personaggio e labiale, pagamenti.
+- **Fase 2:** voci per personaggio (la traccia Dialoghi) e labiale, pagamenti.
 - **Fase 3:** timeline modificabile, luoghi ricorrenti, doppiaggio.

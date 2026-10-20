@@ -1,6 +1,6 @@
 # Filmzy — Proposta di modifiche al contesto del progetto
 
-_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D23 in `docs/decisioni.md`.
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D26 in `docs/decisioni.md`.
 
 ## 1. Titolo e nome
 
@@ -42,6 +42,17 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - La scelta dell'utente è un requisito: se nessun modello disponibile la accetta, il sistema lo dice con un messaggio semplice e non la cambia in silenzio.
 > - Di default decide l'aiuto regista; l'impostazione manuale è facoltativa.
 
+### Nuova sezione: Suono
+
+> - Il suono sta su **tracce separate dal video**: Video (l'audio originale dei take, spento di default), Dialoghi (presente ma spenta fino alla Fase 2), Musica (un blocco per scena) ed Effetti (agganciati a un'inquadratura, con il secondo in cui partono). Ogni traccia ha muto e volume.
+> - Musica ed effetti si generano con modelli a parte. «Suggerisci i suoni» propone musica ed effetti leggendo il copione, e l'utente accetta o scarta ogni proposta. Per ogni blocco si può descrivere il suono («abbaio di un cane»), generarlo, scegliere tra tre varianti o eliminarlo.
+> - Cambiare una musica o un effetto costa pochi centesimi e non tocca il video: il mix si rifà a ogni esportazione. L'audio generato dentro i video viene silenziato.
+> - Nell'MVP non si caricano file audio (diritti della musica, voci di persone reali). La timeline libera resta in Fase 3.
+
+### Pannello admin della troupe: aggiungere
+
+> - **Connessioni:** una pagina guidata, riservata all'amministratore, per collegare i fornitori (testo, immagini, video, musica ed effetti, voci): si sceglie il fornitore, si incolla la chiave, si prova la connessione, si scelgono i modelli da aggiungere e si assegnano ai ruoli in «Chi fa cosa». Le chiavi sono cifrate nel database e non si rivedono più dopo l'inserimento.
+
 ### Cast personale, consenso e privacy: aggiornare l'ultimo punto
 
 > - **Nell'MVP solo personaggi generati da Filmzy** (D4, D19). L'utente può caricare luoghi e oggetti; un'immagine con persone viene rifiutata con un messaggio semplice. Il cast personale si accende dopo un test dedicato sui volti reali e la consulenza legale. Le tabelle dei consensi sono già previste, la funzione è spenta.
@@ -52,7 +63,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 
 ## 6. Roadmap: sostituire la voce MVP
 
-> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi e il controllo dei fotogrammi. **Stima: 40–57 giornate di lavoro pieno, circa 8–11½ settimane** (cambiato il 20/10, D23: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 45–64.
+> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi e le tracce di musica ed effetti. **Stima: 47–68 giornate di lavoro pieno, circa 9½–13½ settimane** (cambiato il 20/10, D26: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 52–75.
 
 ## 7. Rischi e note: aggiungere
 
@@ -65,7 +76,11 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Id e capacità dei modelli con primo e ultimo fotogramma: da verificare con i fornitori e con il bench.
 > - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è.
 > - Quando provare la modifica vera del video (dopo l'MVP, su 3–4 clip).
+> - Fornitore degli effetti sonori: la ricerca del 13/10 copre solo la musica (ElevenLabs Music ha un'API, Suno è da evitare).
+> - **Modello di guadagno e licenza:** crediti a pagamento, oppure servizio aperto con donazioni? Un film da 60 s costa 11–66 $ di API, quindi un servizio gratuito per tutti non si regge sulle donazioni. Le strade sono crediti, codice aperto da installare in proprio con servizio a pagamento a parte, o un periodo di prova con crediti regalati. La licenza si sceglie prima di rendere pubblico il repository.
+> - Chiavi per utente («porta la tua chiave»): rimandate, dipendono dal modello di guadagno.
+> - Per chi non è tecnico basta il percorso con i crediti, oppure serve anche una modalità per chi vuole usare i propri account presso i fornitori?
 
 ## 9. Registro modifiche: aggiungere
 
-> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; stima dell'MVP a 40–57 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D23 in `docs/decisioni.md`.
+> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; tracce audio separate dal video (musica, effetti, dialoghi in Fase 2) con «Suggerisci i suoni»; pagina Connessioni con chiavi cifrate nel database; stima dell'MVP a 47–68 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D26 in `docs/decisioni.md`.

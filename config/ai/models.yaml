@@ -138,3 +138,15 @@ models:
     pricing: { unit: per_second, value: 0.10, note: "720p, prezzo ufficiale Google; su fal da verificare", checked: 2026-10-13 }
     quality: {}
     status: testing
+
+  # --- Musica ----------------------------------------------------------------
+  # Gli effetti sonori non hanno ancora un modello: serve una ricerca (T5.4).
+  music-elevenlabs:
+    kind: music
+    connection: elevenlabs
+    provider_model: "<ElevenLabs Music: id da verificare>"
+    family: elevenlabs_music
+    capabilities:
+      commercial_use: true                    # sui piani a pagamento secondo la ricerca del 13/10: da verificare
+    pricing: { unit: per_second, value: 0.003, note: "circa 0,18 $ al minuto (ricerca del 13/10)", checked: 2026-10-13 }
+    status: testing

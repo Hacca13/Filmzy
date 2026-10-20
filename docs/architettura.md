@@ -1,6 +1,6 @@
 # Filmzy — Architettura
 
-_Versione 1 · 19 ottobre 2026 · aggiornata il 20 ottobre 2026 (decisioni D17–D23)_
+_Versione 1 · 19 ottobre 2026 · aggiornata il 20 ottobre 2026 (decisioni D17–D26)_
 
 Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e perché sta in `contesto-progetto.md` (l'originale nel progetto Claude, una copia in `docs/`); le scelte e le alternative scartate in `decisioni.md`; l'ordine dei lavori in `piano-di-lavoro.md`.
 
@@ -69,10 +69,11 @@ filmzy/
 | `scenes` | api | scene, inquadrature (ShotSpec), take |
 | `generations` | worker | esegue i ruoli tramite la troupe, gestisce webhook e scontrini |
 | `assets` | api, worker | file: caricamento con controllo delle immagini, ritocchi, copia dai fornitori, URL firmati |
+| `audio` | api, worker | tracce e clip audio (musica, effetti, dialoghi), varianti, volumi (§5.5) |
 | `continuity` | api, worker | stati di entrata e uscita, regole, segnalazioni gialle |
-| `export` | worker | montaggio, titoli, etichetta e marcatura AI |
+| `export` | worker | montaggio, mix delle tracce audio, titoli, etichetta e marcatura AI |
 | `consents` | api | persone reali e consensi: tabelle presenti, funzione spenta nell'MVP |
-| `troupe-admin` | api, web | pannello: bozza, prova, pubblicazione, storico, costi |
+| `troupe-admin` | api, web | pannello: bozza, prova, pubblicazione, storico, costi, connessioni e chiavi (§4.5) |
 
 **Confini controllati dalla CI**, non affidati alla buona volontà:
 
@@ -94,7 +95,8 @@ Il progetto avanza per fasi (D18). Si può sempre tornare a una fase precedente:
 | `review` | il codice confronta la bozza con le scelte: una differenza è un personaggio o un luogo che la bozza cita e la Bibbia non ha, o viceversa (li collega il `proposalId`). Per ognuna: «Adatta la storia», «Cambia la mia scelta» o «Va bene così» (l'elemento resta come comparsa o luogo generico). Senza differenze il passo si salta | nessuno: la scelta pesa sulla stesura |
 | `final` | stesura ufficiale, che usa solo cast e luoghi scelti più gli elementi accettati; poi modificabile come testo, con versioni | `screenwriter` (`final`) |
 | `shots` | inquadrature, storyboard, immagini dell'inquadratura, take | `shot_planner`, `cinematographer`, `storyboard_artist`, `camera_operator`, `script_supervisor` |
-| `export` | montaggio ed esportazione | |
+| `sound` | tracce audio: musica per scena, effetti per inquadratura, suggerimenti dal copione («Suggerisci i suoni»); l'audio originale dei take è spento | `sound_planner`, `composer`, `sfx_artist` |
+| `export` | montaggio, mix delle tracce ed esportazione | |
 
 «Bozza» ha due significati: la bozza della sceneggiatura (utente) e la bozza della troupe (`TroupeDraft`, admin).
 
@@ -128,7 +130,9 @@ troupe.estimate(role, input)      // costo previsto, per la caparra
 | `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
 | `script_supervisor` | Segretaria di edizione | LLM | scene e inquadrature → incoerenze con motivo | MVP |
-| `composer` | Compositore | musica | atmosfera e durata → traccia | MVP, spento finché non si sceglie il fornitore |
+| `composer` | Compositore | musica | atmosfera e durata di una scena → musica | MVP, spento finché non si sceglie il fornitore (T5.4) |
+| `sfx_artist` | Rumorista | effetti sonori | descrizione e durata → 2–3 varianti | MVP, spento finché non si sceglie il fornitore (T5.4) |
+| `sound_planner` | Sound designer | LLM | copione, scene e inquadrature → proposte di musica ed effetti | MVP |
 | `voice_actor` | Doppiatore | voce | battuta + voce del personaggio → audio | Fase 2 |
 | `lip_sync` | Sincronizzatore | video | take + audio → take sincronizzato | Fase 2 |
 | `dialogue_adapter` | Adattatore dialoghista | LLM | dialoghi + durate → dialoghi tradotti | Fase 3 |
@@ -143,7 +147,7 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 
 | Livello | Domanda | Campi principali |
 |---|---|---|
-| **Connessioni** | come si raggiunge un fornitore? | `adapter` (famiglia di protocollo), `base_url` (anche un gateway o un proxy LLM), `api_key` (solo `env:NOME`), `http_proxy`, `timeout_s`, `max_concurrency`, `delivery` (webhook o polling), `media_retention`, `data_region`, `enabled` |
+| **Connessioni** | come si raggiunge un fornitore? | `adapter` (famiglia di protocollo), `base_url` (anche un gateway o un proxy LLM), `api_key` (`env:NOME` o `secret:NOME`), `http_proxy`, `timeout_s`, `max_concurrency`, `delivery` (webhook o polling), `media_retention`, `data_region`, `enabled` |
 | **Catalogo dei modelli** | cosa sa fare, e quanto costa? | `kind`, `connection`, `provider_model`, `family`, `capabilities`, `params` accettati con i limiti, `pricing` con data di verifica, `quality` (voti delle prove), `status` (`active`, `testing`, `retired`) |
 | **Ruoli** | chi fa cosa, e come? | `model` + `fallbacks` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `budget`, `enabled` |
 
@@ -161,7 +165,7 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 
 ### 4.4 Le istruzioni
 
-- `screenwriter@1` corrisponde al file `config/ai/instructions/screenwriter/v1.md`. L'intestazione contiene `id`, `version`, `description`, `variables` e `changelog`; il corpo, le sezioni `## system` e `## user`. I template per le immagini hanno `kind: image_prompt` e una sola sezione `## prompt`.
+- `screenwriter@1` corrisponde al file `config/ai/instructions/screenwriter/v1.md`. L'intestazione contiene `id`, `version`, `description`, `variables` e `changelog`; il corpo, le sezioni `## system` e `## user`. I template per le immagini hanno `kind: image_prompt`, quelli per i suoni `kind: audio_prompt`, e una sola sezione `## prompt`.
 - Template LiquidJS. Le variabili sono i campi dell'input del ruolo (camelCase). Le variabili facoltative arrivano sempre, con valore `null` quando mancano, mai assenti: così la modalità rigorosa segnala solo i veri errori e `{% if scene %}` funziona anche senza scena.
 - **Varianti per famiglia:** `v1.seedance.md` si usa quando il modello di destinazione è della famiglia `seedance`. Può aggiungere regole alla base (`mode: append`) o sostituirla (`mode: replace`). Servono soprattutto al direttore della fotografia, perché ogni famiglia "capisce" i prompt a modo suo.
 - Una versione pubblicata non si modifica più: si crea la successiva. Lo scontrino registra versione e variante usate.
@@ -187,7 +191,7 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 
 La configurazione risolta di ogni ruolo produce un hash, che finisce nello scontrino.
 
-**Segreti:** le chiavi restano nelle variabili d'ambiente. Il pannello mostra solo se una chiave è presente o manca (decisione aperta: chiavi cifrate nel database).
+**Segreti (D25):** una chiave si cita nella configurazione con `env:NOME` (variabile d'ambiente: seme, test, sviluppo) o con `secret:NOME` (dal database). L'amministratore le inserisce da «Impostazioni > Connessioni»: collega un fornitore, incolla la chiave, «Prova la connessione» (una chiamata gratuita), sceglie i modelli da aggiungere, poi li assegna ai ruoli in «Chi fa cosa». Nel database le chiavi sono cifrate (AES-256-GCM) con una chiave principale (`SECRETS_MASTER_KEY`) che sta solo in una variabile d'ambiente. Sono in sola scrittura: l'API non le restituisce mai, l'interfaccia mostra «Chiave collegata ••••1a2b», non finiscono nei log né negli export (`pnpm troupe export` scrive solo i riferimenti) e ogni azione va nel registro.
 
 ### 4.6 Validazione
 
@@ -197,7 +201,7 @@ La stessa funzione valida file, bozze e release (`pnpm troupe check` e pannello)
 2. **Riferimenti:** ogni ruolo punta a modelli esistenti, ogni modello a una connessione attiva, i tipi combaciano (un ruolo LLM non usa un modello video); `prompt_from` punta a un ruolo LLM che restituisce un prompt visivo.
 3. **Parametri:** i `params` del ruolo sono accettati da *ogni* modello che può servirlo (principale, riserve, candidati) e rispettano i limiti. Esempio: un modello che non accetta `temperature` dà un errore che nomina ruolo, modello e parametro.
 4. **Istruzioni:** la versione esiste, l'intestazione combacia, e un rendering di prova in modalità rigorosa, con un input di esempio generato dallo schema, non trova variabili inesistenti.
-5. **Segreti:** esistono le variabili d'ambiente delle connessioni attive (tranne in test).
+5. **Segreti:** esistono le variabili d'ambiente (`env:`) e i segreti nel database (`secret:`) delle connessioni attive (tranne in test).
 6. **Prezzi:** un prezzo mancante è un avviso nei file di seme e un errore alla pubblicazione; avviso se la verifica ha più di 30 giorni.
 7. **Stato:** nessun ruolo usa modelli `retired`; i modelli `testing` danno un avviso. Un identificativo segnaposto (`<…>`) è ammesso solo con `status: testing` e blocca la chiamata reale.
 8. **Funzioni:** se `real_people` è attiva, ogni ruolo video ha almeno un candidato che accetta volti reali verificati.
@@ -225,7 +229,8 @@ interface MediaAdapter {
 - `anthropic`, `openai_compatible` e `google` usano AI SDK. `baseURL`, `headers` e `fetch` personalizzati coprono gateway e proxy di rete. Con `openai_compatible` entrano OpenRouter, i modelli locali (Ollama, vLLM) e qualunque gateway compatibile.
 - `fal` usa la coda di fal con webhook. Le consegne sono firmate (Ed25519, chiavi pubbliche in JWKS, firma sugli header `X-Fal-Webhook-*` e sull'hash del corpo grezzo, tolleranza di 300 secondi), e la firma si verifica sempre. Fal ripete la consegna fino a 31 volte, quindi la gestione è idempotente. Non consegna a indirizzi privati o locali: in sviluppo si usa il polling.
 - `fake` restituisce risposte registrate o generate dallo schema: zero rete, zero costi.
-- Più avanti: `http_service` per i nostri servizi (per esempio il controllo dei volti in Python), `elevenlabs` per le voci, `sync` per il labiale.
+- `elevenlabs` per la musica (la ricerca del 13/10 la indica con API e diritti commerciali), con la stessa interfaccia `MediaAdapter` dei video: invio, attesa, risultato. Il fornitore degli effetti sonori si sceglie in T5.4.
+- Più avanti: `http_service` per i nostri servizi (per esempio il controllo dei volti in Python), `elevenlabs` anche per le voci, `sync` per il labiale.
 
 **Traduttori: come si scrive una richiesta per una famiglia di modelli.** Servono ai ruoli immagine e video.
 
@@ -357,12 +362,27 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | `retoucher` | `image`, `mask`, `operation` (`remove`, `replace`, `recolor`), `instruction?`, `style` | immagine |
 | `storyboard_artist` | `mode` (`storyboard`, `end_frame`), prompt visivo, riferimenti, `variants`, `baseImage?` (per `end_frame`) | immagini |
 | `camera_operator` | prompt visivo, riferimenti, `durationS` | video |
+| `composer` | `cue` (`description`, `mood`, `durationS`), `genre`, `tone`, `style` | musica |
+| `sfx_artist` | `cue` (`description`, `durationS`), `variants` | effetti sonori |
+| `sound_planner` | `screenplay`, `scenes`, `shots`, `genre`, `tone`, `style`, `language` | `cues[]`: `kind` (`music`, `sfx`), `sceneId`, `shotId?`, `atS?`, `durationS`, `mood?` (in inglese), `description` |
 
 `accepted` è l'elenco degli elementi della bozza che l'utente ha deciso di tenere così come sono (`kind`, `name`), vuoto fuori dal modo `final`. Nel ritocco l'`instruction` dell'utente va al modello così com'è, in italiano (D21).
 
 ### 5.4 Eventi
 
-`generation.queued`, `generation.running`, `take.ready`, `take.failed`, `take.rejected`, `image.ready`, `image.failed` (immagini del set, ritocchi, fotogrammi chiave), `continuity.flagged`, `export.ready`. Partono dal worker via Redis e arrivano all'interfaccia via SSE.
+`generation.queued`, `generation.running`, `take.ready`, `take.failed`, `take.rejected`, `image.ready`, `image.failed` (immagini del set, ritocchi, fotogrammi chiave), `audio.ready`, `audio.failed`, `continuity.flagged`, `export.ready`. Partono dal worker via Redis e arrivano all'interfaccia via SSE.
+
+### 5.5 Tracce audio
+
+```ts
+AudioTrack { id, projectId, kind: 'native' | 'dialogue' | 'music' | 'sfx', muted, volume }
+AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, fadeOutS, description, chosenVariantId?, source: 'generated' | 'native' }
+```
+
+- La traccia `native` porta l'audio originale dei take: spenta di default, si accende per un take. La traccia `dialogue` esiste ma resta vuota fino alla Fase 2.
+- Una clip di musica sta su una scena (`shotId` vuoto); una clip di effetto sta su un'inquadratura e `startS` conta dall'inizio di quell'inquadratura. Niente timeline libera nell'MVP.
+- Ogni clip generata ha delle varianti, come i take: `chosenVariantId` è quella in uso. Cambiare una variante non tocca i video.
+- Il mix si rifà a ogni esportazione (§9). Il testo di `description` passa dal moderatore.
 
 ## 6. Dati (PostgreSQL)
 
@@ -372,6 +392,8 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSONB), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSONB (ShotSpec) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini |
+| Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take |
+| Segreti | `secrets` | nome, testo cifrato, versione della chiave principale, autore, date di creazione e di sostituzione |
 | Esportazioni | `exports` | |
 | Consensi (spenti) | `real_people`, `consents`, `provider_assets` | ambito (volto, voce), metodo, prove, revoca; asset registrati presso i fornitori, da cancellare alla revoca |
 | Moderazione | `reports` | segnalazioni e rimozioni |
@@ -418,13 +440,15 @@ sequenceDiagram
   - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero;
   - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli;
   - **R6:** se l'immagine scelta di un luogo cambia o viene ritoccata, diventano gialle le inquadrature che lo usano;
-  - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano.
+  - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano;
+  - **R8:** se un take cambia durata o viene sostituito, gli effetti agganciati a quell'inquadratura ricevono un avviso leggero («l'effetto potrebbe non coincidere più»).
 - **Segretaria di edizione** (LLM): incoerenze di trama tra le scene ("Marco parla di una lettera che non ha ancora ricevuto").
 - Ogni segnalazione ha un codice, un motivo in italiano e un'origine (`rule`, `llm`, più avanti `vision`). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
 
 ## 9. Montaggio ed esportazione
 
-- Normalizzazione dei take scelti (risoluzione, fotogrammi al secondo, codec), concatenazione, musica se la funzione `music` è attiva, titoli di testa e di coda.
+- Normalizzazione dei take scelti (risoluzione, fotogrammi al secondo, codec), con l'audio originale tolto salvo che l'utente lo accenda per un take; concatenazione; titoli di testa e di coda.
+- Mix delle tracce audio (D24): musica per scena con dissolvenza incrociata, effetti agganciati alle inquadrature, dialoghi quando ci saranno, con livellamento del volume. Le tracce si ricalcolano a ogni esportazione: cambiare una musica o un effetto non tocca i video.
 - Nei titoli compare la dicitura "Contiene contenuti generati con intelligenza artificiale".
 - Marcatura leggibile dalle macchine (C2PA, strumento da scegliere in M5). Filigrane e metadati dei fornitori non si rimuovono.
 - Il file finale va nello storage privato e si scarica con un URL firmato a scadenza.
@@ -436,6 +460,8 @@ sequenceDiagram
 - **Moderatore** sui testi dell'utente prima di ogni spesa: persone reali o famose, minori, contenuti vietati. La politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata.
 - **Immagini caricate (D19):** sono ammessi luoghi e oggetti. Prima di salvarle, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti; l'esito resta nell'asset. Un'immagine con persone si rifiuta con un messaggio semplice. Con i fornitori vale la regola 11: copia subito e retention breve. La funzione `image_upload` resta spenta finché questo controllo non c'è.
 - **Ritocchi (D21):** sono lo strumento classico per alterare persone reali, quindi operano solo su immagini generate da noi o già approvate dal controllo. Il testo libero dell'utente passa dal moderatore prima di ogni spesa.
+- **Suoni (D24):** il testo che descrive un suono passa dal moderatore. Nell'MVP non si caricano file audio, per i diritti della musica e le voci di persone reali.
+- **Chiavi (D25):** cifrate nel database e in sola scrittura, mai nei log né negli export. La chiave principale sta solo in una variabile d'ambiente. Solo gli `admin` le gestiscono e ogni azione va nel registro.
 - **Limiti di spesa:** per utente al giorno e globali al giorno, più quelli impostati sui cruscotti dei fornitori.
 - **GDPR:** esportazione e cancellazione dei dati dell'utente. I corpi delle richieste negli scontrini si conservano 90 giorni, i metadati restano.
 - **Cast personale:** tabelle pronte, funzione `real_people` spenta. Quando si accende: verifica dal vivo fatta dalla persona stessa; router limitato ai modelli che accettano volti verificati; la revoca blocca le nuove generazioni e cancella gli asset presso i fornitori.
@@ -462,9 +488,9 @@ sequenceDiagram
 ## 13. Decisioni aperte
 
 - Libreria di autenticazione (inizio di M2).
-- Chiavi dei fornitori: solo variabili d'ambiente, oppure anche cifrate nel database e gestite dal pannello.
 - Strumento per la marcatura C2PA (M5).
-- Fornitore della musica (M5).
+- Fornitori della musica e degli effetti sonori (T5.4): per la musica c'è già una candidata nella ricerca del 13/10, per gli effetti serve una ricerca nuova.
+- Modello di guadagno (crediti a pagamento, oppure servizio aperto con donazioni) e licenza del codice, da decidere prima di rendere pubblico il repository.
 - Esperimenti A/B dal pannello (dopo l'MVP).
 - Dialoghi: audio nativo del modello o voce nostra + labiale (Fase 2).
 - Id e capacità dei punti d'accesso con primo e ultimo fotogramma (`input_modes`): da verificare sulla documentazione dei fornitori e con il bench (D20).

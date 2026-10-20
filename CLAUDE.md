@@ -44,7 +44,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 4. **Ogni chiamata a un fornitore produce uno scontrino**, anche se fallisce.
 5. **I test non spendono:** nei test le connessioni sono `fake`. Non scrivere test che chiamano fornitori veri.
 6. **Riserve solo per errori tecnici.** `content_rejected` si ferma lì: mai provare un altro modello per aggirare un rifiuto.
-7. **Nessun segreto nel repository:** nella configurazione solo `env:NOME`; `.env` resta fuori da git.
+7. **Nessun segreto nel repository:** nella configurazione solo `env:NOME` oppure `secret:NOME` (le chiavi inserite dal pannello, cifrate nel database); `.env` resta fuori da git.
 8. **La logica sta nel backend.** L'interfaccia mostra e invia, non decide.
 9. **Lavori lunghi in coda.** Nessuna chiamata a un modello immagine o video dentro una richiesta HTTP.
 10. **Idempotenza:** un webhook o un lavoro ripetuto non deve addebitare due volte.
@@ -78,6 +78,8 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 | Immagine dell'inquadratura (ispirazione, primo, ultimo fotogramma) | `ShotImage` (`reference`, `first_frame`, `last_frame`) |
 | Movimento di macchina | `CameraMovement` |
 | Ritocco, maschera | `Retouch`, `Mask` |
+| Traccia audio, clip audio | `AudioTrack`, `AudioClip` |
+| Chiave del fornitore (segreto) | `Secret` |
 | Inquadratura, scheda inquadratura | `Shot`, `ShotSpec` |
 | Take | `Take` |
 | Continuità, giallo | `ContinuityState`, `ContinuityFlag` |
@@ -93,7 +95,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 
 ## Ruoli della troupe
 
-`moderator` Moderatore · `casting` Direttore del casting · `screenwriter` Sceneggiatore · `shot_planner` Aiuto regista · `cinematographer` Direttore della fotografia · `character_designer` Character designer · `set_designer` Scenografo · `retoucher` Ritocco · `storyboard_artist` Storyboard (modi `storyboard` e `end_frame`) · `camera_operator` Operatore di ripresa · `script_supervisor` Segretaria di edizione · `composer` Compositore. Più avanti: `voice_actor`, `lip_sync`, `dialogue_adapter`.
+`moderator` Moderatore · `casting` Direttore del casting · `screenwriter` Sceneggiatore · `shot_planner` Aiuto regista · `cinematographer` Direttore della fotografia · `character_designer` Character designer · `set_designer` Scenografo · `retoucher` Ritocco · `storyboard_artist` Storyboard (modi `storyboard` e `end_frame`) · `camera_operator` Operatore di ripresa · `script_supervisor` Segretaria di edizione · `composer` Compositore · `sfx_artist` Rumorista · `sound_planner` Sound designer. Più avanti: `voice_actor`, `lip_sync`, `dialogue_adapter`.
 
 ## Come aggiungere
 
@@ -117,4 +119,6 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - Non accendere `real_people` senza una decisione registrata e la consulenza legale.
 - Non accettare immagini con persone caricate dall'utente e non ritoccare foto di persone: i personaggi li crea Filmzy (D19).
 - Non declassare in silenzio una scelta dell'utente sulle immagini dell'inquadratura (primo o ultimo fotogramma): se nessun modello la accetta, si ferma con un messaggio semplice (D20).
+- Non mostrare né registrare mai una chiave dopo l'inserimento: né nell'interfaccia, né nei log, né negli export (D25).
+- Non accettare file audio caricati dall'utente nell'MVP (D24).
 - Non cambiare un contratto senza aggiornare schemi, test e documenti nello stesso commit.

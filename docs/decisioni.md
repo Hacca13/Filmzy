@@ -127,4 +127,34 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 
 **Sostituisce D16**, che diceva 32–45.
 **Decisione:** il piano passa a 40–57 giornate (circa 8–11½ settimane) per D18–D22: il flusso con bozza e riepilogo (+3–4), i luoghi con le immagini del set (+2–3), le immagini dell'inquadratura (+3–5). Due opzioni restano fuori dalla stima base: il caricamento di luoghi e oggetti (`image_upload`, +2–3) e il ritocco col pennello (`retouch`, +3–4). Con entrambe sono 45–64 giornate.
-**Conseguenze:** se le due opzioni entrano nell'MVP si decide a metà di M4, dopo i costi e le code (T4.7). Le cifre sono stime grossolane, da rivedere dopo il test reale di M1.
+**Conseguenze:** se le due opzioni entrano nell'MVP si decide a metà di M4, dopo i costi e le code (T4.7). Le cifre sono stime grossolane, da rivedere dopo il test reale di M1. _Sostituita da D26._
+
+## D24 · Tracce audio separate dal video — 20/10/2026
+
+**Decisione:** il suono sta su tracce separate dal video: Video (l'audio originale dei take, spento di default), Dialoghi (presente ma spenta fino alla Fase 2), Musica (un blocco per scena) ed Effetti (agganciati a un'inquadratura, con il secondo di partenza). Ogni traccia ha muto e volume.
+- Musica ed effetti si generano con modelli a parte (ruoli `composer` e `sfx_artist`). Il ruolo `sound_planner` propone i suoni dal copione («Suggerisci i suoni»): l'utente accetta o scarta ogni proposta.
+- L'audio generato dentro i video si silenzia: dove possibile si chiede ai modelli di non produrlo (`audio: false`) e in ogni caso lo toglie ffmpeg all'esportazione, a meno che l'utente lo accenda per un take.
+- Il mix si rifà con ffmpeg a ogni esportazione, con livellamento del volume. Musica per scena ed effetti per inquadratura: la timeline libera resta in Fase 3.
+- Nell'MVP non si caricano file audio.
+
+**Perché:** cambiare una musica o un effetto costa pochi centesimi e non tocca il video. È il principio di indipendenza dai modelli applicato al suono.
+**Scartate:** l'audio nativo dei modelli video (cambia con il modello e non si può sostituire); una timeline libera già nell'MVP (troppo lavoro); il caricamento di file audio (diritti della musica e voci di persone reali, come D19).
+**Conseguenze:** nuove tabelle `audio_tracks`, `audio_clips`, `audio_variants`; nuova fase `sound` del progetto; nuova regola R8; funzioni `music` e `sound_effects`. La ricerca del 13/10 copre la musica (ElevenLabs Music ha un'API, Suno è da evitare) ma non gli effetti: prima di scegliere il fornitore serve una mini-ricerca (T5.4). Le descrizioni scritte dall'utente passano dal moderatore e vanno al modello così come sono, come per il ritocco (D21).
+
+## D25 · Chiavi dei fornitori cifrate nel database, con pagina Connessioni guidata — 20/10/2026
+
+**Chiude una domanda aperta** del contesto e dell'architettura (§13): chiavi solo nelle variabili d'ambiente, o anche nel database.
+**Decisione:** solo l'amministratore della piattaforma inserisce le chiavi, da «Impostazioni > Connessioni»: collega un fornitore, incolla la chiave, «Prova la connessione» (una chiamata gratuita), sceglie i modelli da aggiungere e poi li assegna ai ruoli in «Chi fa cosa».
+- Le chiavi stanno nel database, cifrate (AES-256-GCM), con una chiave principale che vive solo in una variabile d'ambiente (`SECRETS_MASTER_KEY`).
+- Sono in sola scrittura: l'API non le restituisce mai e l'interfaccia mostra solo «Chiave collegata ••••1a2b». Si sostituiscono o si rimuovono, e ogni azione finisce nel registro.
+- Nella configurazione una chiave si cita con `env:NOME` (come prima: seme, test, sviluppo) o con `secret:NOME` (dal database). I file nel repository e `pnpm troupe export` contengono solo i riferimenti.
+
+**Perché:** chi amministra non è per forza tecnico: deve poter collegare un fornitore senza toccare file e server.
+**Scartate:** solo variabili d'ambiente (ogni cambio richiede accesso al server); chiavi per utente («porta la tua chiave»): dipende dal modello di guadagno, ancora da decidere, e per chi non è tecnico significa aprire account presso più fornitori. Si potrà aggiungere dopo, senza rifare nulla.
+**Conseguenze:** cambia la regola 7 di `CLAUDE.md`. Nuova tabella `secrets`. Il controllo dei segreti (§4.6, punto 5) verifica anche i `secret:`. Serve una procedura per cambiare la chiave principale. I backup contengono solo testo cifrato e la chiave principale si conserva a parte.
+
+## D26 · Stima dell'MVP: 47–68 giornate — 20/10/2026
+
+**Sostituisce D23**, che diceva 40–57.
+**Decisione:** per D24 e D25 il piano sale a 47–68 giornate (circa 9½–13½ settimane): le tracce audio con i suggerimenti (+5–8, in M5) e le connessioni guidate con le chiavi cifrate (+2–3, in M2). Le due opzioni di D23 restano fuori dalla stima base; con entrambe sono 52–75 giornate.
+**Conseguenze:** stime grossolane, da rivedere dopo il test reale di M1.

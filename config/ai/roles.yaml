@@ -123,4 +123,27 @@ roles:
   composer:
     label: Compositore
     kind: music
-    enabled: false                            # fornitore da scegliere in M5
+    model: music-elevenlabs
+    instructions: composer@1                  # template del prompt audio, senza LLM
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.60 }        # circa 3 minuti di musica
+    enabled: false                            # si accende in T5.4, quando il fornitore è verificato
+
+  sfx_artist:
+    label: Rumorista
+    kind: sfx
+    instructions: sfx_artist@1
+    retries: { technical_error: 2 }
+    budget: { max_usd_per_call: 0.10 }
+    enabled: false                            # il fornitore degli effetti sonori è da ricercare (T5.4)
+
+  sound_planner:
+    label: Sound designer
+    kind: llm
+    model: claude-sonnet
+    fallbacks: [claude-haiku]
+    params: { temperature: 0.6, max_tokens: 3000 }
+    instructions: sound_planner@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+    budget: { max_usd_per_call: 0.15 }

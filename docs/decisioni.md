@@ -7,14 +7,14 @@ Ogni voce: data, decisione, perché, alternative scartate, conseguenze. Una deci
 **Decisione:** monorepo TypeScript: NestJS per API e worker (BullMQ), React con Vite per l'interfaccia, schemi Zod condivisi. Python arriverà come servizio separato quando servirà (controllo dei volti, modelli locali), collegato alla troupe come una connessione.
 **Perché:** il prodotto orchestra chiamate ad API, non esegue modelli. Per questo lavoro TypeScript e Python si equivalgono, mentre due linguaggi costano ogni giorno: schemi duplicati, una chiamata di rete interna, due deploy.
 **Scartate:** NestJS + FastAPI (il piano iniziale del contesto); Python unico.
-**Conseguenze:** le analisi dei dati si fanno con notebook esterni che leggono gli scontrini; nessuna libreria "solo Python" nel prodotto finché non serve davvero.
+**Conseguenze:** le analisi dei dati si fanno con notebook esterni che leggono gli scontrini; nessuna libreria "solo Python" nel prodotto finché non serve davvero. _Per il database, la coda e la distribuzione vale D29: SQLite, coda interna, app locale._
 
 ## D2 · Configurazione della troupe nel database, con pannello admin da subito — 19/10/2026
 
 **Decisione:** in esercizio la configurazione vive nel database e si modifica dal pannello: bozza → prova → pubblicazione → storico. I file YAML servono come seme, come copia in git e per test e bench.
 **Perché:** cambiare modelli, parametri e istruzioni senza fare un deploy.
 **Scartate:** solo file nel repository (più semplice, ma ogni cambio richiede un deploy).
-**Conseguenze:** circa 5–7 giornate prima delle funzioni per l'utente. Il pannello arriva subito dopo il test di coerenza (M2), così il test non aspetta.
+**Conseguenze:** circa 5–7 giornate prima delle funzioni per l'utente. Il pannello arriva subito dopo il test di coerenza (M2), così il test non aspetta. _Dal 20/10 la configurazione sta in SQLite e il pannello è per chiunque usi l'app, in «Impostazioni avanzate» (D29)._
 
 ## D3 · Codice in inglese — 19/10/2026
 
@@ -41,7 +41,7 @@ Ogni voce: data, decisione, perché, alternative scartate, conseguenze. Una deci
 ## D7 · fal come primo fornitore di immagini e video — 19/10/2026
 
 **Perché:** un'API per molti modelli, coda con webhook firmati.
-**Rischio:** dipendenza da un aggregatore, con prezzi a volte più alti dell'accesso diretto. È mitigato dagli adapter: l'accesso diretto a un fornitore è un adapter in più.
+**Rischio:** dipendenza da un aggregatore, con prezzi a volte più alti dell'accesso diretto. È mitigato dagli adapter: l'accesso diretto a un fornitore è un adapter in più. _In locale si usa solo il polling, perché fal non consegna webhook a indirizzi locali (D29)._
 
 ## D8 · Bibbia in tabelle + JSONB, assemblata come oggetto unico — 19/10/2026
 
@@ -58,7 +58,7 @@ Sintassi semplice, sicura per template modificati dal pannello, e una modalità 
 
 ## D11 · Drizzle ORM (da confermare in M0) — 19/10/2026
 
-SQL leggibile e JSONB tipizzato con Zod. Alternativa: Prisma.
+SQL leggibile e JSONB tipizzato con Zod. Alternativa: Prisma. _Dal 20/10 il database è SQLite e i campi JSON sono testo validato con Zod (D29); si conferma all'inizio di M2._
 
 ## D12 · Server-Sent Events per gli aggiornamenti live — 19/10/2026
 
@@ -103,7 +103,7 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 **Decisione:** i personaggi del film li crea Filmzy. L'utente può caricare luoghi e oggetti; un'immagine con persone si rifiuta con un messaggio semplice, dopo un controllo con un modello con visione.
 **Perché:** non si distingue con certezza una foto vera da un'immagine generata. Con un volto reale servono il consenso della persona e il rispetto delle regole dei fornitori (art. 612-quater c.p.; Seedance e Google rifiutano i volti realistici). Il diritto d'autore dei personaggi generati da noi non è il problema; restano i marchi e i personaggi noti, che il moderatore già blocca, e le somiglianze involontarie.
 **Scartate:** accettare immagini con persone «dichiarate inventate» dall'utente: la dichiarazione non si può verificare.
-**Conseguenze:** non si importano personaggi fatti con altri strumenti. Servono un controllo delle immagini caricate e un controllo del testo di ritocco (architettura §10). Funzione `image_upload`, spenta finché il controllo non esiste.
+**Conseguenze:** non si importano personaggi fatti con altri strumenti. Servono un controllo delle immagini caricate e un controllo del testo di ritocco (architettura §10). Funzione `image_upload`, spenta finché il controllo non esiste. _Dal 20/10 è un'impostazione prudente di default, non un obbligo: in un programma aperto non si può imporre (D28, D29)._
 
 ## D20 · Il ruolo delle immagini nell'inquadratura lo sceglie l'utente — 20/10/2026
 
@@ -151,13 +151,13 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 
 **Perché:** chi amministra non è per forza tecnico: deve poter collegare un fornitore senza toccare file e server.
 **Scartate:** solo variabili d'ambiente (ogni cambio richiede accesso al server); chiavi per utente («porta la tua chiave»): dipende dal modello di guadagno, ancora da decidere, e per chi non è tecnico significa aprire account presso più fornitori. Si potrà aggiungere dopo, senza rifare nulla.
-**Conseguenze:** cambia la regola 7 di `CLAUDE.md`. Nuova tabella `secrets`. Il controllo dei segreti (§4.6, punto 5) verifica anche i `secret:`. Serve una procedura per cambiare la chiave principale. I backup contengono solo testo cifrato e la chiave principale si conserva a parte.
+**Conseguenze:** cambia la regola 7 di `CLAUDE.md`. Nuova tabella `secrets`. Il controllo dei segreti (§4.6, punto 5) verifica anche i `secret:`. Serve una procedura per cambiare la chiave principale. I backup contengono solo testo cifrato e la chiave principale si conserva a parte. _Aggiornata da D29: le chiavi stanno nel portachiavi del sistema operativo, non nel database, e non c'è `SECRETS_MASTER_KEY`. La procedura guidata resta, per chiunque usi l'app e non solo per un amministratore._
 
 ## D26 · Stima dell'MVP: 47–68 giornate — 20/10/2026
 
 **Sostituisce D23**, che diceva 40–57.
 **Decisione:** per D24 e D25 il piano sale a 47–68 giornate (circa 9½–13½ settimane): le tracce audio con i suggerimenti (+5–8, in M5) e le connessioni guidate con le chiavi cifrate (+2–3, in M2). Le due opzioni di D23 restano fuori dalla stima base; con entrambe sono 52–75 giornate.
-**Conseguenze:** stime grossolane, da rivedere dopo il test reale di M1. _Aggiornata da D27._
+**Conseguenze:** stime grossolane, da rivedere dopo il test reale di M1. _Aggiornata da D27 e sostituita da D32._
 
 ## D27 · Il caricamento di file audio è ammesso, con condizioni — 20/10/2026
 
@@ -172,4 +172,51 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 **Perché:** un programma di montaggio non verifica i diritti dei file dell'utente, e riconoscere l'audio uno per uno è sproporzionato per l'MVP. Bastano gli strumenti di sempre: dichiarazione, condizioni d'uso, segnalazione e rimozione. Inviare i file ai fornitori sarebbe invece un rischio per l'account API (come D19 per i volti).
 **Differenza dai programmi di montaggio:** un editor gira sul computer dell'utente; Filmzy, se lo gestisce l'autore, ospita i file sui suoi server. Chi ospita risponde dei contenuti che conosce o che gli vengono segnalati, e deve rimuoverli. Il codice aperto non cambia questo obbligo per il servizio gestito dall'autore; cambia per chi lo installa per conto proprio. Prima di aprire il servizio al pubblico serve una consulenza legale, come già per i volti reali (questa non è consulenza legale).
 **Scartate:** controllare i file con un riconoscimento dell'audio (costo e falsi positivi); escludere i file audio (D24).
-**Conseguenze:** nuova origine `uploaded` per le clip audio; la traccia Dialoghi funziona per le registrazioni caricate; il pannello del blocco ha «Carica un file»; funzione `audio_upload`, che l'amministratore può spegnere. Circa +1–2 giornate: l'MVP sale a 48–70 giornate (53–77 con le due opzioni). `CLAUDE.md`: tolto il divieto di file audio, aggiunto quello di inviarli ai fornitori.
+**Conseguenze:** nuova origine `uploaded` per le clip audio; la traccia Dialoghi funziona per le registrazioni caricate; il pannello del blocco ha «Carica un file»; funzione `audio_upload`, che l'amministratore può spegnere. Circa +1–2 giornate: l'MVP sale a 48–70 giornate (53–77 con le due opzioni). `CLAUDE.md`: tolto il divieto di file audio, aggiunto quello di inviarli ai fornitori. _Dal 20/10 le condizioni su dichiarazione dei diritti, segnalazione e rimozione, `audio_upload` e hosting sono superate (D28, D29): resta che i file caricati non vanno mai ai fornitori AI._
+
+## D28 · Software libero con licenza AGPL-3.0, sostenuto da donazioni — 20/10/2026
+
+**Decisione:** Filmzy è software libero con licenza **AGPL-3.0**. Non c'è un servizio gestito dall'autore, non ci sono account né pagamenti: ognuno usa il programma sul proprio computer con le proprie chiavi. Il progetto si sostiene con donazioni (un link nel repository e nel README). Il programma è fornito «così com'è»: chi lo usa risponde dei file che carica e dei contenuti che crea e pubblica, e il README contiene un avviso di uso responsabile.
+**Perché:** nessun costo di gestione né rischio economico per l'autore; nessun obbligo di ospitare, moderare o rimuovere i contenuti degli altri; un buon progetto da portfolio e da comunità. La AGPL impedisce di chiudere una copia modificata per rivenderla: chi la pubblica, anche solo come servizio online, deve mettere a disposizione il codice.
+**Scartate:** un servizio a crediti gestito dall'autore (costi, pagamenti, IVA, obblighi da ospitante); un servizio gratuito per tutti sostenuto da donazioni (un film da 60 s costa 11–66 $ di API: le donazioni non bastano); la licenza MIT (più diffusione, ma nessuna protezione dalle copie chiuse).
+**Conseguenze:** `LICENSE` nella radice. Il repository può diventare pubblico quando l'autore vuole, dopo `LICENSE`, avviso nel README e link alle donazioni (nella cronologia non ci sono segreti). I costi dei fornitori sono dell'utente (D30). Le impostazioni prudenti (moderatore, solo persone generate, dicitura AI) restano di default ma non sono imposte: proteggono l'account dell'utente. Non è consulenza legale.
+
+## D29 · Filmzy gira in locale, come app per il desktop con Electron — 20/10/2026
+
+**Aggiorna** parti di D1 (database, coda e distribuzione), D2 (configurazione e pannello admin), D7 (webhook di fal), D11 (Drizzle, ora con SQLite), D19 (la regola sulle persone) e D25 (le chiavi).
+**Decisione:** il programma è un'app per Windows, macOS e Linux, impacchettata con Electron e installabile con un doppio clic, con aggiornamenti da GitHub Releases. Prima dell'installatore si lavora con un'app locale che parte da riga di comando.
+- **Dati:** SQLite (con Drizzle) nella cartella dell'app; i file dei progetti in cartelle locali, un film una cartella; un progetto si esporta e si importa come copia di sicurezza.
+- **Lavori:** un solo processo. La coda è interna e salvata in SQLite, così i lavori ripartono dopo un riavvio. Niente Redis, BullMQ, MinIO, R2, Docker né Caddy.
+- **Fornitori:** solo polling. La verifica dei webhook non si implementa.
+- **Chiavi:** nel portachiavi del sistema operativo (Electron `safeStorage`), inserite dall'utente da Impostazioni > Connessioni.
+- **Eliminati:** account, ruoli, crediti, pagamenti, segnalazioni e rimozioni. La configurazione avanzata della troupe diventa «Impostazioni avanzate».
+- **Nessuna telemetria** parte da sola.
+
+**Perché:** coerente con D28. Chi non programma non installa Node e pnpm: serve un installatore. Un solo processo e un solo file di database sono più semplici da impacchettare e da far funzionare ovunque.
+**Scartate:** una modalità server accanto a quella locale (doppio lavoro da mantenere): le interfacce `ConfigSource`, `AssetStore`, `ReceiptSink` e la coda restano pulite, così potrebbe tornare un giorno; Tauri (più leggero, ma richiederebbe un Node incluso a parte).
+**Conseguenze:** cambiano T0.2, M2, T3.1, T4.3 e T6.4 (vedi il piano). Servono la firma del codice e gli aggiornamenti automatici (M6). Drizzle con SQLite si conferma all'inizio di M2. `apps/worker` sparisce e nasce `apps/desktop`.
+
+## D30 · Costi reali in dollari, con tetti di spesa regolabili — 20/10/2026
+
+**Sostituisce** i crediti e la caparra (`hold`, `capture`, `void`) del contesto e di D26.
+**Decisione:** l'utente paga i fornitori con le proprie chiavi. Prima di ogni generazione la troupe stima il costo (`troupe.estimate`) e l'interfaccia lo mostra in dollari («circa 1,20 $»). I tetti sono su tre livelli, tutti regolabili o eliminabili dall'utente:
+1. **per chiamata**, nel ruolo (`budget.max_usd_per_call`): un freno tecnico contro gli errori;
+2. **per film** (`limits.film_budget_usd`, predefinito 50 $), con conferma sopra `limits.confirm_above_usd`;
+3. **mensile**, facoltativo, impostabile quando si collega un fornitore o si configura un modello (`monthly_cap_usd`).
+
+Superato il tetto del film o del mese, il programma lo dice e l'utente decide se alzarlo o proseguire: sono impostazioni, non muri. Solo il tetto per chiamata ferma una generazione (`budget_exceeded`). La spesa si calcola dagli scontrini. Il programma ricorda anche di impostare un limite di spesa nel pannello del fornitore.
+**Perché:** i costi sono veri (11–66 $ per un film da 60 s) e chi li paga deve vederli prima, ma deve poter decidere: sono i suoi soldi e il suo account.
+**Conseguenze:** nuovo errore `spend_cap_reached`. Il modulo `credits` diventa `spend`. I prompt per Figma 01, 02 e 04 citano crediti e saldo: li riallinea il 05.
+
+## D31 · Dicitura sì, marcatura C2PA opzionale dopo l'MVP — 20/10/2026
+
+**Cambia** il piano: la marcatura C2PA esce dall'MVP.
+**Decisione:** la dicitura «Contiene contenuti generati con intelligenza artificiale» resta nei titoli, attiva di default. La marcatura leggibile dalle macchine (C2PA) diventa un'opzione dopo l'MVP (`c2pa_marking`). I metadati e le filigrane dei fornitori non si rimuovono, ma l'esportazione ricodifica i video, quindi non è garantito che sopravvivano.
+**Perché:** l'obbligo principale di marcare i contenuti sintetici (AI Act, art. 50, par. 2) ricade sui fornitori dei sistemi che li generano, cioè i servizi di AI generativa. Resta incerto se Filmzy, che assembla contenuti di più servizi e li ricodifica, conti anch'esso come fornitore: l'esenzione per il software libero (art. 2, par. 12) esclude proprio l'art. 50. L'etichetta nei titoli non costa nulla e copre il caso più semplice.
+**Conseguenze:** da far verificare a un legale prima di una versione 1.0 pubblica (non è consulenza legale). Chi pubblica contenuti realistici ha comunque propri obblighi di trasparenza.
+
+## D32 · Stima dell'MVP in locale: 47–69 giornate — 20/10/2026
+
+**Sostituisce D26** (e con esso D23 e la cifra di D27).
+**Decisione:** il piano in locale vale 47–69 giornate (circa 9½–14 settimane); con le due opzioni (caricamento di immagini e ritocco col pennello) 52–76. Si risparmia su accesso, crediti, deploy, webhook e C2PA; si aggiungono impacchettamento e aggiornamenti, tetti di spesa e procedura guidata, SQLite e coda interna, esportazione dei progetti e prove su tre sistemi operativi.
+**Conseguenze:** stime grossolane, da rivedere dopo M1 e dopo il primo installatore.

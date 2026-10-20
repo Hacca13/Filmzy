@@ -14,9 +14,7 @@ const HOST_HEADER_PATTERN = /^(?<hostname>\[[0-9a-f:]+\]|[a-z0-9.-]+)(?::\d{1,5}
  * browser manda comunque il dominio dell'attaccante nell'header Host, quindi basta rifiutarlo.
  */
 export function isLocalHostHeader(hostHeader: string | undefined): boolean {
-  const hostname = hostHeader
-    ? HOST_HEADER_PATTERN.exec(hostHeader)?.groups?.['hostname']
-    : undefined;
+  const hostname = hostHeader ? HOST_HEADER_PATTERN.exec(hostHeader)?.groups?.hostname : undefined;
   return hostname !== undefined && LOCAL_HOSTNAMES.has(hostname.toLowerCase());
 }
 

@@ -242,3 +242,17 @@ Superato il tetto del film o del mese, il programma lo dice e l'utente decide se
 
 **Perché:** un solo comando che non si dimentica nessun controllo; versioni fissate e non appena uscite, per ridurre i rischi della catena di fornitura; Windows in CI perché lo sviluppo avviene anche lì.
 **Conseguenze:** D11 (Drizzle) si conferma all'inizio di M2, come già detto in D29. I pacchetti dei prossimi task si aggiungono in `packages/` e `apps/` senza toccare la radice.
+
+## D35 · Server locale NestJS 12 e interfaccia React + Vite (T0.2) — 20/10/2026
+
+**Decisione:**
+- **NestJS 12.1.2**, scritto in moduli ES come i nostri package: la domanda di D34 («ESM o CommonJS?») si chiude, i package restano solo ES e non serve compilarli in CommonJS. Decoratori con `experimentalDecorators` e `emitDecoratorMetadata`, che funzionano anche nei test con Vitest 5.
+- **Interfaccia:** React 19.3.0, Vite 8.3.2, `@vitejs/plugin-react` 6.1.1. Un solo `getJson` per tutte le chiamate al server, che controlla la risposta con lo schema Zod del contratto e distingue tre errori (rete, HTTP, formato).
+- **Contratto condiviso** (`@filmzy/contracts`, ora con Zod 4.6.5): risposta di `GET /api/health`, prefisso `api`, indirizzo e porta del server. Il nome della variabile `FILMZY_API_PORT` e il suo controllo stanno in un posto solo (`readApiPort`), usato da server e proxy.
+- **`.env` facoltativo**, nella radice del repository. Le variabili già nell'ambiente battono il file; il proxy di Vite lo legge con la stessa regola (altrimenti, con una porta personalizzata, server e proxy finiscono su porte diverse: difetto trovato e corretto nella rilettura).
+- **Sicurezza del server locale:** solo `127.0.0.1`, rifiuto dell'header `Host` non locale (DNS rebinding), nessun CORS, nessun `x-powered-by` (architettura §10).
+- **`pnpm dev`** lancia con Turborepo il server (`nest start --watch`), l'interfaccia (`vite`) e la compilazione continua di `contracts`. Un cambio ai contratti ricompila ma non riavvia il server: va riavviato `pnpm dev`.
+- **Un'unica `createApp()`** configura il server, usata sia da `main.ts` sia dai test: si prova la configurazione vera.
+
+**Perché:** il criterio di T0.2 è che da un clone pulito `pnpm install && pnpm dev` avvii tutto, senza Docker: provato su un clone pulito, con le due pagine e il proxy interrogati.
+**Conseguenze:** nessuna prova automatica del rendering dell'interfaccia (serve un DOM di test: si aggiunge con le prime schermate vere). Le versioni sono tutte uscite da oltre due settimane; `pnpm audit` non segnala vulnerabilità.

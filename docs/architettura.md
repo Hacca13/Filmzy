@@ -22,7 +22,7 @@ Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e per
 |---|---|---|
 | Linguaggio | TypeScript strict, ovunque | un solo linguaggio; contratti condivisi tra interfaccia e backend |
 | Monorepo | pnpm workspaces + Turborepo | build e test incrementali |
-| API | NestJS, come server locale | moduli e dependency injection: la struttura è guidata dal framework; gira sul computer dell'utente, in un solo processo |
+| API | NestJS 12 (moduli ES), come server locale | moduli e dependency injection: la struttura è guidata dal framework; gira sul computer dell'utente, in un solo processo, solo su `127.0.0.1` |
 | Lavori lunghi | coda interna al processo, salvata in SQLite | nuovi tentativi, limiti di concorrenza, ripresa dopo la chiusura del programma; nessun Redis |
 | Interfaccia | React + Vite (SPA) | la logica sta nel backend; l'interfaccia mostra e invia |
 | Database | SQLite + Drizzle ORM | un file nella cartella dell'app, nessun servizio da installare; JSON tipizzato con Zod |
@@ -464,6 +464,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 ## 10. Sicurezza, privacy e responsabilità
 
 - **Tutto resta sul computer.** Progetti, file, scontrini e chiavi non lasciano la macchina dell'utente. L'unico traffico in uscita va ai fornitori che l'utente ha collegato, con le sue chiavi. Nessuna telemetria e nessun rapporto di errori partono da soli: la diagnostica si esporta a mano.
+- **Server locale (D35):** ascolta solo su `127.0.0.1`, quindi non è raggiungibile da altri computer della rete. Rifiuta ogni richiesta il cui header `Host` non sia locale (`localhost`, `127.0.0.1`, `[::1]`): è la difesa contro il DNS rebinding, con cui una pagina web malevola potrebbe parlare al server dal browser dell'utente. Non abilita CORS (in sviluppo l'interfaccia passa dal proxy di Vite, quindi l'origine è una) e non dichiara il framework nelle intestazioni. Quando arriveranno le operazioni che modificano dati, si aggiunge anche il controllo dell'header `Origin` contro le richieste da altri siti.
 - **Chiavi (D25, D29):** nel portachiavi del sistema operativo, in sola scrittura per l'interfaccia («Chiave collegata ••••1a2b»), mai nei log né negli export (`pnpm troupe export` scrive solo i riferimenti). Per i test e lo sviluppo valgono le variabili d'ambiente (`env:`).
 - **Responsabilità (D28):** il programma è software libero (AGPL-3.0), fornito «così com'è». L'utente risponde dei file che carica, dei contenuti che crea e di come li pubblica, e rispetta le condizioni dei fornitori che ha scelto. Il README spiega l'uso responsabile.
 - **Impostazioni prudenti di default.** In un programma aperto non si possono imporre, ma proteggono l'account dell'utente dai blocchi dei fornitori: moderatore sui testi prima di ogni spesa (persone reali o famose, minori, contenuti vietati; la politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata), solo persone generate da Filmzy (D19) e dicitura «Contiene contenuti generati con intelligenza artificiale» nei titoli. L'utente può cambiarle dalle impostazioni avanzate, e un'avvertenza spiega cosa rischia.

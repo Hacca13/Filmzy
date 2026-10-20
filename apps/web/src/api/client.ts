@@ -1,3 +1,5 @@
+import { API_PREFIX } from '@filmzy/contracts';
+
 /** Qualunque oggetto che sa controllare un dato sconosciuto (gli schemi Zod di `@filmzy/contracts`). */
 export interface Parser<T> {
   parse(input: unknown): T;
@@ -18,7 +20,7 @@ export class ApiError extends Error {
 }
 
 /** Tutte le rotte del server stanno sotto questo prefisso (in sviluppo le inoltra il proxy di Vite). */
-const API_PREFIX = '/api';
+const API_BASE_PATH = `/${API_PREFIX}`;
 
 interface GetJsonOptions {
   /** Per annullare la chiamata, per esempio quando il componente sparisce dallo schermo. */
@@ -39,7 +41,7 @@ export async function getJson<T>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetchImpl(`${API_PREFIX}${path}`, { signal });
+    response = await fetchImpl(`${API_BASE_PATH}${path}`, { signal });
   } catch (cause) {
     throw new ApiError('network_error', 'Il server locale non risponde.', { cause });
   }

@@ -1,12 +1,10 @@
+import { API_PREFIX } from '@filmzy/contracts';
 import type { NestApplicationOptions } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module.js';
 import { rejectNonLocalHost } from './security/local-host.js';
-
-/** Prefisso di tutte le rotte: l'interfaccia chiama `/api/...`. */
-export const API_PREFIX = 'api';
 
 /**
  * Crea il server con tutte le impostazioni comuni. Lo usano sia l'avvio vero (`main.ts`) sia i

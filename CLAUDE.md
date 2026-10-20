@@ -87,6 +87,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 | Immagine dell'inquadratura (ispirazione, primo, ultimo fotogramma) | `ShotImage` (`reference`, `first_frame`, `last_frame`) |
 | Movimento di macchina | `CameraMovement` |
 | Ritocco, maschera | `Retouch`, `Mask` |
+| Moodboard, palette, riferimento | `Moodboard`, `Color`, `MoodReference` |
 | Traccia audio, clip audio | `AudioTrack`, `AudioClip` |
 | Chiave del fornitore (segreto) | `Secret` |
 | Inquadratura, scheda inquadratura | `Shot`, `ShotSpec` |
@@ -106,7 +107,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 
 ## Ruoli della troupe
 
-`moderator` Moderatore · `casting` Direttore del casting · `screenwriter` Sceneggiatore · `shot_planner` Aiuto regista · `cinematographer` Direttore della fotografia · `character_designer` Character designer · `set_designer` Scenografo · `retoucher` Ritocco · `storyboard_artist` Storyboard (modi `storyboard` e `end_frame`) · `camera_operator` Operatore di ripresa · `script_supervisor` Segretaria di edizione · `composer` Compositore · `sfx_artist` Rumorista · `sound_planner` Sound designer. Più avanti: `voice_actor`, `lip_sync`, `dialogue_adapter`.
+`moderator` Moderatore · `casting` Direttore del casting · `screenwriter` Sceneggiatore · `shot_planner` Aiuto regista · `cinematographer` Direttore della fotografia · `character_designer` Character designer · `set_designer` Scenografo · `moodboard_designer` Moodboard · `moodboard_artist` Immagini del moodboard · `image_analyst` Analista di immagini · `retoucher` Ritocco · `storyboard_artist` Storyboard (modi `storyboard` e `end_frame`) · `camera_operator` Operatore di ripresa · `script_supervisor` Segretaria di edizione · `composer` Compositore · `sfx_artist` Rumorista · `sound_planner` Sound designer. Più avanti: `voice_actor`, `lip_sync`, `dialogue_adapter`.
 
 ## Come aggiungere
 

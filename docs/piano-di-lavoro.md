@@ -24,7 +24,8 @@ _Versione 3 · 20 ottobre 2026 · Filmzy è software libero e gira in locale (D2
 | **Totale MVP** (senza opzioni) | | **47–69** (circa 9½–14 settimane) |
 | Opzione: caricamento di luoghi e oggetti | T4.8 | +2–3 |
 | Opzione: ritocco col pennello | T4.9 | +3–4 |
-| **Con tutte le opzioni** | | **52–76** (circa 10½–15 settimane) |
+| Opzione: moodboard del film e delle scene (D37) | T4.10 | +3–4 |
+| **Con tutte le opzioni** | | **55–80** (circa 11–16 settimane) |
 
 ### Cosa è cambiato il 20/10/2026
 
@@ -38,7 +39,7 @@ Le cifre sono stime grossolane, da rivedere dopo M1 e dopo il primo installatore
 ### Perimetro dell'MVP
 
 - **Dentro:** il flusso con bozza e stesura, i luoghi, il controllo dei fotogrammi, «usa un fotogramma del video come punto di partenza», le tracce di musica ed effetti con «Suggerisci i suoni» e il caricamento di file audio propri (anche una voce fuori campo), la pagina Connessioni, i tetti di spesa e l'app installabile.
-- **Opzioni con la funzione spenta** (si decide a metà di M4, dopo T4.7): caricamento di luoghi e oggetti, ritocco col pennello.
+- **Opzioni con la funzione spenta** (si decide a metà di M4, dopo T4.7): caricamento di luoghi e oggetti, ritocco col pennello, moodboard.
 - **Dopo l'MVP:** marcatura C2PA, modifica vera del video (`video_edit`), generazione delle voci e labiale (Fase 2), timeline libera (Fase 3). Una modalità server non è prevista (D29).
 
 ## Prima di iniziare
@@ -187,11 +188,14 @@ _Fatto quando:_ una foto di una stanza si carica; una foto con una persona viene
 **T4.9 Ritocco col pennello** (+3–4 giornate). Funzione `retouch`: editor con maschera, `retoucher` (togli, sostituisci, cambia colore) con «Cambia servizio» (T3.1), regole R3 e R6, controllo del testo (D21).
 _Fatto quando:_ si toglie un oggetto da un'immagine del set e le inquadrature che la usano diventano gialle.
 
+**T4.10 Moodboard** (+3–4 giornate). Funzione `moodboard` (D37), da fare a piccoli passi: (1) tabelle, contratti e modulo `moodboard` con palette e consigli modificabili a mano; (2) ruolo `moodboard_designer` e ruolo `moodboard_artist` (immagini di riferimento, con «Cambia servizio»); (3) caricamento di immagini e ruolo `image_analyst` (descrizione, atmosfera, luce, controllo di persone e marchi; colori dominanti calcolati dal codice); (4) il campo `moodboard` negli ingressi dei ruoli che scrivono o generano immagini, la sorgente «Dal moodboard» in «Imposta le immagini» e la regola R9. Le istruzioni dei tre ruoli si scrivono insieme all'autore.
+_Fatto quando:_ un film senza moodboard funziona come prima; con un moodboard generato o caricato, palette e consigli arrivano alle istruzioni del direttore della fotografia; un'immagine con una persona viene rifiutata con un messaggio semplice; cambiare la palette fa ingiallire in modo leggero i take già girati.
+
 ## M5 — Continuità, suoni e montaggio (9–14 giornate)
 
 _Leggere: architettura §5.5, §8 e §9._
 
-**T5.1** Regole R1–R8, con segnalazioni gialle (R4 e R8 con avviso leggero) e motivo.
+**T5.1** Regole R1–R8 (R9 arriva con il moodboard, T4.10), con segnalazioni gialle (R4 e R8 con avviso leggero) e motivo.
 **T5.2** Segretaria di edizione sulle incoerenze di trama.
 **T5.3** Azioni sul giallo: Rigenera o Ignora.
 **T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.

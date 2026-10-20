@@ -134,3 +134,30 @@ export * from './roles/llm.js';
 export * from './roles/media.js';
 export * from './roles/audio.js';
 export * from './roles/shared.js';
+
+export {
+  GENERATION_PURPOSES,
+  generationContextSchema,
+  generationPurposeSchema,
+  modelOptionSchema,
+} from './generation.js';
+export type { GenerationContext, GenerationPurpose, ModelOption } from './generation.js';
+export {
+  GENERATION_STATUSES,
+  generationReceiptSchema,
+  generationStatusSchema,
+  generationUsageSchema,
+  receiptInstructionsRefSchema,
+} from './receipt.js';
+export type {
+  GenerationReceipt,
+  GenerationStatus,
+  GenerationUsage,
+  ReceiptInstructionsRef,
+} from './receipt.js';
+export { estimateSchema, spendCapSchema } from './spend.js';
+export type { Estimate, SpendCap } from './spend.js';
+export { instructionsRefSchema, roleSettingsSchema, userSettingsSchema } from './settings.js';
+export type { InstructionsRef, RoleSettings, UserSettings } from './settings.js';
+export { domainEventSchema } from './events.js';
+export type { DomainEvent } from './events.js';

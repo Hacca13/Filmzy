@@ -1,4 +1,9 @@
-export { CONFIG_ENVIRONMENTS, configEnvironmentFromEnv } from './config/environments.js';
+export {
+  applyEnvironmentOverlay,
+  CONFIG_ENVIRONMENTS,
+  configEnvironmentFromEnv,
+  loadEnvironmentOverlay,
+} from './config/environments.js';
 export type { ConfigEnvironment } from './config/environments.js';
 export { hasErrors } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';

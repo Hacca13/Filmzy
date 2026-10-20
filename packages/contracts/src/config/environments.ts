@@ -13,9 +13,10 @@ export const environmentKeySchema = z.union([configKeySchema, z.literal('*')]);
 /**
  * Sovrapposizione d'ambiente (architettura §4.5, `config/ai/environments/<env>.yaml`): sopra la
  * release attiva (o il seme), sotto gli override di singola chiamata. Ogni sezione e ogni campo
- * sono facoltativi: qui si valida solo la forma, non la fusione profonda, che è di T0.4.
+ * sono facoltativi, ma una sezione che non si può sovrapporre è un errore e non un silenzio:
+ * altrimenti un file d'ambiente sembrerebbe funzionare senza cambiare nulla.
  */
-export const environmentFileSchema = z.object({
+export const environmentFileSchema = z.strictObject({
   connections: z.record(environmentKeySchema, connectionSchema.partial()).optional(),
   roles: z.record(
     environmentKeySchema,

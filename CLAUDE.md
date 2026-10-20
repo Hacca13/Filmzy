@@ -38,12 +38,12 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 
 ## Regole d'oro
 
-1. **Il codice chiama ruoli, mai modelli:** `troupe.run(role, input)` e `troupe.submit(role, input)`. Nessuna libreria o `fetch` verso fornitori AI fuori da `packages/troupe/src/adapters/`.
+1. **Il codice chiama ruoli, mai modelli:** `troupe.run(role, input)` e `troupe.submit(role, input)`. Nessuna libreria o `fetch` verso fornitori AI fuori da `packages/troupe/src/adapters/`. Il servizio che l'utente sceglie per una generazione viaggia come `modelId` facoltativo della richiesta (D36): è un dato, mai scritto nel codice.
 2. **Nel codice non ci sono nomi di modelli, URL dei fornitori, temperature o testi di prompt.** Stanno nella configurazione della troupe (impostazioni avanzate e `config/`). La CI blocca le violazioni: non aggirarla.
 3. **Contratti prima:** ogni dato che attraversa un confine ha uno schema Zod in `packages/contracts`. Prima lo schema, poi il codice.
 4. **Ogni chiamata a un fornitore produce uno scontrino**, anche se fallisce.
 5. **I test non spendono:** nei test le connessioni sono `fake`. Non scrivere test che chiamano fornitori veri.
-6. **Riserve solo per errori tecnici.** `content_rejected` si ferma lì: mai provare un altro modello per aggirare un rifiuto.
+6. **Riserve solo per errori tecnici.** `content_rejected` si ferma lì: mai provare un altro modello per aggirare un rifiuto. Il servizio scelto dall'utente per una generazione è un requisito: se non è adatto, `no_eligible_model` con un messaggio semplice, mai un altro servizio in silenzio (D36).
 7. **Nessun segreto nel repository:** nella configurazione solo `env:NOME` oppure `secret:NOME` (le chiavi inserite dall'utente, nel portachiavi del sistema); `.env` resta fuori da git.
 8. **La logica sta nel backend.** L'interfaccia mostra e invia, non decide.
 9. **Lavori lunghi in coda.** Nessuna chiamata a un modello immagine o video dentro una richiesta HTTP.
@@ -68,6 +68,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - **Leggibile.** Nomi parlanti per variabili e funzioni; funzioni corte con una sola responsabilità. I commenti spiegano il *perché* (una scelta, un vincolo, un rischio), non ripetono cosa fa la riga.
 - **Efficiente.** Niente lavoro ripetuto in un ciclo, niente file letti due volte, niente attese inutili; le operazioni indipendenti si lanciano insieme.
 - **Sicuro, anche se gira in locale.** Il server ascolta solo su `127.0.0.1` e rifiuta richieste con un `Host` che non è locale (contro il DNS rebinding); gli input si validano al confine con lo schema Zod; le chiavi non finiscono mai nei log, negli errori o negli export; nessun `eval`, nessun comando di shell costruito con testo dell'utente (si passano gli argomenti a parte); i percorsi dei file si controllano prima di leggerli o scriverli.
+- **Gestisci sempre gli errori.** Ogni operazione che può fallire (fornitori, rete, file, database, input) ha una gestione esplicita: un errore del dominio con il suo codice (`content_rejected`, `budget_exceeded`, …) e, per l'utente, un messaggio chiaro e semplice nell'interfaccia: mai un'eccezione grezza né una schermata vuota. Nessun errore si ignora in silenzio: un `catch` vuoto è ammesso solo con un commento che spiega perché ignorarlo è sicuro. L'errore va nel registro (senza chiavi né dati personali), ciò che l'operazione ha lasciato a metà si ripulisce (file parziali, lavori in coda, spesa contata due volte) e ogni caso d'errore previsto ha un test.
 - **Prima della pull request si rilegge tutto il diff** con questi criteri (e con le skill `simplify` e `code-review` se è grande), si correggono i problemi e si scrive nel resoconto cosa è cambiato.
 
 ## Glossario
@@ -93,6 +94,8 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 | Continuità, giallo | `ContinuityState`, `ContinuityFlag` |
 | Troupe, ruolo | `Troupe`, `Role` |
 | Connessione, catalogo dei modelli | `Connection`, `ModelEntry` |
+| Servizio (il modello che l'utente sceglie per una generazione) | `ModelEntry`, `modelId`, `ModelOption` |
+| Scelte dell'utente (servizi attivati, predefiniti, tetti) | `UserSettings`, tabella `settings` |
 | Istruzioni | `Instructions` (`id@version`) |
 | Bozza, release | `TroupeDraft`, `TroupeRelease` |
 | Traduttore | `Translator` |
@@ -124,7 +127,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 
 - Non introdurre LangChain, LlamaIndex o framework agentici.
 - Non aggirare i filtri dei fornitori né il moderatore.
-- Non mostrare all'utente finale prompt, nomi di modelli o parametri.
+- Non mostrare all'utente finale prompt, id tecnici dei modelli o parametri. Il nome amichevole di un servizio (`label` del catalogo), con costo e voto, sì: serve a scegliere (D36).
 - Non accendere `real_people` senza una decisione registrata e la consulenza legale.
 - Non togliere le impostazioni prudenti di default (moderatore, solo persone generate, dicitura AI nei titoli): l'utente le può cambiare, ma con un'avvertenza (D19, D28).
 - Non accettare di default immagini con persone caricate dall'utente e non ritoccare foto di persone: i personaggi li crea Filmzy (D19).

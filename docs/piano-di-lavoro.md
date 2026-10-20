@@ -57,7 +57,7 @@ _Fatto quando:_ `pnpm check` (lint, typecheck, test, build e stile) passa in loc
 **T0.2 Ambiente locale.** `.env.example` per lo sviluppo; `apps/api` (server locale) e `apps/web` vuote ma avviabili.
 _Fatto quando:_ da un clone pulito, `pnpm install && pnpm dev` avvia tutto, senza Docker.
 
-**T0.3 Contratti di base.** In `packages/contracts`: ruoli con schemi di input e output (§5.3, compresi i tre modi dello sceneggiatore, il casting con tag e dettagli, `set_designer`, `retoucher` e i due modi di `storyboard_artist`), ShotSpec 0.2 con le immagini, Bibbia con profilo del personaggio e proposte della bozza, scontrino, stime e tetti di spesa, eventi, schemi della configurazione (connessioni e modelli con `monthly_cap_usd`, catalogo con `input_modes`, ruoli, istruzioni, preset, funzioni e limiti, ambienti, piano di bench).
+**T0.3 Contratti di base.** In `packages/contracts`: ruoli con schemi di input e output (§5.3, compresi i tre modi dello sceneggiatore, il casting con tag e dettagli, `set_designer`, `retoucher` e i due modi di `storyboard_artist`), ShotSpec 0.2 con le immagini, Bibbia con profilo del personaggio e proposte della bozza, scontrino, stime e tetti di spesa, eventi, schemi della configurazione (connessioni e modelli con `monthly_cap_usd`, catalogo con `input_modes` e `label`, ruoli, istruzioni, preset, funzioni e limiti, ambienti, piano di bench). Per la scelta del servizio (D36, architettura §5.6): `modelId` facoltativo sulle richieste di generazione, `ModelOption`, le scelte dell'utente (`UserSettings`: servizi attivati, predefiniti, tetti), `modelId` e `requestedModelId` nello scontrino e nel take. In più i codici di errore del dominio, tra cui `no_eligible_model`.
 _Fatto quando:_ ci sono test di validazione su esempi validi e non validi.
 
 **T0.4 Validatore della configurazione.** `ConfigSource` da file, risoluzione di `env:` e `secret:`, adattamenti d'ambiente con `"*"`, controlli di §4.6, hash; comando `pnpm troupe check`.
@@ -85,8 +85,8 @@ _Fatto quando:_ un'immagine, una modifica e un video reali vengono generati e sa
 **T1.4 Traduttori.** `kling`, `seedance`, `gemini_omni`, `image_generic`; segnaposto `[[char:id]]`; durata, formato e risoluzione portati ai valori ammessi; modi d'ingresso della voce scelta (riferimenti, primo e ultimo fotogramma, D20).
 _Fatto quando:_ la stessa ShotSpec produce tre richieste valide, verificate su fixture, e una richiesta con primo e ultimo fotogramma per le famiglie che la accettano.
 
-**T1.5 Router.** Filtro, ordinamento per politica, riserve.
-_Fatto quando:_ ci sono test unitari sui casi principali: durata non ammessa, troppi riferimenti, tetto per chiamata superato, volti reali richiesti, combinazione di immagini non supportata (nessun declassamento in silenzio).
+**T1.5 Router.** Filtro, ordinamento per politica, riserve; servizio scelto dall'utente come requisito (`modelId`, D36) e `troupe.options`.
+_Fatto quando:_ ci sono test unitari sui casi principali: durata non ammessa, troppi riferimenti, tetto per chiamata superato, volti reali richiesti, combinazione di immagini non supportata (nessun declassamento in silenzio), servizio scelto non attivato o non adatto (`no_eligible_model`, senza passare a un altro).
 
 **T1.6 Bench e valutazioni.** `apps/bench`: `pnpm bench run <piano>` esegue la matrice e salva in `bench-output/<run>/` video, scontrini e un report HTML con voto alla cieca; `pnpm bench score` calcola i take usabili e il costo per secondo usabile. `pnpm eval <ruolo>` per i ruoli LLM, con i primi esempi fissi per il direttore della fotografia. Un secondo piano può provare il modo con primo e ultimo fotogramma.
 _Fatto quando:_ report e punteggi si generano con il fornitore finto.
@@ -117,15 +117,15 @@ _Fatto quando:_ si vede il risultato prima di pubblicare.
 **T2.6 Pubblica, storico, ripristino.** Differenze rispetto alla release attiva, nota obbligatoria, ripristino come nuova release.
 _Fatto quando:_ un ripristino riporta la configurazione precedente in meno di un minuto.
 
-**T2.7 Connessioni e chiavi.** Chiavi nel portachiavi del sistema (Electron `safeStorage`), riferimenti `secret:NOME` accanto a `env:NOME`, in sola scrittura, mai nei log né negli export (D25, D29). Procedura guidata al primo avvio e pagina «Impostazioni > Connessioni»: «Collega un fornitore» in tre passi (fornitore, chiave con «Prova la connessione», modelli da aggiungere con un eventuale tetto di spesa mensile), dettaglio del fornitore (Modelli, Chiave, Chi lo usa) e pagina «Chi fa cosa». Un promemoria invita a impostare un limite di spesa anche nel pannello del fornitore. Ogni adapter ha una prova di connessione che non costa.
+**T2.7 Connessioni e chiavi.** Chiavi nel portachiavi del sistema (Electron `safeStorage`), riferimenti `secret:NOME` accanto a `env:NOME`, in sola scrittura, mai nei log né negli export (D25, D29). Procedura guidata al primo avvio e pagina «Impostazioni > Connessioni»: «Collega un fornitore» in tre passi (fornitore, chiave con «Prova la connessione», modelli da aggiungere con un eventuale tetto di spesa mensile), dettaglio del fornitore (Modelli, Chiave, Chi lo usa) e pagina «Chi fa cosa». I servizi attivati e il predefinito di ogni ruolo si salvano nella tabella `settings` e valgono subito, senza pubblicare una release (D36). Un promemoria invita a impostare un limite di spesa anche nel pannello del fornitore. Ogni adapter ha una prova di connessione che non costa.
 _Fatto quando:_ da una chiave incollata nella procedura il programma chiama il fornitore; la chiave non si rivede più dopo l'inserimento e non compare in nessun log né export; una chiave sbagliata dà «Chiave non valida».
 
 ## M3 — Storia, personaggi e luoghi (10–14 giornate)
 
 _Leggere: architettura §3.1, §5 e §6; contesto del progetto, "Flusso utente" (con le modifiche del 20/10: D18)._
 
-**T3.1 Costi e tetti di spesa.** La stima della troupe mostrata in dollari prima di ogni generazione; tetti per chiamata, per film (`film_budget_usd`) e mensile (`monthly_cap_usd`); conferma sopra `confirm_above_usd`; spesa calcolata dagli scontrini; errore `spend_cap_reached` (D30).
-_Fatto quando:_ una generazione che supera il tetto del film chiede conferma e l'utente può alzare il tetto o proseguire; il tetto per chiamata la ferma; i test sui calcoli passano.
+**T3.1 Costi, tetti di spesa e scelta del servizio.** La stima della troupe mostrata in dollari prima di ogni generazione; tetti per chiamata, per film (`film_budget_usd`) e mensile (`monthly_cap_usd`), salvati nella tabella `settings`; conferma sopra `confirm_above_usd`; spesa calcolata dagli scontrini; errore `spend_cap_reached` (D30). Il componente condiviso «Cambia servizio» (D36): chiede a `troupe.options` l'elenco dei servizi attivati e adatti, con nome, costo stimato e voto delle prove, e la stima segue il servizio scelto. Lo riusano tutti i pulsanti «Genera» di immagini, video e suoni (T3.6, T3.7, T4.1, T4.3, T5.5).
+_Fatto quando:_ una generazione che supera il tetto del film chiede conferma e l'utente può alzare il tetto o proseguire; il tetto per chiamata la ferma; cambiando servizio cambiano nome, costo e stima mostrati; i test sui calcoli passano.
 
 **T3.2 Progetto.** Wizard "La tua idea": idea, genere, tono, stile, fotografia e durata, tutto dai preset. Il progetto ricorda la sua fase (§3.1).
 _Fatto quando:_ si crea un film in meno di un minuto senza leggere un termine tecnico.
@@ -139,10 +139,10 @@ _Fatto quando:_ la bozza ha scene riassunte e proposte di personaggi e luoghi; o
 **T3.5 Casting.** Numero di personaggi (non oltre `limits.max_characters`), proposte dalla bozza e durante le scene, tag e dettagli facoltativi; card Aggiungi / Cambia / Scarta; il cast attuale è sempre nell'input.
 _Fatto quando:_ le proposte sono quante richieste, rispettano trama e stile, senza doppioni; i dettagli facoltativi si possono ignorare e le istruzioni funzionano anche a campi vuoti.
 
-**T3.6 Schede personaggio.** Character designer a tre angolazioni, scelta, blocco del volto.
+**T3.6 Schede personaggio.** Character designer a tre angolazioni, scelta, blocco del volto; «Cambia servizio» (T3.1).
 _Fatto quando:_ un personaggio bloccato ha tre immagini di riferimento salvate.
 
-**T3.7 Luoghi.** `set_designer`: 3–4 immagini per luogo, scelta; i luoghi scelti entrano nella Bibbia con le immagini di riferimento.
+**T3.7 Luoghi.** `set_designer`: 3–4 immagini per luogo, scelta; i luoghi scelti entrano nella Bibbia con le immagini di riferimento; «Cambia servizio» (T3.1).
 _Fatto quando:_ ogni luogo ha un'immagine scelta e salvata.
 
 **T3.8 Riepilogo e stesura ufficiale.** Confronto, fatto dal codice, tra la bozza e la Bibbia (collegamento `proposalId`); per ogni differenza «Adatta la storia», «Cambia la mia scelta» o «Va bene così»; il passo si salta se non ci sono differenze. Poi la stesura ufficiale (`screenwriter` in modo `final`), modificabile come testo, con versioni.
@@ -158,14 +158,14 @@ _Fatto quando:_ `pnpm eval` produce un report per ognuno.
 
 _Leggere: architettura §4.7–4.11, §5.2 e §7._
 
-**T4.1 Storyboard.** Due o tre varianti per inquadratura, scelta.
+**T4.1 Storyboard.** Due o tre varianti per inquadratura, scelta; «Cambia servizio» (T3.1).
 _Fatto quando:_ la variante scelta diventa il riferimento visivo della card.
 
 **T4.2 Imposta le immagini.** Funzione `keyframes`. Per ogni inquadratura l'utente imposta immagini come ispirazione, primo o ultimo fotogramma (generate o prese da un take); il movimento si sceglie da una lista; l'ultimo fotogramma mancante lo genera `storyboard_artist` in modo `end_frame`; il router rispetta la scelta (D20).
 _Fatto quando:_ l'utente fissa primo e ultimo fotogramma e il take parte da lì; con una combinazione che nessun modello accetta riceve un messaggio semplice, senza spese e senza declassamenti in silenzio.
 
-**T4.3 Take video.** Pipeline completa di §7: stima, tetti, coda, polling, copia, spesa.
-_Fatto quando:_ un take compare nella card e lo scontrino riporta il costo reale.
+**T4.3 Take video.** Pipeline completa di §7: stima, tetti, coda, polling, copia, spesa. «Genera» ha accanto «Cambia servizio» (T3.1): la richiesta porta il `modelId` scelto, il router lo tratta come requisito (`no_eligible_model` con un messaggio semplice, mai un altro servizio in silenzio) e lo scontrino e il take registrano il servizio che ha lavorato davvero (D36).
+_Fatto quando:_ un take compare nella card e lo scontrino riporta il costo reale; lo stesso movimento rigenerato con un altro servizio dà un secondo take che dice con quale servizio è stato fatto; un servizio non adatto alla richiesta è rifiutato senza spese.
 
 **T4.4 Aggiornamenti live.** SSE per lo stato delle card.
 _Fatto quando:_ la card passa da "in lavorazione" a "pronto" senza ricaricare la pagina.
@@ -196,7 +196,7 @@ _Leggere: architettura §5.5, §8 e §9._
 **T5.3** Azioni sul giallo: Rigenera o Ignora.
 **T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.
 _Fatto quando:_ musica ed effetti hanno un fornitore scelto e collegato dalla pagina Connessioni, e la scelta è registrata in `docs/decisioni.md`.
-**T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`. Caricamento di file propri su qualunque traccia; i file caricati non vanno mai a un fornitore AI (D27).
+**T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`; «Cambia servizio» per musica ed effetti (T3.1). Caricamento di file propri su qualunque traccia; i file caricati non vanno mai a un fornitore AI (D27).
 _Fatto quando:_ la musica di una scena e un effetto su un'inquadratura si generano, si cambiano tra le varianti e si eliminano senza toccare il video; un file caricato finisce nel mix senza uscire dal computer.
 **T5.6** Editor delle tracce: Video (audio originale spento), Dialoghi (registrazioni caricate, come voce fuori campo), Musica ed Effetti, con muto e volume; pannello del blocco (descrizione, «Genera», «Cambia», «Carica un file», «Elimina»).
 **T5.7** Montaggio: normalizzazione con l'audio originale tolto, concatenazione, mix delle tracce con livellamento del volume, titoli con la dicitura AI.

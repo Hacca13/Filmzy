@@ -49,6 +49,18 @@ export const shotCharacterSchema = z.object({
 
 export type ShotCharacter = z.infer<typeof shotCharacterSchema>;
 
+/** Cosa succede nell'inquadratura (architettura §5.2): la parte di `ShotSpec` che legge il direttore della fotografia. */
+export const shotIntentSchema = z.object({
+  action: z.string().min(1),
+  emotion: z.string().min(1),
+  framing: z.string().min(1),
+  cameraMovement: configKeySchema,
+  lighting: z.string().min(1),
+  durationS: z.number().positive(),
+});
+
+export type ShotIntent = z.infer<typeof shotIntentSchema>;
+
 /** Sostituzione della fotografia del film per una singola inquadratura (architettura §5.2). */
 export const cinematographyOverrideSchema = z.object({
   camera: z.string().min(1).optional(),
@@ -69,14 +81,7 @@ export const shotSpecSchema = z.object({
   id: shotIdSchema,
   sceneId: sceneIdSchema,
   order: z.number().int().nonnegative(),
-  intent: z.object({
-    action: z.string().min(1),
-    emotion: z.string().min(1),
-    framing: z.string().min(1),
-    cameraMovement: configKeySchema,
-    lighting: z.string().min(1),
-    durationS: z.number().positive(),
-  }),
+  intent: shotIntentSchema,
   characters: z.array(shotCharacterSchema),
   location: z.object({
     locationId: locationIdSchema,

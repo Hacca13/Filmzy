@@ -101,6 +101,7 @@ export {
   continuityStateSchema,
   shotCharacterSchema,
   shotImageSchema,
+  shotIntentSchema,
   shotSpecSchema,
   takeSchema,
 } from './shot.js';
@@ -109,6 +110,27 @@ export type {
   ContinuityState,
   ShotCharacter,
   ShotImage,
+  ShotIntent,
   ShotSpec,
   Take,
 } from './shot.js';
+export {
+  acceptedElementSchema,
+  screenplayCharacterProposalSchema,
+  screenplayLocationProposalSchema,
+  screenplaySceneSchema,
+  screenplaySchema,
+} from './screenplay.js';
+export type {
+  AcceptedElement,
+  Screenplay,
+  ScreenplayCharacterProposal,
+  ScreenplayLocationProposal,
+  ScreenplayScene,
+} from './screenplay.js';
+export { ROLE_IDS, ROLE_IO, roleIdSchema } from './roles.js';
+export type { RoleId } from './roles.js';
+export * from './roles/llm.js';
+export * from './roles/media.js';
+export * from './roles/audio.js';
+export * from './roles/shared.js';

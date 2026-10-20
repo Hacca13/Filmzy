@@ -164,7 +164,7 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 |---|---|---|
 | **Connessioni** | come si raggiunge un fornitore? | `adapter` (famiglia di protocollo), `base_url` (anche un gateway o un proxy LLM), `api_key` (`env:NOME` o `secret:NOME`), `http_proxy`, `timeout_s`, `max_concurrency`, `delivery` (in locale sempre `polling`), `media_retention`, `data_region`, `monthly_cap_usd` (tetto di spesa mensile, facoltativo), `enabled` |
 | **Catalogo dei modelli** | cosa sa fare, e quanto costa? | `label` (il nome che vede l'utente, D36), `kind`, `connection`, `provider_model`, `family`, `capabilities`, `params` accettati con i limiti, `pricing` con data di verifica, `quality` (voti delle prove), `status` (`active`, `testing`, `retired`), `monthly_cap_usd` (facoltativo) |
-| **Ruoli** | chi fa cosa, e come? | `model` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `budget` (tetto per chiamata), `enabled` |
+| **Ruoli** | chi fa cosa, e come? | `model` oppure `routing` (candidati + politica), `params`, `instructions` (`id@versione`), `prompt_from`, `output_strategy`, `retries`, `enabled` |
 
 **Un punto d'accesso, un modo (D20).** Ogni voce del catalogo è un punto d'accesso, cioè un id presso il fornitore, e dichiara in `capabilities.input_modes` le combinazioni di ingressi che accetta: `references`, `first_frame`, `first_frame+last_frame`, `references+first_frame`… Un modello che si usa in più modi ha più voci, con lo stesso `family` e il proprio prezzo. Per i modelli immagine, `image_edit` dice se modificano un'immagine data (serve al ritocco e all'ultimo fotogramma) e `mask_edit` se accettano una maschera vera. Il valore `unknown` conta come «no» per il router: solo il bench può provarlo.
 
@@ -279,7 +279,7 @@ interface Translator {
 
 Per i ruoli con `routing` (storyboard e operatore):
 
-1. **Filtra** i candidati per stato, tipo e capacità richieste: durata, numero di personaggi e di riferimenti, audio, volti reali, minori, prezzo entro il budget, modo d'ingresso scelto dall'utente (`input_modes`) e `image_edit` per il ritocco e l'ultimo fotogramma. Sono esclusi i servizi che l'utente non ha attivato (D36).
+1. **Filtra** i candidati per stato, tipo e capacità richieste: durata, numero di personaggi e di riferimenti, audio, volti reali, minori, modo d'ingresso scelto dall'utente (`input_modes`) e `image_edit` per il ritocco e l'ultimo fotogramma. Sono esclusi i servizi che l'utente non ha attivato (D36).
 2. **Ordina** secondo la politica (`cheap`, `balanced`, `quality`), pesando qualità (voti delle prove per tipo di inquadratura), costo e tempo. Il servizio predefinito dell'utente, se adatto, passa in testa.
 3. **Restituisce** il principale (il primo della lista ordinata). Gli altri candidati servono a `troupe.options`: **non sono riserve**, perché se il servizio fallisce il lavoro si ferma e decide l'utente (D36).
 
@@ -289,10 +289,10 @@ A parità di richiesta, di release e di scelte dell'utente il risultato è sempr
 
 - Se la richiesta porta un `modelId`, il router lo verifica tra tutti i servizi attivati e del tipo giusto, non solo tra i candidati del ruolo: l'utente può scegliere anche un servizio che il ruolo non usa di solito.
 - **«Adatto»** vuol dire che passa i filtri del punto 1 e anche i controlli di §4.6 che altrimenti valgono solo per i candidati del ruolo: i `params` del ruolo sono accettati dal servizio (punto 3), esiste un traduttore per la sua famiglia e ha le capacità che il ruolo richiede (punto 9). Una variante delle istruzioni per la sua famiglia non serve: senza, vale la base.
-- Se è adatto, è il principale. Se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, combinazione di immagini non accettata, parametri non accettati) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Se costa più del tetto per chiamata del ruolo, `budget_exceeded` con la cifra (§4.10): il tetto si alza dalle impostazioni avanzate. Non si passa mai a un altro servizio in silenzio.
+- Se è adatto, è il principale. Se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, combinazione di immagini non accettata, parametri non accettati) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Non si passa mai a un altro servizio in silenzio.
 - **Nessuna riserva.** Se il servizio fallisce, il lavoro si ferma con l'errore e l'utente decide se riprovare o cambiare servizio (§4.10). Lo scontrino dice quale servizio ha lavorato.
 
-`troupe.options(role, input, ctx)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro né quelli oltre il tetto per chiamata; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
+`troupe.options(role, input, ctx)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
 
 **Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
 
@@ -316,7 +316,6 @@ Ogni errore arriva all'interfaccia con un **codice**, l'indicazione `retryable` 
 | `invalid_output` | risposta fuori schema | sì, con riparazione | riprovare |
 | `content_rejected` | il fornitore rifiuta il contenuto | no | cambiare la richiesta: non si aggira con un altro servizio |
 | `image_rejected` | immagine caricata con persone, marchi o minori (D19) | no | usare un'altra immagine |
-| `budget_exceeded` | stima oltre il tetto per chiamata del ruolo (anche per il servizio scelto, D36) | no | scegliere un servizio meno caro |
 | `spend_cap_reached` | la stima supera un limite scelto dall'utente (film o mese) e lui non conferma | no | alzare il limite o proseguire |
 | `no_eligible_model` | nessun servizio soddisfa i requisiti, compreso quello scelto dall'utente (D36) | no | cambiare scelta o attivare un altro servizio |
 | `config_invalid`, `role_disabled` | configurazione | no | correggere le impostazioni |

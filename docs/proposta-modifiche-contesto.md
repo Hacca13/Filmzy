@@ -63,7 +63,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 ### Costi e tetti di spesa: sostituire «Sistema a crediti dal primo giorno»
 
 > - Non ci sono crediti: l'utente paga i servizi con le proprie chiavi. Prima di ogni generazione il programma mostra una stima in dollari («circa 1,20 $»).
-> - Tre tetti, che l'utente regola o toglie: per chiamata (un freno tecnico contro gli errori), per film (50 $ di partenza, con conferma sopra una cifra scelta) e mensile per servizio o modello. Superato un tetto il programma lo dice e l'utente decide se proseguire; lo storyboard resta il «cancello» prima della spesa sul video.
+> - Limiti facoltativi, nessuno preimpostato: mensile per fornitore (si sceglie quando lo si aggiunge), per film e «chiedi conferma sopra una cifra». Il programma mostra quanto si è speso e quanto manca, avvisa quando ci si avvicina al limite e quando lo si raggiunge, e l'utente decide se proseguire; lo storyboard resta il «cancello» prima della spesa sul video.
 > - Il programma ricorda di impostare un limite di spesa anche nel pannello di ogni servizio.
 
 ### Nuova sezione: Moodboard (D37)

@@ -56,7 +56,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - Codice in inglese; interfaccia, istruzioni e documenti in italiano.
 - Configurazione in snake_case; oggetti del dominio e variabili delle istruzioni in camelCase.
 - Un modulo NestJS per dominio (`apps/api/src/modules/<modulo>`); niente logica nei controller.
-- Errori del dominio con codici (`content_rejected`, `budget_exceeded`, …); i messaggi per l'utente stanno nell'interfaccia.
+- Errori del dominio con codici (`content_rejected`, `spend_cap_reached`, …); i messaggi per l'utente stanno nell'interfaccia.
 - Migrazioni Drizzle generate e committate insieme al cambio di schema.
 - Test accanto al codice (`*.test.ts`); fixture dei fornitori in `packages/troupe/test/fixtures/`.
 - Niente `any` senza un commento che spieghi perché.
@@ -68,7 +68,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 - **Leggibile.** Nomi parlanti per variabili e funzioni; funzioni corte con una sola responsabilità. I commenti spiegano il *perché* (una scelta, un vincolo, un rischio), non ripetono cosa fa la riga.
 - **Efficiente.** Niente lavoro ripetuto in un ciclo, niente file letti due volte, niente attese inutili; le operazioni indipendenti si lanciano insieme.
 - **Sicuro, anche se gira in locale.** Il server ascolta solo su `127.0.0.1` e rifiuta richieste con un `Host` che non è locale (contro il DNS rebinding); gli input si validano al confine con lo schema Zod; le chiavi non finiscono mai nei log, negli errori o negli export; nessun `eval`, nessun comando di shell costruito con testo dell'utente (si passano gli argomenti a parte); i percorsi dei file si controllano prima di leggerli o scriverli.
-- **Gestisci sempre gli errori.** Ogni operazione che può fallire (fornitori, rete, file, database, input) ha una gestione esplicita: un errore del dominio con il suo codice (`content_rejected`, `budget_exceeded`, …) e, per l'utente, un messaggio chiaro e semplice nell'interfaccia: mai un'eccezione grezza né una schermata vuota. L'errore arriva all'interfaccia con codice, `retryable` e dettagli (ruolo, servizio, campo), così si capisce perché è fallito e cosa fare. Nessun errore si ignora in silenzio: un `catch` vuoto è ammesso solo con un commento che spiega perché ignorarlo è sicuro. L'errore va nel registro (senza chiavi né dati personali), ciò che l'operazione ha lasciato a metà si ripulisce (file parziali, lavori in coda, spesa contata due volte) e ogni caso d'errore previsto ha un test.
+- **Gestisci sempre gli errori.** Ogni operazione che può fallire (fornitori, rete, file, database, input) ha una gestione esplicita: un errore del dominio con il suo codice (`content_rejected`, `spend_cap_reached`, …) e, per l'utente, un messaggio chiaro e semplice nell'interfaccia: mai un'eccezione grezza né una schermata vuota. L'errore arriva all'interfaccia con codice, `retryable` e dettagli (ruolo, servizio, campo), così si capisce perché è fallito e cosa fare. Nessun errore si ignora in silenzio: un `catch` vuoto è ammesso solo con un commento che spiega perché ignorarlo è sicuro. L'errore va nel registro (senza chiavi né dati personali), ciò che l'operazione ha lasciato a metà si ripulisce (file parziali, lavori in coda, spesa contata due volte) e ogni caso d'errore previsto ha un test.
 - **Prima della pull request si rilegge tutto il diff** con questi criteri (e con le skill `simplify` e `code-review` se è grande), si correggono i problemi e si scrive nel resoconto cosa è cambiato.
 
 ## Glossario

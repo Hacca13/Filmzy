@@ -12,7 +12,6 @@ roles:
     instructions: moderator@1
     output_strategy: auto
     retries: { invalid_output: 1, technical_error: 2 }
-    budget: { max_usd_per_call: 0.01 }
 
   casting:
     label: Direttore del casting
@@ -22,7 +21,6 @@ roles:
     instructions: casting@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.15 }
 
   screenwriter:
     label: Sceneggiatore
@@ -32,7 +30,6 @@ roles:
     instructions: screenwriter@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.50 }
 
   shot_planner:
     label: Aiuto regista
@@ -42,7 +39,6 @@ roles:
     instructions: shot_planner@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.30 }
 
   cinematographer:
     label: Direttore della fotografia
@@ -52,7 +48,6 @@ roles:
     instructions: cinematographer@1           # varianti per famiglia: v1.seedance.md, v1.image_generic.md
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.05 }
 
   script_supervisor:
     label: Segretaria di edizione
@@ -62,7 +57,6 @@ roles:
     instructions: script_supervisor@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.10 }
 
   character_designer:
     label: Character designer
@@ -71,7 +65,6 @@ roles:
     params: { resolution: 1k, aspect_ratio: "3:4" }
     instructions: character_designer@1        # template del prompt immagine, senza LLM
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.20 }
 
   set_designer:
     label: Scenografo
@@ -80,7 +73,6 @@ roles:
     params: { resolution: 1k, aspect_ratio: "16:9", variants: 3 }
     instructions: set_designer@1              # template del prompt immagine, senza LLM; il luogo porta già il suo prompt in inglese
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.30 }
 
   retoucher:
     label: Ritocco
@@ -89,7 +81,6 @@ roles:
     params: { resolution: 1k }
     instructions: retoucher@1
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.20 }
 
   storyboard_artist:
     label: Storyboard
@@ -101,7 +92,6 @@ roles:
     # Due modi: "storyboard" (varianti da riferimenti) e "end_frame" (ultimo fotogramma, modifica il primo: richiede image_edit, quindi il router lascia solo i modelli che lo dichiarano)
     params: { variants: 3, aspect_ratio: "16:9", resolution: 1k }
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.30 }
 
   camera_operator:
     label: Operatore di ripresa
@@ -112,7 +102,6 @@ roles:
     prompt_from: cinematographer
     params: { resolution: 720p, aspect_ratio: "16:9", audio: false }
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 2.00 }
 
   composer:
     label: Compositore
@@ -120,7 +109,6 @@ roles:
     model: music-elevenlabs
     instructions: composer@1                  # template del prompt audio, senza LLM
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.60 }        # circa 3 minuti di musica
     enabled: false                            # si accende in T5.4, quando il fornitore è verificato
 
   sfx_artist:
@@ -128,7 +116,6 @@ roles:
     kind: sfx
     instructions: sfx_artist@1
     retries: { technical_error: 2 }
-    budget: { max_usd_per_call: 0.10 }
     enabled: false                            # il fornitore degli effetti sonori è da ricercare (T5.4)
 
   sound_planner:
@@ -139,4 +126,3 @@ roles:
     instructions: sound_planner@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
-    budget: { max_usd_per_call: 0.15 }

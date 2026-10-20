@@ -1,7 +1,7 @@
 # Connessioni: COME si raggiunge un fornitore.
 # Seme della configurazione: in esercizio si modifica da Impostazioni (docs/architettura.md §4.5).
 # Le chiavi non stanno mai qui: solo "env:NOME" (obbligatoria), "env:NOME?" (facoltativa) o "secret:NOME" (chiave nel portachiavi del sistema).
-# monthly_cap_usd (facoltativo): tetto di spesa mensile della connessione, che l'utente imposta quando la collega (D30).
+# monthly_cap_usd (facoltativo): valore iniziale del tetto di spesa mensile della connessione (D30); quello che l'utente sceglie quando la collega sta nelle sue impostazioni (D36).
 version: 1
 
 connections:

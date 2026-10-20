@@ -38,7 +38,7 @@ pnpm bench run config/bench/week1.yaml    # a mano: costa
 
 ## Regole d'oro
 
-1. **Il codice chiama ruoli, mai modelli:** `troupe.run(role, input)` e `troupe.submit(role, input)`. Nessuna libreria o `fetch` verso fornitori AI fuori da `packages/troupe/src/adapters/`. Il servizio che l'utente sceglie per una generazione viaggia come `modelId` facoltativo della richiesta (D36): è un dato, mai scritto nel codice.
+1. **Il codice chiama ruoli, mai modelli:** `troupe.run(role, input)` e `troupe.submit(role, input)`. Nessuna libreria o `fetch` verso fornitori AI fuori da `packages/troupe/src/adapters/`. Il servizio che l'utente sceglie per una generazione viaggia come `modelId` facoltativo nel `ctx` della richiesta (D36): è un dato, mai scritto nel codice.
 2. **Nel codice non ci sono nomi di modelli, URL dei fornitori, temperature o testi di prompt.** Stanno nella configurazione della troupe (impostazioni avanzate e `config/`). La CI blocca le violazioni: non aggirarla.
 3. **Contratti prima:** ogni dato che attraversa un confine ha uno schema Zod in `packages/contracts`. Prima lo schema, poi il codice.
 4. **Ogni chiamata a un fornitore produce uno scontrino**, anche se fallisce.

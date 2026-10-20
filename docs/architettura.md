@@ -117,11 +117,13 @@ L'interfaccia pubblica di `packages/troupe`:
 troupe.run(role, input, ctx)      // ruoli LLM: risposta tipizzata e scontrino
 troupe.submit(role, input, ctx)   // ruoli immagine e video: lavoro lungo, restituisce l'id presso il fornitore
 troupe.collect(receiptId, event)  // completa il lavoro quando il polling lo trova finito
-troupe.estimate(role, input)      // costo previsto, per la stima e i tetti di spesa
-troupe.options(role, input)       // i servizi tra cui l'utente può scegliere per questa richiesta, ognuno con nome, costo stimato e voto (D36)
+troupe.estimate(role, input, ctx) // costo previsto e servizio che lavorerà, per la stima e i tetti di spesa
+troupe.options(role, input, ctx)  // i servizi tra cui l'utente può scegliere per questa richiesta, ognuno con nome, costo stimato e voto (D36)
 ```
 
-`submit`, `estimate` e `options` accettano un `modelId` facoltativo: il servizio che l'utente ha scelto per questa singola generazione di immagini, video, musica o effetti. Per il router è un requisito, non un suggerimento (§4.8). I ruoli LLM (`run`) lavorano sempre con il loro predefinito: la scelta per generazione non li riguarda. Il codice non scrive mai un `modelId` di suo: lo riceve dall'utente, da una voce del catalogo.
+`ctx` dice chi chiede e perché (progetto, inquadratura, scopo) e, per le generazioni di immagini, video, musica ed effetti, può portare un `modelId`: il servizio che l'utente ha scelto per questa singola generazione. Sta nel `ctx` e non nell'input del ruolo, quindi non entra negli schemi di §5.3; fa però parte della chiave di idempotenza e dell'hash della richiesta, così rigirare la stessa inquadratura con un altro servizio non è un doppione. Per il router è un requisito, non un suggerimento (§4.8). Il codice non scrive mai un `modelId` di suo: lo riceve dall'utente, da una voce del catalogo.
+
+`estimate` restituisce anche il servizio **fissato**, cioè quello scelto o, senza scelta, il predefinito: il lavoro in coda usa quello, anche se nel frattempo le impostazioni cambiano. I ruoli LLM (`run`) lavorano sempre con il loro predefinito: la scelta per generazione non li riguarda.
 
 ### 4.2 I ruoli
 
@@ -163,11 +165,13 @@ Il montaggio non è un ruolo: è deterministico (ffmpeg) e vive in `packages/med
 
 **Le scelte dell'utente non sono configurazione tecnica (D36).** Connessioni, catalogo e ruoli sono JSON validato dentro le release, uguale per ogni tipo di servizio (immagini, video, musica): non c'è una tabella per tipo, solo il campo `kind`, e le Impostazioni raggruppano per tipo. Quello che l'utente cambia ogni giorno sta invece nella tabella `settings` (§6) e vale subito, senza una pubblicazione:
 
-- i **servizi attivati**: l'elenco di quelli che compaiono in «Cambia servizio». Si attivano scegliendoli quando si collega un fornitore («Collega un fornitore», passo 3) o dalla scheda del fornitore. Si attivano solo voci `active` o `testing` (queste ultime con un avviso), con la connessione attiva e la chiave presente; `retired` e gli id segnaposto no. Non si disattiva un servizio che è il predefinito di un ruolo (della release o scelto dall'utente) senza dire a quale ruolo servirebbe;
-- il **servizio predefinito** per ruolo o per tipo, scelto tra quelli attivati e dello stesso tipo del ruolo; nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
-- i **tetti di spesa** (film, conferma, mensile per connessione e modello: D30).
+- i **servizi attivati** (`enabledModelIds`): quelli che il router può usare e che compaiono in «Cambia servizio», di ogni tipo (anche i modelli di testo). Si attivano scegliendoli quando si collega un fornitore («Collega un fornitore», passo 3), che propone già quelli usati dai ruoli della release, o dalla scheda del fornitore. Si attivano solo voci `active` o `testing` (queste ultime con un avviso), con la connessione attiva e la chiave presente (col fornitore finto la chiave non serve); `retired` e gli id segnaposto no. Si può disattivare un servizio: se era l'unico utilizzabile per un ruolo, l'interfaccia lo dice e chiede conferma, e il ruolo si ferma con `no_eligible_model` finché non se ne attiva un altro; un predefinito scelto dall'utente per quel ruolo torna a quello della release;
+- il **servizio predefinito** (`defaultModels`) per ruolo o per tipo; se ci sono sia la voce del ruolo sia quella del tipo, vince il ruolo. Si sceglie tra i servizi attivati, dello stesso tipo del ruolo e con le capacità che il ruolo richiede (§4.6, punto 9). Nei ruoli con `model` prende il posto del modello principale, in quelli con `routing` è il candidato preferito (§4.8);
+- i **tetti di spesa** (film, conferma, mensile per connessione e modello: D30). I valori scritti nella release (`limits.film_budget_usd`, `limits.confirm_above_usd`, `monthly_cap_usd`) sono i valori iniziali; quelli di `settings` li sostituiscono. `pnpm troupe export` scrive solo la release, mai le scelte dell'utente.
 
-Le impostazioni si validano a ogni salvataggio con gli stessi schemi (§5.6) e si leggono insieme alla release attiva.
+Senza scelte dell'utente (file di seme, test, bench, `pnpm troupe check`) valgono come attivate tutte le voci `active` o `testing` della release: il filtro sugli attivati si applica solo quando le impostazioni esistono.
+
+Le impostazioni si validano a ogni salvataggio (§5.6) e si **ricontrollano** a ogni nuova release (anche un ripristino), quando si rimuove una chiave e quando cambia lo stato di un servizio: quello che non è più utilizzabile (ritirato, di un altro tipo, senza chiave) esce dagli attivati e dai predefiniti e l'interfaccia lo dice, invece di far fallire le chiamate una a una. La troupe le riceve dalla `ConfigSource`, insieme alla release attiva, e non legge mai il database (§3).
 
 I parametri dei ruoli usano un vocabolario nostro, normalizzato (`temperature`, `max_tokens`, `resolution: 720p`, `aspect_ratio: "16:9"`…). Adapter e traduttori li convertono nei nomi e nei valori di ciascun fornitore.
 
@@ -175,7 +179,7 @@ Con le stesse regole (validazione, pubblicazione, storico) si gestiscono anche:
 
 - i **preset**: stili, generi, toni, fotografia, tag dei personaggi e movimenti di macchina. L'interfaccia li mostra, i ruoli li usano. Un nuovo stile è un dato, non codice;
 - le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `sound_effects`, `preview_gate`, `keyframes`, `image_upload`, `retouch`, `c2pa_marking`;
-- i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend; `film_budget_usd` (tetto di spesa per film) e `confirm_above_usd` (chiede conferma sopra questa cifra), che l'utente regola o elimina (D30).
+- i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend; `film_budget_usd` (tetto di spesa per film) e `confirm_above_usd` (chiede conferma sopra questa cifra), che l'utente regola o elimina (D30): nella release sono i valori iniziali, quelli scelti dall'utente stanno in `settings` (D36).
 
 Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `config/features.yaml`.
 
@@ -201,7 +205,7 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 **Precedenze al momento dell'uso, dalla più debole alla più forte:**
 
 1. release attiva (o file di seme);
-2. scelte dell'utente (tabella `settings`, D36): servizi attivati, predefiniti per ruolo o tipo, tetti di spesa. Nei test e nel bench non ci sono: la troupe legge solo i file;
+2. scelte dell'utente (tabella `settings`, D36): servizi attivati, predefiniti per ruolo o tipo, tetti di spesa. Se non ci sono (test, bench, file di seme) vale la release, con tutti i servizi attivi (§4.3);
 3. adattamento d'ambiente (`config/ai/environments/<env>.yaml`, nel repository): per esempio il fornitore finto nei test e in `offline`. Sta sopra le scelte dell'utente, così `TROUPE_ENV=offline` usa sempre il fornitore finto, qualunque servizio l'utente abbia attivato. La fusione è profonda, le liste si sostituiscono, la chiave `"*"` vale per tutte le voci di una sezione;
 4. in futuro, esperimenti A/B;
 5. override della singola chiamata, solo per bench e "Prova".
@@ -276,9 +280,14 @@ Per i ruoli con `routing` (storyboard e operatore):
 
 A parità di richiesta, di release e di scelte dell'utente il risultato è sempre lo stesso. Regola pratica: `routing` quando le richieste cambiano forma (una o due persone in scena), `model` + `fallbacks` quando sono tutte uguali.
 
-**Il servizio scelto per una generazione è un requisito (D36).** Se la richiesta porta un `modelId`, il router lo verifica con gli stessi filtri del punto 1, ma tra tutti i servizi attivati dell'utente e del tipo giusto, non solo tra i candidati del ruolo: l'utente può scegliere anche un servizio che il ruolo non usa di solito. Se è adatto, è il principale; se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, tetto per chiamata superato, combinazione di immagini non accettata) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Non si passa mai a un altro servizio in silenzio. Le riserve valgono solo per errori tecnici (§4.10), restano quelle del ruolo che rispettano gli stessi requisiti, e lo scontrino dice quale servizio ha lavorato davvero.
+**Il servizio scelto per una generazione è un requisito (D36).** Il filtro del punto 1 vale per tutti i ruoli di immagini, video e suoni, anche per quelli con `model` + `fallbacks`: per loro non c'è un ordinamento, l'elenco è il modello principale più le riserve, ma il predefinito dell'utente e un `modelId` scelto passano dagli stessi controlli.
 
-`troupe.options(role, input)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
+- Se la richiesta porta un `modelId`, il router lo verifica tra tutti i servizi attivati e del tipo giusto, non solo tra i candidati del ruolo: l'utente può scegliere anche un servizio che il ruolo non usa di solito.
+- **«Adatto»** vuol dire che passa i filtri del punto 1 e anche i controlli di §4.6 che altrimenti valgono solo per i candidati del ruolo: i `params` del ruolo sono accettati dal servizio (punto 3), esiste un traduttore per la sua famiglia e ha le capacità che il ruolo richiede (punto 9). Una variante delle istruzioni per la sua famiglia non serve: senza, vale la base.
+- Se è adatto, è il principale. Se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, combinazione di immagini non accettata, parametri non accettati) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Se costa più del tetto per chiamata del ruolo, `budget_exceeded` con la cifra (§4.10): il tetto si alza dalle impostazioni avanzate. Non si passa mai a un altro servizio in silenzio.
+- **Le riserve** valgono solo per errori tecnici (§4.10) e sono quelle del ruolo che rispettano gli stessi requisiti. Per un servizio scelto dall'utente entrano solo se il loro costo stimato non supera quello che l'utente ha già confermato; altrimenti il lavoro si ferma con l'errore tecnico e l'utente decide se riprovare o cambiare servizio. Lo scontrino dice quale servizio ha lavorato davvero.
+
+`troupe.options(role, input, ctx)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro né quelli oltre il tetto per chiamata; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
 
 **Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione, e le riserve devono rispettarla. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
 
@@ -294,7 +303,7 @@ A parità di richiesta, di release e di scelte dell'utente il risultato è sempr
 | `provider_unavailable`, `timeout`, `rate_limited` | problema tecnico | sì, con attesa crescente | sì, finiti i tentativi |
 | `invalid_output` | risposta fuori schema | sì, con riparazione | sì |
 | `content_rejected` | il fornitore rifiuta il contenuto | no | **no**: ci si ferma, con un messaggio semplice |
-| `budget_exceeded` | stima oltre il tetto per chiamata del ruolo | no | no |
+| `budget_exceeded` | stima oltre il tetto per chiamata del ruolo (anche per il servizio scelto dall'utente, D36) | no | no |
 | `spend_cap_reached` | la stima supera il tetto del film o del mese e l'utente non conferma | no | no |
 | `no_eligible_model` | nessun candidato soddisfa i requisiti, compreso il servizio scelto dall'utente (D36) | no | no |
 | `config_invalid`, `role_disabled` | configurazione | no | no |
@@ -304,7 +313,7 @@ A parità di richiesta, di release e di scelte dell'utente il risultato è sempr
 Ogni chiamata a un fornitore scrive uno scontrino: prodotto, prove dalle impostazioni, valutazioni, bench, tentativi falliti. Contiene:
 
 - **chi e perché:** ruolo, scopo (`product`, `draft_test`, `eval`, `bench`), progetto, inquadratura;
-- **con cosa:** release, hash della configurazione del ruolo, modello (quello che ha lavorato davvero) e, se l'utente ne ha scelto uno, il servizio scelto (D36), connessione, id del modello presso il fornitore, versione e variante delle istruzioni, parametri;
+- **con cosa:** release, hash della configurazione del ruolo, modello (quello che ha lavorato davvero) con il suo nome (`label`) di quel momento e, se l'utente ne ha scelto uno, il servizio scelto (D36), connessione, id del modello presso il fornitore, versione e variante delle istruzioni, parametri;
 - **cosa è successo:** hash dell'input, richiesta (conservata 90 giorni), id della richiesta presso il fornitore, esito, codice d'errore, tentativi, riserva usata;
 - **quanto:** uso (token, secondi, immagini), costo stimato e reale, tempi.
 
@@ -314,8 +323,8 @@ Serve per la spesa e i tetti (D30), il debug e il confronto tra modelli, per ric
 
 | Caso | Passi | Codice |
 |---|---|---|
-| **A. Un LLM nuovo**, di un fornitore già collegato o compatibile con OpenAI | voce nel catalogo dalle impostazioni → validazione → "Prova" sugli esempi fissi del ruolo → assegnazione al ruolo → pubblicazione | nessuno |
-| **B. Un modello immagine o video di una famiglia nota** (per esempio una nuova versione di Kling) | voce nel catalogo con capacità e prezzo → se serve, variante delle istruzioni del direttore della fotografia → bench → voti nel catalogo → aggiunta ai candidati → pubblicazione | di solito nessuno |
+| **A. Un LLM nuovo**, di un fornitore già collegato o compatibile con OpenAI | voce nel catalogo dalle impostazioni (con `label`) → validazione → "Prova" sugli esempi fissi del ruolo → assegnazione al ruolo → pubblicazione → l'utente lo attiva (D36) | nessuno |
+| **B. Un modello immagine o video di una famiglia nota** (per esempio una nuova versione di Kling) | voce nel catalogo con `label`, capacità e prezzo → se serve, variante delle istruzioni del direttore della fotografia → bench → voti nel catalogo → aggiunta ai candidati → pubblicazione → l'utente lo attiva e compare in «Cambia servizio» (D36) | di solito nessuno |
 | **C. Una famiglia o un protocollo nuovi** | traduttore (`packages/troupe/src/translators/<famiglia>.ts`) o adapter (`.../adapters/<nome>.ts`) con test su fixture registrate, registrato nell'indice dei plugin → poi come B | isolato: nessuna modifica alle app |
 
 ### 4.13 Prove
@@ -411,14 +420,16 @@ AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, 
 ### 5.6 Scelta del servizio (D36)
 
 ```ts
+GenerationContext { projectId?, shotId?, purpose, modelId? }            // il ctx di §4.1
 ModelOption { modelId, label, estimatedCostUsd, quality?, isDefault }   // risposta di troupe.options
-UserSettings { enabledModelIds: string[], defaultModels: Record<RoleId | ModelKind, string>, spendCaps }
+UserSettings { enabledModelIds: string[], defaultModels: Partial<Record<RoleId | ModelKind, string>>, spendCaps: SpendCap }
 ```
 
-- `modelId` è facoltativo su ogni richiesta di generazione (storyboard, fotogrammi, schede, immagini del set, take, musica, effetti): senza, decide il predefinito o il router. Con `modelId` il servizio è un requisito (§4.8).
+- `modelId` è facoltativo nel `GenerationContext` di ogni richiesta di generazione (storyboard, fotogrammi, schede, immagini del set, ritocchi, take, musica, effetti): senza, decide il predefinito o il router. Con `modelId` il servizio è un requisito (§4.8). Non sta negli schemi di input dei ruoli (§5.3), ma entra nella chiave di idempotenza e nell'hash della richiesta.
 - `quality` è il voto delle prove del bench per quel tipo di lavoro, assente se il servizio non è stato provato; l'interfaccia lo traduce in un giudizio semplice.
-- Lo scontrino e il take portano `modelId` (il servizio che ha lavorato) e `requestedModelId` (quello scelto dall'utente, nullo se non ha scelto): sono diversi solo se è subentrata una riserva per un errore tecnico.
-- `UserSettings` si valida con gli stessi schemi della configurazione: un predefinito deve essere un servizio attivato, dello stesso tipo del ruolo.
+- Lo scontrino porta `modelId` (il servizio che ha lavorato), `modelLabel` (il suo nome in quel momento, perché il catalogo può cambiare) e `requestedModelId` (quello scelto dall'utente, nullo se non ha scelto): i due id sono diversi solo se è subentrata una riserva. Take, immagini e varianti audio rimandano al loro scontrino (`generation_id`) e non ne copiano i campi.
+- `defaultModels` ha come chiave un ruolo o un tipo (`image`, `video`, …), e per un ruolo vince la sua voce.
+- `UserSettings` si valida con gli stessi schemi della configurazione (§4.3): un predefinito deve essere un servizio attivato, dello stesso tipo del ruolo e con le capacità che il ruolo richiede.
 
 ## 6. Dati (SQLite)
 
@@ -427,9 +438,9 @@ Un solo file nella cartella dell'app; i file dei progetti stanno in cartelle acc
 | Gruppo | Tabelle | Note |
 |---|---|---|
 | Impostazioni | `settings` | scelte dell'utente che valgono subito, senza pubblicare: funzioni, limiti e tetti di spesa, servizi attivati e servizio predefinito per ruolo o tipo (D36). Non ci sono utenti, crediti né caparre: la spesa si calcola dagli scontrini (D30) |
-| Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.model_id` e `takes.requested_model_id` (D36) |
-| File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
-| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato) e `requested_model_id` (D36) |
+| Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36) |
+| File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
+| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), `model_label` e `requested_model_id` (D36) |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
 | Esportazioni | `exports` | |
@@ -459,10 +470,10 @@ sequenceDiagram
   A-->>W: take.ready (SSE)
 ```
 
-1. L'utente preme "Genera", oppure «Cambia servizio» per sceglierne un altro: in quel caso l'app chiede alla troupe l'elenco (`troupe.options`, con nome, costo e voto) e la richiesta porta il `modelId` scelto (D36). L'app chiede alla troupe la stima (`troupe.estimate`, per il servizio scelto) e controlla i tetti di spesa (D30): se ne supera uno, mostra la cifra e chiede conferma. Crea lo scontrino (`queued`) e mette in coda `take.generate` con una chiave di idempotenza.
-2. Il lavoro assembla Bibbia e ShotSpec. La troupe sceglie il modello (router: verifica il servizio scelto, che se non è adatto dà `no_eligible_model`; altrimenti usa il predefinito), il direttore della fotografia scrive il prompt per la sua famiglia, il traduttore costruisce la richiesta e l'adapter la invia. Scontrino `running`.
+1. L'utente preme "Genera", oppure «Cambia servizio» per sceglierne un altro: in quel caso l'app chiede alla troupe l'elenco (`troupe.options`, con nome, costo e voto) e la richiesta porta il `modelId` scelto (D36). L'app chiede alla troupe la stima (`troupe.estimate`, che fissa il servizio, scelto o predefinito, e il suo costo) e controlla i tetti di spesa (D30): se ne supera uno, mostra la cifra e chiede conferma. Crea lo scontrino (`queued`) e mette in coda `take.generate` con una chiave di idempotenza.
+2. Il lavoro assembla Bibbia e ShotSpec. La troupe usa il servizio fissato al passo 1 (il router lo ricontrolla: se nel frattempo, per esempio, una chiave è sparita, `no_eligible_model`), il direttore della fotografia scrive il prompt per la sua famiglia, il traduttore costruisce la richiesta e l'adapter la invia. Scontrino `running`.
 3. Un controllo periodico (polling) chiede a fal se il lavoro è finito. La coda è salvata in SQLite: se l'app si chiude, al riavvio i lavori ripartono dal polling.
-4. Appena è pronto, l'app copia il video nella cartella del progetto, crea asset e take (con il servizio che ha lavorato), chiude lo scontrino con costo reale e tempi (che alimentano la spesa del film) e pubblica `take.ready`.
+4. Appena è pronto, l'app copia il video nella cartella del progetto, crea asset e take (collegati allo scontrino, che dice il servizio che ha lavorato), chiude lo scontrino con costo reale e tempi (che alimentano la spesa del film) e pubblica `take.ready`.
 5. L'interfaccia riceve l'evento via SSE e mostra il take nella card.
 6. Se qualcosa va storto: errori tecnici → nuovi tentativi e riserve; `content_rejected` → take rifiutato con un messaggio semplice; nessuna risposta entro il tempo massimo → `failed`.
 

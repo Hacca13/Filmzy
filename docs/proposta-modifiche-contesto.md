@@ -69,7 +69,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 ### Nuova sezione: Scelta del servizio per ogni generazione (D36)
 
 > - Per ogni generazione di immagini, video, musica ed effetti l'utente può cambiare servizio (cioè il modello che la esegue), perché uno può funzionare meglio di un altro. Accanto a «Genera» c'è «Cambia servizio»: l'elenco mostra, per ogni servizio, un nome semplice, il costo stimato in dollari e il voto che ha preso nelle prove.
-> - Di default lavora il servizio predefinito di quel lavoro. La scelta dell'utente è un requisito: se il servizio non è adatto alla richiesta (per esempio non accetta quella durata o quella combinazione di immagini) il sistema lo dice con un messaggio semplice e non ne usa un altro in silenzio. Un altro servizio entra solo se il primo ha un guasto tecnico, e il take dice sempre con quale servizio è stato fatto.
+> - Di default lavora il servizio predefinito di quel lavoro. La scelta dell'utente è un requisito: se il servizio non è adatto alla richiesta (per esempio non accetta quella durata o quella combinazione di immagini) il sistema lo dice con un messaggio semplice e non ne usa un altro in silenzio. Un altro servizio entra solo se il primo ha un guasto tecnico e non costa più di quanto l'utente ha confermato; altrimenti il lavoro si ferma e decide l'utente. Il take dice sempre con quale servizio è stato fatto.
 > - L'utente attiva i servizi che vuole usare e sceglie il predefinito di ogni ruolo dalle Impostazioni: questa scelta vale subito, senza passare dalla pubblicazione delle impostazioni avanzate.
 > - I take fatti con servizi diversi si possono confrontare e si può rigirare un'inquadratura con un altro servizio.
 

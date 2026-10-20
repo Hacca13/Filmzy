@@ -1,19 +1,21 @@
 # Catalogo: COSA sa fare ogni modello e quanto costa.
 # Prezzi, identificativi e capacità vanno verificati sul sito del fornitore: "checked" è la data dell'ultima verifica.
 # Un identificativo tra < > è un segnaposto: ammesso solo con status "testing", blocca le chiamate reali.
+# label: il nome che l'utente vede in «Cambia servizio» (D36): un nome leggibile, mai l'id presso il fornitore. Obbligatorio.
 # status: active | testing | retired
 # real_faces: "no" | verified_assets | allowed | unknown
 # Una voce è un punto d'accesso (un id presso il fornitore) e vale per un solo modo d'ingresso (D20):
 #   input_modes: combinazioni di ingressi accettate dai video: references | first_frame | first_frame+last_frame | references+first_frame
 #   image_edit: l'immagine modifica un'immagine data (serve al ritocco e all'ultimo fotogramma); mask_edit: accetta una maschera vera
 # true | false | unknown: "unknown" conta come "no" per il router; solo il bench può provarlo.
-# monthly_cap_usd (facoltativo): tetto di spesa mensile del modello, che l'utente imposta quando lo configura (D30).
+# monthly_cap_usd (facoltativo): valore iniziale del tetto di spesa mensile del modello (D30); quello che l'utente sceglie sta nelle sue impostazioni (D36).
 version: 1
 
 models:
   # --- LLM -----------------------------------------------------------------
   # Prezzi Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (verificati il 19/10/2026)
   claude-sonnet:
+    label: Claude Sonnet
     kind: llm
     connection: anthropic
     provider_model: claude-sonnet-5-5
@@ -25,6 +27,7 @@ models:
     status: active
 
   claude-haiku:
+    label: Claude Haiku
     kind: llm
     connection: anthropic
     provider_model: claude-haiku-5-5
@@ -43,6 +46,7 @@ models:
 
   # --- Immagini --------------------------------------------------------------
   nano-banana-2:
+    label: Nano Banana 2
     kind: image
     connection: fal
     provider_model: fal-ai/nano-banana-2      # da verificare sul catalogo fal
@@ -60,6 +64,7 @@ models:
     status: testing
 
   seedream-lite:
+    label: Seedream Lite
     kind: image
     connection: fal
     provider_model: "<Seedream 5.0 Lite su fal: id da verificare>"
@@ -78,6 +83,7 @@ models:
 
   # --- Video -----------------------------------------------------------------
   kling-o3-standard:
+    label: Kling O3 · Standard
     kind: video
     connection: fal
     provider_model: "<Kling O3 Standard reference-to-video su fal: id da verificare>"
@@ -99,6 +105,7 @@ models:
     status: testing
 
   seedance-2:
+    label: Seedance 2
     kind: video
     connection: fal
     provider_model: "<Seedance 2.0 reference-to-video su fal: id da verificare>"
@@ -120,6 +127,7 @@ models:
     status: testing
 
   gemini-omni-flash:
+    label: Gemini Omni · Veloce
     kind: video
     connection: fal
     provider_model: "<Gemini Omni Flash reference-to-video su fal: id da verificare>"
@@ -143,6 +151,7 @@ models:
   # --- Musica ----------------------------------------------------------------
   # Gli effetti sonori non hanno ancora un modello: serve una ricerca (T5.4).
   music-elevenlabs:
+    label: ElevenLabs Music
     kind: music
     connection: elevenlabs
     provider_model: "<ElevenLabs Music: id da verificare>"

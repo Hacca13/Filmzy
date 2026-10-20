@@ -1,6 +1,6 @@
 # Filmzy — Proposta di modifiche al contesto del progetto
 
-_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D32 in `docs/decisioni.md`.
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D32 e D36 in `docs/decisioni.md`.
 
 ## 1. Titolo e nome
 
@@ -22,7 +22,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > 3. **Personaggi:** l'utente sceglie quanti personaggi vuole; il suggeritore li propone partendo dalla bozza, con un tag (protagonista, antagonista…) e dettagli facoltativi (carattere, comportamento, obiettivo). L'utente approva e il volto viene «bloccato».
 > 4. **Luoghi:** per ogni luogo della storia, 3–4 immagini del set tra cui scegliere (e, se la funzione è attiva, il ritocco col pennello).
 > 5. **Riepilogo:** il sistema confronta la bozza con cast e luoghi scelti. Per ogni differenza l'utente sceglie «Adatta la storia», «Cambia la mia scelta» o «Va bene così». Se non ci sono differenze il passo non compare. Poi la stesura ufficiale, modificabile come testo normale.
-> 6. **Scene:** una fila di card, come una striscia a fumetti. Per ognuna: storyboard → 2–3 varianti → scelta → (facoltativo) «Imposta le immagini» → video → scena successiva.
+> 6. **Scene:** una fila di card, come una striscia a fumetti. Per ognuna: storyboard → 2–3 varianti → scelta → (facoltativo) «Imposta le immagini» → video → scena successiva. A ogni generazione si può «Cambiare servizio».
 > 7. **Film:** voci, musica, montaggio, esportazione, eventuale doppiaggio in altre lingue.
 
 ## 5. Feature decise
@@ -66,13 +66,20 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Tre tetti, che l'utente regola o toglie: per chiamata (un freno tecnico contro gli errori), per film (50 $ di partenza, con conferma sopra una cifra scelta) e mensile per servizio o modello. Superato un tetto il programma lo dice e l'utente decide se proseguire; lo storyboard resta il «cancello» prima della spesa sul video.
 > - Il programma ricorda di impostare un limite di spesa anche nel pannello di ogni servizio.
 
+### Nuova sezione: Scelta del servizio per ogni generazione (D36)
+
+> - Per ogni generazione di immagini, video, musica ed effetti l'utente può cambiare servizio (cioè il modello che la esegue), perché uno può funzionare meglio di un altro. Accanto a «Genera» c'è «Cambia servizio»: l'elenco mostra, per ogni servizio, un nome semplice, il costo stimato in dollari e il voto che ha preso nelle prove.
+> - Di default lavora il servizio predefinito di quel lavoro. La scelta dell'utente è un requisito: se il servizio non è adatto alla richiesta (per esempio non accetta quella durata o quella combinazione di immagini) il sistema lo dice con un messaggio semplice e non ne usa un altro in silenzio. Un altro servizio entra solo se il primo ha un guasto tecnico e non costa più di quanto l'utente ha confermato; altrimenti il lavoro si ferma e decide l'utente. Il take dice sempre con quale servizio è stato fatto.
+> - L'utente attiva i servizi che vuole usare e sceglie il predefinito di ogni ruolo dalle Impostazioni: questa scelta vale subito, senza passare dalla pubblicazione delle impostazioni avanzate.
+> - I take fatti con servizi diversi si possono confrontare e si può rigirare un'inquadratura con un altro servizio.
+
 ### Cast personale, consenso e privacy: aggiornare l'ultimo punto
 
 > - **Nell'MVP solo personaggi generati da Filmzy** (D4, D19). Per impostazione predefinita un'immagine con persone viene rifiutata con un messaggio semplice; l'utente può cambiare l'impostazione, con un'avvertenza. Il cast personale si accende dopo un test dedicato sui volti reali. Le tabelle dei consensi sono già previste, la funzione è spenta.
 
 ## 6. Scheda inquadratura: aggiungere
 
-> La scheda ha un campo per le immagini scelte dall'utente: a ogni immagine corrisponde un uso (ispirazione, primo o ultimo fotogramma) e un'origine (caricata, generata o presa da un fotogramma di un take). Il movimento di macchina si sceglie da una lista. Il risultato scelto per i fotogrammi generati è un take di tipo «fotogramma chiave». La versione resta la 0.2 perché non è mai stata usata nel codice.
+> La scheda ha un campo per le immagini scelte dall'utente: a ogni immagine corrisponde un uso (ispirazione, primo o ultimo fotogramma) e un'origine (caricata, generata o presa da un fotogramma di un take). Il movimento di macchina si sceglie da una lista. Il risultato scelto per i fotogrammi generati è un take di tipo «fotogramma chiave». La versione resta la 0.2 perché non è mai stata usata nel codice. Ogni take registra il servizio con cui è stato fatto (D36).
 
 ## 7. Componenti e deploy: sostituire
 
@@ -104,9 +111,11 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Quando provare la modifica vera del video (dopo l'MVP, su 3–4 clip).
 > - Fornitore degli effetti sonori: la ricerca del 13/10 copre solo la musica (ElevenLabs Music ha un'API, Suno è da evitare).
 > - Firma del codice degli installatori (Windows e macOS) e driver di SQLite: da scegliere in M2 e in M6.
+> - Come si traduce il voto delle prove in un giudizio semplice nell'elenco «Cambia servizio» (scala, parole, servizi mai provati): da decidere con i dati del test di coerenza.
 > - Parere legale prima di una versione 1.0 pubblica (art. 50 dell'AI Act, uso responsabile).
 > - Quando rendere pubblico il repository (dopo `LICENSE`, avviso di uso responsabile e link alle donazioni).
 
 ## 11. Registro modifiche: aggiungere
 
 > - **20/10/2026 (nome, flusso, immagini, suono e svolta in locale):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); tracce audio separate dal video con «Suggerisci i suoni» e caricamento di file audio propri; pagina Connessioni con le chiavi nel portachiavi. **Svolta:** software libero (AGPL-3.0) che gira in locale con Electron, SQLite e coda interna, senza account né crediti; costi reali in dollari con tetti di spesa; dicitura AI sì, marcatura C2PA dopo l'MVP; stima dell'MVP a 47–69 giornate. Aggiornati Visione, Principi, Flusso utente, Feature decise, Scheda inquadratura, Componenti, Roadmap, Rischi e Domande aperte; D17–D32 in `docs/decisioni.md`.
+> - **20/10/2026 (scelta del servizio, D36):** per ogni generazione di immagini, video, musica ed effetti l'utente può cambiare servizio con «Cambia servizio» accanto a «Genera». L'elenco mostra nome semplice, costo stimato e voto delle prove; la scelta è un requisito (nessun cambio in silenzio) e il take registra il servizio usato. Servizi attivati e predefiniti si cambiano dalle Impostazioni senza pubblicare. Aggiornati Flusso utente, Feature decise (nuova sezione), Scheda inquadratura e Domande aperte.

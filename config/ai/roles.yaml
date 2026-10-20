@@ -1,6 +1,6 @@
 # Ruoli: CHI fa cosa nella troupe, con quali parametri e istruzioni.
 # Gli schemi di input e output di ogni ruolo stanno nel codice (packages/contracts/src/roles.ts).
-# Le riserve (fallbacks) entrano solo per errori tecnici, mai per un rifiuto sul contenuto.
+# Nessuna riserva automatica (D36): se un servizio fallisce il lavoro si ferma e decide l'utente.
 version: 1
 
 roles:
@@ -18,7 +18,6 @@ roles:
     label: Direttore del casting
     kind: llm
     model: claude-sonnet
-    fallbacks: [claude-haiku]
     params: { temperature: 0.8, max_tokens: 4000 }
     instructions: casting@1
     output_strategy: auto
@@ -29,7 +28,6 @@ roles:
     label: Sceneggiatore
     kind: llm
     model: claude-sonnet
-    fallbacks: [claude-haiku]
     params: { temperature: 0.9, max_tokens: 8000 }
     instructions: screenwriter@1
     output_strategy: auto
@@ -40,7 +38,6 @@ roles:
     label: Aiuto regista
     kind: llm
     model: claude-sonnet
-    fallbacks: [claude-haiku]
     params: { temperature: 0.4, max_tokens: 6000 }
     instructions: shot_planner@1
     output_strategy: auto
@@ -51,7 +48,6 @@ roles:
     label: Direttore della fotografia
     kind: llm
     model: claude-sonnet
-    fallbacks: [claude-haiku]
     params: { temperature: 0.5, max_tokens: 1500 }
     instructions: cinematographer@1           # varianti per famiglia: v1.seedance.md, v1.image_generic.md
     output_strategy: auto
@@ -72,7 +68,6 @@ roles:
     label: Character designer
     kind: image
     model: nano-banana-2
-    fallbacks: [seedream-lite]
     params: { resolution: 1k, aspect_ratio: "3:4" }
     instructions: character_designer@1        # template del prompt immagine, senza LLM
     retries: { technical_error: 2 }
@@ -82,7 +77,6 @@ roles:
     label: Scenografo
     kind: image
     model: nano-banana-2
-    fallbacks: [seedream-lite]
     params: { resolution: 1k, aspect_ratio: "16:9", variants: 3 }
     instructions: set_designer@1              # template del prompt immagine, senza LLM; il luogo porta già il suo prompt in inglese
     retries: { technical_error: 2 }
@@ -91,7 +85,7 @@ roles:
   retoucher:
     label: Ritocco
     kind: image
-    model: nano-banana-2                      # richiede image_edit; nessuna riserva finché la capacità degli altri è "unknown"
+    model: nano-banana-2                      # richiede image_edit
     params: { resolution: 1k }
     instructions: retoucher@1
     retries: { technical_error: 2 }
@@ -141,7 +135,6 @@ roles:
     label: Sound designer
     kind: llm
     model: claude-sonnet
-    fallbacks: [claude-haiku]
     params: { temperature: 0.6, max_tokens: 3000 }
     instructions: sound_planner@1
     output_strategy: auto

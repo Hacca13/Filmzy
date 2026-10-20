@@ -12,14 +12,18 @@ export const isoDaySchema = z
   .union([z.iso.date(), z.date()])
   .transform((value) => (typeof value === 'string' ? value : value.toISOString().slice(0, 10)));
 
-/** Un intervallo numerico accettato da un parametro (`config/ai/models.yaml`). */
-export const paramRangeSchema = z.object({
+/**
+ * Un intervallo numerico accettato da un parametro (`config/ai/models.yaml`). È `strictObject`
+ * perché ha tutti i campi facoltativi: senza, un elenco di valori (`{ values: [...] }`) passerebbe
+ * come intervallo vuoto e il controllo dei limiti (§4.6 punto 3) leggerebbe la forma sbagliata.
+ */
+export const paramRangeSchema = z.strictObject({
   min: z.number().optional(),
   max: z.number().optional(),
 });
 
 /** I valori ammessi da un parametro, quando non è un intervallo. */
-export const paramValuesSchema = z.object({
+export const paramValuesSchema = z.strictObject({
   values: z.array(z.union([z.string(), z.number(), z.boolean()])).min(1),
 });
 

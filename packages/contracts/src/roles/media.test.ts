@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { exampleCharacter, exampleLocation, exampleStyle } from '../examples.fixtures.js';
+import { exampleCharacter, exampleLocation, exampleStyle } from '../examples.js';
 import {
   cameraOperatorInputSchema,
   characterDesignerInputSchema,

@@ -15,7 +15,7 @@ import {
   exampleStyle,
   exampleTag,
   exampleTone,
-} from '../examples.fixtures.js';
+} from '../examples.js';
 import {
   castingInputSchema,
   castingOutputSchema,

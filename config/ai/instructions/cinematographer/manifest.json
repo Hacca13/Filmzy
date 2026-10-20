@@ -1,0 +1,22 @@
+{
+  "id": "cinematographer",
+  "recommended": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.md",
+      "variants": [
+        {
+          "family": "image_generic",
+          "file": "v1.image_generic.md",
+          "mode": "append"
+        },
+        {
+          "family": "seedance",
+          "file": "v1.seedance.md",
+          "mode": "append"
+        }
+      ]
+    }
+  ]
+}

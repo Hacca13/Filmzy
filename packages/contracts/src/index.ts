@@ -126,6 +126,7 @@ export type {
   ScreenplayLocationProposal,
   ScreenplayScene,
 } from './screenplay.js';
+export { ROLE_INPUT_EXAMPLES } from './examples.js';
 export { ROLE_IDS, ROLE_IO, roleIdSchema } from './roles.js';
 export type { RoleId } from './roles.js';
 export * from './roles/llm.js';

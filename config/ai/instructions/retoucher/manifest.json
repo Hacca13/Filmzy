@@ -1,0 +1,10 @@
+{
+  "id": "retoucher",
+  "recommended": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.md"
+    }
+  ]
+}

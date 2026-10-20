@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // La troupe legge i file di configurazione e calcola gli hash: le servono i moduli di Node.
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}

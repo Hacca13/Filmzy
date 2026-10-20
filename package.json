@@ -16,7 +16,8 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "turbo run lint typecheck test build && pnpm format:check"
+    "check": "turbo run lint typecheck test build && pnpm format:check",
+    "troupe": "turbo run build --filter=@filmzy/troupe --output-logs=errors-only && node --env-file-if-exists=.env packages/troupe/dist/cli/bin.js"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",

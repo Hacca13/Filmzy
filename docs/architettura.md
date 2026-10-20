@@ -42,7 +42,7 @@ filmzy/
 ├─ LICENSE                  AGPL-3.0
 ├─ CLAUDE.md                regole per Claude Code
 ├─ docs/                    architettura, piano di lavoro, decisioni
-├─ design/                  prompt dati a Figma e riferimenti grafici
+├─ design/                  prossimo prompt per Figma, storico dei prompt lanciati, riferimenti grafici
 ├─ config/
 │  ├─ ai/                   seme della troupe: connessioni, modelli, ruoli, istruzioni
 │  │  └─ environments/      adattamenti per development, offline e test

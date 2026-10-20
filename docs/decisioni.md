@@ -206,7 +206,7 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 
 Superato il tetto del film o del mese, il programma lo dice e l'utente decide se alzarlo o proseguire: sono impostazioni, non muri. Solo il tetto per chiamata ferma una generazione (`budget_exceeded`). La spesa si calcola dagli scontrini. Il programma ricorda anche di impostare un limite di spesa nel pannello del fornitore.
 **Perché:** i costi sono veri (11–66 $ per un film da 60 s) e chi li paga deve vederli prima, ma deve poter decidere: sono i suoi soldi e il suo account.
-**Conseguenze:** nuovo errore `spend_cap_reached`. Il modulo `credits` diventa `spend`. I prompt per Figma 01, 02 e 04 citano crediti e saldo: li riallinea il 05.
+**Conseguenze:** nuovo errore `spend_cap_reached`. Il modulo `credits` diventa `spend`. Il prompt per Figma 01 cita crediti e saldo: lo corregge il prossimo prompt (`design/prossimo-prompt.md`, D33).
 
 ## D31 · Dicitura sì, marcatura C2PA opzionale dopo l'MVP — 20/10/2026
 
@@ -220,3 +220,9 @@ Superato il tetto del film o del mese, il programma lo dice e l'utente decide se
 **Sostituisce D26** (e con esso D23 e la cifra di D27).
 **Decisione:** il piano in locale vale 47–69 giornate (circa 9½–14 settimane); con le due opzioni (caricamento di immagini e ritocco col pennello) 52–76. Si risparmia su accesso, crediti, deploy, webhook e C2PA; si aggiungono impacchettamento e aggiornamenti, tetti di spesa e procedura guidata, SQLite e coda interna, esportazione dei progetti e prove su tre sistemi operativi.
 **Conseguenze:** stime grossolane, da rivedere dopo M1 e dopo il primo installatore.
+
+## D33 · Un solo prompt per Figma da lanciare alla volta — 20/10/2026
+
+**Decisione:** in `design/` c'è un solo prompt in attesa (`prossimo-prompt.md`); quando l'autore lo lancia in Figma passa in `design/storico/` con numero e data. Nello storico restano solo i prompt davvero lanciati. Finora è stato lanciato solo il primo; i prompt 02–05, scritti in anticipo e mai lanciati, sono stati fusi in un unico prompt (senza crediti, accesso e amministratore, superati da D28–D30).
+**Perché:** i prompt in coda si contraddicevano man mano che le decisioni cambiavano, e Figma ha crediti limitati: meglio un prompt solo, sempre aggiornato.
+**Scartate:** tenere in `design/` tutti i prompt scritti con un registro dello stato.

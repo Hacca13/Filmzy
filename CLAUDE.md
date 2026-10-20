@@ -9,7 +9,7 @@ Programma per creare cortometraggi con la gen AI, pensato per chi non sa program
 - `docs/piano-di-lavoro.md` — cosa fare e in che ordine. Lavora un task alla volta e leggi le sezioni indicate dal task.
 - `docs/decisioni.md` — perché è fatto così. Aggiungi una voce quando prendi una decisione.
 - `docs/ricerca-ottobre-2026.md` — modelli, prezzi e aspetti legali al 13/10/2026. Utile in M1; i dati vanno ricontrollati.
-- `design/` — prompt dati a Figma (con registro) e riferimenti grafici dell'interfaccia.
+- `design/` — il prossimo prompt da dare a Figma, lo storico di quelli lanciati e i riferimenti grafici dell'interfaccia.
 
 ## Stack
 

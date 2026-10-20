@@ -1,7 +1,16 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "agentGuidance": false,
+  // Turborepo, di norma, passa ai task solo le variabili che conosce. Queste servono a server e
+  // interfaccia in sviluppo (porta, chiavi dei servizi AI, proxy) e non devono cambiare la cache.
+  // Una nuova variabile d'ambiente usata dal codice va aggiunta qui.
+  "globalPassThroughEnv": ["FILMZY_*", "TROUPE_ENV", "*_API_KEY", "FAL_KEY", "HTTPS_PROXY"],
   "tasks": {
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]

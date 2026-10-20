@@ -13,13 +13,14 @@ Programma libero (AGPL-3.0) per creare cortometraggi con la gen AI, pensato per 
 | `config/` | seme della configurazione: troupe, preset, funzioni, prove sui modelli |
 | `design/` | il prossimo prompt per Figma, lo storico di quelli lanciati e i riferimenti grafici esportati |
 
-Sviluppo (dopo M0; Docker non serve):
+Sviluppo (serve Node 24 e pnpm; Docker no):
 
 ```bash
-cp .env.example .env
 pnpm install
-pnpm dev
+pnpm dev    # server locale su http://127.0.0.1:3001 e interfaccia su http://localhost:5173
 ```
+
+Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta); `pnpm dev` lo legge. Una variabile già impostata nel terminale ha la precedenza sul file. Prima di una pull request: `pnpm check`.
 
 ## Licenza
 

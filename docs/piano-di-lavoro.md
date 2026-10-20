@@ -7,6 +7,7 @@ _Versione 3 · 20 ottobre 2026 · Filmzy è software libero e gira in locale (D2
 - Un task alla volta, nell'ordine. Ogni task dice cosa leggere prima e quando è "fatto".
 - Ogni task ha il suo ramo, da `main`. Si unisce con una pull request dopo l'ok.
 - Per i task grandi, prima un piano (la modalità piano di Claude Code), poi il codice.
+- Prima di aprire la pull request si rilegge tutto il diff con i criteri di «Qualità del codice» di `CLAUDE.md`: codice non ripetitivo, funzioni né troppo specifiche né troppo generiche, nomi parlanti, commenti sul *perché*, efficienza e sicurezza.
 - A fine task: `pnpm check` verde (lint, typecheck, test, build e stile), `pnpm troupe check` verde se hai toccato la configurazione, documenti aggiornati se è cambiato un contratto, una voce in `docs/decisioni.md` se hai deciso qualcosa.
 
 ## Riepilogo

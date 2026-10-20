@@ -69,6 +69,7 @@ filmzy/
 | `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, durata, fase (§3.1) |
 | `bible` | api | personaggi (con tag e dettagli), luoghi (con immagini), schede; assembla la Bibbia per i ruoli |
 | `screenplay` | api, worker | sceneggiatura con versioni e fase (bozza o finale), richieste di modifica, riepilogo con le scelte |
+| `moodboard` | api, worker | moodboard del film e delle scene: palette, consigli, immagini di riferimento generate o caricate e analizzate (D37) |
 | `scenes` | api | scene, inquadrature (ShotSpec), take |
 | `generations` | worker | esegue i ruoli tramite la troupe, controlla i lavori con il polling, scrive gli scontrini |
 | `assets` | api, worker | file: caricamento con controllo delle immagini, ritocchi, copia dai fornitori nella cartella del progetto |
@@ -95,6 +96,7 @@ Il progetto avanza per fasi (D18). Si può sempre tornare a una fase precedente:
 |---|---|---|
 | `idea` | genere, tono, stile, fotografia, durata; il moderatore controlla il testo | `moderator` |
 | `draft` | bozza breve della sceneggiatura; richieste di modifica a turno singolo («Parla con lo sceneggiatore»), moderate, che creano una nuova versione | `screenwriter` (`draft`, `revise`), `moderator` |
+| `moodboard` | facoltativo ma consigliato (D37): palette, consigli e immagini di riferimento per il film e per singole scene, generati dall'app o caricati dall'utente | `moodboard_designer`, `moodboard_artist`, `image_analyst` |
 | `cast` | numero di personaggi (non oltre `limits.max_characters`), proposte dalla bozza con tag e dettagli facoltativi, schede a 3 angolazioni, volto bloccato | `casting`, `character_designer` |
 | `locations` | 3–4 immagini del set per luogo, scelta e, se `retouch` è attiva, ritocco | `set_designer`, `retoucher` |
 | `review` | il codice confronta la bozza con le scelte: una differenza è un personaggio o un luogo che la bozza cita e la Bibbia non ha, o viceversa (li collega il `proposalId`). Per ognuna: «Adatta la storia», «Cambia la mia scelta» o «Va bene così» (l'elemento resta come comparsa o luogo generico). Senza differenze il passo si salta | nessuno: la scelta pesa sulla stesura |
@@ -136,6 +138,9 @@ troupe.options(role, input, ctx)  // i servizi tra cui l'utente può scegliere p
 | `cinematographer` | Direttore della fotografia | LLM | inquadratura + famiglia del modello → prompt visivo | MVP |
 | `character_designer` | Character designer | immagine | personaggio e stile → scheda a 3 angolazioni | MVP |
 | `set_designer` | Scenografo | immagine | luogo e stile → 3–4 immagini del set, senza persone | MVP |
+| `moodboard_designer` | Moodboard | LLM | idea, stile, sceneggiatura e, per una scena, la scena → palette, consigli e prompt per le immagini di riferimento | opzione dell'MVP (`moodboard`) |
+| `moodboard_artist` | Immagini del moodboard | immagine | prompt di riferimento e stile → immagini | opzione dell'MVP (`moodboard`) |
+| `image_analyst` | Analista di immagini | LLM con visione | immagine caricata → descrizione, atmosfera, luce, composizione e controllo di persone e marchi | opzione dell'MVP (`moodboard`) |
 | `retoucher` | Ritocco | immagine | immagine + maschera + operazione → immagine ritoccata | opzione dell'MVP (`retouch`) |
 | `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
@@ -178,7 +183,7 @@ I parametri dei ruoli usano un vocabolario nostro, normalizzato (`temperature`, 
 Con le stesse regole (validazione, pubblicazione, storico) si gestiscono anche:
 
 - i **preset**: stili, generi, toni, fotografia, tag dei personaggi e movimenti di macchina. L'interfaccia li mostra, i ruoli li usano. Un nuovo stile è un dato, non codice;
-- le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `sound_effects`, `preview_gate`, `keyframes`, `image_upload`, `retouch`, `c2pa_marking`;
+- le **funzioni**: `real_people`, `dialogue`, `dubbing`, `music`, `sound_effects`, `preview_gate`, `keyframes`, `image_upload`, `retouch`, `moodboard`, `c2pa_marking`;
 - i **limiti**: `max_characters` (personaggi principali per film, 2 nell'MVP), applicato dal backend; `film_budget_usd` (tetto di spesa per film) e `confirm_above_usd` (chiede conferma sopra questa cifra), che sono facoltativi e senza valori preimpostati (D30, D36): li sceglie l'utente e stanno in `settings`.
 
 Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `config/features.yaml`.
@@ -357,6 +362,7 @@ StoryBible {
   cinematography: CinematographyPreset
   characters: Character[]   // id, name, tag, role, description, profile?, appearance, sheet: AssetRef[], voiceId?, proposalId?
   locations: Location[]     // id, name, description, prompt, references: AssetRef[], proposalId?
+  moodboard?: MoodboardBrief   // palette, consigli e descrizioni delle immagini (D37); assente se l'utente non l'ha fatto
   limits: { maxCharacters }
 }
 ```
@@ -382,10 +388,10 @@ ShotSpec {
 
 ContinuityState { locationId, timeOfDay, present: CharacterId[], costumes: Record<CharacterId, string>, props: string[] }
 
-ShotImage { use: 'reference' | 'first_frame' | 'last_frame', from: 'upload' | 'generate' | 'take_frame', assetId?, takeId?, atS? }
+ShotImage { use: 'reference' | 'first_frame' | 'last_frame', from: 'upload' | 'generate' | 'take_frame' | 'moodboard', assetId?, takeId?, atS? }
 ```
 
-`upload` è un'immagine caricata (luogo o oggetto, mai persone: D19) e porta `assetId`. `generate` chiede di generarla: il risultato è un take `keyframe` e vale quello scelto. `take_frame` è il fotogramma al secondo `atS` del take `takeId`, estratto con ffmpeg. Il ruolo `first_frame` o `last_frame` è un requisito per il router (§4.8). Il `shot_planner` non compila `images`: le imposta l'utente.
+`upload` è un'immagine caricata (luogo o oggetto, mai persone: D19) e porta `assetId`. `generate` chiede di generarla: il risultato è un take `keyframe` e vale quello scelto. `take_frame` è il fotogramma al secondo `atS` del take `takeId`, estratto con ffmpeg. `moodboard` è un'immagine del moodboard del film (D37) e porta `assetId`. Il ruolo `first_frame` o `last_frame` è un requisito per il router (§4.8). Il `shot_planner` non compila `images`: le imposta l'utente.
 
 I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `kind` (`storyboard`, `keyframe`, `preview`, `final`), `generationId`, `assetId`, `chosen`, `checks`.
 
@@ -401,6 +407,9 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | `script_supervisor` | `screenplay`, `scenes`, `shots`, `language` | `issues[]` (`sceneId?`, `shotId?`, `code`, `severity`, `reason`) |
 | `character_designer` | `character`, `style`, `angle` (`front`, `profile`, `three_quarter`) | immagine |
 | `set_designer` | `location`, `style`, `variants` | immagini |
+| `moodboard_designer` | `scope` (`film`, `scene`), `idea`, `genre`, `tone`, `style`, `cinematography`, `screenplay`, `sceneId?`, `moodboard?` (quello che c'è già), `referenceCount`, `language` | `palette[]` (`hex`, `name`, `use`), `notes` (consigli su luce, colore, macchina, ritmo), `referencePrompts[]` (in inglese) |
+| `moodboard_artist` | `prompt`, `style`, `variants` | immagini |
+| `image_analyst` | `image`, `purpose` (`moodboard`), `context?`, `language` | `description` (in inglese), `moodTags[]`, `lighting`, `composition`, `containsPeople`, `flags[]` (marchi, personaggi noti, minori sospetti), `suggestions?` |
 | `retoucher` | `image`, `mask`, `operation` (`remove`, `replace`, `recolor`), `instruction?`, `style` | immagine |
 | `storyboard_artist` | `mode` (`storyboard`, `end_frame`), prompt visivo, riferimenti, `variants`, `baseImage?` (per `end_frame`) | immagini |
 | `camera_operator` | prompt visivo, riferimenti, `durationS` | video |
@@ -408,7 +417,7 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | `sfx_artist` | `cue` (`description`, `durationS`), `variants` | effetti sonori |
 | `sound_planner` | `screenplay`, `scenes`, `shots`, `genre`, `tone`, `style`, `language` | `cues[]`: `kind` (`music`, `sfx`), `sceneId`, `shotId?`, `atS?`, `durationS`, `mood?` (in inglese), `description` |
 
-`accepted` è l'elenco degli elementi della bozza che l'utente ha deciso di tenere così come sono (`kind`, `name`), vuoto fuori dal modo `final`. Nel ritocco l'`instruction` dell'utente va al modello così com'è, in italiano (D21).
+`accepted` è l'elenco degli elementi della bozza che l'utente ha deciso di tenere così come sono (`kind`, `name`), vuoto fuori dal modo `final`. Nel ritocco l'`instruction` dell'utente va al modello così com'è, in italiano (D21). I ruoli che scrivono o generano immagini (`shot_planner`, `cinematographer`, `character_designer`, `set_designer`, `storyboard_artist`) ricevono anche `moodboard?` (`MoodboardBrief`, nullo se non c'è): come le altre variabili facoltative arriva sempre, con valore `null` (§4.4).
 
 ### 5.4 Eventi
 
@@ -441,6 +450,21 @@ DomainErrorBody { code, retryable, details?: { role?, modelId?, connectionId?, f
 - Lo scontrino porta `modelId` (il servizio che ha lavorato) e `modelLabel` (il suo nome in quel momento, perché il catalogo può cambiare). Take, immagini e varianti audio rimandano al loro scontrino (`generation_id`) e non ne copiano i campi.
 - `defaultModels` ha come chiave un ruolo o un gruppo (`llm`, `image`, `video`, `music`, …): il predefinito del gruppo vale per tutti i suoi ruoli, e la voce di un ruolo, se c'è, vince. `defaultModelByConnection` è il modello predefinito di ogni fornitore: scegliendo un altro fornitore in «Cambia servizio» si parte da quello.
 - Tutti i limiti di `spendCaps` sono facoltativi e non hanno valori preimpostati (D36).
+
+### 5.7 Moodboard (D37)
+
+```ts
+Moodboard      { projectId, film: MoodboardPart, scenes: ({ sceneId } & MoodboardPart)[] }
+MoodboardPart  { palette: Color[], notes: string, references: MoodReference[] }
+Color          { hex, name?, use?: 'dominante' | 'accento' | 'ombra' | ... }
+MoodReference  { assetId, origin: 'generated' | 'uploaded', description, moodTags: string[], palette: Color[], generationId? }
+MoodboardBrief { palette, notes, referenceDescriptions[], scene?: { palette, notes } }   // la vista di testo che leggono i ruoli
+```
+
+- Un moodboard di una scena, se è vuoto, non toglie nulla: vale quello del film. Palette e consigli sono modificabili a mano.
+- `palette` di un'immagine caricata la calcola il codice (colori dominanti, senza modelli); il modello descrive atmosfera, luce e composizione (`image_analyst`). `origin: 'generated'` ha un `generationId` (scontrino), `uploaded` no.
+- `MoodboardBrief` contiene solo testo: le immagini non vanno da sole ai modelli di generazione. Le immagini scelte come immagine di un'inquadratura passano da `ShotImage` (`from: 'moodboard'`, §5.2).
+- Le immagini caricate si salvano nella cartella del progetto e passano dal controllo di D19 (§10) prima di entrare nel moodboard.
 - `UserSettings` si valida con gli stessi schemi della configurazione (§4.3): un predefinito deve essere un servizio attivato, dello stesso tipo del ruolo e con le capacità che il ruolo richiede.
 
 ## 6. Dati (SQLite)
@@ -453,6 +477,7 @@ Un solo file nella cartella dell'app; i file dei progetti stanno in cartelle acc
 | Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), e `model_label` (D36) |
+| Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
 | Esportazioni | `exports` | |
@@ -502,7 +527,8 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
   - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli;
   - **R6:** se l'immagine scelta di un luogo cambia o viene ritoccata, diventano gialle le inquadrature che lo usano;
   - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano;
-  - **R8:** se un take cambia durata o viene sostituito, gli effetti agganciati a quell'inquadratura ricevono un avviso leggero («l'effetto potrebbe non coincidere più»).
+  - **R8:** se un take cambia durata o viene sostituito, gli effetti agganciati a quell'inquadratura ricevono un avviso leggero («l'effetto potrebbe non coincidere più»);
+  - **R9:** se cambiano la palette o i consigli del moodboard (del film o di una scena), i take girati prima ricevono un avviso leggero, come per R4 (D37).
 - **Segretaria di edizione** (LLM): incoerenze di trama tra le scene ("Marco parla di una lettera che non ha ancora ricevuto").
 - Ogni segnalazione ha un codice, un motivo in italiano e un'origine (`rule`, `llm`, più avanti `vision`). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
 
@@ -521,7 +547,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - **Chiavi (D25, D29):** nel portachiavi del sistema operativo, in sola scrittura per l'interfaccia («Chiave collegata ••••1a2b»), mai nei log né negli export (`pnpm troupe export` scrive solo i riferimenti). Per i test e lo sviluppo valgono le variabili d'ambiente (`env:`).
 - **Responsabilità (D28):** il programma è software libero (AGPL-3.0), fornito «così com'è». L'utente risponde dei file che carica, dei contenuti che crea e di come li pubblica, e rispetta le condizioni dei fornitori che ha scelto. Il README spiega l'uso responsabile.
 - **Impostazioni prudenti di default.** In un programma aperto non si possono imporre, ma proteggono l'account dell'utente dai blocchi dei fornitori: moderatore sui testi prima di ogni spesa (persone reali o famose, minori, contenuti vietati; la politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata), solo persone generate da Filmzy (D19) e dicitura «Contiene contenuti generati con intelligenza artificiale» nei titoli. L'utente può cambiarle dalle impostazioni avanzate, e un'avvertenza spiega cosa rischia.
-- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload`.
+- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload`. Anche le immagini caricate nel moodboard (D37) passano dallo stesso controllo, fatto dal ruolo `image_analyst` insieme alla descrizione, e l'interfaccia dice che una copia dell'immagine viene inviata al servizio di testo scelto.
 - **File audio caricati (D27):** l'utente può caricarne di propri su qualunque traccia. Restano nella cartella del progetto e **non vanno mai a un fornitore AI**: servono solo al mix con ffmpeg. Il testo che descrive un suono passa dal moderatore.
 - **Volti e voci reali:** `real_people` resta spenta (D4). Chi la accendesse per conto proprio risponde del consenso delle persone e delle regole dei fornitori; le tabelle dei consensi restano per questo.
 - **Limiti di spesa (D30):** stima prima di ogni generazione e tre tetti regolabili dall'utente. Il programma ricorda anche di impostare un limite di spesa nel pannello di ogni fornitore.
@@ -558,6 +584,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è (D21, D15).
 - Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori, e elenco definitivo dei tag (D22).
 - Modifica vera del video (`video_edit`): da provare dopo l'MVP su 3–4 clip (D21).
+- Immagini con persone nel moodboard (D37): per ora si rifiutano come tutte le immagini caricate (D19). Da decidere se, con l'impostazione prudente accesa, possano entrare solo per l'analisi (descrizione e colori) senza mai andare ai modelli di generazione.
 - Come si traduce il voto delle prove (`quality`) in un giudizio semplice per «Cambia servizio» (scala, parole, cosa fare per i servizi mai provati): da decidere con i dati del bench (T1.7, D36).
 - Una modalità server (account, hosting, pagamenti) non è prevista (D29): le interfacce `ConfigSource`, `AssetStore`, `ReceiptSink` e la coda restano pulite per non escluderla.
 

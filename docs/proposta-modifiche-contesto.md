@@ -1,6 +1,6 @@
 # Filmzy — Proposta di modifiche al contesto del progetto
 
-_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D32 e D36 in `docs/decisioni.md`.
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D32 e D36–D37 in `docs/decisioni.md`.
 
 ## 1. Titolo e nome
 
@@ -18,7 +18,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 ## 4. Flusso utente: sostituire l'elenco
 
 > 1. **Idea:** tema, genere, stile visivo, fotografia.
-> 2. **La storia:** una bozza breve della sceneggiatura (titolo, trama in una riga, scene riassunte). Se non convince, l'utente chiede una modifica allo sceneggiatore con una frase.
+> 2. **La storia:** una bozza breve della sceneggiatura (titolo, trama in una riga, scene riassunte). Se non convince, l'utente chiede una modifica allo sceneggiatore con una frase. Poi, se vuole, il **moodboard** (facoltativo ma consigliato): palette, consigli e immagini di riferimento per il film e per le scene.
 > 3. **Personaggi:** l'utente sceglie quanti personaggi vuole; il suggeritore li propone partendo dalla bozza, con un tag (protagonista, antagonista…) e dettagli facoltativi (carattere, comportamento, obiettivo). L'utente approva e il volto viene «bloccato».
 > 4. **Luoghi:** per ogni luogo della storia, 3–4 immagini del set tra cui scegliere (e, se la funzione è attiva, il ritocco col pennello).
 > 5. **Riepilogo:** il sistema confronta la bozza con cast e luoghi scelti. Per ogni differenza l'utente sceglie «Adatta la storia», «Cambia la mia scelta» o «Va bene così». Se non ci sono differenze il passo non compare. Poi la stesura ufficiale, modificabile come testo normale.
@@ -66,6 +66,12 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Tre tetti, che l'utente regola o toglie: per chiamata (un freno tecnico contro gli errori), per film (50 $ di partenza, con conferma sopra una cifra scelta) e mensile per servizio o modello. Superato un tetto il programma lo dice e l'utente decide se proseguire; lo storyboard resta il «cancello» prima della spesa sul video.
 > - Il programma ricorda di impostare un limite di spesa anche nel pannello di ogni servizio.
 
+### Nuova sezione: Moodboard (D37)
+
+> - Ogni film può avere un moodboard, facoltativo ma consigliato (anche per gli utenti esperti): una palette di colori, consigli su luce, colore, macchina e ritmo, e immagini di riferimento. Vale per tutto il film e può avere una parte per singole scene.
+> - Lo si genera con l'app oppure si caricano le proprie immagini: quelle caricate vengono descritte e analizzate da un modello che legge le immagini, e i colori dominanti si calcolano. Le immagini con persone, marchi o personaggi noti si rifiutano, come per le altre immagini caricate.
+> - Palette, consigli e descrizioni guidano le istruzioni di chi scrive e genera le immagini; se cambiano dopo i take, i take già girati ricevono un avviso leggero. Un'immagine del moodboard si può scegliere come immagine di un'inquadratura.
+
 ### Nuova sezione: Scelta del servizio per ogni generazione (D36)
 
 > - Per ogni generazione di immagini, video, musica ed effetti l'utente può cambiare servizio (cioè il modello che la esegue), perché uno può funzionare meglio di un altro. Accanto a «Genera» c'è «Cambia servizio»: l'elenco mostra, per ogni servizio, un nome semplice, il costo stimato in dollari e il voto che ha preso nelle prove.
@@ -89,7 +95,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 
 ## 8. Roadmap: sostituire la voce MVP e la Fase 2
 
-> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente voci generate. Include le impostazioni avanzate con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi, le tracce di musica ed effetti, i tetti di spesa e l'app installabile. **Stima: 47–69 giornate di lavoro pieno, circa 9½–14 settimane** (cambiato il 20/10, D32: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 52–76.
+> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente voci generate. Include le impostazioni avanzate con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi, le tracce di musica ed effetti, i tetti di spesa e l'app installabile. **Stima: 47–69 giornate di lavoro pieno, circa 9½–14 settimane** (cambiato il 20/10, D32: prima erano 32–45). Tre opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate), ritocco col pennello (+3–4) e moodboard (+3–4). Con tutte e tre 55–80.
 > - **Fase 2:** generazione delle voci per personaggio (nella traccia Dialoghi) e labiale. I pagamenti non servono più (D28).
 > - **Dopo l'MVP:** marcatura C2PA (D31), modifica vera del video.
 
@@ -119,3 +125,4 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 
 > - **20/10/2026 (nome, flusso, immagini, suono e svolta in locale):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); tracce audio separate dal video con «Suggerisci i suoni» e caricamento di file audio propri; pagina Connessioni con le chiavi nel portachiavi. **Svolta:** software libero (AGPL-3.0) che gira in locale con Electron, SQLite e coda interna, senza account né crediti; costi reali in dollari con tetti di spesa; dicitura AI sì, marcatura C2PA dopo l'MVP; stima dell'MVP a 47–69 giornate. Aggiornati Visione, Principi, Flusso utente, Feature decise, Scheda inquadratura, Componenti, Roadmap, Rischi e Domande aperte; D17–D32 in `docs/decisioni.md`.
 > - **20/10/2026 (scelta del servizio, D36):** per ogni generazione di immagini, video, musica ed effetti l'utente può cambiare servizio con «Cambia servizio» accanto a «Genera». L'elenco mostra nome semplice, costo stimato e voto delle prove; la scelta è un requisito (nessun cambio in silenzio) e il take registra il servizio usato. Servizi attivati e predefiniti si cambiano dalle Impostazioni senza pubblicare. Aggiornati Flusso utente, Feature decise (nuova sezione), Scheda inquadratura e Domande aperte.
+> - **20/10/2026 (moodboard, D37):** ogni film può avere un moodboard facoltativo ma consigliato, con palette, consigli e immagini di riferimento per il film e per singole scene; generato dall'app o caricato (le immagini caricate si analizzano). Passo facoltativo dopo «La storia». Opzione dell'MVP: +3–4 giornate, con tutte le opzioni 55–80. Aggiornati Flusso utente, Feature decise (nuova sezione) e Roadmap.

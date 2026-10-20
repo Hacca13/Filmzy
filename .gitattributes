@@ -1,0 +1,13 @@
+# Fine riga sempre LF, anche su Windows: così Prettier e la CI danno lo stesso risultato ovunque.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp4 binary
+*.mov binary
+*.mp3 binary
+*.wav binary

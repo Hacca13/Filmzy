@@ -226,3 +226,19 @@ Superato il tetto del film o del mese, il programma lo dice e l'utente decide se
 **Decisione:** in `design/` c'è un solo prompt in attesa (`prossimo-prompt.md`); quando l'autore lo lancia in Figma passa in `design/storico/` con numero e data. Nello storico restano solo i prompt davvero lanciati. Finora è stato lanciato solo il primo; i prompt 02–05, scritti in anticipo e mai lanciati, sono stati fusi in un unico prompt (senza crediti, accesso e amministratore, superati da D28–D30).
 **Perché:** i prompt in coda si contraddicevano man mano che le decisioni cambiavano, e Figma ha crediti limitati: meglio un prompt solo, sempre aggiornato.
 **Scartate:** tenere in `design/` tutti i prompt scritti con un registro dello stato.
+
+## D34 · Strumenti del monorepo e comando unico di verifica — 20/10/2026
+
+**Decisione (T0.1):**
+- **Strumenti** (versioni fissate, tutte uscite da oltre due settimane): pnpm 12.9.1 (Node 24, `packageManager` nel `package.json`), Turborepo 2.11.7, TypeScript **6.0.3**, ESLint 10.12.0 con typescript-eslint 8.71.1 (`strictTypeChecked`), Prettier 3.9.9, Vitest 5.0.3. Scope dei package: `@filmzy/*`.
+- **TypeScript 6 e non 7:** la 7.0 è uscita, ma typescript-eslint dichiara di funzionare solo con TypeScript inferiore alla 6.1. Si passa alla 7 quando typescript-eslint la supporta.
+- **Tutti i package sono moduli ES** (`"type": "module"`, `NodeNext`); compilati con `tsc` in `dist/`. Se in T0.2 `apps/api` (NestJS) non riesce a caricarli, si compilano anche in CommonJS.
+- **`pnpm check`** lancia lint, typecheck, test e build con Turborepo, poi il controllo dello stile. È il comando di «fatto» (CLAUDE.md, piano). La forma `pnpm lint typecheck test build` dei documenti non faceva quello che diceva: pnpm lancia solo `lint` e passa le altre parole come argomenti.
+- **Prettier controlla solo il codice** (non `docs/`, `config/`, `design/`, né i file `.md`/`.yaml`).
+- **`any` e `eslint-disable` richiedono un motivo scritto** (`-- motivo`): lo impone ESLint, come chiede CLAUDE.md.
+- **Fine riga sempre LF** (`.gitattributes`, `.editorconfig`, Prettier), anche su Windows, dove `core.autocrlf` li convertiva.
+- **CI** (GitHub Actions) su Ubuntu e su Windows, con le action fissate al riferimento esatto (SHA), non all'etichetta.
+- **Turborepo non scrive `AGENTS.md`** (`agentGuidance: false`): le regole per gli assistenti stanno in `CLAUDE.md`.
+
+**Perché:** un solo comando che non si dimentica nessun controllo; versioni fissate e non appena uscite, per ridurre i rischi della catena di fornitura; Windows in CI perché lo sviluppo avviene anche lì.
+**Conseguenze:** D11 (Drizzle) si conferma all'inizio di M2, come già detto in D29. I pacchetti dei prossimi task si aggiungono in `packages/` e `apps/` senza toccare la radice.

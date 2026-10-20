@@ -2,9 +2,12 @@ node_modules/
 dist/
 .turbo/
 coverage/
+*.tsbuildinfo
+.eslintcache
 .env
 .env.*
 !.env.example
 bench-output/
 CLAUDE.local.md
+.claude/settings.local.json
 .DS_Store

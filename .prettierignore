@@ -1,0 +1,13 @@
+# Prettier controlla solo il codice. Documenti, configurazione di seme e design si scrivono a mano.
+docs/
+design/
+config/
+*.md
+*.yaml
+*.yml
+LICENSE
+pnpm-lock.yaml
+dist/
+.turbo/
+coverage/
+bench-output/

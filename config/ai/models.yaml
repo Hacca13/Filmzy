@@ -7,6 +7,7 @@
 #   input_modes: combinazioni di ingressi accettate dai video: references | first_frame | first_frame+last_frame | references+first_frame
 #   image_edit: l'immagine modifica un'immagine data (serve al ritocco e all'ultimo fotogramma); mask_edit: accetta una maschera vera
 # true | false | unknown: "unknown" conta come "no" per il router; solo il bench può provarlo.
+# monthly_cap_usd (facoltativo): tetto di spesa mensile del modello, che l'utente imposta quando lo configura (D30).
 version: 1
 
 models:

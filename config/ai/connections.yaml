@@ -1,6 +1,7 @@
 # Connessioni: COME si raggiunge un fornitore.
-# Seme della configurazione: in esercizio si modifica dal pannello admin (docs/architettura.md §4.5).
-# Le chiavi non stanno mai qui: solo "env:NOME" (obbligatoria) o "env:NOME?" (facoltativa).
+# Seme della configurazione: in esercizio si modifica da Impostazioni (docs/architettura.md §4.5).
+# Le chiavi non stanno mai qui: solo "env:NOME" (obbligatoria), "env:NOME?" (facoltativa) o "secret:NOME" (chiave nel portachiavi del sistema).
+# monthly_cap_usd (facoltativo): tetto di spesa mensile della connessione, che l'utente imposta quando la collega (D30).
 version: 1
 
 connections:
@@ -33,17 +34,17 @@ connections:
     adapter: fal
     api_key: env:FAL_KEY
     http_proxy: env:HTTPS_PROXY?
-    delivery: webhook                 # webhook | polling
-    webhook_path: /webhooks/fal
+    delivery: polling                 # in locale sempre polling: fal non consegna webhook a indirizzi locali (D29)
     media_retention: short            # durata minima dei file sul CDN del fornitore
     data_region: us
     timeout_s: 900                    # un video può impiegare minuti
     max_concurrency: 3
+    # monthly_cap_usd: 100            # esempio di tetto mensile, scelto dall'utente
     enabled: true
 
   elevenlabs:
     adapter: elevenlabs               # musica (D24); più avanti voci. Regione dei dati e conservazione dei file: da verificare
-    api_key: env:ELEVENLABS_API_KEY?  # in esercizio si inserisce da "Impostazioni > Connessioni" (D25)
+    api_key: env:ELEVENLABS_API_KEY?  # in esercizio l'utente la inserisce da "Impostazioni > Connessioni" (D25)
     timeout_s: 300
     max_concurrency: 2
     enabled: false                    # si accende in T5.4, dopo aver verificato il fornitore

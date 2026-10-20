@@ -1,17 +1,19 @@
-# Funzioni attive e limiti. Seme: in esercizio si modificano dal pannello admin.
+# Funzioni attive e limiti. Seme: in esercizio si modificano dalle impostazioni avanzate.
 version: 1
 
 features:
-  real_people: false     # cast personale: dopo il test sui volti reali e la consulenza legale (D4, D19)
-  dialogue: false        # dialoghi parlati: Fase 2
+  real_people: false     # cast personale: dopo il test sui volti reali e la consulenza legale (D4)
+  dialogue: false        # voci generate per i dialoghi: Fase 2 (le registrazioni caricate funzionano già, D27)
   dubbing: false         # doppiaggio: Fase 3
   music: false           # musica per scena: dopo la scelta del fornitore (T5.4)
   sound_effects: false   # effetti sonori e "Suggerisci i suoni": dopo la scelta del fornitore (T5.4)
-  audio_upload: false    # caricare file audio propri, con dichiarazione dei diritti (D27); l'amministratore può spegnerlo
   preview_gate: false    # anteprima video economica prima del take finale (idea da valutare)
   keyframes: false       # "Imposta le immagini": primo e ultimo fotogramma scelti dall'utente (D20); si accende in M4
-  image_upload: false    # caricare luoghi e oggetti, con controllo delle immagini (D19); opzione dell'MVP
+  image_upload: false    # caricare luoghi e oggetti, con controllo facoltativo delle immagini (D19); opzione dell'MVP
   retouch: false         # ritocco col pennello sulle immagini (D21); opzione dell'MVP
+  c2pa_marking: false    # marcatura leggibile dalle macchine: dopo l'MVP e il parere legale (D31)
 
 limits:
   max_characters: 2      # personaggi principali per film (MVP); lo applica il backend
+  film_budget_usd: 50    # tetto di spesa predefinito per film: l'utente lo cambia o lo toglie (D30)
+  confirm_above_usd: 2   # chiede conferma prima di una generazione che costa di più: l'utente lo cambia (D30)

@@ -1,16 +1,21 @@
 # Filmzy — Proposta di modifiche al contesto del progetto
 
-_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D27 in `docs/decisioni.md`.
+_20 ottobre 2026._ `docs/contesto-progetto.md` è una copia: l'originale vive nel progetto Claude, dove si prendono le decisioni di prodotto. Questo documento raccoglie il testo da incollare lì; quando l'originale è aggiornato si sostituisce la copia e si cancella questo file. Le decisioni sono D17–D32 in `docs/decisioni.md`.
 
 ## 1. Titolo e nome
 
 Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen Ai» diventa «Filmzy» (D17). Togliere dalle «Domande aperte» il nome del prodotto, se c'è.
 
-## 2. Principi: aggiungere il sesto
+## 2. Visione: aggiungere in fondo
+
+> **Software libero, in locale (D28, D29).** Filmzy è un programma libero (licenza AGPL-3.0) che si installa sul computer e funziona con le chiavi che l'utente ha presso i servizi AI. Non c'è un server dell'autore, non ci sono account né pagamenti: il progetto si sostiene con donazioni. L'utente risponde dei file che carica e dei contenuti che crea e pubblica; le impostazioni prudenti (moderatore, solo persone generate, dicitura AI nei titoli) restano attive di default.
+
+## 3. Principi: aggiungere il sesto e il settimo
 
 > 6. **Il controllo sta nelle immagini:** l'utente può guidare il risultato (da dove parte un'inquadratura, dove finisce, cosa togliere da un'immagine) sulle immagini, dove un tentativo costa centesimi. Il video si spende per ultimo.
+> 7. **I costi sono dell'utente e sempre visibili:** una stima prima di ogni generazione e tetti di spesa che l'utente regola (D30).
 
-## 3. Flusso utente: sostituire l'elenco
+## 4. Flusso utente: sostituire l'elenco
 
 > 1. **Idea:** tema, genere, stile visivo, fotografia.
 > 2. **La storia:** una bozza breve della sceneggiatura (titolo, trama in una riga, scene riassunte). Se non convince, l'utente chiede una modifica allo sceneggiatore con una frase.
@@ -20,7 +25,7 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > 6. **Scene:** una fila di card, come una striscia a fumetti. Per ognuna: storyboard → 2–3 varianti → scelta → (facoltativo) «Imposta le immagini» → video → scena successiva.
 > 7. **Film:** voci, musica, montaggio, esportazione, eventuale doppiaggio in altre lingue.
 
-## 4. Feature decise
+## 5. Feature decise
 
 ### Personaggi e suggeritore: sostituire i due momenti
 
@@ -47,42 +52,61 @@ Titolo: **Filmzy — Contesto del progetto**. In tutto il documento «Film Gen A
 > - Il suono sta su **tracce separate dal video**: Video (l'audio originale dei take, spento di default), Dialoghi (registrazioni caricate dall'utente, come una voce fuori campo; la generazione delle voci è Fase 2), Musica (un blocco per scena) ed Effetti (agganciati a un'inquadratura, con il secondo in cui partono). Ogni traccia ha muto e volume.
 > - Musica ed effetti si generano con modelli a parte. «Suggerisci i suoni» propone musica ed effetti leggendo il copione, e l'utente accetta o scarta ogni proposta. Per ogni blocco si può descrivere il suono («abbaio di un cane»), generarlo, scegliere tra tre varianti o eliminarlo.
 > - Cambiare una musica o un effetto costa pochi centesimi e non tocca il video: il mix si rifà a ogni esportazione. L'audio generato dentro i video viene silenziato.
-> - L'utente può caricare file audio propri (musica, effetti, registrazioni di voce) su qualunque traccia, dichiarando di averne i diritti, come in un programma di montaggio. I file restano privati nel progetto e non vanno mai a un fornitore AI. Chi gestisce il servizio resta tenuto a rimuovere un contenuto segnalato.
+> - L'utente può caricare file audio propri (musica, effetti, registrazioni di voce) su qualunque traccia. I file restano nella cartella del progetto e non vanno mai a un fornitore AI.
 > - La timeline libera resta in Fase 3.
 
-### Pannello admin della troupe: aggiungere
+### Pannello admin della troupe: sostituire con «Impostazioni»
 
-> - **Connessioni:** una pagina guidata, riservata all'amministratore, per collegare i fornitori (testo, immagini, video, musica ed effetti, voci): si sceglie il fornitore, si incolla la chiave, si prova la connessione, si scelgono i modelli da aggiungere e si assegnano ai ruoli in «Chi fa cosa». Le chiavi sono cifrate nel database e non si rivedono più dopo l'inserimento.
+> - La configurazione della troupe (modelli, connessioni, parametri, istruzioni, preset, funzioni) si cambia da **Impostazioni avanzate**, per chiunque usi l'app: bozza → prova → pubblicazione → storico e ripristino. Non ci sono account né ruoli.
+> - **Connessioni:** una procedura guidata, anche al primo avvio, per collegare i servizi (testo, immagini, video, musica ed effetti, voci): si sceglie il servizio, si incolla la chiave, si prova la connessione, si scelgono i modelli da aggiungere (con un eventuale tetto di spesa mensile) e si assegnano ai ruoli in «Chi fa cosa». Le chiavi stanno nel portachiavi del sistema operativo e non si rivedono più dopo l'inserimento.
+
+### Costi e tetti di spesa: sostituire «Sistema a crediti dal primo giorno»
+
+> - Non ci sono crediti: l'utente paga i servizi con le proprie chiavi. Prima di ogni generazione il programma mostra una stima in dollari («circa 1,20 $»).
+> - Tre tetti, che l'utente regola o toglie: per chiamata (un freno tecnico contro gli errori), per film (50 $ di partenza, con conferma sopra una cifra scelta) e mensile per servizio o modello. Superato un tetto il programma lo dice e l'utente decide se proseguire; lo storyboard resta il «cancello» prima della spesa sul video.
+> - Il programma ricorda di impostare un limite di spesa anche nel pannello di ogni servizio.
 
 ### Cast personale, consenso e privacy: aggiornare l'ultimo punto
 
-> - **Nell'MVP solo personaggi generati da Filmzy** (D4, D19). L'utente può caricare luoghi e oggetti; un'immagine con persone viene rifiutata con un messaggio semplice. Il cast personale si accende dopo un test dedicato sui volti reali e la consulenza legale. Le tabelle dei consensi sono già previste, la funzione è spenta.
+> - **Nell'MVP solo personaggi generati da Filmzy** (D4, D19). Per impostazione predefinita un'immagine con persone viene rifiutata con un messaggio semplice; l'utente può cambiare l'impostazione, con un'avvertenza. Il cast personale si accende dopo un test dedicato sui volti reali. Le tabelle dei consensi sono già previste, la funzione è spenta.
 
-## 5. Scheda inquadratura: aggiungere
+## 6. Scheda inquadratura: aggiungere
 
 > La scheda ha un campo per le immagini scelte dall'utente: a ogni immagine corrisponde un uso (ispirazione, primo o ultimo fotogramma) e un'origine (caricata, generata o presa da un fotogramma di un take). Il movimento di macchina si sceglie da una lista. Il risultato scelto per i fotogrammi generati è un take di tipo «fotogramma chiave». La versione resta la 0.2 perché non è mai stata usata nel codice.
 
-## 6. Roadmap: sostituire la voce MVP
+## 7. Componenti e deploy: sostituire
 
-> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente dialoghi. Include il pannello admin con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi e le tracce di musica ed effetti. **Stima: 48–70 giornate di lavoro pieno, circa 9½–14 settimane** (cambiato il 20/10, D27: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 53–77.
+> - **Cambiato il 20/10 (D29):** monorepo TypeScript con NestJS come server locale (lavori in coda interni), React + Vite per l'interfaccia, schemi Zod condivisi, **SQLite + Drizzle** al posto di PostgreSQL, file in una cartella locale al posto di S3/R2, ffmpeg per il montaggio. Nessun Redis, Docker o Caddy.
+> - **Distribuzione:** app per Windows, macOS e Linux impacchettata con **Electron**, con installatore e aggiornamenti da GitHub Releases. I fornitori si interrogano con il polling.
+> - Adapter verso i fornitori, mai chiamate dirette: AI SDK per gli LLM, fal per immagini e video. Python più avanti, solo come servizio separato.
 
-## 7. Rischi e note: aggiungere
+## 8. Roadmap: sostituire la voce MVP e la Fase 2
+
+> - **MVP:** corto da 60 secondi, max 2 personaggi, uno stile, niente voci generate. Include le impostazioni avanzate con la pagina Connessioni, la rigenerazione della singola inquadratura, la bozza con riepilogo, i luoghi, il controllo dei fotogrammi, le tracce di musica ed effetti, i tetti di spesa e l'app installabile. **Stima: 47–69 giornate di lavoro pieno, circa 9½–14 settimane** (cambiato il 20/10, D32: prima erano 32–45). Due opzioni fuori dalla stima: caricamento di luoghi e oggetti (+2–3 giornate) e ritocco col pennello (+3–4). Con entrambe 52–76.
+> - **Fase 2:** generazione delle voci per personaggio (nella traccia Dialoghi) e labiale. I pagamenti non servono più (D28).
+> - **Dopo l'MVP:** marcatura C2PA (D31), modifica vera del video.
+
+## 9. Rischi e note: aggiungere e correggere
 
 > - **Fotogrammi molto diversi:** quando il primo e l'ultimo fotogramma differiscono molto, i modelli tendono a «sciogliere» un'immagine nell'altra. Uno zoom con differenze piccole è il caso facile. Va misurato nel bench.
-> - **Strumenti di ritocco:** sono il modo più semplice di alterare una persona reale. Per questo il ritocco opera solo su immagini generate da noi o già controllate, e i testi passano dal moderatore.
+> - **Strumenti di ritocco:** sono il modo più semplice di alterare una persona reale. Per questo, per impostazione predefinita, il ritocco opera solo su immagini generate da Filmzy o già controllate, e i testi passano dal moderatore.
+> - **Adozione e costi per l'utente:** ognuno apre 2–4 account presso i servizi AI e paga di tasca sua un film da 60 s (11–66 $). È il rischio principale del modello locale: lo riducono la procedura guidata, le stime e i tetti di spesa, e una modalità economica con anteprime.
+> - **Obblighi già in vigore (da correggere):** l'esenzione dell'AI Act per il software libero (art. 2, par. 12) non copre l'art. 50. L'obbligo principale di marcare i contenuti sintetici ricade sui servizi che li generano; resta incerto il ruolo di Filmzy, quindi la dicitura nei titoli resta e la marcatura C2PA è un'opzione dopo l'MVP, da verificare con un legale prima di una versione 1.0 pubblica (D31).
+> - **Volti reali e URL pubbliche:** la regola delle persone generate e la copia immediata dei file restano come impostazioni prudenti. Con il modello locale non ci sono più obblighi da ospitante (rimozione, segnalazioni).
 
-## 8. Domande aperte: aggiungere
+## 10. Domande aperte: sostituire
 
+> Togliere: libreria di autenticazione, chiavi dei fornitori (solo variabili d'ambiente o anche nel database), modello di business e prezzo dei crediti, primo pubblico legato ai crediti.
+> Aggiungere:
 > - Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori; elenco definitivo dei tag.
 > - Id e capacità dei modelli con primo e ultimo fotogramma: da verificare con i fornitori e con il bench.
-> - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è.
+> - Traduzione in inglese del testo di ritocco e dei suoni scritto dall'utente: per ora va al modello così com'è.
 > - Quando provare la modifica vera del video (dopo l'MVP, su 3–4 clip).
 > - Fornitore degli effetti sonori: la ricerca del 13/10 copre solo la musica (ElevenLabs Music ha un'API, Suno è da evitare).
-> - **Modello di guadagno e licenza:** crediti a pagamento, oppure servizio aperto con donazioni? Un film da 60 s costa 11–66 $ di API, quindi un servizio gratuito per tutti non si regge sulle donazioni. Le strade sono crediti, codice aperto da installare in proprio con servizio a pagamento a parte, o un periodo di prova con crediti regalati. La licenza si sceglie prima di rendere pubblico il repository.
-> - Chiavi per utente («porta la tua chiave»): rimandate, dipendono dal modello di guadagno.
-> - Condizioni d'uso e dichiarazione dei diritti sui file caricati: da far rivedere a un legale prima di aprire il servizio al pubblico.
-> - Per chi non è tecnico basta il percorso con i crediti, oppure serve anche una modalità per chi vuole usare i propri account presso i fornitori?
+> - Firma del codice degli installatori (Windows e macOS) e driver di SQLite: da scegliere in M2 e in M6.
+> - Parere legale prima di una versione 1.0 pubblica (art. 50 dell'AI Act, uso responsabile).
+> - Quando rendere pubblico il repository (dopo `LICENSE`, avviso di uso responsabile e link alle donazioni).
 
-## 9. Registro modifiche: aggiungere
+## 11. Registro modifiche: aggiungere
 
-> - **20/10/2026 (nome, flusso e immagini):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); solo personaggi generati da Filmzy, con caricamento di luoghi e oggetti; tracce audio separate dal video (musica, effetti, dialoghi in Fase 2) con «Suggerisci i suoni» e caricamento di file audio propri; pagina Connessioni con chiavi cifrate nel database; stima dell'MVP a 48–70 giornate. Principi, Flusso utente, Feature decise, Scheda inquadratura, Roadmap, Rischi e Domande aperte aggiornati; D17–D27 in `docs/decisioni.md`.
+> - **20/10/2026 (nome, flusso, immagini, suono e svolta in locale):** il prodotto si chiama Filmzy. Nuovo ordine dei passi (bozza, personaggi, luoghi, riepilogo, stesura ufficiale); scheda personaggio con tag e dettagli facoltativi; passo Luoghi con immagini del set; ritocco col pennello; immagini dell'inquadratura (ispirazione, primo e ultimo fotogramma); tracce audio separate dal video con «Suggerisci i suoni» e caricamento di file audio propri; pagina Connessioni con le chiavi nel portachiavi. **Svolta:** software libero (AGPL-3.0) che gira in locale con Electron, SQLite e coda interna, senza account né crediti; costi reali in dollari con tetti di spesa; dicitura AI sì, marcatura C2PA dopo l'MVP; stima dell'MVP a 47–69 giornate. Aggiornati Visione, Principi, Flusso utente, Feature decise, Scheda inquadratura, Componenti, Roadmap, Rischi e Domande aperte; D17–D32 in `docs/decisioni.md`.

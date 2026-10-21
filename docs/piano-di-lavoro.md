@@ -258,5 +258,5 @@ _Fatto quando:_ almeno 5 persone non tecniche installano Filmzy, collegano i lor
 - **Cast personale:** test dedicato sui volti reali; poi consenso dato dalla persona stessa (link, selfie dal vivo, frase per la voce) e router limitato ai modelli che accettano volti verificati.
 - **Marcatura C2PA** (`c2pa_marking`): dopo il parere legale (D31).
 - **Modifica vera del video** (`video_edit`): prova su 3–4 clip, con costo e affidabilità misurati.
-- **Fase 2:** generazione delle voci per personaggio (nella traccia Dialoghi) e labiale.
+- **Fase 2:** dialoghi (architettura §5.5). Prima una prova su 3–4 clip per scegliere la strada: voce del modello video, col suo labiale e un'identità di voce per personaggio dove il servizio la prevede, oppure voce nostra (`voice_actor`) più un passaggio di labiale (`lip_sync`) che produce un take nuovo. Si misurano costo, qualità del labiale sui primi piani e tenuta della voce fra i take. Poi la traccia Dialoghi si riempie da sola e il doppiaggio (`dialogue_adapter`) diventa possibile.
 - **Fase 3:** timeline modificabile, luoghi ricorrenti, doppiaggio.

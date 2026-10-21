@@ -112,7 +112,9 @@ function translatorFor(family: string): Translator {
         prompt,
         negativePrompt: input.negativePrompt,
         inputs: input.inputs,
-        params: input.params,
+        // I parametri nostri, con la durata già portata nei limiti: li legge lo scontrino, e chi
+        // non parla la lingua del fornitore (il fornitore finto, la stima della spesa).
+        params: { ...input.params, ...(duration === undefined ? {} : { duration_s: duration }) },
         idempotencyKey: input.idempotencyKey,
         providerInput: body.build(),
       };

@@ -91,6 +91,7 @@ _Fatto quando:_ ci sono test unitari sui casi principali: durata non ammessa, tr
 
 **T1.6 Bench e valutazioni.** `apps/bench`: `pnpm bench run <piano>` esegue la matrice e salva in `bench-output/<run>/` video, scontrini e un report HTML con voto alla cieca; `pnpm bench score` calcola i take usabili e il costo per secondo usabile. `pnpm eval <ruolo>` per i ruoli LLM, con i primi esempi fissi per il direttore della fotografia. Un secondo piano può provare il modo con primo e ultimo fotogramma.
 _Fatto quando:_ report e punteggi si generano con il fornitore finto.
+Fatto il 21/10: cinque esempi fissi per il direttore della fotografia (con il fornitore finto passano quattro su cinque, e il quinto fallisce per il motivo giusto: il finto risponde sempre lo stesso prompt e non cita il secondo personaggio). Il bench stima la spesa e si ferma sopra il `budget_usd` del piano, e con i fornitori veri chiede conferma (D41). Rimandati: il secondo piano con primo e ultimo fotogramma (era facoltativo) e la scelta a mano della scheda migliore, che è un passo dell'interfaccia (T4.0).
 
 **T1.7 Id e prezzi veri (gratis).** Sul sito dei fornitori: id dei punti d'accesso, prezzi, durate, **parametri davvero accettati** e combinazioni di ingressi (`input_modes`, D20) verificati e scritti nel seme, con `checked` aggiornato; le voci verificate passano da `testing` ad `active` e gli id segnaposto restano `testing` finché non si trovano. Nessuna chiamata a pagamento: i voti di qualità arrivano con il bench in T4.0 (D40).
 _Fatto quando:_ `pnpm troupe check` non avvisa più su id segnaposto e prezzi vecchi dei modelli che l'MVP usa davvero.
@@ -162,6 +163,7 @@ _Leggere: architettura §4.7–4.11, §5.2 e §7._
 **T4.0 Bench dei modelli video (circa 45 $, D40).** Prima di generare video veri: esecuzione di `config/bench/week1.yaml` su fal, voti di 3 persone alla cieca, voti nel catalogo (`quality`), che il router usa per mettere in fila i candidati. Facoltativo: provare il modo con primo e ultimo fotogramma su 3 inquadrature con le voci che lo dichiarano (circa 11–21 $ in più, stima sui prezzi del seme per 45 s di video a modello). Se il budget è stretto si parte da una matrice ridotta (2 inquadrature, 2 take) e si allarga solo se i risultati non sono chiari.
 _Fatto quando:_ sono scelti i modelli immagine e video per l'MVP e la scelta è registrata in `docs/decisioni.md`.
 Nota: Seedance potrebbe rifiutare anche volti realistici inventati, se non sono registrati come asset virtuali. È una delle cose che il bench misura.
+Nota da T1.6: il bench genera tutte le immagini delle schede (angolazioni × tentativi) ma come riferimento prende la prima riuscita. Qui serve il passo che manca: guardare `schede.json`, scegliere la migliore per ogni personaggio e rilanciare la matrice con quella.
 
 **T4.1 Storyboard.** Due o tre varianti per inquadratura, scelta; «Cambia servizio» (T3.1).
 _Fatto quando:_ la variante scelta diventa il riferimento visivo della card.

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "content_rejected",
+    "retryable": false,
+    "message": "il fornitore finto rifiuta questo contenuto"
+  }
+}

@@ -1,13 +1,17 @@
+import { anthropicAdapterFactory, openAiCompatibleAdapterFactory } from './ai-sdk.js';
 import { fakeAdapterFactory } from './fake.js';
 import { ProviderError } from '../provider-error.js';
 import type { AdapterFactory, AdapterOptions, LlmAdapter, MediaAdapter } from './types.js';
 
 /**
  * L'indice dei plugin (architettura §4.12, caso C): una famiglia nuova si aggiunge qui e non tocca
- * le app. Oggi c'è solo il fornitore finto; `anthropic` e `openai_compatible` arrivano in T1.1,
- * `fal` in T1.3.
+ * le app. Oggi: il fornitore finto e i due di testo; `fal` per immagini e video arriva in T1.3.
  */
-const ADAPTERS: readonly AdapterFactory[] = [fakeAdapterFactory];
+const ADAPTERS: readonly AdapterFactory[] = [
+  fakeAdapterFactory,
+  anthropicAdapterFactory,
+  openAiCompatibleAdapterFactory,
+];
 
 function factoryFor(options: AdapterOptions): AdapterFactory {
   const factory = ADAPTERS.find((candidate) => candidate.name === options.connection.adapter);

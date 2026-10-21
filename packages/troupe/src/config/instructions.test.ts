@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { parseInstructionFile, validateInstructions } from './instructions.js';
+import { validateInstructions } from './instructions.js';
 import type { TroupeConfig } from './load-files.js';
 import { loadSeedConfig, roleOf, SEED_CONFIG_DIR } from './seed.fixtures.js';
 
@@ -12,55 +12,6 @@ let seed: TroupeConfig;
 
 beforeAll(async () => {
   seed = await loadSeedConfig();
-});
-
-describe('parseInstructionFile', () => {
-  const valid = `---
-id: moderator
-version: 1
-description: Controlla i testi dell'utente.
-variables: [text, context, language]
-changelog:
-  - "1 (2026-10-19): prima versione"
----
-
-## system
-Sei il moderatore.
-
-## user
-Testo: {{ text }}
-`;
-
-  it('legge intestazione e sezioni', () => {
-    const { instruction, issues } = parseInstructionFile('moderator/v1.md', valid);
-
-    expect(issues).toEqual([]);
-    expect(instruction?.header.id).toBe('moderator');
-    expect(Object.keys(instruction?.sections ?? {})).toEqual(['system', 'user']);
-    expect(instruction?.sections.user).toContain('{{ text }}');
-  });
-
-  it('dice quando manca l\'intestazione', () => {
-    const { instruction, issues } = parseInstructionFile('x/v1.md', '## system\nSei il moderatore.');
-
-    expect(instruction).toBeUndefined();
-    expect(issues[0]?.code).toBe('instruction_header_missing');
-  });
-
-  it('nomina il campo quando l\'intestazione è incompleta', () => {
-    const raw = `---
-id: moderator
-version: 1
----
-
-## system
-x
-`;
-    const { issues } = parseInstructionFile('moderator/v1.md', raw);
-
-    expect(issues[0]?.code).toBe('instruction_header_invalid');
-    expect(issues.map((issue) => issue.field)).toContain('description');
-  });
 });
 
 describe('validateInstructions sulle istruzioni del seme', () => {

@@ -25,8 +25,22 @@ export type { ConfigEnvironment } from './config/environments.js';
 export { codeForbiddenTerms } from './config/forbidden-terms.js';
 export type { ForbiddenTerm } from './config/forbidden-terms.js';
 export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
-export { parseInstructionFile, validateInstructions } from './config/instructions.js';
-export type { InstructionFile, ValidateInstructionsOptions } from './config/instructions.js';
+export { validateInstructions } from './config/instructions.js';
+export type { ValidateInstructionsOptions } from './config/instructions.js';
+export { checkSections, parseInstructionFile, SECTIONS_BY_KIND } from './instructions/parse.js';
+export type { InstructionFile } from './instructions/parse.js';
+export { InstructionParseError } from './instructions/parse.js';
+export { renderSection, renderSections, InstructionRenderError } from './instructions/render.js';
+export {
+  FileInstructionsSource,
+  InstructionResolveError,
+  resolveInstructions,
+} from './instructions/resolve.js';
+export type {
+  InstructionsSource,
+  ResolveInstructionsOptions,
+  ResolvedInstructions,
+} from './instructions/resolve.js';
 export { hasErrors, messageOf } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';
 export { loadBenchPlan, loadConfigFiles, parseConfigFile } from './config/load-files.js';
@@ -42,5 +56,14 @@ export { FileConfigSource } from './config/source.js';
 export type { ConfigSource, LoadedConfig } from './config/source.js';
 export { validateConfig } from './config/validate.js';
 export type { ValidateOptions } from './config/validate.js';
+export { llmCostUsd, mediaCostUsd } from './cost.js';
+export { ineligibilityReasons, paramProblems } from './eligibility.js';
+export type { EligibilityInput, ParamProblem } from './eligibility.js';
+export { MemoryReceiptSink } from './receipts.js';
+export type { ReceiptSink } from './receipts.js';
+export { resolveRole } from './resolve-role.js';
+export { createTroupe } from './troupe.js';
+export type { LlmRoleId, RunResult, Troupe, TroupeOptions } from './troupe.js';
+export type { ResolvedRole } from './resolve-role.js';
 export { ProviderError } from './provider-error.js';
 export type { ProviderErrorDetails } from './provider-error.js';

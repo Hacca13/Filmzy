@@ -75,6 +75,8 @@ export { allowedDuration, allowedValue, commonIssues, inputModeOf } from './tran
 export { MemoryReceiptSink } from './receipts.js';
 export type { ReceiptSink } from './receipts.js';
 export { resolveRole } from './resolve-role.js';
+export { route, routeOptions } from './router.js';
+export type { RouteInput, RoutedModel } from './router.js';
 export { createTroupe } from './troupe.js';
 export type { LlmRoleId, RunResult, Troupe, TroupeOptions } from './troupe.js';
 export type { ResolvedRole } from './resolve-role.js';

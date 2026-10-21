@@ -14,35 +14,57 @@ beforeAll(async () => {
   seed = await loadSeedConfig();
 });
 
+/**
+ * Questi controlli rendono le istruzioni di **tutti** i ruoli del seme, con i loro file e le loro
+ * varianti: sono lenti per natura (sulla CI di Windows passano i 5 secondi di default) e il tempo
+ * concesso è esplicito, così un rallentamento non diventa un rosso che non c'entra niente.
+ */
+const SEME_LENTO = 30_000;
+
 describe('validateInstructions sulle istruzioni del seme', () => {
-  it('non trova problemi: ogni ruolo rende le sue istruzioni con l\'input di esempio', async () => {
-    const issues = await validateInstructions(seed, INSTRUCTIONS_DIR);
-    expect(issues).toEqual([]);
-  });
+  it(
+    "non trova problemi: ogni ruolo rende le sue istruzioni con l'input di esempio",
+    async () => {
+      const issues = await validateInstructions(seed, INSTRUCTIONS_DIR);
+      expect(issues).toEqual([]);
+    },
+    SEME_LENTO,
+  );
 
-  it('dice quando un ruolo cita una versione che il manifesto non ha', async () => {
-    const config: TroupeConfig = {
-      ...seed,
-      roles: { ...seed.roles, moderator: { ...roleOf(seed, 'moderator'), instructions: 'moderator@7' } },
-    };
-    const issues = await validateInstructions(config, INSTRUCTIONS_DIR);
+  it(
+    'dice quando un ruolo cita una versione che il manifesto non ha',
+    async () => {
+      const config: TroupeConfig = {
+        ...seed,
+        roles: {
+          ...seed.roles,
+          moderator: { ...roleOf(seed, 'moderator'), instructions: 'moderator@7' },
+        },
+      };
+      const issues = await validateInstructions(config, INSTRUCTIONS_DIR);
 
-    expect(issues[0]?.code).toBe('instructions_version_missing');
-    expect(issues[0]?.role).toBe('moderator');
-  });
+      expect(issues[0]?.code).toBe('instructions_version_missing');
+      expect(issues[0]?.role).toBe('moderator');
+    },
+    SEME_LENTO,
+  );
 
-  it('dice quando le istruzioni non esistono affatto', async () => {
-    const config: TroupeConfig = {
-      ...seed,
-      roles: {
-        ...seed.roles,
-        moderator: { ...roleOf(seed, 'moderator'), instructions: 'moderatore@1' },
-      },
-    };
-    const issues = await validateInstructions(config, INSTRUCTIONS_DIR);
+  it(
+    'dice quando le istruzioni non esistono affatto',
+    async () => {
+      const config: TroupeConfig = {
+        ...seed,
+        roles: {
+          ...seed.roles,
+          moderator: { ...roleOf(seed, 'moderator'), instructions: 'moderatore@1' },
+        },
+      };
+      const issues = await validateInstructions(config, INSTRUCTIONS_DIR);
 
-    expect(issues[0]?.code).toBe('instructions_manifest_missing');
-  });
+      expect(issues[0]?.code).toBe('instructions_manifest_missing');
+    },
+    SEME_LENTO,
+  );
 
   it('una variabile inesistente nel template è un errore, con ruolo e variabile', async () => {
     const examples = { moderator: { text: 'ciao', context: 'idea', language: 'it' } };

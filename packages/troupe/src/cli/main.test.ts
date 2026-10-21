@@ -4,12 +4,14 @@ import { SEED_CONFIG_DIR } from '../config/seed.fixtures.js';
 import { runCheck } from './main.js';
 
 describe('runCheck sui file di seme', () => {
+  // Legge tutta la configurazione e rende le istruzioni di ogni ruolo: lento per natura, quindi il
+  // tempo concesso è esplicito e non dipende dall'umore della CI.
   it('con il fornitore finto non trova errori: solo gli avvisi sugli id da verificare', async () => {
     const issues = await runCheck(SEED_CONFIG_DIR, 'offline');
 
     expect(issues.filter((issue) => issue.severity === 'error')).toEqual([]);
     expect(new Set(issues.map((issue) => issue.code))).toEqual(new Set(['model_testing']));
-  });
+  }, 30_000);
 
   it('dice quale file manca se la cartella non è una configurazione', async () => {
     const issues = await runCheck('cartella-che-non-esiste', 'offline');

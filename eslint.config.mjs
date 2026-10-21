@@ -3,6 +3,26 @@ import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+// I gruppi di import vietati dai confini dell'architettura §3. Stanno qui perché più blocchi li
+// combinano: le librerie dei fornitori valgono per tutti tranne gli adapter, il database non si
+// importa dalla troupe, e l'interfaccia vede solo i contratti.
+const PROVIDER_LIBRARIES = {
+  group: ['ai', '@ai-sdk/*', '@fal-ai/*', 'openai', '@anthropic-ai/*', '@google/*', 'elevenlabs'],
+  message:
+    'Le librerie dei fornitori si importano solo in packages/troupe/src/adapters (architettura §3).',
+};
+
+const DATABASE_FROM_TROUPE = {
+  group: ['@filmzy/db'],
+  message:
+    'La troupe non importa il database: riceve la configurazione da una ConfigSource (architettura §3).',
+};
+
+const WORKSPACE_FROM_WEB = {
+  group: ['@filmzy/*', '!@filmzy/contracts'],
+  message: "L'interfaccia importa solo @filmzy/contracts (architettura §3).",
+};
+
 export default defineConfig(
   {
     ignores: [
@@ -59,6 +79,29 @@ export default defineConfig(
     },
   },
 
+  // I confini dell'architettura §3 sono imposti qui, non affidati alla buona volontà. Le regole
+  // si compongono dai gruppi definiti in cima al file, perché in ESLint l'ultimo blocco che
+  // combacia *sostituisce* la regola: un blocco più specifico deve ripetere i gruppi che valgono
+  // comunque.
+  {
+    files: ['apps/**/*.{ts,tsx}', 'packages/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [PROVIDER_LIBRARIES] }] },
+  },
+
+  // La troupe riceve la configurazione da una `ConfigSource` e non legge il database.
+  {
+    files: ['packages/troupe/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [PROVIDER_LIBRARIES, DATABASE_FROM_TROUPE] }],
+    },
+  },
+
+  // Gli adapter sono l'unico posto da cui si parla ai fornitori.
+  {
+    files: ['packages/troupe/src/adapters/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [DATABASE_FROM_TROUPE] }] },
+  },
+
   // Il codice dell'interfaccia gira nel browser: niente moduli né variabili di Node. (La
   // configurazione di Vite sta fuori da `src/` e può usarli.) I tipi di Node restano visibili a
   // TypeScript perché servono a `vite.config.ts`, quindi questo controllo lo fa ESLint.
@@ -67,7 +110,13 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [{ group: ['node:*'], message: 'Il codice del browser non può usare Node.' }] },
+        {
+          patterns: [
+            PROVIDER_LIBRARIES,
+            WORKSPACE_FROM_WEB,
+            { group: ['node:*'], message: 'Il codice del browser non può usare Node.' },
+          ],
+        },
       ],
       'no-restricted-globals': [
         'error',

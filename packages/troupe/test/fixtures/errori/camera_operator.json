@@ -1,0 +1,8 @@
+{
+  "polls": 0,
+  "error": {
+    "code": "content_rejected",
+    "retryable": false,
+    "message": "il fornitore finto rifiuta il contenuto"
+  }
+}

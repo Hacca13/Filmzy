@@ -304,3 +304,98 @@ export const ROLE_INPUT_EXAMPLES: Record<RoleId, unknown> = {
     variants: 3,
   },
 };
+
+/**
+ * Una risposta di esempio per ogni ruolo LLM: la dà il fornitore finto quando non c'è una fixture
+ * registrata, così `TROUPE_ENV=offline` e i test funzionano senza rete e senza costi (architettura
+ * §4.7, §4.13). Come per gli input, sono esempi scritti a mano e non generati dallo schema (D39),
+ * e un test li valida tutti con `ROLE_IO`.
+ */
+export const ROLE_OUTPUT_EXAMPLES: Record<string, unknown> = {
+  moderator: {
+    allowed: true,
+    reason: 'Il testo non nomina persone reali e non chiede contenuti vietati.',
+  },
+  casting: {
+    suggestions: [
+      {
+        action: 'new',
+        proposalId: 'proposal-1',
+        name: 'Tomás',
+        tag: 'ally',
+        role: 'ally',
+        relationToProtagonist: 'il vecchio amico che Anna cerca',
+        description: 'Un uomo sui 60 anni che non si aspettava di rivederla',
+        appearance: {
+          apparentAge: '60',
+          build: 'robusta',
+          hair: 'barba grigia corta',
+          face: 'occhiali tondi, sguardo stanco',
+          clothing: 'maglione verde scuro',
+          prompt: 'a man in his 60s, short grey beard, round glasses, dark green sweater',
+        },
+        why: 'serve un contraltare calmo alla protagonista',
+      },
+    ],
+  },
+  screenwriter: exampleScreenplay,
+  shot_planner: {
+    shots: [
+      {
+        sceneId: exampleScene.id,
+        order: 0,
+        intent: exampleShotSpec.intent,
+        characters: [{ characterId: 'anna', costume: 'giacca di jeans chiara' }],
+        location: { locationId: 'piazza' },
+        dialogue: [],
+        cinematography: 'inherit',
+        continuity: { entry: exampleContinuity, exit: exampleContinuity },
+      },
+    ],
+  },
+  cinematographer: {
+    prompt:
+      'close-up of [[char:anna]] in a small town square at sunset, she looks at the camera and smiles faintly, warm practical lights, 35mm, shallow depth of field, locked-off camera',
+    negativePrompt: 'text, logos, watermark',
+  },
+  script_supervisor: { issues: [] },
+  sound_planner: {
+    cues: [
+      {
+        kind: 'music',
+        sceneId: exampleScene.id,
+        durationS: 20,
+        mood: 'bittersweet, sparse piano',
+        description: 'tema malinconico sotto la camminata di Anna',
+      },
+      {
+        kind: 'sfx',
+        sceneId: exampleScene.id,
+        shotId: exampleShotSpec.id,
+        atS: 1,
+        durationS: 2,
+        description: 'passi su ciottoli, lontano un cane',
+      },
+    ],
+  },
+  moodboard_designer: {
+    palette: [
+      { hex: '#2b3a55', name: 'Blu sera', use: 'dominante' },
+      { hex: '#e0a060', name: 'Ambra', use: 'accento' },
+    ],
+    notes:
+      'Luce calda e bassa, camera vicina ai personaggi, ritmo lento: il paese si guarda, non si attraversa.',
+    referencePrompts: [
+      'a small town square at sunset, long shadows, warm amber light',
+      'a woman walking away in a narrow street at dusk, blue evening tones',
+    ],
+  },
+  image_analyst: {
+    description: 'a warm lit town square at dusk, long shadows, two people walking away',
+    moodTags: ['warm', 'nostalgic', 'quiet'],
+    lighting: 'golden hour, low sun, long shadows',
+    composition: 'centered square, leading lines from the pavement',
+    containsPeople: true,
+    flags: [],
+  },
+};

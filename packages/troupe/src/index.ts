@@ -25,8 +25,22 @@ export type { ConfigEnvironment } from './config/environments.js';
 export { codeForbiddenTerms } from './config/forbidden-terms.js';
 export type { ForbiddenTerm } from './config/forbidden-terms.js';
 export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
-export { parseInstructionFile, validateInstructions } from './config/instructions.js';
-export type { InstructionFile, ValidateInstructionsOptions } from './config/instructions.js';
+export { validateInstructions } from './config/instructions.js';
+export type { ValidateInstructionsOptions } from './config/instructions.js';
+export { checkSections, parseInstructionFile, SECTIONS_BY_KIND } from './instructions/parse.js';
+export type { InstructionFile } from './instructions/parse.js';
+export { InstructionParseError } from './instructions/parse.js';
+export { renderSection, renderSections, InstructionRenderError } from './instructions/render.js';
+export {
+  FileInstructionsSource,
+  InstructionResolveError,
+  resolveInstructions,
+} from './instructions/resolve.js';
+export type {
+  InstructionsSource,
+  ResolveInstructionsOptions,
+  ResolvedInstructions,
+} from './instructions/resolve.js';
 export { hasErrors, messageOf } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';
 export { loadBenchPlan, loadConfigFiles, parseConfigFile } from './config/load-files.js';

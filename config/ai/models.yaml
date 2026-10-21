@@ -8,6 +8,8 @@
 #   input_modes: combinazioni di ingressi accettate dai video: references | first_frame | first_frame+last_frame | references+first_frame
 #   image_edit: l'immagine modifica un'immagine data (serve al ritocco e all'ultimo fotogramma); mask_edit: accetta una maschera vera
 # true | false | unknown: "unknown" conta come "no" per il router; solo il bench può provarlo.
+# native_audio: il fornitore manda un video con l'audio. L'MVP lo chiede spento dove si può (D43), perché la
+#   voce cambia da una generazione all'altra e a volte costa di più; la traccia resta spenta in app e l'utente la accende.
 # monthly_cap_usd (facoltativo): valore iniziale del tetto di spesa mensile del modello (D30); quello che l'utente sceglie sta nelle sue impostazioni (D36).
 #
 # Verifica del 21/10/2026 (T1.7, nessuna chiamata a pagamento): id, prezzi, durate, parametri accettati e
@@ -154,7 +156,7 @@ models:
       { prompt: prompt, references: image_urls, first_frame: start_image_url,
         last_frame: end_image_url, duration_s: duration, aspect_ratio: aspect_ratio,
         audio: generate_audio }
-    pricing: { unit: per_second, value: 0.112, note: "0,084 $/s senza audio e 0,112 con audio: qui il più alto", checked: 2026-10-21 }
+    pricing: { unit: per_second, value: 0.112, note: "0,084 $/s senza audio e 0,112 con: qui il più alto, ma chiedendolo spento (D43) si spende 0,084", checked: 2026-10-21 }
     quality: {}                               # lo compila il bench
     status: active
 
@@ -219,7 +221,7 @@ models:
       input_modes: [references]               # il primo e l'ultimo fotogramma sono su image-to-video: voce da aggiungere quando serve
       max_reference_images: 7                 # non dichiarato dal fornitore: resta il valore prudente
       max_characters: 3
-      native_audio: true                      # sempre acceso: non c'è un campo per spegnerlo
+      native_audio: true                      # sempre acceso: non c'è un campo per spegnerlo, la traccia resta spenta in app (D43)
       real_faces: "no"
       minors: false
     params:

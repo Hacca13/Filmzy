@@ -107,6 +107,21 @@ describe('submit e collect con il fornitore finto', () => {
     expect(receipts.last()?.errorCode).toBe('content_rejected');
   });
 
+  it('i parametri del ruolo valgono se la richiesta non dice niente (§4.5)', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-media-'));
+    const receipts = new MemoryReceiptSink();
+    const media = createMediaRunner({
+      configSource: sourceOf(offline),
+      assets: new LocalAssetStore(dir),
+      receiptSink: receipts,
+    });
+
+    // Il seme dà all'operatore di ripresa le proporzioni 16:9: la richiesta qui non le chiede.
+    await media.submit('camera_operator', { ...request(), params: {} }, { purpose: 'bench' });
+
+    expect(receipts.last()?.params).toMatchObject({ aspect_ratio: '16:9' });
+  });
+
   it('non raccoglie un lavoro che non ha mandato', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-media-'));
     const media = createMediaRunner({

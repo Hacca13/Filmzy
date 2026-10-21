@@ -80,16 +80,23 @@ export function createMediaRunner(options: MediaRunnerOptions): MediaRunner {
         );
       }
 
+      // I parametri del ruolo sono i valori di partenza; quelli della richiesta vincono (§4.5).
+      // Senza questo, ciò che il ruolo dichiara nella release non arriverebbe a nessuno.
+      const asked: Omit<TranslateInput, 'modelId'> = {
+        ...request,
+        params: { ...loaded.config.roles[role]?.params, ...request.params },
+      };
+
       const chosen = route({
         roleId: role,
         config: loaded.config,
         ...(loaded.settings === undefined ? {} : { settings: loaded.settings }),
-        request,
+        request: asked,
         ...(ctx.modelId === undefined ? {} : { chosenModelId: ctx.modelId }),
       });
 
       const providerRequest = chosen.translator.build(
-        { ...request, modelId: chosen.modelId },
+        { ...asked, modelId: chosen.modelId },
         chosen.model,
       );
 
@@ -111,7 +118,7 @@ export function createMediaRunner(options: MediaRunnerOptions): MediaRunner {
         modelLabel: chosen.model.label,
         connectionId: chosen.model.connection,
         providerModel: chosen.model.provider_model,
-        params: request.params,
+        params: providerRequest.params,
         inputHash: configHash(providerRequest.providerInput),
         idempotencyKey: request.idempotencyKey,
         status: 'queued',

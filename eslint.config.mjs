@@ -7,7 +7,16 @@ import tseslint from 'typescript-eslint';
 // combinano: le librerie dei fornitori valgono per tutti tranne gli adapter, il database non si
 // importa dalla troupe, e l'interfaccia vede solo i contratti.
 const PROVIDER_LIBRARIES = {
-  group: ['ai', '@ai-sdk/*', '@fal-ai/*', 'openai', '@anthropic-ai/*', '@google/*', 'elevenlabs'],
+  group: [
+    'ai',
+    '@ai-sdk/*',
+    '@fal-ai/*',
+    'openai',
+    '@anthropic-ai/*',
+    '@google/genai',
+    '@google/generative-ai',
+    'elevenlabs',
+  ],
   message:
     'Le librerie dei fornitori si importano solo in packages/troupe/src/adapters (architettura §3).',
 };

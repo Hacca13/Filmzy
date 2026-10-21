@@ -75,6 +75,29 @@ describe('modelEntrySchema', () => {
     expect(modelEntrySchema.parse(entry).kind).toBe('image');
   });
 
+  it("accetta zero immagini di riferimento: un punto d'accesso che scrive solo da testo", () => {
+    const entry = {
+      label: 'Nano Banana 2',
+      kind: 'image' as const,
+      connection: 'fal',
+      provider_model: 'fal-ai/nano-banana-2',
+      family: 'image_generic',
+      capabilities: { max_reference_images: 0, image_edit: false, mask_edit: false },
+      request_fields: { prompt: 'prompt' },
+      pricing: { unit: 'per_image' as const, value: 0.08, checked: '2026-10-21' },
+      status: 'active' as const,
+    };
+
+    expect(modelEntrySchema.parse(entry).capabilities).toMatchObject({ max_reference_images: 0 });
+    // Ma un numero negativo resta un errore.
+    expect(
+      modelEntrySchema.safeParse({
+        ...entry,
+        capabilities: { ...entry.capabilities, max_reference_images: -1 },
+      }).success,
+    ).toBe(false);
+  });
+
   it('accetta un video con input_modes e volti reali verificati (seedance-2)', () => {
     const entry = {
       label: 'Seedance 2',

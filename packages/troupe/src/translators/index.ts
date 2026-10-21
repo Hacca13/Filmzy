@@ -12,15 +12,22 @@ import type { TranslateInput, TranslateIssue, Translator } from './types.js';
  */
 
 /**
- * Come una famiglia cita le immagini di riferimento dentro il prompt. Le sintassi vanno verificate
- * sulla documentazione dei fornitori prima di spendere (T1.7): finché gli id sono segnaposto, il
- * catalogo tiene quei servizi in `testing` e le chiamate reali restano bloccate (§4.6 punto 7).
+ * Come una famiglia cita le immagini di riferimento dentro il prompt. Verificate sulle pagine dei
+ * fornitori il 21/10/2026 (T1.7): Kling e Seedance usano `@Image1`, `@Image2`…, Gemini Omni usa
+ * `<IMAGE_REF_0>` e conta da zero.
  */
 const CHARACTER_TOKENS: Record<string, (index: number) => string> = {
   kling: (index) => `@Image${String(index + 1)}`,
-  seedance: (index) => `<<<element_${String(index + 1)}>>>`,
+  seedance: (index) => `@Image${String(index + 1)}`,
   gemini_omni: (index) => `<IMAGE_REF_${String(index)}>`,
 };
+
+/**
+ * Chi vuole la durata scritta come testo. Su fal Kling e Seedance mandano `"8"` (Seedance accetta
+ * anche `"auto"`), Gemini Omni un numero: verificato il 21/10/2026 sugli esempi dei fornitori.
+ * I nostri scontrini tengono sempre un numero.
+ */
+const DURATION_AS_TEXT = new Set(['kling', 'seedance']);
 
 /** Le immagini non citano i personaggi: il prompt della scheda li descrive già (§4.2). */
 const NO_TOKEN = (): string => '';
@@ -88,19 +95,41 @@ function translatorFor(family: string): Translator {
       const body = new RequestBody(model)
         .set('prompt', prompt)
         .set('negative_prompt', input.negativePrompt)
-        .set('duration_s', duration)
+        .set(
+          'duration_s',
+          duration === undefined || !DURATION_AS_TEXT.has(family) ? duration : String(duration),
+        )
         .set('resolution', allowedValue(model, 'resolution', input.params.resolution))
         .set('aspect_ratio', allowedValue(model, 'aspect_ratio', input.params.aspect_ratio))
         .set('audio', allowedValue(model, 'audio', input.params.audio))
         .set('variants', allowedValue(model, 'variants', input.params.variants));
 
-      if (references.length > 0) {
-        body.set(
-          'references',
-          references.map((item) => fileAsUri(item.file)),
-        );
+      const edited = input.inputs.find((item) => item.use === 'base_image');
+      const oneList =
+        body.nameOf('references') !== undefined &&
+        body.nameOf('base_image') === body.nameOf('references');
+
+      if (oneList) {
+        // Un campo lista solo per tutte le immagini (su fal `image_urls`): quella da modificare va
+        // in testa, i riferimenti dopo. Altrimenti il secondo file cancellerebbe il primo.
+        const all = edited === undefined ? references : [edited, ...references];
+        if (all.length > 0) {
+          body.set(
+            'references',
+            all.map((item) => fileAsUri(item.file)),
+          );
+        }
+      } else {
+        if (references.length > 0) {
+          body.set(
+            'references',
+            references.map((item) => fileAsUri(item.file)),
+          );
+        }
+        if (edited !== undefined) body.set('base_image', fileAsUri(edited.file));
       }
-      for (const use of ['first_frame', 'last_frame', 'base_image', 'mask'] as const) {
+
+      for (const use of ['first_frame', 'last_frame', 'mask'] as const) {
         const item = input.inputs.find((candidate) => candidate.use === use);
         if (item !== undefined) body.set(use, fileAsUri(item.file));
       }

@@ -1,4 +1,3 @@
-import type { ModelEntry } from '@filmzy/contracts';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { MediaInput } from '../adapters/types.js';
@@ -36,14 +35,16 @@ function shot(): TranslateInput {
 }
 
 describe('la stessa inquadratura verso tre famiglie (T1.4)', () => {
-  it('ognuna cita i personaggi con la sua sintassi, e i campi vengono dal catalogo', () => {
+  it('ognuna cita i personaggi come vuole il fornitore, e i campi vengono dal catalogo', () => {
+    // Sintassi dei riferimenti e forma della durata verificate il 21/10/2026 (T1.7): Kling e
+    // Seedance vogliono "@Image1" e la durata come testo, Gemini Omni "<IMAGE_REF_0>" e un numero.
     const famiglie = [
-      ['kling-o3-standard', 'kling', '@Image1'],
-      ['seedance-2', 'seedance', '<<<element_1>>>'],
-      ['gemini-omni-flash', 'gemini_omni', '<IMAGE_REF_0>'],
+      ['kling-o3-standard', 'kling', '@Image1', '5'],
+      ['seedance-2', 'seedance', '@Image1', '5'],
+      ['gemini-omni-flash', 'gemini_omni', '<IMAGE_REF_0>', 5],
     ] as const;
 
-    for (const [modelId, family, primoToken] of famiglie) {
+    for (const [modelId, family, primoToken, durata] of famiglie) {
       const model = modelOf(seed, modelId);
       const request = translator(family).build({ ...shot(), modelId }, model);
 
@@ -51,48 +52,58 @@ describe('la stessa inquadratura verso tre famiglie (T1.4)', () => {
       expect(request.providerInput?.prompt).toContain(primoToken);
       expect(request.providerInput?.prompt).not.toContain('[[char:');
       expect(request.providerInput?.image_urls).toHaveLength(2);
-      expect(request.providerInput?.duration).toBe(5);
+      expect(request.providerInput?.duration).toBe(durata);
       expect(request.providerModel).toBe(model.provider_model);
       expect(request.modelId).toBe(modelId);
     }
   });
 
+  it('nessuno dei tre accetta un prompt negativo: non si manda (T1.7)', () => {
+    for (const [modelId, family] of [
+      ['kling-o3-standard', 'kling'],
+      ['seedance-2', 'seedance'],
+      ['gemini-omni-flash', 'gemini_omni'],
+    ] as const) {
+      const request = translator(family).build({ ...shot(), modelId }, modelOf(seed, modelId));
+
+      expect(request.providerInput?.negative_prompt).toBeUndefined();
+      // Resta nella nostra richiesta, perché lo scontrino dice cosa avevamo chiesto.
+      expect(request.negativePrompt).toBe('text, logos');
+    }
+  });
+
   it('porta la durata nei limiti del servizio, invece di farsi rifiutare', () => {
-    const gemini = modelOf(seed, 'gemini-omni-flash'); // al massimo 10 secondi
+    const gemini = modelOf(seed, 'gemini-omni-flash'); // il fornitore dichiara 8 secondi
     const request = translator('gemini_omni').build(
       { ...shot(), modelId: 'gemini-omni-flash', durationS: 30 },
       gemini,
     );
 
-    expect(request.providerInput?.duration).toBe(10);
+    expect(request.providerInput?.duration).toBe(8);
   });
 
   it('porta la risoluzione a un valore ammesso', () => {
-    const kling = modelOf(seed, 'kling-o3-standard'); // 720p o 1080p
-    const request = translator('kling').build(
-      { ...shot(), modelId: 'kling-o3-standard', params: { resolution: '4k' } },
-      kling,
+    const seedance = modelOf(seed, 'seedance-2'); // il catalogo dichiara il solo 720p
+    const request = translator('seedance').build(
+      { ...shot(), modelId: 'seedance-2', params: { resolution: '4k' } },
+      seedance,
     );
 
     expect(request.providerInput?.resolution).toBe('720p');
   });
+
+  it('Kling non ha la risoluzione: non si inventa un campo', () => {
+    const kling = modelOf(seed, 'kling-o3-standard');
+    const request = translator('kling').build(
+      { ...shot(), modelId: 'kling-o3-standard', params: { resolution: '1080p' } },
+      kling,
+    );
+
+    expect(request.providerInput?.resolution).toBeUndefined();
+  });
 });
 
 describe('primo e ultimo fotogramma (D20)', () => {
-  /** Nessuna voce del seme lo dichiara ancora: gli id si verificano in T1.7. */
-  function withFirstAndLast(base: ModelEntry): ModelEntry {
-    if (base.kind !== 'video') throw new Error('serve una voce video');
-    return {
-      ...base,
-      capabilities: { ...base.capabilities, input_modes: ['first_frame+last_frame'] },
-      request_fields: {
-        ...base.request_fields,
-        first_frame: 'image_url',
-        last_frame: 'tail_image_url',
-      },
-    };
-  }
-
   function frames(): MediaInput[] {
     return [
       { use: 'first_frame', file: reference('primo.png').file },
@@ -101,7 +112,8 @@ describe('primo e ultimo fotogramma (D20)', () => {
   }
 
   it('mette i due fotogrammi nei campi che il catalogo indica', () => {
-    const model = withFirstAndLast(modelOf(seed, 'kling-o3-standard'));
+    // Kling O3 è il solo dei tre che li accetta, sullo stesso punto d'accesso (verificato in T1.7).
+    const model = modelOf(seed, 'kling-o3-standard');
     const input: TranslateInput = {
       ...shot(),
       modelId: 'kling-o3-standard',
@@ -112,27 +124,52 @@ describe('primo e ultimo fotogramma (D20)', () => {
     expect(translator('kling').check(input, model)).toEqual([]);
     const request = translator('kling').build(input, model);
 
-    expect(String(request.providerInput?.image_url)).toContain('data:image/png;base64,');
-    expect(String(request.providerInput?.tail_image_url)).toContain('data:image/png;base64,');
+    expect(String(request.providerInput?.start_image_url)).toContain('data:image/png;base64,');
+    expect(String(request.providerInput?.end_image_url)).toContain('data:image/png;base64,');
   });
 
   it('un servizio che accetta solo i riferimenti lo dice, invece di declassare (D20)', () => {
-    const model = modelOf(seed, 'kling-o3-standard'); // input_modes: [references]
+    const model = modelOf(seed, 'gemini-omni-flash'); // input_modes: [references]
     const input: TranslateInput = {
       ...shot(),
-      modelId: 'kling-o3-standard',
+      modelId: 'gemini-omni-flash',
       inputs: frames(),
       characterIds: [],
     };
 
-    const issues = translator('kling').check(input, model);
+    const issues = translator('gemini_omni').check(input, model);
     expect(issues.map((issue) => issue.field)).toContain('capabilities.input_modes');
+  });
+});
+
+describe('le immagini in un campo lista solo (T1.7)', () => {
+  it("l'immagine da modificare va in testa e i riferimenti dopo", () => {
+    // Su fal l'editor di immagini ha un campo solo, `image_urls`: senza accodare, la seconda
+    // immagine cancellerebbe la prima.
+    const model = modelOf(seed, 'nano-banana-2-edit');
+    const input: TranslateInput = {
+      ...shot(),
+      role: 'storyboard_artist',
+      modelId: 'nano-banana-2-edit',
+      inputs: [
+        { use: 'base_image', file: reference('primo-fotogramma.png').file },
+        reference('anna.png'),
+      ],
+      characterIds: ['anna'],
+      durationS: undefined,
+    };
+
+    expect(translator('image_generic').check(input, model)).toEqual([]);
+    const immagini = translator('image_generic').build(input, model).providerInput?.image_urls;
+
+    expect(Array.isArray(immagini)).toBe(true);
+    expect(immagini).toHaveLength(2);
   });
 });
 
 describe('i controlli che tengono il lavoro fuori dai guai (§4.7, §4.8)', () => {
   it('troppe immagini di riferimento', () => {
-    const seedream = modelOf(seed, 'seedream-lite'); // ne accetta 1
+    const seedream = modelOf(seed, 'seedream-lite'); // scrive solo da testo: nessuna immagine
     const issues = translator('image_generic').check(
       { ...shot(), role: 'storyboard_artist', modelId: 'seedream-lite' },
       seedream,
@@ -162,12 +199,12 @@ describe('i controlli che tengono il lavoro fuori dai guai (§4.7, §4.8)', () =
   });
 
   it('una maschera dove il servizio non la accetta (D21)', () => {
-    const nano = modelOf(seed, 'nano-banana-2'); // mask_edit: unknown
+    const nano = modelOf(seed, 'nano-banana-2-edit'); // modifica le immagini, ma senza maschera
     const issues = translator('image_generic').check(
       {
         ...shot(),
         role: 'retoucher',
-        modelId: 'nano-banana-2',
+        modelId: 'nano-banana-2-edit',
         inputs: [
           { use: 'base_image', file: reference('set.png').file },
           { use: 'mask', file: reference('maschera.png').file },

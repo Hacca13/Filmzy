@@ -93,8 +93,13 @@ export type ModelStatus = z.infer<typeof modelStatusSchema>;
 
 export const llmCapabilitiesSchema = z.array(configKeySchema);
 
+/**
+ * `max_reference_images: 0` è un dato vero, non un errore: molti fornitori hanno un punto
+ * d'accesso che scrive da testo e non riceve nessuna immagine (verificato in T1.7). Il router lo
+ * usa per escludere quella voce quando la richiesta porta dei riferimenti.
+ */
 export const imageCapabilitiesSchema = z.object({
-  max_reference_images: z.number().int().positive(),
+  max_reference_images: z.number().int().nonnegative(),
   image_edit: trueFalseUnknownSchema,
   mask_edit: trueFalseUnknownSchema,
 });
@@ -102,7 +107,7 @@ export const imageCapabilitiesSchema = z.object({
 export const videoCapabilitiesSchema = z.object({
   durations_s: z.object({ min: z.number().positive().optional(), max: z.number().positive() }),
   input_modes: z.array(inputModeSchema),
-  max_reference_images: z.number().int().positive(),
+  max_reference_images: z.number().int().nonnegative(),
   max_characters: z.number().int().positive(),
   native_audio: z.boolean(),
   real_faces: realFacesSchema,

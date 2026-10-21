@@ -8,7 +8,7 @@ roles:
     label: Moderatore
     kind: llm
     model: claude-haiku
-    params: { temperature: 0, max_tokens: 500 }
+    params: { max_tokens: 500 }
     instructions: moderator@1
     output_strategy: auto
     retries: { invalid_output: 1, technical_error: 2 }
@@ -17,7 +17,7 @@ roles:
     label: Direttore del casting
     kind: llm
     model: claude-sonnet
-    params: { temperature: 0.8, max_tokens: 4000 }
+    params: { max_tokens: 4000 }
     instructions: casting@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -26,7 +26,7 @@ roles:
     label: Sceneggiatore
     kind: llm
     model: claude-sonnet
-    params: { temperature: 0.9, max_tokens: 8000 }
+    params: { max_tokens: 8000 }
     instructions: screenwriter@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -35,7 +35,7 @@ roles:
     label: Aiuto regista
     kind: llm
     model: claude-sonnet
-    params: { temperature: 0.4, max_tokens: 6000 }
+    params: { max_tokens: 6000 }
     instructions: shot_planner@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -44,7 +44,7 @@ roles:
     label: Direttore della fotografia
     kind: llm
     model: claude-sonnet
-    params: { temperature: 0.5, max_tokens: 1500 }
+    params: { max_tokens: 1500 }
     instructions: cinematographer@1           # varianti per famiglia: v1.seedance.md, v1.image_generic.md
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -53,7 +53,7 @@ roles:
     label: Segretaria di edizione
     kind: llm
     model: claude-haiku
-    params: { temperature: 0.1, max_tokens: 3000 }
+    params: { max_tokens: 3000 }
     instructions: script_supervisor@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -62,7 +62,7 @@ roles:
     label: Character designer
     kind: image
     model: nano-banana-2
-    params: { resolution: 1k, aspect_ratio: "3:4" }
+    params: { resolution: "1K", aspect_ratio: "3:4" }
     instructions: character_designer@1        # template del prompt immagine, senza LLM
     retries: { technical_error: 2 }
 
@@ -70,27 +70,27 @@ roles:
     label: Scenografo
     kind: image
     model: nano-banana-2
-    params: { resolution: 1k, aspect_ratio: "16:9", variants: 3 }
+    params: { resolution: "1K", aspect_ratio: "16:9", variants: 3 }
     instructions: set_designer@1              # template del prompt immagine, senza LLM; il luogo porta già il suo prompt in inglese
     retries: { technical_error: 2 }
 
   retoucher:
     label: Ritocco
     kind: image
-    model: nano-banana-2                      # richiede image_edit
-    params: { resolution: 1k }
+    model: nano-banana-2-edit                 # richiede image_edit: su fal è un punto d'accesso a parte
+    params: { resolution: "1K" }
     instructions: retoucher@1
     retries: { technical_error: 2 }
 
   storyboard_artist:
     label: Storyboard
     kind: image
-    routing:
-      policy: cheap
-      candidates: [seedream-lite, nano-banana-2]   # con due personaggi servono due riferimenti: il router passa a Nano Banana
+    model: nano-banana-2-edit                 # riceve le schede dei personaggi e sa modificare un'immagine
     prompt_from: cinematographer
     # Due modi: "storyboard" (varianti da riferimenti) e "end_frame" (ultimo fotogramma, modifica il primo: richiede image_edit, quindi il router lascia solo i modelli che lo dichiarano)
-    params: { variants: 3, aspect_ratio: "16:9", resolution: 1k }
+    # Seedream Lite resta nel catalogo come alternativa in «Cambia servizio», ma non sa scegliere le
+    # proporzioni (ha nomi suoi per le dimensioni), quindi non è un candidato dello storyboard (T1.7).
+    params: { variants: 3, aspect_ratio: "16:9", resolution: "1K" }
     retries: { technical_error: 2 }
 
   camera_operator:
@@ -98,9 +98,14 @@ roles:
     kind: video
     routing:
       policy: balanced                        # cheap | balanced | quality
-      candidates: [kling-o3-standard, seedance-2, gemini-omni-flash]
+      candidates: [kling-o3-standard, seedance-2, seedance-2-fast, gemini-omni-flash]
     prompt_from: cinematographer
-    params: { resolution: 720p, aspect_ratio: "16:9", audio: false }
+    # Qui stanno solo i parametri che **tutti** i candidati accettano (§4.6 punto 3). Risoluzione e
+    # audio no: Kling non ha la risoluzione e Gemini Omni non ha un interruttore per l'audio, che
+    # genera sempre. I prezzi del catalogo sono quelli a 720p, che è il valore di partenza di chi la
+    # accetta, e l'audio nativo dei take resta spento nel mix (D24). Un parametro per servizio
+    # dentro un ruolo è una decisione aperta (architettura §13).
+    params: { aspect_ratio: "16:9" }
     retries: { technical_error: 2 }
 
   composer:
@@ -122,7 +127,7 @@ roles:
     label: Sound designer
     kind: llm
     model: claude-sonnet
-    params: { temperature: 0.6, max_tokens: 3000 }
+    params: { max_tokens: 3000 }
     instructions: sound_planner@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }

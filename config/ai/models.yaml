@@ -9,11 +9,20 @@
 #   image_edit: l'immagine modifica un'immagine data (serve al ritocco e all'ultimo fotogramma); mask_edit: accetta una maschera vera
 # true | false | unknown: "unknown" conta come "no" per il router; solo il bench può provarlo.
 # monthly_cap_usd (facoltativo): valore iniziale del tetto di spesa mensile del modello (D30); quello che l'utente sceglie sta nelle sue impostazioni (D36).
+#
+# Verifica del 21/10/2026 (T1.7, nessuna chiamata a pagamento): id, prezzi, durate, parametri accettati e
+# nomi dei campi presi dalle pagine dei fornitori. Due cose valgono per tutti i video verificati:
+#   • nessuno dei tre accetta un prompt negativo, quindi `negative_prompt` non è più dichiarato;
+#   • il prezzo cambia con la risoluzione e il catalogo sa dire un prezzo solo: ogni voce dichiara
+#     perciò la sola risoluzione che il suo prezzo rappresenta (vedi architettura §13).
 version: 1
 
 models:
   # --- LLM -----------------------------------------------------------------
-  # Prezzi Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (verificati il 19/10/2026)
+  # Prezzi e limiti: https://platform.claude.com/docs/en/models/sonnet-5-5/overview (21/10/2026)
+  # Nessuno dei due accetta la temperatura: "Setting temperature, top_p, or top_k returns a 400
+  # error" (Sonnet 5.5) e Haiku 5.5 chiede di ometterla. Non è dichiarata, quindi le impostazioni
+  # avanzate non mostrano «Creatività» per questi servizi (D38, D42).
   claude-sonnet:
     label: Claude Sonnet
     kind: llm
@@ -21,9 +30,8 @@ models:
     provider_model: claude-sonnet-5-5
     capabilities: [structured_output, vision]
     params:
-      temperature: { min: 0, max: 1 }
       max_tokens: { min: 1, max: 128000 }
-    pricing: { unit: per_mtok, input: 2.00, output: 10.00, checked: 2026-10-19 }
+    pricing: { unit: per_mtok, input: 2.00, output: 10.00, checked: 2026-10-21 }
     status: active
 
   claude-haiku:
@@ -33,7 +41,6 @@ models:
     provider_model: claude-haiku-5-5
     capabilities: [structured_output, vision]
     params:
-      temperature: { min: 0, max: 1 }
       max_tokens: { min: 1, max: 128000 }
     pricing:
       unit: per_mtok
@@ -41,121 +48,189 @@ models:
       output: 0.50
       tiers:                                   # prezzo più alto oltre i 100.000 token di prompt
         - { above_prompt_tokens: 100000, input: 0.50, output: 2.50 }
-      checked: 2026-10-19
+      checked: 2026-10-21
     status: active
 
   # --- Immagini --------------------------------------------------------------
+  # Su fal generare e modificare sono due punti d'accesso diversi: "nano-banana-2" scrive da zero,
+  # "nano-banana-2/edit" riceve immagini. Chi ha bisogno di riferimenti (storyboard) o di modificare
+  # (ritocco, ultimo fotogramma) usa la voce "edit".
   nano-banana-2:
     label: Nano Banana 2
     kind: image
     connection: fal
-    provider_model: fal-ai/nano-banana-2      # da verificare sul catalogo fal
+    provider_model: fal-ai/nano-banana-2
     family: image_generic
     capabilities:
-      max_reference_images: 4                 # prudente, da verificare
-      image_edit: true                        # da verificare su fal
-      mask_edit: unknown                      # senza maschera vera si evidenzia la zona sull'immagine
+      max_reference_images: 0                 # il punto d'accesso da testo non accetta immagini
+      image_edit: false
+      mask_edit: false
     params:
-      resolution: { values: [1k, 2k, 4k] }
-      aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
+      resolution: { values: ["1K"] }          # accetta anche 0.5K, 2K, 4K, che costano 0,75x, 1,5x e 2x
+      aspect_ratio: { values: ["21:9", "16:9", "3:2", "4:3", "5:4", "1:1", "4:5", "3:4", "2:3", "9:16"] }
       variants: { min: 1, max: 4 }
-    request_fields: { prompt: prompt, references: image_urls, variants: num_images }
-    pricing: { unit: per_image, value: 0.08, note: "a 1K", checked: 2026-10-13 }
-    status: testing
+    request_fields: { prompt: prompt, variants: num_images, resolution: resolution, aspect_ratio: aspect_ratio }
+    pricing: { unit: per_image, value: 0.08, note: "a 1K", checked: 2026-10-21 }
+    status: active
+
+  nano-banana-2-edit:
+    label: Nano Banana 2 · Modifica
+    kind: image
+    connection: fal
+    provider_model: fal-ai/nano-banana-2/edit
+    family: image_generic
+    capabilities:
+      max_reference_images: 14
+      image_edit: true
+      mask_edit: false                        # senza maschera vera si evidenzia la zona sull'immagine (T4.9)
+    params:
+      resolution: { values: ["1K"] }
+      aspect_ratio: { values: ["21:9", "16:9", "3:2", "4:3", "5:4", "1:1", "4:5", "3:4", "2:3", "9:16"] }
+      variants: { min: 1, max: 4 }
+    # Le immagini stanno tutte in una lista sola: l'immagine da modificare va in testa, i
+    # riferimenti dopo (lo fa il traduttore).
+    request_fields:
+      { prompt: prompt, references: image_urls, base_image: image_urls, variants: num_images,
+        resolution: resolution, aspect_ratio: aspect_ratio }
+    pricing: { unit: per_image, value: 0.08, note: "a 1K", checked: 2026-10-21 }
+    status: active
 
   seedream-lite:
     label: Seedream Lite
     kind: image
     connection: fal
-    provider_model: "<Seedream 5.0 Lite su fal: id da verificare>"
+    provider_model: fal-ai/bytedance/seedream/v5/lite/text-to-image
     family: image_generic
     capabilities:
-      max_reference_images: 1
-      image_edit: unknown
-      mask_edit: unknown
+      max_reference_images: 0
+      image_edit: false
+      mask_edit: false
+    # Non ha né risoluzione né proporzioni: ha `image_size` con nomi suoi (square_hd, auto_2K…),
+    # che il catalogo non sa ancora tradurre dalle proporzioni del film (architettura §13).
     params:
-      resolution: { values: [1k, 2k] }
-      aspect_ratio: { values: ["1:1", "3:4", "4:3", "16:9", "9:16"] }
-      variants: { min: 1, max: 4 }
-    request_fields: { prompt: prompt, references: image_urls, variants: num_images }
-    pricing: { unit: per_image, value: 0.032, checked: 2026-10-13 }
-    status: testing
+      variants: { min: 1, max: 6 }
+    request_fields: { prompt: prompt, variants: num_images }
+    pricing: { unit: per_image, value: 0.035, checked: 2026-10-21 }
+    status: active
+
+  seedream-lite-edit:
+    label: Seedream Lite · Modifica
+    kind: image
+    connection: fal
+    provider_model: fal-ai/bytedance/seedream/v5/lite/edit
+    family: image_generic
+    capabilities:
+      max_reference_images: 10                # oltre le dieci il fornitore tiene solo le ultime
+      image_edit: true
+      mask_edit: false
+    params:
+      variants: { min: 1, max: 6 }
+    request_fields:
+      { prompt: prompt, references: image_urls, base_image: image_urls, variants: num_images }
+    pricing: { unit: per_image, value: 0.035, checked: 2026-10-21 }
+    status: active
 
   # --- Video -----------------------------------------------------------------
   kling-o3-standard:
     label: Kling O3 · Standard
     kind: video
     connection: fal
-    provider_model: "<Kling O3 Standard reference-to-video su fal: id da verificare>"
+    provider_model: fal-ai/kling-video/o3/standard/reference-to-video
     family: kling
     capabilities:
       durations_s: { min: 3, max: 15 }
-      input_modes: [references]               # reference-to-video; i modi con primo e ultimo fotogramma sono voci a parte, da aggiungere dopo averne verificato l'id
-      max_reference_images: 7
+      # Lo stesso punto d'accesso accetta i riferimenti (image_urls) e il primo e l'ultimo
+      # fotogramma (start_image_url, end_image_url): è il solo dei tre a farlo (D20).
+      input_modes: [references, first_frame, first_frame+last_frame, references+first_frame]
+      max_reference_images: 4                 # quattro in tutto, riferimenti ed elementi insieme
       max_characters: 3
       native_audio: true
       real_faces: unknown
       minors: false
     params:
-      resolution: { values: [720p, 1080p] }   # da verificare
       aspect_ratio: { values: ["16:9", "9:16", "1:1"] }
       audio: { values: [true, false] }
-    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
-      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
-        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
-    pricing: { unit: per_second, value: 0.224, note: "Standard con audio, su fal", checked: 2026-10-13 }
+    request_fields:                           # verificati il 21/10: non ha prompt negativo né risoluzione
+      { prompt: prompt, references: image_urls, first_frame: start_image_url,
+        last_frame: end_image_url, duration_s: duration, aspect_ratio: aspect_ratio,
+        audio: generate_audio }
+    pricing: { unit: per_second, value: 0.112, note: "0,084 $/s senza audio e 0,112 con audio: qui il più alto", checked: 2026-10-21 }
     quality: {}                               # lo compila il bench
-    status: testing
+    status: active
 
   seedance-2:
     label: Seedance 2
     kind: video
     connection: fal
-    provider_model: "<Seedance 2.0 reference-to-video su fal: id da verificare>"
+    provider_model: bytedance/seedance-2.0/reference-to-video
     family: seedance
     capabilities:
       durations_s: { min: 4, max: 15 }
       input_modes: [references]
-      max_reference_images: 12                # riferimenti totali dichiarati: da verificare per le sole immagini
+      max_reference_images: 9
       max_characters: 2
       native_audio: true
       real_faces: verified_assets             # solo dopo una verifica dal vivo del soggetto
       minors: false
     params:
-      resolution: { values: [480p, 720p, 1080p] }
+      resolution: { values: [720p] }          # accetta anche 480p, 1080p e 4k, a prezzi diversi
       aspect_ratio: { values: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"] }
       audio: { values: [true, false] }
-    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
-      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
-        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
-    pricing: { unit: per_second, value: 0.15, note: "stima: 0,125–0,18 $/s a 720p secondo il fornitore", checked: 2026-10-13 }
+    request_fields:
+      { prompt: prompt, references: image_urls, duration_s: duration, resolution: resolution,
+        aspect_ratio: aspect_ratio, audio: generate_audio }
+    pricing: { unit: per_second, value: 0.3034, note: "720p; l'audio è incluso nel prezzo", checked: 2026-10-21 }
     quality: {}
-    status: testing
+    status: active
+
+  seedance-2-fast:
+    label: Seedance 2 · Veloce
+    kind: video
+    connection: fal
+    provider_model: bytedance/seedance-2.0/fast/reference-to-video
+    family: seedance
+    capabilities:
+      durations_s: { min: 4, max: 15 }
+      input_modes: [references]
+      max_reference_images: 9
+      max_characters: 2
+      native_audio: true
+      real_faces: verified_assets
+      minors: false
+    params:
+      resolution: { values: [720p] }          # il punto d'accesso veloce arriva a 720p
+      aspect_ratio: { values: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"] }
+      audio: { values: [true, false] }
+    request_fields:
+      { prompt: prompt, references: image_urls, duration_s: duration, resolution: resolution,
+        aspect_ratio: aspect_ratio, audio: generate_audio }
+    pricing: { unit: per_second, value: 0.2419, note: "720p; costa meno della voce normale", checked: 2026-10-21 }
+    quality: {}
+    status: active
 
   gemini-omni-flash:
     label: Gemini Omni · Veloce
     kind: video
     connection: fal
-    provider_model: "<Gemini Omni Flash reference-to-video su fal: id da verificare>"
+    provider_model: google/gemini-omni-flash/v1.1/reference-to-video
     family: gemini_omni
     capabilities:
-      durations_s: { max: 10 }
-      input_modes: [references]
-      max_reference_images: 7
+      durations_s: { max: 8 }                 # il fornitore dichiara solo il valore di partenza, 8 s
+      input_modes: [references]               # il primo e l'ultimo fotogramma sono su image-to-video: voce da aggiungere quando serve
+      max_reference_images: 7                 # non dichiarato dal fornitore: resta il valore prudente
       max_characters: 3
-      native_audio: true
+      native_audio: true                      # sempre acceso: non c'è un campo per spegnerlo
       real_faces: "no"
       minors: false
     params:
-      resolution: { values: [360p, 720p, 1080p] }
+      resolution: { values: [720p] }          # accetta anche 360p, 1080p e 4k: 0,03, 0,15 e 0,30 $/s
       aspect_ratio: { values: ["16:9", "9:16"] }
-      audio: { values: [true, false] }
-    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
-      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
-        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
-    pricing: { unit: per_second, value: 0.10, note: "720p, prezzo ufficiale Google; su fal da verificare", checked: 2026-10-13 }
+    request_fields:
+      { prompt: prompt, references: image_urls, duration_s: duration, resolution: resolution,
+        aspect_ratio: aspect_ratio }
+    pricing: { unit: per_second, value: 0.10, note: "720p", checked: 2026-10-21 }
     quality: {}
-    status: testing
+    status: active
 
   # --- Musica ----------------------------------------------------------------
   # Gli effetti sonori non hanno ancora un modello: serve una ricerca (T5.4).
@@ -163,9 +238,9 @@ models:
     label: ElevenLabs Music
     kind: music
     connection: elevenlabs
-    provider_model: "<ElevenLabs Music: id da verificare>"
+    provider_model: music_v2_5
     family: elevenlabs_music
     capabilities:
-      commercial_use: true                    # sui piani a pagamento secondo la ricerca del 13/10: da verificare
-    pricing: { unit: per_second, value: 0.003, note: "circa 0,18 $ al minuto (ricerca del 13/10)", checked: 2026-10-13 }
-    status: testing
+      commercial_use: true                    # sui piani a pagamento; per film e TV il fornitore chiede il piano Enterprise: da chiarire in T5.4
+    pricing: { unit: per_second, value: 0.0025, note: "0,15 $ al minuto; clip da 3 s a 5 minuti", checked: 2026-10-21 }
+    status: testing                           # id del modello verificato, indirizzo del punto d'accesso ancora da verificare (T5.4)

@@ -63,6 +63,12 @@ export interface MediaRequest {
   negativePrompt?: string;
   inputs?: MediaInput[];
   params?: Record<string, string | number | boolean>;
+  /**
+   * Il corpo della richiesta nella forma che vuole il fornitore. Lo costruisce il **traduttore**
+   * della famiglia (architettura §4.7): l'adapter lo trasporta e basta, così una famiglia nuova
+   * non cambia gli adapter.
+   */
+  providerInput?: Record<string, unknown>;
   /** Un lavoro ripetuto non deve contare due volte nella spesa (architettura §7). */
   idempotencyKey: string;
 }

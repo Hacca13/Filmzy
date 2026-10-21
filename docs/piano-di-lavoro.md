@@ -81,7 +81,7 @@ _Fatto quando:_ il direttore della fotografia risponde sia con il fornitore fint
 _Fatto quando:_ una variabile inesistente è un errore di validazione, non un prompt con un buco; con una versione nuova nel manifest, un ruolo fissato alla vecchia continua a usare la vecchia.
 
 **T1.3 Adapter fal e storage.** Invio in coda, polling, retention breve, copia immediata su `AssetStore` (cartella locale). Niente webhook né verifica delle firme (D29). Per le immagini, anche la modifica di un'immagine data (con maschera o con la zona evidenziata).
-_Fatto quando:_ un'immagine, una modifica e un video reali vengono generati e salvati, con scontrino completo.
+_Fatto quando:_ col fornitore finto un'immagine, una modifica e un video passano tutta la catena (coda, polling, copia nella cartella, scontrino completo). La prova con fal **vero** si fa insieme a T1.7, perché prima gli id dei punti d'accesso nel seme sono segnaposto e bloccano le chiamate reali (§4.6 punto 7): costa pochi dollari.
 
 **T1.4 Traduttori.** `kling`, `seedance`, `gemini_omni`, `image_generic`; segnaposto `[[char:id]]`; durata, formato e risoluzione portati ai valori ammessi; modi d'ingresso della voce scelta (riferimenti, primo e ultimo fotogramma, D20).
 _Fatto quando:_ la stessa ShotSpec produce tre richieste valide, verificate su fixture, e una richiesta con primo e ultimo fotogramma per le famiglie che la accettano.

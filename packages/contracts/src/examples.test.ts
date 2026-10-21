@@ -23,7 +23,8 @@ describe('ROLE_OUTPUT_EXAMPLES', () => {
   });
 
   it.each(llmRoles)('la risposta di esempio di %s è valida per il suo schema', (role) => {
-    const schema = ROLE_IO[role].output;
+    const entry = ROLE_IO[role];
+    const schema = 'output' in entry ? entry.output : undefined;
     if (schema === undefined) throw new Error(`il ruolo ${role} non ha uno schema di output`);
 
     const result = schema.safeParse(ROLE_OUTPUT_EXAMPLES[role]);

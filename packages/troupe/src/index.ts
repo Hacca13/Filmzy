@@ -72,6 +72,8 @@ export type { EligibilityInput, ParamProblem } from './eligibility.js';
 export { replacePlaceholders, TRANSLATOR_FAMILIES, translator } from './translators/index.js';
 export type { TranslateInput, TranslateIssue, Translator } from './translators/types.js';
 export { allowedDuration, allowedValue, commonIssues, inputModeOf } from './translators/common.js';
+export { createMediaRunner } from './media.js';
+export type { CollectedMedia, MediaJob, MediaRunner, MediaRunnerOptions } from './media.js';
 export { MemoryReceiptSink } from './receipts.js';
 export type { ReceiptSink } from './receipts.js';
 export { resolveRole } from './resolve-role.js';

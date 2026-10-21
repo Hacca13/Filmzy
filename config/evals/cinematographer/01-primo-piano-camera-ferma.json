@@ -1,0 +1,119 @@
+{
+  "name": "primo piano, camera ferma",
+  "input": {
+    "shot": {
+      "schema": "shot-spec/0.2",
+      "id": "shot-1",
+      "sceneId": "scene-1",
+      "order": 0,
+      "intent": {
+        "action": "Anna guarda in camera e sorride appena",
+        "emotion": "speranzosa",
+        "framing": "close_up",
+        "cameraMovement": "static",
+        "lighting": "luce calda del tramonto",
+        "durationS": 5
+      },
+      "characters": [
+        {
+          "characterId": "anna",
+          "costume": "giacca di jeans chiara",
+          "references": []
+        }
+      ],
+      "location": {
+        "locationId": "piazza",
+        "references": []
+      },
+      "images": [],
+      "dialogue": [],
+      "cinematography": "inherit",
+      "continuity": {
+        "entry": {
+          "locationId": "piazza",
+          "timeOfDay": "tramonto",
+          "present": [
+            "anna"
+          ],
+          "costumes": {
+            "anna": "giacca di jeans chiara"
+          },
+          "props": [
+            "lettera"
+          ]
+        },
+        "exit": {
+          "locationId": "piazza",
+          "timeOfDay": "tramonto",
+          "present": [
+            "anna"
+          ],
+          "costumes": {
+            "anna": "giacca di jeans chiara"
+          },
+          "props": [
+            "lettera"
+          ]
+        }
+      }
+    },
+    "characters": [
+      {
+        "id": "anna",
+        "name": "Anna",
+        "costume": "giacca di jeans chiara"
+      }
+    ],
+    "location": {
+      "id": "piazza",
+      "name": "La piazza del paese",
+      "description": "Piazza centrale al tramonto",
+      "prompt": "a small town square at sunset, warm light",
+      "references": [
+        {
+          "assetId": "asset-4"
+        }
+      ]
+    },
+    "style": {
+      "id": "realistic",
+      "label": "Realistico",
+      "description": "Ripresa dal vero, colori naturali",
+      "hint": "photorealistic live-action film still, natural skin tones",
+      "enabled": true
+    },
+    "cinematography": {
+      "camera": "handheld camera, subtle natural shake, close and medium shots",
+      "lighting": "warm practical lights, soft shadows",
+      "lens": "35mm, shallow depth of field",
+      "grade": "warm tones, gentle contrast"
+    },
+    "movement": {
+      "id": "static",
+      "label": "Resta fermo",
+      "description": "La camera non si muove",
+      "hint": "locked-off camera, no camera movement",
+      "endFrameHint": "the camera has not moved",
+      "enabled": true
+    },
+    "target": {
+      "family": "image_generic",
+      "kind": "image",
+      "maxPromptChars": 900,
+      "frame": "clip",
+      "inputs": [
+        "references"
+      ]
+    }
+  },
+  "expect": {
+    "maxChars": 900,
+    "contains": [
+      "[[char:anna]]"
+    ],
+    "notContains": [
+      "sorride",
+      "piazza del paese"
+    ]
+  }
+}

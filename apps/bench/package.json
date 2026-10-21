@@ -1,0 +1,23 @@
+{
+  "name": "@filmzy/bench",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Prove dei modelli e valutazioni dei ruoli, da riga di comando",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@filmzy/contracts": "workspace:*",
+    "@filmzy/troupe": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2"
+  }
+}

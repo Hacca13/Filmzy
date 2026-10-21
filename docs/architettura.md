@@ -25,7 +25,7 @@ Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e per
 | API | NestJS 12 (moduli ES), come server locale | moduli e dependency injection: la struttura è guidata dal framework; gira sul computer dell'utente, in un solo processo, solo su `127.0.0.1` |
 | Lavori lunghi | coda interna al processo, salvata in SQLite | nuovi tentativi, limiti di concorrenza, ripresa dopo la chiusura del programma; nessun Redis |
 | Interfaccia | React + Vite (SPA) | la logica sta nel backend; l'interfaccia mostra e invia |
-| Database | SQLite + Drizzle ORM | un file nella cartella dell'app, nessun servizio da installare; JSON tipizzato con Zod |
+| Database | SQLite + Drizzle ORM | un file nella cartella dati dell'utente, fuori da quella del programma (§6.1), nessun servizio da installare; JSON tipizzato con Zod |
 | File | cartella locale (`AssetStore`) | un film è una cartella, facile da copiare come backup |
 | Segreti | portachiavi del sistema operativo (Electron `safeStorage`) | le chiavi non stanno in chiaro su disco |
 | Trasporto LLM | AI SDK (Vercel), solo dentro gli adapter | molti fornitori, output strutturati con Zod, `baseURL`, `headers` e `fetch` personalizzabili per gateway e proxy |
@@ -33,7 +33,7 @@ Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e per
 | Istruzioni | template LiquidJS | sintassi semplice e sicura anche quando le istruzioni si modificano dalle impostazioni |
 | Montaggio | ffmpeg | standard |
 | Aggiornamenti live | Server-Sent Events | restano comodi tra il server locale e l'interfaccia |
-| Programma | Electron: installatori per Windows, macOS e Linux, aggiornamenti da GitHub Releases | chi non programma non installa Node: si installa con un doppio clic |
+| Programma | Electron: installatori per Windows, macOS e Linux, aggiornamenti da GitHub Releases con l'ok dell'utente (§6.2, D44) | chi non programma non installa Node: si installa con un doppio clic |
 | Licenza | AGPL-3.0 | software libero; chi pubblica una copia modificata deve tenerla aperta |
 | Python | più avanti, come servizio separato | controllo dei volti, modelli locali: la troupe lo vede come una connessione in più |
 
@@ -443,6 +443,7 @@ AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, 
 ```
 
 - La traccia `native` porta l'audio originale dei take: spenta di default, si accende per un take. La traccia `dialogue` accetta registrazioni caricate dall'utente (una voce fuori campo, senza labiale); la generazione delle voci è Fase 2.
+- **L'audio nativo si chiede spento (D43).** Tutti i modelli video dell'MVP lo generano (`capabilities.native_audio`), ma due cose lo sconsigliano: la voce di un personaggio cambia da una generazione all'altra, e su alcuni servizi l'audio costa di più (Kling O3: 0,112 $/s invece di 0,084). Quindi la richiesta porta `audio: false` e l'utente può accenderlo dalle impostazioni, con l'avvertenza. Chi non ha un interruttore (Gemini Omni) manda l'audio comunque: la traccia resta spenta e l'interfaccia dice che per quel servizio l'audio arriva sempre.
 - Una clip di musica sta su una scena (`shotId` vuoto); una clip di effetto sta su un'inquadratura e `startS` conta dall'inizio di quell'inquadratura. Niente timeline libera nell'MVP.
 - Ogni clip generata ha delle varianti, come i take: `chosenVariantId` è quella in uso. Cambiare una variante non tocca i video. Una clip caricata ha un solo file (D27).
 - Il mix si rifà a ogni esportazione (§9). Il testo di `description` passa dal moderatore.
@@ -484,7 +485,7 @@ MoodboardBrief { palette, notes, referenceDescriptions[], scene?: { palette, not
 
 ## 6. Dati (SQLite)
 
-Un solo file nella cartella dell'app; i file dei progetti stanno in cartelle accanto. I campi JSON sono colonne di testo validate con Zod.
+Un solo file di database; i file dei progetti stanno in cartelle accanto. I campi JSON sono colonne di testo validate con Zod.
 
 | Gruppo | Tabelle | Note |
 |---|---|---|
@@ -497,6 +498,30 @@ Un solo file nella cartella dell'app; i file dei progetti stanno in cartelle acc
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
 | Esportazioni | `exports` | |
 | Consensi (spenti) | `real_people`, `consents`, `provider_assets` | ambito (volto, voce), metodo, prove, revoca; asset registrati presso i fornitori, da cancellare alla revoca |
+
+### 6.1 Dove stanno i dati, e perché non nella cartella del programma
+
+I dati stanno nella **cartella dati dell'utente** del sistema operativo (`app.getPath('userData')` di Electron: `%APPDATA%\Filmzy` su Windows, `~/Library/Application Support/Filmzy` su macOS, `~/.local/share/filmzy` su Linux), **mai** dentro la cartella dove è installato il programma:
+
+```
+<cartella dati>/
+├─ filmzy.db              database SQLite (film, scontrini, impostazioni, coda)
+├─ filmzy.db.backup-<versione>   copia fatta prima di una migrazione
+├─ log/                   registro degli eventi (pino)
+└─ progetti/<id>/         file dei film: immagini, take, audio, esportazioni
+```
+
+La cartella dei progetti si può spostare dalle impostazioni (un disco più capiente): nel database resta il percorso scelto. Le chiavi non stanno qui: sono nel portachiavi del sistema (D25, D29).
+
+Così **un aggiornamento sostituisce solo il programma** e ritrova i dati dov'erano: non c'è niente da importare. Vale anche per chi non usa l'installatore: una copia compilata dal repository o un pacchetto portatile leggono la stessa cartella.
+
+### 6.2 Aggiornamenti e migrazioni (D44)
+
+- **Come arriva un aggiornamento.** All'avvio l'app chiede a GitHub Releases se c'è una versione nuova. Se c'è, lo dice una volta, con le **novità** di quella versione, e l'utente decide: «Aggiorna ora» scarica e installa, «Non ora» chiude l'avviso e non lo ripropone **finché non esce una versione ancora più nuova**. Nelle impostazioni c'è sempre «Controlla se c'è un aggiornamento». Il controllo si può spegnere. Non parte nessun dato dell'utente: è una richiesta a GitHub, che vede indirizzo IP e versione (D29: all'autore non arriva niente).
+- **Le migrazioni si applicano all'avvio**, in una transazione, dopo aver copiato il file del database (`filmzy.db.backup-<versione precedente>`). Se la migrazione fallisce, si torna alla copia e l'app lo dice con un messaggio semplice e il percorso del file, invece di aprirsi su dati a metà.
+- **Non si apre un database più nuovo del programma.** Nel database c'è la versione dello schema: se è più alta di quella che il programma conosce (l'utente è tornato a una versione vecchia), l'app non tocca niente e dice che quel film è stato creato con una versione più nuova di Filmzy.
+- **Il seme della troupe che arriva con la versione nuova non sovrascrive le scelte dell'utente** (§4.3, D38): modelli, preset e versioni nuove delle istruzioni si **aggiungono**; servizi attivati, predefiniti, versioni scelte e tetti di spesa restano quelli dell'utente. Delle istruzioni nuove l'interfaccia avvisa, con il loro registro dei cambiamenti.
+- **Copia di sicurezza e trasloco:** un film si esporta come cartella e si reimporta su un altro computer (T6.3). È anche il modo di portarsi i dati dietro cambiando macchina.
 
 ## 7. Pipeline di una generazione
 
@@ -571,7 +596,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 
 ## 11. Osservabilità e costi
 
-- Registro degli eventi in un file nella cartella dell'app (pino), con `generationId` e `jobId`. «Esporta diagnostica» crea un archivio da allegare a una segnalazione, senza chiavi.
+- Registro degli eventi in un file nella cartella dati dell'utente (pino, §6.1), con `generationId` e `jobId`. «Esporta diagnostica» crea un archivio da allegare a una segnalazione, senza chiavi.
 - Pannello «Quanto ho speso», costruito sugli scontrini: per film, ruolo e modello, con la spesa del mese di ogni connessione rispetto al suo tetto.
 - Nessun servizio di tracciamento degli errori attivo di default; se un giorno ci sarà, sarà facoltativo e con consenso esplicito.
 
@@ -593,12 +618,12 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - Strumento per la marcatura C2PA (opzione dopo l'MVP) e parere legale sugli obblighi di trasparenza prima di una versione 1.0 pubblica (D31).
 - Fornitori della musica e degli effetti sonori (T5.4): per la musica c'è già una candidata nella ricerca del 13/10, per gli effetti serve una ricerca nuova.
 - Driver di SQLite (`better-sqlite3` oppure il modulo `node:sqlite` incluso in Node) e uso del portachiavi (Electron `safeStorage`): da scegliere all'inizio di M2, insieme alla conferma di Drizzle con SQLite (D11).
-- Firma del codice degli installatori (Windows e macOS) e aggiornamenti automatici (M6).
+- Firma del codice degli installatori, Windows e macOS (M6): senza, i sistemi mostrano un avviso all'installazione. Il flusso degli aggiornamenti è deciso (D44, §6.2).
 - Continuità tra scene consecutive nello stesso luogo e alla stessa ora: oggi la vede solo la segretaria di edizione (§8). Da provare con i test prima di decidere se aggiungere una regola deterministica.
 - Esperimenti A/B dalle impostazioni avanzate (dopo l'MVP).
 - Dialoghi: audio nativo del modello o voce nostra + labiale (Fase 2).
 - **Prezzo per risoluzione nel catalogo.** Il prezzo dei video e delle immagini cambia con la risoluzione (Seedance 2: 0,3034 $/s a 720p e 0,682 a 1080p; Nano Banana 2: 1,5x a 2K), ma `pricing` sa dire un prezzo solo. Perciò oggi ogni voce dichiara la sola risoluzione che il suo prezzo rappresenta (T1.7): da sciogliere quando l'interfaccia offrirà la scelta della qualità, probabilmente con un prezzo per valore.
-- **Parametri per servizio dentro un ruolo.** I `params` di un ruolo devono andare bene per *ogni* candidato (§4.6 punto 3), quindi l'operatore di ripresa non può chiedere «audio spento» (Gemini Omni lo genera sempre) né una risoluzione (Kling non ce l'ha). Finché restano i valori di partenza dei fornitori va bene; se servirà chiedere qualcosa a un solo servizio, serviranno parametri per servizio nel ruolo.
+- **Parametri per servizio dentro un ruolo.** I `params` di un ruolo devono andare bene per *ogni* candidato (§4.6 punto 3), quindi l'operatore di ripresa non può dichiarare una risoluzione (Kling non ce l'ha). Le preferenze dell'utente che non tutti i servizi sanno rispettare viaggiano nella **richiesta**, non nel ruolo: il traduttore le manda a chi le accetta e le lascia cadere dagli altri, e l'interfaccia lo dice (è il caso dell'audio, D43). Resta aperto il caso di un parametro che si vuole chiedere a un solo servizio.
 - **Dimensioni con nomi propri.** Seedream Lite non ha proporzioni ma `image_size` con nomi suoi (`landscape_16_9`, `auto_2K`): il catalogo non sa tradurre «16:9» in quei nomi, quindi quel servizio non è candidato dello storyboard. Serve una tabella di conversione per valore, nel catalogo.
 - Traduzione in inglese del testo di ritocco scritto dall'utente: per ora va al modello così com'è (D21, D15).
 - Formati (spot, trailer, videoclip) che decidono quali campi del personaggio sono obbligatori, e elenco definitivo dei tag (D22).

@@ -111,13 +111,13 @@ Fatto il 21/10 (`pnpm troupe check` è pulito: nessun errore, nessun avviso). Co
 
 _Leggere: architettura §4.5, §4.6, §6, §10._
 
-**T2.1 Database e coda locali.** SQLite con Drizzle (si conferma D11), migrazioni, scelta del driver (`better-sqlite3` oppure `node:sqlite`) e del portachiavi; coda interna salvata in SQLite, con nuovi tentativi e limiti di concorrenza.
-_Fatto quando:_ un lavoro messo in coda riparte dopo la chiusura e la riapertura dell'app.
+**T2.1 Database e coda locali.** SQLite con Drizzle (si conferma D11), migrazioni, scelta del driver (`better-sqlite3` oppure `node:sqlite`) e del portachiavi; coda interna salvata in SQLite, con nuovi tentativi e limiti di concorrenza. Il database e i file stanno nella **cartella dati dell'utente**, fuori dalla cartella del programma (architettura §6.1): le migrazioni si applicano all'avvio, in transazione, dopo una copia di sicurezza del file, e un database scritto da una versione più nuova non si apre, con un messaggio chiaro (D44).
+_Fatto quando:_ un lavoro messo in coda riparte dopo la chiusura e la riapertura dell'app; una migrazione lascia una copia di sicurezza e, se fallisce, l'app riparte dai dati di prima.
 
 **T2.2 Configurazione nel database.** Tabelle `troupe_drafts`, `troupe_releases`, `instruction_versions`; `pnpm troupe import` ed `export`; `ConfigSource` dal database, che consegna anche le scelte dell'utente (`settings`, D36); ricarica immediata senza riavvio; se la nuova release non è valida si tiene la precedente.
 _Fatto quando:_ pubblicare una release cambia subito il comportamento dei lavori in coda, senza riavviare.
 
-**T2.3 Moduli generati dagli schemi.** Pagine Connessioni, Modelli, Ruoli, Preset (stili, generi, toni, fotografia, tag, movimenti di macchina) e Funzioni e limiti generate dagli schemi Zod, con validazione in linea; delle chiavi si vede solo "presente" o "mancante".
+**T2.3 Moduli generati dagli schemi.** Pagine Connessioni, Modelli, Ruoli, Preset (stili, generi, toni, fotografia, tag, movimenti di macchina) e Funzioni e limiti generate dagli schemi Zod, con validazione in linea; delle chiavi si vede solo "presente" o "mancante". Fra le impostazioni semplici: «Audio originale dei take», spento, con la spiegazione (la voce cambia da una generazione all'altra, e su alcuni servizi l'audio costa di più) e la nota sui servizi che lo generano sempre (D43); e il controllo degli aggiornamenti, con il pulsante per cercarli subito (D44).
 _Fatto quando:_ dalle impostazioni avanzate si cambia il modello dello sceneggiatore.
 
 **T2.4 Istruzioni.** Editor con versioni e varianti, elenco delle variabili, anteprima con un input di esempio; caricamento di un file di istruzioni proprio (con un modello da scaricare e un errore che nomina la variabile sbagliata); avviso quando arriva una versione nuova, con il suo registro dei cambiamenti (D38).
@@ -232,8 +232,8 @@ _Leggere: architettura §2, §10 e §12._
 **T6.1** Onboarding e rifinitura dell'interfaccia, procedura guidata al primo avvio compresa.
 **T6.2** Licenza e avviso: `LICENSE` AGPL-3.0, README con l'avviso di uso responsabile e il link alle donazioni (`.github/FUNDING.yml`), nessuna telemetria.
 **T6.3** Esporta e importa un progetto, come copia di sicurezza.
-**T6.4** Impacchettamento con Electron: `apps/desktop`, installatori per Windows, macOS e Linux costruiti dalla CI, portachiavi, aggiornamenti da GitHub Releases. Senza firma del codice i sistemi mostrano un avviso all'installazione.
-_Fatto quando:_ da un computer senza Node l'installatore avvia l'app, un film di prova si genera con il fornitore finto e un aggiornamento si scarica.
+**T6.4** Impacchettamento con Electron: `apps/desktop`, installatori per Windows, macOS e Linux costruiti dalla CI, portachiavi, aggiornamenti da GitHub Releases (D44): controllo all'avvio, avviso **una volta** con le novità della versione, «Aggiorna ora» che scarica e installa, «Non ora» che ricorda la versione rifiutata e non insiste, pulsante e interruttore nelle impostazioni. Senza firma del codice i sistemi mostrano un avviso all'installazione.
+_Fatto quando:_ da un computer senza Node l'installatore avvia l'app, un film di prova si genera con il fornitore finto, un aggiornamento si scarica solo dopo l'ok dell'utente e, dopo l'aggiornamento, i film di prima sono ancora lì.
 **T6.5** Prove su Windows, macOS e Linux: installazione pulita, aggiornamento, chiavi, cartelle dei progetti.
 **T6.6** Test con 5–10 persone non tecniche: dove si bloccano, cosa non capiscono.
 

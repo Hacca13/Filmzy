@@ -1,3 +1,20 @@
+export { ADAPTER_NAMES, llmAdapterFor, mediaAdapterFor } from './adapters/index.js';
+export { FakeProvider, fakeAdapterFactory } from './adapters/fake.js';
+export type { FakeCall, FakeProviderOptions } from './adapters/fake.js';
+export type {
+  AdapterFactory,
+  AdapterOptions,
+  LlmAdapter,
+  LlmRequest,
+  LlmResponse,
+  LlmUsage,
+  MediaAdapter,
+  MediaFile,
+  MediaInput,
+  MediaRequest,
+  MediaStatus,
+  MediaUsage,
+} from './adapters/types.js';
 export {
   applyEnvironmentOverlay,
   CONFIG_ENVIRONMENTS,
@@ -25,3 +42,5 @@ export { FileConfigSource } from './config/source.js';
 export type { ConfigSource, LoadedConfig } from './config/source.js';
 export { validateConfig } from './config/validate.js';
 export type { ValidateOptions } from './config/validate.js';
+export { ProviderError } from './provider-error.js';
+export type { ProviderErrorDetails } from './provider-error.js';

@@ -1,6 +1,8 @@
 # Film Gen Ai — Ricerca e valutazioni
 
 > **Copia del documento di ricerca del 13/10/2026.** È una fotografia di quella data: modelli, prezzi e regole dei fornitori vanno ricontrollati prima di usarli.
+>
+> **Aggiornamento:** il 21/10/2026 (T1.7) id, prezzi, durate e parametri dei modelli che l'MVP usa sono stati riverificati sulle pagine dei fornitori e scritti in `config/ai/models.yaml`, che da qui in avanti è la fonte di verità. Qualche numero di questo documento è già vecchio: Seedance 2 costa 0,3034 $/s a 720p (qui era stimato 0,15) e nessuno dei tre modelli video accetta un prompt negativo.
 
 _Ricerca del 13 ottobre 2026. Modelli e prezzi verificati online in questa data: cambiano spesso, vanno ricontrollati prima di ogni decisione di spesa. Le note legali non sono una consulenza legale._
 

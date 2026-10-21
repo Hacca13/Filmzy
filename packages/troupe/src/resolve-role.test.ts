@@ -31,7 +31,8 @@ describe('resolveRole sul seme', () => {
 
     expect(resolved.modelId).toBe('claude-haiku');
     expect(resolved.connectionId).toBe('anthropic');
-    expect(resolved.params).toEqual({ temperature: 0, max_tokens: 500 });
+    // Niente temperatura: i modelli del seme non la accettano (T1.7, D42).
+    expect(resolved.params).toEqual({ max_tokens: 500 });
     expect(resolved.releaseInstructions).toBe('moderator@1');
     expect(resolved.retries).toEqual({ invalid_output: 1, technical_error: 2 });
   });
@@ -66,13 +67,21 @@ describe("le scelte dell'utente vincono sulla release (D38)", () => {
   });
 
   it('cambia la creatività, lasciando gli altri parametri', () => {
+    // Nessun modello del seme accetta la temperatura (T1.7): qui la si dichiara di proposito,
+    // perché quello che si prova è il meccanismo di D38, non il catalogo di oggi.
+    const config = withSeed((c) => {
+      c.models['claude-haiku'] = {
+        ...modelOf(c, 'claude-haiku'),
+        params: { ...modelOf(c, 'claude-haiku').params, temperature: { min: 0, max: 1 } },
+      };
+    });
     const settings: UserSettings = {
       ...noSettings,
       enabledModelIds: ['claude-haiku'],
       roleSettings: { moderator: { params: { temperature: 0.7 } } },
     };
 
-    expect(resolveRole(seed, 'moderator', settings).params).toEqual({
+    expect(resolveRole(config, 'moderator', settings).params).toEqual({
       temperature: 0.7,
       max_tokens: 500,
     });
@@ -120,10 +129,18 @@ describe('idoneità del servizio (§4.8)', () => {
 
   it('non usa un servizio che non accetta i parametri del ruolo', () => {
     const config = withSeed((c) => {
-      c.roles.moderator = { ...roleOf(c, 'moderator'), params: { temperature: 5 } };
+      c.roles.moderator = { ...roleOf(c, 'moderator'), params: { max_tokens: 999999 } };
     });
 
-    expect(() => resolveRole(config, 'moderator')).toThrow(/il massimo è 1/);
+    expect(() => resolveRole(config, 'moderator')).toThrow(/il massimo è 128000/);
+  });
+
+  it('non usa un servizio che non ha quel parametro (la temperatura, T1.7)', () => {
+    const config = withSeed((c) => {
+      c.roles.moderator = { ...roleOf(c, 'moderator'), params: { temperature: 0.5 } };
+    });
+
+    expect(() => resolveRole(config, 'moderator')).toThrow(/"temperature" non lo accetta/);
   });
 
   it('non usa un servizio di un altro tipo', () => {

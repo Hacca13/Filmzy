@@ -32,11 +32,12 @@ function withSeed(change: (config: TroupeConfig) => void): TroupeConfig {
 }
 
 describe('validateConfig sui file di seme', () => {
-  it('non trova errori, solo avvisi sugli id da verificare', () => {
+  it('non trova niente da dire: id e prezzi sono verificati (T1.7)', () => {
     const issues = validateConfig(seed, { now: NOW, secrets: SEED_SECRETS });
 
-    expect(issues.filter((issue) => issue.severity === 'error')).toEqual([]);
-    expect(new Set(issues.map((issue) => issue.code))).toEqual(new Set(['model_testing']));
+    // Dopo T1.7 il seme non ha più né errori né avvisi: i servizi che l'MVP usa sono `active`,
+    // con id e prezzi verificati. La musica resta `testing`, ma il suo ruolo è spento (T5.4).
+    expect(issues).toEqual([]);
   });
 
   it('con il fornitore finto non chiede nessuna chiave (TROUPE_ENV=offline)', async () => {
@@ -136,14 +137,14 @@ describe('parametri (§4.6 punto 3)', () => {
 
   it('rifiuta un valore fuori dai limiti del modello', () => {
     const config = withSeed((c) => {
-      c.roles.casting = { ...roleOf(c, 'casting'), params: { temperature: 1.8, max_tokens: 4000 } };
+      c.roles.casting = { ...roleOf(c, 'casting'), params: { max_tokens: 999999 } };
     });
     const issue = validateConfig(config, { now: NOW, secrets: SEED_SECRETS }).find(
       (i) => i.code === 'param_out_of_limits',
     );
 
-    expect(issue?.message).toContain('il massimo è 1');
-    expect(issue?.field).toBe('params.temperature');
+    expect(issue?.message).toContain('il massimo è 128000');
+    expect(issue?.field).toBe('params.max_tokens');
   });
 
   it('rifiuta un valore fuori dall\'elenco ammesso', () => {
@@ -194,7 +195,7 @@ describe('stato e capacità (§4.6 punti 7 e 9)', () => {
 
   it('pretende image_edit per il ritocco', () => {
     const config = withSeed((c) => {
-      const model = c.models['nano-banana-2'];
+      const model = c.models['nano-banana-2-edit'];
       if (model?.kind === 'image') model.capabilities.image_edit = 'unknown';
     });
     const issue = validateConfig(config, { now: NOW, secrets: SEED_SECRETS }).find(
@@ -230,15 +231,26 @@ describe('funzioni (§4.6 punto 8)', () => {
     expect(issues.filter((i) => i.code === 'real_people_without_model')).toEqual([]);
   });
 
-  it('con keyframes accesa pretende un servizio con primo e ultimo fotogramma (D20)', () => {
+  it('con keyframes accesa il seme va bene: Kling O3 accetta primo e ultimo fotogramma (D20)', () => {
     const config = withSeed((c) => {
       c.features.keyframes = true;
+    });
+    const issues = validateConfig(config, { now: NOW, secrets: SEED_SECRETS });
+
+    // Verificato in T1.7: lo stesso punto d'accesso di Kling prende riferimenti e fotogrammi.
+    expect(issues.filter((i) => i.code === 'keyframes_without_model')).toEqual([]);
+  });
+
+  it('con keyframes accesa, se nel catalogo nessuno li accetta, è un errore (D20)', () => {
+    const config = withSeed((c) => {
+      c.features.keyframes = true;
+      const kling = c.models['kling-o3-standard'];
+      if (kling?.kind === 'video') kling.capabilities.input_modes = ['references'];
     });
     const issue = validateConfig(config, { now: NOW, secrets: SEED_SECRETS }).find(
       (i) => i.code === 'keyframes_without_model',
     );
 
-    // Nel seme nessuna voce dichiara ancora first_frame+last_frame: gli id sono da verificare (T1.7).
     expect(issue?.severity).toBe('error');
   });
 });

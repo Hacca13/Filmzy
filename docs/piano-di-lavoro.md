@@ -97,6 +97,16 @@ Fatto il 21/10: cinque esempi fissi per il direttore della fotografia (con il fo
 _Fatto quando:_ `pnpm troupe check` non avvisa più su id segnaposto e prezzi vecchi dei modelli che l'MVP usa davvero.
 Nota dalla prova di T1.1 (21/10): nel seme l'id del modello di testo era sbagliato di una cifra, e quel modello **non accetta la temperatura**, che il catalogo invece dichiara. Un parametro dichiarato ma ignorato è peggio di uno mancante: lo slider «Creatività» sembrerebbe funzionare senza fare niente (D38).
 
+Fatto il 21/10 (`pnpm troupe check` è pulito: nessun errore, nessun avviso). Cosa è venuto fuori, oltre a id e prezzi:
+- **Niente prompt negativo.** Nessuno dei tre video lo accetta: non si manda più (resta nello scontrino, perché dice cosa avevamo chiesto).
+- **La durata è testo** per Kling e Seedance (`"8"`), un numero per Gemini Omni.
+- **Kling prende anche primo e ultimo fotogramma** sullo stesso punto d'accesso: la domanda aperta di D20 ha una risposta e la funzione `keyframes` ha un servizio.
+- **Kling non ha la risoluzione** e **Gemini Omni non ha un interruttore per l'audio**: l'operatore di ripresa ora chiede solo le proporzioni, perché i `params` di un ruolo valgono per tutti i suoi candidati (§4.6 punto 3).
+- **Generare e modificare un'immagine sono id diversi** su fal: il catalogo ha due voci per Nano Banana e due per Seedream, e ritocco e storyboard usano quelle che ricevono immagini. Lì le immagini stanno in una lista sola, quindi il traduttore le accoda invece di sovrascriverle.
+- **I modelli di testo non accettano la temperatura** (D42): i ruoli non la impostano più.
+- **Seedance 2 costa il doppio di quanto stimato** (0,3034 $/s a 720p invece di 0,15): c'è anche la voce «Veloce» a 0,2419. Con i prezzi veri `config/bench/week1.yaml` costerebbe **48,79 $** (43,25 con Seedance Veloce, 11,27 con una matrice ridotta): il budget del piano è 50 $, quindi passa per poco.
+- Resta da fare la **prova vera con fal** (T1.3): ora gli id non bloccano più, ma costa qualche dollaro e la fa l'autore quando può.
+
 ## M2 — Impostazioni (6–9 giornate)
 
 _Leggere: architettura §4.5, §4.6, §6, §10._
@@ -160,7 +170,7 @@ _Fatto quando:_ `pnpm eval` produce un report per ognuno.
 
 _Leggere: architettura §4.7–4.11, §5.2 e §7._
 
-**T4.0 Bench dei modelli video (circa 45 $, D40).** Prima di generare video veri: esecuzione di `config/bench/week1.yaml` su fal, voti di 3 persone alla cieca, voti nel catalogo (`quality`), che il router usa per mettere in fila i candidati. Facoltativo: provare il modo con primo e ultimo fotogramma su 3 inquadrature con le voci che lo dichiarano (circa 11–21 $ in più, stima sui prezzi del seme per 45 s di video a modello). Se il budget è stretto si parte da una matrice ridotta (2 inquadrature, 2 take) e si allarga solo se i risultati non sono chiari.
+**T4.0 Bench dei modelli video (circa 49 $ con i prezzi verificati il 21/10, D40).** Prima di generare video veri: esecuzione di `config/bench/week1.yaml` su fal, voti di 3 persone alla cieca, voti nel catalogo (`quality`), che il router usa per mettere in fila i candidati. Facoltativo: provare il modo con primo e ultimo fotogramma su 3 inquadrature con le voci che lo dichiarano (circa 11–21 $ in più, stima sui prezzi del seme per 45 s di video a modello). Se il budget è stretto si parte da una matrice ridotta (2 inquadrature, 2 take) e si allarga solo se i risultati non sono chiari.
 _Fatto quando:_ sono scelti i modelli immagine e video per l'MVP e la scelta è registrata in `docs/decisioni.md`.
 Nota: Seedance potrebbe rifiutare anche volti realistici inventati, se non sono registrati come asset virtuali. È una delle cose che il bench misura.
 Nota da T1.6: il bench genera tutte le immagini delle schede (angolazioni × tentativi) ma come riferimento prende la prima riuscita. Qui serve il passo che manca: guardare `schede.json`, scegliere la migliore per ogni personaggio e rilanciare la matrice con quella.
@@ -232,7 +242,7 @@ _Fatto quando:_ almeno 5 persone non tecniche installano Filmzy, collegano i lor
 ## Fuori dal codice
 
 - [ ] Account fal con limite di spesa e un fornitore LLM, per provare
-- [ ] Budget del bench dei modelli (M4, T4.0): circa 45 $; in M1 bastano pochi dollari
+- [ ] Budget del bench dei modelli (M4, T4.0): 48,79 $ col piano così com'è, 43,25 $ con Seedance Veloce, 11,27 $ con una matrice ridotta (prezzi verificati il 21/10); in M1 bastano pochi dollari
 - [x] Licenza del codice: AGPL-3.0 (D28)
 - [ ] Link per le donazioni (GitHub Sponsors, Ko-fi o altro) e `.github/FUNDING.yml`
 - [ ] Rendere pubblico il repository: prima `LICENSE`, avviso di uso responsabile e link alle donazioni

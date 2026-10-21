@@ -38,6 +38,18 @@ function videoRequest(): Omit<TranslateInput, 'modelId'> {
   };
 }
 
+/** Una richiesta con primo e ultimo fotogramma: è una scelta dell'utente, non un suggerimento. */
+function framesRequest(): Omit<TranslateInput, 'modelId'> {
+  return {
+    ...videoRequest(),
+    inputs: [
+      { use: 'first_frame', file: reference('primo.png').file },
+      { use: 'last_frame', file: reference('ultimo.png').file },
+    ],
+    characterIds: [],
+  };
+}
+
 function input(overrides: Partial<RouteInput> = {}): RouteInput {
   return {
     roleId: 'camera_operator',
@@ -136,17 +148,24 @@ describe('i requisiti della richiesta escludono i servizi (§4.8 punto 1)', () =
     expect(() => route(input({ config, request }))).toThrow(/volti di persone reali/);
   });
 
-  it('primo e ultimo fotogramma che nessuno accetta: niente declassamenti in silenzio (D20)', () => {
-    const request = {
-      ...videoRequest(),
-      inputs: [
-        { use: 'first_frame' as const, file: reference('primo.png').file },
-        { use: 'last_frame' as const, file: reference('ultimo.png').file },
-      ],
-      characterIds: [],
-    };
+  it('primo e ultimo fotogramma vanno a chi li accetta (D20, verificato in T1.7)', () => {
+    const request = framesRequest();
 
-    expect(() => route(input({ request }))).toThrow(/combinazione di immagini/);
+    // Fra i candidati solo Kling O3 li prende, e il router lo trova senza bisogno di chiedere.
+    expect(route(input({ request })).modelId).toBe('kling-o3-standard');
+  });
+
+  it('primo e ultimo fotogramma che nessuno accetta: niente declassamenti in silenzio (D20)', () => {
+    const config = withSeed((c) => {
+      c.roles.camera_operator = {
+        ...roleOf(c, 'camera_operator'),
+        routing: { policy: 'balanced', candidates: ['seedance-2', 'gemini-omni-flash'] },
+      };
+    });
+
+    expect(() => route(input({ config, request: framesRequest() }))).toThrow(
+      /combinazione di immagini/,
+    );
   });
 });
 

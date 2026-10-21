@@ -138,7 +138,7 @@ export class RequestBody {
 
   /** Scrive il valore se il catalogo dice come si chiama quel campo per questo servizio. */
   set(field: RequestFieldName, value: unknown): this {
-    const name = this.model.request_fields?.[field];
+    const name = this.nameOf(field);
     if (name === undefined || value === undefined) return this;
     this.body[name] = value;
     return this;
@@ -146,7 +146,15 @@ export class RequestBody {
 
   /** Vero se il catalogo dichiara quel campo: serve a sapere cosa si può mandare. */
   has(field: RequestFieldName): boolean {
-    return this.model.request_fields?.[field] !== undefined;
+    return this.nameOf(field) !== undefined;
+  }
+
+  /**
+   * Come si chiama quel campo presso il fornitore. Serve a capire quando due usi diversi finiscono
+   * nello stesso campo: certi fornitori hanno una lista sola per tutte le immagini.
+   */
+  nameOf(field: RequestFieldName): string | undefined {
+    return this.model.request_fields?.[field];
   }
 
   build(): Record<string, unknown> {

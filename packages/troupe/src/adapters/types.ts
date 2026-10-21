@@ -12,6 +12,8 @@ export interface AdapterOptions {
   connection: Connection;
   /** Dove stanno le chiavi. Solo l'adapter le legge, e mai per metterle in un log (D25). */
   secrets?: SecretSources;
+  /** Una funzione di rete propria: copre gateway e proxy (§4.7) e nei test evita la rete. */
+  fetch?: typeof globalThis.fetch;
 }
 
 export interface LlmRequest {

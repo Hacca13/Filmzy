@@ -100,6 +100,9 @@ models:
       resolution: { values: [720p, 1080p] }   # da verificare
       aspect_ratio: { values: ["16:9", "9:16", "1:1"] }
       audio: { values: [true, false] }
+    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
+      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
+        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
     pricing: { unit: per_second, value: 0.224, note: "Standard con audio, su fal", checked: 2026-10-13 }
     quality: {}                               # lo compila il bench
     status: testing
@@ -122,6 +125,9 @@ models:
       resolution: { values: [480p, 720p, 1080p] }
       aspect_ratio: { values: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"] }
       audio: { values: [true, false] }
+    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
+      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
+        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
     pricing: { unit: per_second, value: 0.15, note: "stima: 0,125–0,18 $/s a 720p secondo il fornitore", checked: 2026-10-13 }
     quality: {}
     status: testing
@@ -144,6 +150,9 @@ models:
       resolution: { values: [360p, 720p, 1080p] }
       aspect_ratio: { values: ["16:9", "9:16"] }
       audio: { values: [true, false] }
+    request_fields:                          # nomi dei campi presso il fornitore: da verificare (T1.7)
+      { prompt: prompt, negative_prompt: negative_prompt, references: image_urls,
+        duration_s: duration, resolution: resolution, aspect_ratio: aspect_ratio, audio: audio }
     pricing: { unit: per_second, value: 0.10, note: "720p, prezzo ufficiale Google; su fal da verificare", checked: 2026-10-13 }
     quality: {}
     status: testing

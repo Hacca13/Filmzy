@@ -1,0 +1,38 @@
+{
+  "name": "@filmzy/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Database locale (SQLite + Drizzle), cartella dei dati, migrazioni e coda dei lavori",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "migrazioni": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@filmzy/contracts": "workspace:*",
+    "better-sqlite3": "13.0.3",
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.19.2",
+    "drizzle-kit": "0.31.11"
+  }
+}

@@ -21,6 +21,9 @@ export const DOMAIN_ERROR_CODES = [
   'role_disabled',
   'invalid_request',
   'not_found',
+  // Il database locale (architettura §6.2, D44): all'avvio l'utente deve capire cosa è successo.
+  'database_too_new',
+  'migration_failed',
 ] as const;
 
 export const domainErrorCodeSchema = z.enum(DOMAIN_ERROR_CODES);

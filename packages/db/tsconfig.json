@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Il database legge e scrive file: le servono i moduli di Node.
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src", "drizzle.config.ts"]
+}

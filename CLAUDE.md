@@ -16,7 +16,7 @@ Programma per creare cortometraggi con la gen AI, pensato per chi non sa program
 - Monorepo pnpm + Turborepo, TypeScript strict ovunque.
 - `apps/api` NestJS, server locale con i lavori in coda · `apps/web` React + Vite · `apps/desktop` Electron · `apps/bench` riga di comando.
 - `packages/contracts` schemi Zod · `packages/troupe` livello AI · `packages/db` Drizzle + SQLite · `packages/media` ffmpeg.
-- Coda interna salvata in SQLite, file in una cartella locale, chiavi nel portachiavi del sistema; niente Redis, Postgres, Docker. AI SDK e client fal **solo** dentro `packages/troupe/src/adapters/`.
+- Coda interna salvata in SQLite (`better-sqlite3`, D45), database e file nella cartella dati dell'utente (architettura §6.1), chiavi nel portachiavi del sistema; niente Redis, Postgres, Docker. AI SDK e client fal **solo** dentro `packages/troupe/src/adapters/`.
 
 ## Comandi
 
@@ -34,6 +34,8 @@ pnpm troupe export config/ai              # salva la release attiva su file
 TROUPE_ENV=offline pnpm dev               # tutto col fornitore finto, senza rete
 pnpm eval <ruolo> --model <voce>          # a mano: costa
 pnpm bench run config/bench/week1.yaml    # a mano: costa
+pnpm --filter @filmzy/db migrazioni --name <nome>   # genera la migrazione dopo un cambio di schema
+FILMZY_DATA_DIR=./dati-di-prova pnpm dev            # dati in una cartella di prova, non quella vera
 ```
 
 ## Regole d'oro

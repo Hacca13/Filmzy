@@ -1,0 +1,50 @@
+import type { JobStatus } from '@filmzy/contracts';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+
+/**
+ * Le tabelle del database locale (architettura §6). Arrivano un pezzo per volta, insieme al task
+ * che le usa: qui ci sono quelle di T2.1, cioè le informazioni sul database stesso e la coda dei
+ * lavori. I campi JSON sono testo validato con Zod al confine (D29).
+ *
+ * I tempi sono millisecondi epoch (`integer`): SQLite non ha un tipo data, e un numero si ordina
+ * e si confronta senza sorprese di fuso orario. Verso l'esterno diventano date ISO (contratti).
+ */
+
+/** Informazioni sul database: versione dello schema e versione del programma che l'ha aperto. */
+export const meta = sqliteTable('meta', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
+export const jobs = sqliteTable(
+  'jobs',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind').notNull(),
+    status: text('status').notNull().$type<JobStatus>(),
+    /** Il dato del lavoro, in JSON: lo valida il modulo che lo esegue, non la coda. */
+    payload: text('payload').notNull(),
+    projectId: text('project_id'),
+    /** Unica: un lavoro ripetuto non entra due volte (regola d'oro 10). Può mancare. */
+    idempotencyKey: text('idempotency_key'),
+    priority: integer('priority').notNull().default(0),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(3),
+    /** Non prima di questo momento: è l'attesa crescente fra due tentativi. */
+    runAfter: integer('run_after').notNull(),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    startedAt: integer('started_at'),
+    finishedAt: integer('finished_at'),
+  },
+  (table) => [
+    // Quello che fa l'esecutore mille volte: «dammi i prossimi lavori da fare».
+    index('jobs_da_fare').on(table.status, table.runAfter, table.priority),
+    uniqueIndex('jobs_idempotenza').on(table.idempotencyKey),
+    index('jobs_per_film').on(table.projectId),
+  ],
+);
+
+export type JobRow = typeof jobs.$inferSelect;

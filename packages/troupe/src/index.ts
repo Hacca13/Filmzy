@@ -1,5 +1,15 @@
 export { ADAPTER_NAMES, llmAdapterFor, mediaAdapterFor } from './adapters/index.js';
 export { FakeProvider, fakeAdapterFactory } from './adapters/fake.js';
+export {
+  falAdapterFactory,
+  falMediaAdapter,
+  falQueueFromClient,
+  fetchFalFile,
+  fileUrls,
+} from './adapters/fal.js';
+export type { FalFetch, FalQueue } from './adapters/fal.js';
+export { LocalAssetStore } from './assets.js';
+export type { AssetStore, StoredAsset } from './assets.js';
 export type { FakeCall, FakeProviderOptions } from './adapters/fake.js';
 export type {
   AdapterFactory,

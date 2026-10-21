@@ -1,16 +1,18 @@
 import { anthropicAdapterFactory, openAiCompatibleAdapterFactory } from './ai-sdk.js';
 import { fakeAdapterFactory } from './fake.js';
+import { falAdapterFactory } from './fal.js';
 import { ProviderError } from '../provider-error.js';
 import type { AdapterFactory, AdapterOptions, LlmAdapter, MediaAdapter } from './types.js';
 
 /**
  * L'indice dei plugin (architettura §4.12, caso C): una famiglia nuova si aggiunge qui e non tocca
- * le app. Oggi: il fornitore finto e i due di testo; `fal` per immagini e video arriva in T1.3.
+ * le app. Oggi: il fornitore finto, i due di testo e fal per immagini e video.
  */
 const ADAPTERS: readonly AdapterFactory[] = [
   fakeAdapterFactory,
   anthropicAdapterFactory,
   openAiCompatibleAdapterFactory,
+  falAdapterFactory,
 ];
 
 function factoryFor(options: AdapterOptions): AdapterFactory {

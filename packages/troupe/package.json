@@ -25,6 +25,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.84",
     "@ai-sdk/openai-compatible": "3.0.74",
+    "@fal-ai/client": "1.10.1",
     "@filmzy/contracts": "workspace:*",
     "ai": "7.0.146",
     "liquidjs": "10.21.1",

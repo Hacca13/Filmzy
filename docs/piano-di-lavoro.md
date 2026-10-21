@@ -200,6 +200,7 @@ _Fatto quando:_ un film senza moodboard funziona come prima; con un moodboard ge
 _Leggere: architettura §5.5, §8 e §9._
 
 **T5.1** Regole R1–R8 (R9 arriva con il moodboard, T4.10), con segnalazioni gialle (R4 e R8 con avviso leggero) e motivo.
+Nota: le regole non coprono la continuità **tra scene diverse** (architettura §8): è un caso da provare con i tester (T6.6) prima di decidere se serve una regola in più.
 **T5.2** Segretaria di edizione sulle incoerenze di trama.
 **T5.3** Azioni sul giallo: Rigenera o Ignora.
 **T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.

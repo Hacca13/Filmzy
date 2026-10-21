@@ -92,8 +92,9 @@ _Fatto quando:_ ci sono test unitari sui casi principali: durata non ammessa, tr
 **T1.6 Bench e valutazioni.** `apps/bench`: `pnpm bench run <piano>` esegue la matrice e salva in `bench-output/<run>/` video, scontrini e un report HTML con voto alla cieca; `pnpm bench score` calcola i take usabili e il costo per secondo usabile. `pnpm eval <ruolo>` per i ruoli LLM, con i primi esempi fissi per il direttore della fotografia. Un secondo piano può provare il modo con primo e ultimo fotogramma.
 _Fatto quando:_ report e punteggi si generano con il fornitore finto.
 
-**T1.7 Id e prezzi veri (gratis).** Sul sito dei fornitori: id dei punti d'accesso, prezzi, durate e combinazioni di ingressi (`input_modes`, D20) verificati e scritti nel seme, con `checked` aggiornato; le voci verificate passano da `testing` ad `active` e gli id segnaposto restano `testing` finché non si trovano. Nessuna chiamata a pagamento: i voti di qualità arrivano con il bench in T4.0 (D40).
+**T1.7 Id e prezzi veri (gratis).** Sul sito dei fornitori: id dei punti d'accesso, prezzi, durate, **parametri davvero accettati** e combinazioni di ingressi (`input_modes`, D20) verificati e scritti nel seme, con `checked` aggiornato; le voci verificate passano da `testing` ad `active` e gli id segnaposto restano `testing` finché non si trovano. Nessuna chiamata a pagamento: i voti di qualità arrivano con il bench in T4.0 (D40).
 _Fatto quando:_ `pnpm troupe check` non avvisa più su id segnaposto e prezzi vecchi dei modelli che l'MVP usa davvero.
+Nota dalla prova di T1.1 (21/10): nel seme l'id del modello di testo era sbagliato di una cifra, e quel modello **non accetta la temperatura**, che il catalogo invece dichiara. Un parametro dichiarato ma ignorato è peggio di uno mancante: lo slider «Creatività» sembrerebbe funzionare senza fare niente (D38).
 
 ## M2 — Impostazioni (6–9 giornate)
 

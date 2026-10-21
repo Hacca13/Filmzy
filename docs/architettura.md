@@ -120,7 +120,7 @@ troupe.run(role, input, ctx)      // ruoli LLM: risposta tipizzata e scontrino
 troupe.submit(role, input, ctx)   // ruoli immagine e video: lavoro lungo, restituisce l'id presso il fornitore
 troupe.collect(receiptId, event)  // completa il lavoro quando il polling lo trova finito
 troupe.estimate(role, input, ctx) // costo previsto e servizio che lavorerà, per la stima e i tetti di spesa
-troupe.options(role, input, ctx)  // i servizi tra cui l'utente può scegliere per questa richiesta, ognuno con nome, costo stimato e voto (D36)
+troupe.options(role, request)     // i servizi tra cui l'utente può scegliere per questa richiesta, ognuno con nome, costo stimato e voto (D36)
 ```
 
 `ctx` dice chi chiede e perché (progetto, inquadratura, scopo) e, per le generazioni di immagini, video, musica ed effetti, può portare un `modelId`: il servizio che l'utente ha scelto per questa singola generazione. Sta nel `ctx` e non nell'input del ruolo, quindi non entra negli schemi di §5.3; fa però parte della chiave di idempotenza e dell'hash della richiesta, così rigirare la stessa inquadratura con un altro servizio non è un doppione. Per il router è un requisito, non un suggerimento (§4.8). Il codice non scrive mai un `modelId` di suo: lo riceve dall'utente, da una voce del catalogo.
@@ -295,7 +295,7 @@ A parità di richiesta, di release e di scelte dell'utente il risultato è sempr
 - Se è adatto, è il principale. Se non lo è (non attivato, chiave mancante, durata o riferimenti fuori dai limiti, combinazione di immagini non accettata, parametri non accettati) errore `no_eligible_model` con un messaggio semplice, senza addebiti. Non si passa mai a un altro servizio in silenzio.
 - **Nessuna riserva.** Se il servizio fallisce, il lavoro si ferma con l'errore e l'utente decide se riprovare o cambiare servizio (§4.10). Lo scontrino dice quale servizio ha lavorato.
 
-`troupe.options(role, input, ctx)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
+`troupe.options(role, request)` esegue lo stesso filtro su tutti i servizi attivati e restituisce l'elenco per «Cambia servizio»: `ModelOption` con nome (`label`), costo stimato, voto delle prove e se è il predefinito. Non elenca i servizi che non passano il filtro; se l'elenco è vuoto, il messaggio è lo stesso di `no_eligible_model`. Il router lavora prima del direttore della fotografia, perché il prompt visivo dipende dalla famiglia del servizio.
 
 **Le scelte dell'utente sono requisiti (D20).** Se l'utente ha impostato un primo o un ultimo fotogramma, il filtro tiene solo le voci che accettano quella combinazione. Se nessuna la accetta, errore `no_eligible_model` con un messaggio semplice (per esempio «questa combinazione non è disponibile: prova a usare l'immagine come ispirazione»), senza addebiti. Non si declassa mai in silenzio.
 

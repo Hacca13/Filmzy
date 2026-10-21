@@ -4,6 +4,7 @@ import {
   ROLE_IO,
   type GenerationContext,
   type GenerationReceipt,
+  type ModelOption,
   type RoleId,
 } from '@filmzy/contracts';
 import type { z } from 'zod';
@@ -23,6 +24,8 @@ import {
 } from './instructions/resolve.js';
 import { ProviderError } from './provider-error.js';
 import { resolveRole, type ResolvedRole } from './resolve-role.js';
+import { routeOptions } from './router.js';
+import type { TranslateInput } from './translators/types.js';
 import type { ReceiptSink } from './receipts.js';
 
 /** I ruoli che `run` serve: quelli di testo, i soli con uno schema di risposta (architettura §4.2). */
@@ -60,6 +63,17 @@ export interface Troupe {
     input: RoleInput<Role>,
     ctx: GenerationContext,
   ): Promise<RunResult<Role>>;
+
+  /**
+   * I servizi tra cui l'utente può scegliere per questa richiesta (architettura §4.1, §4.8, D36):
+   * nome, costo stimato e voto delle prove. È quello che alimenta «Cambia servizio».
+   *
+   * Prende i dati della richiesta già pronti (durata, immagini, personaggi): il passaggio
+   * dall'input del ruolo a questi dati, che deve leggere i file dalla cartella del progetto,
+   * arriva con `submit` (T4.3). Non serve il `ctx`: l'elenco non dipende da chi chiede né dal
+   * servizio già scelto, che chi chiama conosce di suo.
+   */
+  options(role: string, request: Omit<TranslateInput, 'modelId'>): Promise<ModelOption[]>;
 }
 
 /** Quanto si aspetta prima di riprovare: poco, e crescendo (architettura §4.10). */
@@ -175,6 +189,25 @@ export function createTroupe(options: TroupeOptions): Troupe {
 
       if (attempt.error !== undefined) throw attempt.error;
       return { data: attempt.data as RoleOutput<typeof role>, receipt: closed };
+    },
+
+    async options(role, request) {
+      const loaded = await options.configSource.load();
+      if (loaded.config === undefined) {
+        throw new ProviderError(
+          'config_invalid',
+          false,
+          `La configurazione non si è caricata: ${loaded.issues.map((issue) => issue.message).join(' ')}`,
+          { role },
+        );
+      }
+
+      return routeOptions({
+        roleId: role,
+        config: loaded.config,
+        ...(loaded.settings === undefined ? {} : { settings: loaded.settings }),
+        request,
+      });
     },
   };
 }

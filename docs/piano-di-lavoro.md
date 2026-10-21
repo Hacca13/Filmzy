@@ -15,10 +15,10 @@ _Versione 3 · 20 ottobre 2026 · Filmzy è software libero e gira in locale (D2
 | Milestone | Obiettivo | Giornate |
 |---|---|---|
 | **M0** Fondamenta | repository, contratti, validatore della configurazione, fornitore finto | 2–3 |
-| **M1** Troupe e test di coerenza | troupe funzionante su file, bench, test reale (circa 45 $) | 5–7 |
+| **M1** Troupe | troupe funzionante su file, bench col fornitore finto, id e prezzi veri verificati | 5–7 |
 | **M2** Impostazioni | database e coda locali, configurazione nel database, prova, pubblicazione, storico, connessioni guidate con chiavi nel portachiavi | 6–9 |
 | **M3** Storia, personaggi e luoghi | costi e tetti di spesa, progetto, moderatore, bozza, casting, schede, luoghi, riepilogo, stesura, inquadrature | 10–14 |
-| **M4** Storyboard, immagini e video | storyboard, immagini dell'inquadratura, take video con polling, aggiornamenti live, spesa | 7–10 |
+| **M4** Storyboard, immagini e video | bench dei modelli (circa 45 $), storyboard, immagini dell'inquadratura, take video con polling, spesa | 7–10 |
 | **M5** Continuità, suoni e montaggio | giallo, segretaria di edizione, tracce audio (musica, effetti, file propri), esportazione con dicitura AI | 9–14 |
 | **M6** Installatore e beta chiusa | Electron, aggiornamenti, licenza e avviso, prove su tre sistemi, 5–10 tester | 8–12 |
 | **Totale MVP** (senza opzioni) | | **47–69** (circa 9½–14 settimane) |
@@ -44,7 +44,7 @@ Le cifre sono stime grossolane, da rivedere dopo M1 e dopo il primo installatore
 
 ## Prima di iniziare
 
-- Account fal con **limite di spesa** impostato nel pannello di fal, e la chiave API: servono per provare, come per ogni utente.
+- Account fal con **limite di spesa** impostato nel pannello di fal, e la chiave API: servono per provare, come per ogni utente. In M1 la spesa è di pochi dollari (T1.3 prova una immagine e un video veri); il bench da circa 45 $ è in M4 (D40).
 - La chiave di un fornitore LLM (nel seme: Anthropic).
 - Node.js LTS e pnpm. Docker non serve. Per costruire gli installatori (M6) bastano le macchine della CI di GitHub.
 
@@ -70,7 +70,7 @@ _Fatto quando:_ un import vietato o un id di modello in `apps/` fanno fallire la
 **T0.6 Fornitore finto.** Adapter `fake` per LLM, immagini e video, con fixture.
 _Fatto quando:_ un test esegue un ruolo LLM e uno video senza rete.
 
-## M1 — Troupe e test di coerenza (5–7 giornate, più l'esecuzione del test)
+## M1 — Troupe (5–7 giornate)
 
 _Leggere: architettura §4 per intero. In M1 la configurazione arriva dai file; il database arriva in M2._
 
@@ -92,9 +92,8 @@ _Fatto quando:_ ci sono test unitari sui casi principali: durata non ammessa, tr
 **T1.6 Bench e valutazioni.** `apps/bench`: `pnpm bench run <piano>` esegue la matrice e salva in `bench-output/<run>/` video, scontrini e un report HTML con voto alla cieca; `pnpm bench score` calcola i take usabili e il costo per secondo usabile. `pnpm eval <ruolo>` per i ruoli LLM, con i primi esempi fissi per il direttore della fotografia. Un secondo piano può provare il modo con primo e ultimo fotogramma.
 _Fatto quando:_ report e punteggi si generano con il fornitore finto.
 
-**T1.7 Test reale.** Esecuzione di `config/bench/week1.yaml` su fal (circa 45 $), voti di 3 persone alla cieca, voti nel catalogo (`quality`), id dei modelli verificati e aggiornati nel seme. Da verificare anche id e capacità dei punti d'accesso con primo e ultimo fotogramma, da aggiungere al catalogo come voci a parte. Facoltativo: provare il modo con primo e ultimo fotogramma su 3 inquadrature con le voci che lo dichiarano (circa 11–21 $ in più, stima sui prezzi del seme per 45 s di video a modello).
-_Fatto quando:_ sono scelti i modelli immagine e video per l'MVP e la scelta è registrata in `docs/decisioni.md`.
-Nota: Seedance potrebbe rifiutare anche volti realistici inventati, se non sono registrati come asset virtuali. È una delle cose che il test misura.
+**T1.7 Id e prezzi veri (gratis).** Sul sito dei fornitori: id dei punti d'accesso, prezzi, durate e combinazioni di ingressi (`input_modes`, D20) verificati e scritti nel seme, con `checked` aggiornato; le voci verificate passano da `testing` ad `active` e gli id segnaposto restano `testing` finché non si trovano. Nessuna chiamata a pagamento: i voti di qualità arrivano con il bench in T4.0 (D40).
+_Fatto quando:_ `pnpm troupe check` non avvisa più su id segnaposto e prezzi vecchi dei modelli che l'MVP usa davvero.
 
 ## M2 — Impostazioni (6–9 giornate)
 
@@ -158,6 +157,10 @@ _Fatto quando:_ `pnpm eval` produce un report per ognuno.
 ## M4 — Storyboard, immagini dell'inquadratura e video (7–10 giornate)
 
 _Leggere: architettura §4.7–4.11, §5.2 e §7._
+
+**T4.0 Bench dei modelli video (circa 45 $, D40).** Prima di generare video veri: esecuzione di `config/bench/week1.yaml` su fal, voti di 3 persone alla cieca, voti nel catalogo (`quality`), che il router usa per mettere in fila i candidati. Facoltativo: provare il modo con primo e ultimo fotogramma su 3 inquadrature con le voci che lo dichiarano (circa 11–21 $ in più, stima sui prezzi del seme per 45 s di video a modello). Se il budget è stretto si parte da una matrice ridotta (2 inquadrature, 2 take) e si allarga solo se i risultati non sono chiari.
+_Fatto quando:_ sono scelti i modelli immagine e video per l'MVP e la scelta è registrata in `docs/decisioni.md`.
+Nota: Seedance potrebbe rifiutare anche volti realistici inventati, se non sono registrati come asset virtuali. È una delle cose che il bench misura.
 
 **T4.1 Storyboard.** Due o tre varianti per inquadratura, scelta; «Cambia servizio» (T3.1).
 _Fatto quando:_ la variante scelta diventa il riferimento visivo della card.
@@ -225,7 +228,7 @@ _Fatto quando:_ almeno 5 persone non tecniche installano Filmzy, collegano i lor
 ## Fuori dal codice
 
 - [ ] Account fal con limite di spesa e un fornitore LLM, per provare
-- [ ] Budget del test di coerenza: circa 45 $
+- [ ] Budget del bench dei modelli (M4, T4.0): circa 45 $; in M1 bastano pochi dollari
 - [x] Licenza del codice: AGPL-3.0 (D28)
 - [ ] Link per le donazioni (GitHub Sponsors, Ko-fi o altro) e `.github/FUNDING.yml`
 - [ ] Rendere pubblico il repository: prima `LICENSE`, avviso di uso responsabile e link alle donazioni

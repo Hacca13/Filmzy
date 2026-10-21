@@ -1,4 +1,4 @@
-# Test di coerenza dei personaggi (settimana 1): piano di lavoro, task T1.7.
+# Test di coerenza dei personaggi: piano di lavoro, task T4.0 (spostato da M1 a M4 con D40).
 # Due personaggi inventati, sei inquadrature, tre modelli, tre take per combinazione.
 name: coerenza-personaggi-v1
 budget_usd: 50                   # il bench si ferma prima di partire se la stima supera il budget

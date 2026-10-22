@@ -15,7 +15,9 @@ export default defineConfig({
     },
     // Questi test aprono database veri e validano tutto il seme, istruzioni comprese: sono lenti
     // per natura. Il tempo concesso è esplicito, così un rallentamento della CI non diventa un
-    // rosso che non c'entra niente.
+    // rosso che non c'entra niente. Serve anche su `beforeEach`, che apre il database e applica le
+    // migrazioni: il suo limite di default è 10 secondi, e su Windows in CI non bastano sempre.
     testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

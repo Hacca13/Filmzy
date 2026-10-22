@@ -1,18 +1,18 @@
 # Prossimo prompt per Figma
 
 - **Stato:** da lanciare (scritto il 22/10/2026).
-- **Cosa chiede:** le correzioni del mockup, dopo che Claude ha letto le 40 schermate via MCP (le immagini sono in `riferimenti/02-film-e-app/`). È un solo prompt, breve: cambia solo quello che elenca.
-- **Cosa non chiede:** niente di nuovo oltre allo stato d'errore della schermata di caricamento. La landing page resta da parte.
-- **Dopo il lancio, da ricontrollare:** finestra di aggiornamento con i tre pulsanti giusti; nessun «modello» fuori da «Chi fa cosa» e «Avanzate»; «Cambia servizio» accanto a ogni «Genera» (anche in «Le scene»); l'interruttore dell'audio con il costo e lo stato acceso; il rifiuto del contenuto senza «Cambia servizio»; tracce del suono in orizzontale; stessa intestazione e stessi passi in tutte le schermate del film.
+- **Cosa chiede:** le correzioni del mockup, dopo che Claude ha letto le 40 schermate via MCP (il loro codice è in `riferimenti/02-film-e-app/`). È un solo prompt, breve: cambia solo quello che elenca.
+- **Cosa non chiede:** niente di nuovo, tranne lo stato d'errore della schermata di caricamento e una tavola «Componenti» (pulsanti, etichette di stato, interruttori, intestazione, passi) che tiene coerenti le schermate. La landing page resta da parte.
+- **Dopo il lancio, da ricontrollare:** finestra di aggiornamento con i tre pulsanti giusti; nessun «modello» fuori da «Chi fa cosa» e «Avanzate»; «Cambia servizio» accanto a ogni «Genera» (anche in «Le scene»); l'interruttore dell'audio con il costo e lo stato acceso; il rifiuto del contenuto senza «Cambia servizio»; tracce del suono in orizzontale; stessa intestazione e stessi passi in tutte le schermate del film; tavole in ordine, con la schermata di caricamento all'inizio; quattro livelli di pulsanti; testi piccoli leggibili.
 - **Chi fa il design:** l'agente di Figma. Claude scrive i prompt e legge i mockup, non li crea e non li modifica da sé (vedi `README.md`).
 
 ## Prompt
 
 ```
-Update the existing Filmzy mockup. Same visual style, all UI text in Italian, desktop only (no mobile or responsive versions). This is a correction pass: change only what is listed, add no new screens except the loading failure state, leave everything else as it is.
+Update the existing Filmzy mockup. Same visual style, all UI text in Italian, desktop only (no mobile or responsive versions). This is a correction pass: change only what is listed, add no new screens except the loading failure state and the "Componenti" frame, leave everything else as it is.
 
 WORDS
-- "modello/modelli" must not appear outside "Chi fa cosa" and "Avanzate". A "fornitore" is the company (fal.ai, OpenAI), a "servizio" is what the user picks (Kling · Standard). First-run steps become "1 Fornitori · 2 Chiave · 3 Servizi · 4 Spese", titles "Collega i tuoi fornitori" and "Scegli i servizi da usare". Also: "Modello predefinito" → "Servizio predefinito"; provider tab "Modelli" → "Servizi"; "I modelli di fal.ai" → "I servizi di fal.ai"; "Scegli i modelli" → "Scegli i servizi"; in the "Cambia servizio" popover "Servizio predefinito: fal.ai" → "Fornitore predefinito: fal.ai"; in "Chi fa cosa" "Scarica un modello" → "Scarica un file di esempio".
+- "modello/modelli" must not appear outside "Chi fa cosa" and "Avanzate". A "fornitore" is the company (fal.ai, OpenAI), a "servizio" is what the user picks (Kling · Standard). First-run steps become "1 Fornitori · 2 Chiave · 3 Servizi · 4 Spese", titles "Collega i tuoi fornitori" and "Scegli i servizi da usare". Also: "Modello predefinito" → "Servizio predefinito"; provider tab "Modelli" → "Servizi"; "I modelli di fal.ai" → "I servizi di fal.ai"; "Scegli i modelli" → "Scegli i servizi"; in the "Cambia servizio" popover "Servizio predefinito: fal.ai" → "Fornitore predefinito: fal.ai"; in "Chi fa cosa" "Scarica un modello" → "Scarica un file di esempio". Every other "modello/modelli" outside those two pages follows the same rule (e.g. "✓ Modelli scelti" → "✓ Servizi scelti", "I modelli attivi compaiono subito nel selettore" → "I servizi attivi compaiono subito in «Cambia servizio»").
 - No credits: "Il credito presso il fornitore è finito" → "I fondi presso il fornitore sono finiti · Ricarica il conto o cambia servizio"; delete the sentence "Il credito citato nei messaggi è quello del fornitore…".
 - No user name, no gendered words (Filmzy has no accounts): remove "Bentornata, Alessia." (use "I tuoi film"); "Resti sempre libera di scegliere per ogni ripresa" → "Puoi sempre scegliere per ogni ripresa"; drop the author from the version history in "Avanzate" (date and note only).
 
@@ -62,6 +62,12 @@ UX
 - One primary (amber) button per screen: in "Personaggi" the per-card "Aggiungi" becomes secondary, "Ai luoghi" stays primary.
 - Fewer amber tip banners ("✦"): keep them only where they prevent a mistake or explain a cost; the rest become plain helper text.
 - Confirmations (spending limit, publish, restore, turning off a "Prudenza" switch) are real dialogs over the screen, not cards.
+- Four button levels, used the same way everywhere: primary (amber), secondary (outlined), text link, destructive (red, always followed by a confirmation dialog: "Elimina", "Rimuovi", "Butta via le modifiche"). Today many actions are bold white text that does not look clickable ("Controlla adesso", "Apri la cartella", "Pubblica", "Cambia la mia scelta"), and "Elimina" in the sound panel is amber.
+- Readability: information text is at least 13 px with AA contrast on the dark background. The grey 11–12 px lines (helper texts, "Salvato sul tuo computer", costs under buttons) are hard to read now.
+- "Riepilogo": show the next step even while it is blocked: "Scrivi la sceneggiatura finale" disabled with "Ancora 2 differenze da risolvere"; a resolved difference folds into one line with a check.
+- "Le scene": "1 dettaglio da controllare" in the summary is a link that scrolls to the yellow card.
+- First run: say what is needed to start ("Per cominciare servono un fornitore per il testo e uno per immagini e video"), keep "Continua" disabled until then, and when several providers are chosen repeat steps 2–3 for each one ("Fornitore 1 di 3").
+- Add a frame "Componenti" with the shared parts and their states (default, hover, focus, disabled): the four buttons, status chips (ok, warning, error, info), switch, text field with error, the "Cambia servizio" popover, the app header and the stepper. Screens use these, so they stop drifting apart.
 
 CANVAS ORDER
 Arrange the frames of "Page 1" in rows, in the order the user meets them, each row with a small section label:
@@ -70,6 +76,7 @@ Arrange the frames of "Page 1" in rows, in the order the user meets them, each r
 3 "Home": I miei film with the update window, Aggiornamenti · Stati.
 4 "Creazione": La tua idea, La storia, Moodboard, Moodboard · Stati, Personaggi, Luoghi, Ritocca, Riepilogo, Riepilogo · Stati, Sceneggiatura.
 5 "Scene e montaggio": Le scene, Imposta le immagini, Servizi e lavori, Generazione · Errori, Quanto ho speso, Montaggio ed esporta, Suono ed esportazione · Stati, Stati di base.
+0 "Componenti" first, above everything.
 6 "Impostazioni": Connessioni, Connessioni · Gestione, Fornitore, Chi fa cosa, Ruoli · Istruzioni e prove, Spese e tetti, Generazione, Prudenza, Aggiornamenti, I tuoi dati, Avanzate, Avanzate · Prova, pubblicazione e storico, Informazioni.
 Same spacing everywhere, no overlapping frames.
 ```

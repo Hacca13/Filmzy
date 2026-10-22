@@ -1,8 +1,11 @@
 # 02 · Il film e l'app — riferimenti
 
-Le 40 schermate del mockup di Figma, come erano il **22/10/2026**, dopo i prompt 02, 03 e 04 e **prima delle correzioni**: dopo il prossimo prompt andranno sostituite. Sono PNG a 1x (1440 px di larghezza, la misura vera del disegno), non a 2x: a 2x la cartella pesava circa 50 MB.
+Il codice delle 40 schermate del mockup di Figma, com'erano il **22/10/2026**, dopo i prompt 02, 03 e 04 e **prima delle correzioni**: dopo il prossimo prompt va riscaricato. Un file `.tsx` per schermata (React con classi Tailwind, come lo dà l'MCP di Figma con `get_design_context`): serve a leggere testi, colori, misure e struttura esatti, **non** è codice dell'app. Sostituisce i PNG, tolti il 22/10.
 
-File Figma: <https://www.figma.com/design/XzJpIysmqCVXCbBSQlY4Jm/Filmzy>. Il numero del nodo serve per riscaricare una schermata (`get_screenshot`).
+- Le immagini dentro il codice (foto, icone) puntano a indirizzi temporanei di Figma, che scadono dopo 7 giorni: non sono scaricate.
+- Ogni elemento ha `data-node-id`, il numero del nodo in Figma; la radice di ogni file è la schermata della tabella.
+
+File Figma: <https://www.figma.com/design/XzJpIysmqCVXCbBSQlY4Jm/Filmzy>.
 
 | File | Schermata in Figma | Nodo |
 |---|---|---|
@@ -47,4 +50,4 @@ File Figma: <https://www.figma.com/design/XzJpIysmqCVXCbBSQlY4Jm/Filmzy>. Il num
 | `39-avvio-serve-versione-nuova` | Avvio · Serve una versione nuova | `27:73209` |
 | `40-avvio-ripristino-dei-dati` | Avvio · Ripristino dei dati | `27:73235` |
 
-La landing page (messa da parte col prompt 04) sta in Figma su un'altra pagina, «Da parte · Landing page» (nodo `31:3262`), e non è esportata qui.
+La landing page (messa da parte col prompt 04) sta in Figma su un'altra pagina, «Da parte · Landing page» (nodo `31:3262`), e non è scaricata qui.

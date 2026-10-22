@@ -160,3 +160,5 @@ export { instructionsRefSchema, roleSettingsSchema, userSettingsSchema } from '.
 export type { InstructionsRef, RoleSettings, UserSettings } from './settings.js';
 export { domainEventSchema } from './events.js';
 export type { DomainEvent } from './events.js';
+export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';
+export type { Job, JobStatus } from './jobs.js';

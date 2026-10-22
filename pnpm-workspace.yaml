@@ -1,3 +1,13 @@
 packages:
   - apps/*
   - packages/*
+
+# pnpm non esegue gli script di installazione dei pacchetti se non sono elencati qui: è una difesa
+# contro chi fa cose all'installazione. Vanno dichiarati anche quelli che NON vogliamo eseguire,
+# altrimenti l'installazione si ferma.
+#   better-sqlite3  il modulo nativo di SQLite: se gli servisse, deve potersi compilare;
+#   esbuild         arriva con Vite e con drizzle-kit, e il suo script serve solo a sistemare il
+#                   binario nei layout di npm: con pnpm sta già nel pacchetto della piattaforma.
+allowBuilds:
+  better-sqlite3: true
+  esbuild: false

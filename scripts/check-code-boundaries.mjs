@@ -25,18 +25,61 @@ async function loadTroupe() {
   }
 }
 
-function codeFiles() {
+function codeFiles({ includeTests = false } = {}) {
   const files = [];
   for (const dir of SCAN_DIRS) {
     for (const entry of readdirSync(dir, { recursive: true, withFileTypes: true })) {
       if (!entry.isFile()) continue;
       const file = path.join(entry.parentPath, entry.name);
       if (file.split(path.sep).some((part) => SKIP_DIRS.has(part))) continue;
-      if (!CODE_FILE.test(entry.name) || TEST_FILE.test(entry.name)) continue;
+      if (!CODE_FILE.test(entry.name)) continue;
+      if (!includeTests && TEST_FILE.test(entry.name)) continue;
       files.push(file);
     }
   }
   return files;
+}
+
+/**
+ * Ogni pacchetto dichiara le dipendenze che usa davvero. Senza questo controllo un import di un
+ * pacchetto del monorepo funziona comunque — pnpm lo trova passando dalla radice — ma Turbo non sa
+ * che deve costruirlo prima, e la CI fallisce a caso: è già capitato con `@filmzy/troupe` dentro
+ * `apps/api` (T2.2). I test contano: anche loro hanno bisogno che quel pacchetto esista.
+ */
+function undeclaredWorkspaceImports() {
+  const manifests = new Map();
+  const readManifest = (dir) => {
+    if (!manifests.has(dir)) {
+      const manifest = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'));
+      manifests.set(dir, {
+        name: manifest.name,
+        declared: new Set([
+          ...Object.keys(manifest.dependencies ?? {}),
+          ...Object.keys(manifest.devDependencies ?? {}),
+        ]),
+      });
+    }
+    return manifests.get(dir);
+  };
+
+  const violations = [];
+  for (const file of codeFiles({ includeTests: true })) {
+    const [area, name] = file.split(path.sep);
+    if (area === undefined || name === undefined) continue;
+    const manifest = readManifest(path.join(area, name));
+
+    readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .forEach((line, index) => {
+        const match = /from '(@filmzy\/[a-z-]+)'/.exec(line);
+        const imported = match?.[1];
+        if (imported === undefined) return;
+        if (imported === manifest.name || manifest.declared.has(imported)) return;
+
+        violations.push({ file, line: index + 1, imported, owner: manifest.name });
+      });
+  }
+  return violations;
 }
 
 function findViolations(files, terms) {
@@ -75,4 +118,22 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('Confini del codice in ordine: nessun id di modello né indirizzo di fornitore.');
+const undeclared = undeclaredWorkspaceImports();
+
+if (undeclared.length > 0) {
+  console.error(`Trovate ${undeclared.length} dipendenze usate ma non dichiarate:`);
+  for (const { file, line, imported, owner } of undeclared) {
+    console.error(
+      `  • ${file}:${line} — "${owner}" importa "${imported}" senza averlo in package.json.`,
+    );
+  }
+  console.error(
+    '\nAggiungilo alle dipendenze del pacchetto: senza, Turbo non sa in che ordine costruire e la' +
+      ' CI fallisce quando capita.',
+  );
+  process.exit(1);
+}
+
+console.log(
+  'Confini del codice in ordine: nessun id di modello né indirizzo di fornitore, nessuna dipendenza non dichiarata.',
+);

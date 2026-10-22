@@ -87,6 +87,7 @@ In locale `api` e `worker` girano nello stesso processo (D29): «worker» indica
 - Solo `packages/troupe/src/adapters/**` importa le librerie dei fornitori (`ai`, `@ai-sdk/*`, `@fal-ai/client`, …).
 - `packages/troupe` non importa `packages/db`. Riceve la configurazione da una `ConfigSource` e scrive gli scontrini su un `ReceiptSink`: l'app li implementa con il database, il bench e i test con file o memoria. Così la troupe gira identica ovunque.
 - Nel codice di `apps/` e `packages/` (test esclusi) non compaiono identificativi di modelli né URL di fornitori. Il controllo usa il catalogo stesso come elenco dei termini vietati.
+- Ogni pacchetto **dichiara** i pacchetti del monorepo che importa, test compresi. Senza, l'import funziona comunque (pnpm lo trova passando dalla radice) ma Turbo non sa che deve costruirlo prima, e la CI fallisce quando capita: è successo in T2.2.
 
 ### 3.1 Le fasi di un progetto
 

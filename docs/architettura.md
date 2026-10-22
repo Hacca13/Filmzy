@@ -208,7 +208,13 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 3. **Pubblicazione:** crea una *release* immutabile, con configurazione completa, versioni delle istruzioni bloccate, hash, nota e autore. Il programma la ricarica subito, senza riavvio.
 4. **Ripristino:** si ripubblica una release precedente come nuova release, così lo storico resta lineare.
 
-**I file YAML restano utili.** `pnpm troupe import config/ai` crea una bozza dai file (primo avvio, nuovo ambiente); `pnpm troupe export config/ai` scrive la release attiva su file, da salvare in git come copia e come storia. I test e il bench caricano i file direttamente, senza database. La troupe riceve la configurazione da una `ConfigSource` — file (test, bench, M1) o database (esercizio, da M2) — e la valida sempre con lo stesso validatore.
+**I file YAML restano utili.** `pnpm troupe import config` crea una bozza dai file (con `--pubblica` la pubblica anche); `pnpm troupe export <cartella>` scrive la release attiva su file, da salvare in git come copia e come storia. L'esportazione scrive i **dati**, non i commenti: perciò, se nella cartella ci sono già dei file, non sovrascrive niente senza un `--sovrascrivi` esplicito — i file di seme del repository sono pieni di spiegazioni che un giro dentro un oggetto JSON non può conservare. I test e il bench caricano i file direttamente, senza database. La troupe riceve la configurazione da una `ConfigSource` — file (test, bench, M1) o database (esercizio, da M2) — e la valida sempre con lo stesso validatore, sulla configurazione già adattata all'ambiente.
+
+**Al primo avvio** non c'è nessuna release: il programma importa i file di seme che arrivano con l'installazione e li pubblica da sé, altrimenti non saprebbe chi fa cosa. Dagli avvii successivi quel passo non fa niente.
+
+**Pubblicare cambia subito il comportamento, anche dei lavori già in coda.** La sorgente del database non tiene in memoria la release: la rilegge a ogni richiesta (è un file SQLite nello stesso processo, costa niente), quindi non c'è nessuna cache da svuotare e nessun riavvio da fare. L'unica cosa che si legge una volta sola è il file dell'adattamento d'ambiente, che arriva col programma e non cambia mentre gira.
+
+**La riga di comando sta nell'app** (`apps/api/src/cli`), non nella troupe: `import` ed `export` hanno bisogno del database, e la troupe non lo conosce (§3). `check` lavora sui file, quindi lo fa la troupe stessa e la riga di comando le passa la mano.
 
 **Precedenze al momento dell'uso, dalla più debole alla più forte:**
 

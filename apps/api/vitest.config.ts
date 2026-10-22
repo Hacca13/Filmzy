@@ -13,5 +13,9 @@ export default defineConfig({
     env: {
       FILMZY_DATA_DIR: mkdtempSync(path.join(tmpdir(), 'filmzy-test-')),
     },
+    // Questi test aprono database veri e validano tutto il seme, istruzioni comprese: sono lenti
+    // per natura. Il tempo concesso è esplicito, così un rallentamento della CI non diventa un
+    // rosso che non c'entra niente.
+    testTimeout: 30_000,
   },
 });

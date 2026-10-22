@@ -38,7 +38,9 @@ export type TroupePresetsData = z.infer<typeof troupePresetsSchema>;
 export const troupeConfigSchema = z.object({
   connections: z.record(z.string().min(1), connectionSchema),
   models: z.record(z.string().min(1), modelEntrySchema),
-  roles: z.record(z.string().min(1), roleConfigEntrySchema),
+  // Un ruolo può non esserci: le chiavi sono quelle che la release dichiara, non tutte quelle
+  // possibili. `partialRecord` dice proprio questo, ed è la stessa forma che usa il caricatore.
+  roles: z.partialRecord(z.string().min(1), roleConfigEntrySchema),
   features: featuresSchema,
   limits: limitsSchema,
   presets: troupePresetsSchema,

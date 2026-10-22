@@ -26,7 +26,8 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 |---|---|---|---|---|
 | 01 | [`storico/01-mockup-iniziale.md`](storico/01-mockup-iniziale.md) | i 6 schermi base, lo stile (scuro, ambra), i componenti | 20/10/2026 | fatto; alcune scelte superate dal prompt 02 |
 | 02 | [`storico/02-film-e-app.md`](storico/02-film-e-app.md) | il film (flusso nuovo, moodboard, ritocco, scene, servizio e audio a ogni generazione, costi) e l'app (suono, primo avvio, Impostazioni, aggiornamenti, dati, avanzate) | 22/10/2026 | fatto, le due parti insieme; da esportare in `riferimenti/02-film-e-app/` |
-| 03 | [`storico/03-solo-desktop-modale-e-landing.md`](storico/03-solo-desktop-modale-e-landing.md) | via la versione mobile, aggiornamento in una modale sulla home con «Ricordamelo più tardi», landing page | 22/10/2026 | fatto; da guardare e correggere |
+| 03 | [`storico/03-solo-desktop-modale-e-landing.md`](storico/03-solo-desktop-modale-e-landing.md) | via la versione mobile, aggiornamento in una modale sulla home con «Ricordamelo più tardi», landing page | 22/10/2026 | fatto; la landing è messa da parte dal prompt 04; da guardare e correggere |
+| 04 | [`storico/04-schermata-di-caricamento.md`](storico/04-schermata-di-caricamento.md) | via la landing page; al suo posto una schermata di caricamento all'avvio | 22/10/2026 | fatto; da guardare e correggere |
 
 ## Chi fa il design
 

@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "turbo run lint typecheck test build && pnpm format:check && node scripts/check-code-boundaries.mjs",
-    "troupe": "turbo run build --filter=@filmzy/troupe --output-logs=errors-only && node --env-file-if-exists=.env packages/troupe/dist/cli/bin.js",
+    "troupe": "turbo run build --filter=@filmzy/api --output-logs=errors-only && node --env-file-if-exists=.env apps/api/dist/cli/bin.js",
     "bench": "turbo run build --filter=@filmzy/bench --output-logs=errors-only && node --env-file-if-exists=.env apps/bench/dist/bin.js",
     "eval": "turbo run build --filter=@filmzy/bench --output-logs=errors-only && node --env-file-if-exists=.env apps/bench/dist/bin.js eval"
   },

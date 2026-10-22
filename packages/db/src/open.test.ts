@@ -29,12 +29,13 @@ describe('apertura del database (§6.2)', () => {
     const aperto = await openFilmzyDatabase({ dataDir, appVersion: '0.3.0' });
 
     expect(aperto.file).toBe(databaseFile(dataDir));
-    expect(aperto.schemaVersion).toBe(1);
+    // La versione dello schema è il numero di migrazioni del pacchetto: cresce con loro.
+    expect(aperto.schemaVersion).toBeGreaterThanOrEqual(2);
     expect(aperto.backupFile).toBeUndefined();
 
     const righe = aperto.db.select().from(meta).all();
     expect(Object.fromEntries(righe.map((r) => [r.key, r.value]))).toEqual({
-      schema_version: '1',
+      schema_version: String(aperto.schemaVersion),
       app_version: '0.3.0',
     });
 
@@ -50,7 +51,7 @@ describe('apertura del database (§6.2)', () => {
 
     const secondo = await openFilmzyDatabase({ dataDir, appVersion: '0.3.1' });
     expect(secondo.backupFile).toBeUndefined();
-    expect(secondo.schemaVersion).toBe(1);
+    expect(secondo.schemaVersion).toBe(primo.schemaVersion);
     // La versione del programma si aggiorna a ogni avvio: serve a capire chi ha scritto.
     expect(
       secondo.db

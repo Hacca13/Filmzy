@@ -5,4 +5,5 @@ export * from './features.js';
 export * from './instructions.js';
 export * from './models.js';
 export * from './presets.js';
+export * from './release.js';
 export * from './roles.js';

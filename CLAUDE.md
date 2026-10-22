@@ -28,9 +28,9 @@ pnpm dev                                  # api e web in locale
 pnpm test                                 # fornitore finto: zero costi
 pnpm lint && pnpm typecheck
 pnpm check                                # lint, typecheck, test, build, stile e confini del codice (D34)
-pnpm troupe check                         # valida la configurazione (file o bozza)
-pnpm troupe import config/ai              # crea una bozza dai file di seme
-pnpm troupe export config/ai              # salva la release attiva su file
+pnpm troupe check                         # valida la configurazione sui file
+pnpm troupe import config --pubblica      # crea la bozza dai file di seme e la pubblica
+pnpm troupe export <cartella>             # salva la release attiva su file (perde i commenti)
 TROUPE_ENV=offline pnpm dev               # tutto col fornitore finto, senza rete
 pnpm eval <ruolo> --model <voce>          # a mano: costa
 pnpm bench run config/bench/week1.yaml    # a mano: costa

@@ -1,9 +1,17 @@
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { connectionsFileSchema, modelsFileSchema } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { loadBenchPlan, loadConfigFiles, parseConfigFile } from './load-files.js';
+import {
+  configToYamlFiles,
+  loadBenchPlan,
+  loadConfigFiles,
+  parseConfigFile,
+} from './load-files.js';
 import { FileConfigSource } from './source.js';
 
 /** La cartella `config/` del repository: i file di seme veri. */
@@ -135,5 +143,47 @@ describe('loadBenchPlan', () => {
     expect(issues).toEqual([]);
     expect(plan?.name).toBe('coerenza-personaggi-v1');
     expect(plan?.models).toContain('seedance-2');
+  });
+});
+
+describe('configToYamlFiles: il giro completo (pnpm troupe export → import)', () => {
+  it('riscrive i file del seme e rileggendoli si ottiene la stessa configurazione', async () => {
+    const { config } = await loadConfigFiles(SEED_CONFIG_DIR);
+    expect(config).toBeDefined();
+    if (config === undefined) return;
+
+    const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-export-'));
+    for (const { file, text } of configToYamlFiles(config)) {
+      const destinazione = path.join(dir, file);
+      await mkdir(path.dirname(destinazione), { recursive: true });
+      await writeFile(destinazione, text, 'utf8');
+    }
+
+    const riletta = await loadConfigFiles(dir);
+
+    expect(riletta.issues).toEqual([]);
+    expect(riletta.config).toEqual(config);
+  });
+
+  it('scrive i nove file del seme, con i preset in snake_case', async () => {
+    const { config } = await loadConfigFiles(SEED_CONFIG_DIR);
+    if (config === undefined) throw new Error('il seme non si è letto');
+
+    const files = configToYamlFiles(config);
+    expect(files.map(({ file }) => file)).toEqual([
+      'ai/connections.yaml',
+      'ai/models.yaml',
+      'ai/roles.yaml',
+      'features.yaml',
+      'presets/styles.yaml',
+      'presets/cinematography.yaml',
+      'presets/camera_movements.yaml',
+      'presets/character_tags.yaml',
+      'presets/genres.yaml',
+    ]);
+
+    const movimenti = files.find(({ file }) => file.endsWith('camera_movements.yaml'))?.text ?? '';
+    expect(movimenti).toContain('end_frame_hint:');
+    expect(movimenti).not.toContain('endFrameHint');
   });
 });

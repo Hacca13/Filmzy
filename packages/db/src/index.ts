@@ -5,5 +5,29 @@ export { APP_DIR_NAME, databaseFile, logDir, projectsDir, resolveDataDir } from 
 export type { DataDirOptions } from './paths.js';
 export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';
-export { jobs, meta } from './schema.js';
-export type { JobRow } from './schema.js';
+export {
+  DRAFT_ID,
+  instructionVersions,
+  jobs,
+  meta,
+  settings,
+  troupeDrafts,
+  troupeReleases,
+  USER_SETTINGS_ID,
+} from './schema.js';
+export type {
+  InstructionVersionRow,
+  JobRow,
+  SettingsRow,
+  TroupeDraftRow,
+  TroupeReleaseRow,
+} from './schema.js';
+export { createTroupeStore } from './troupe-store.js';
+export type {
+  ActiveRelease,
+  PublishInput,
+  StoredSettings,
+  TroupeStore,
+  TroupeStoreOptions,
+  UnreadableRow,
+} from './troupe-store.js';

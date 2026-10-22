@@ -25,7 +25,7 @@ import {
   type StylePreset,
   type Tone,
 } from '@filmzy/contracts';
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { z } from 'zod';
 
 import { messageOf, type ConfigIssue } from './issues.js';
@@ -192,6 +192,50 @@ export async function loadConfigFiles(configDir: string): Promise<LoadFilesResul
     },
     issues,
   };
+}
+
+/**
+ * L'inverso di `loadConfigFiles`: dalla configurazione ai file del seme, già in YAML
+ * (`pnpm troupe export`, architettura §4.5). Serve a tenere in git una copia leggibile e
+ * confrontabile della release attiva, e a rileggerla con `import`.
+ *
+ * Il formato dei file è roba della troupe, quindi la conversione sta qui: chi scrive i file (la
+ * riga di comando dell'app, che ha il database) riceve solo testo da salvare.
+ */
+export function configToYamlFiles(config: TroupeConfig): { file: string; text: string }[] {
+  // I file usano snake_case, le istruzioni camelCase (§5.3): qui si torna indietro.
+  const movements = config.presets.cameraMovements.map(({ endFrameHint, ...rest }) => ({
+    ...rest,
+    end_frame_hint: endFrameHint,
+  }));
+
+  const documents: { file: string; content: Record<string, unknown> }[] = [
+    { file: FILES.connections, content: { version: 1, connections: config.connections } },
+    { file: FILES.models, content: { version: 1, models: config.models } },
+    { file: FILES.roles, content: { version: 1, roles: config.roles } },
+    {
+      file: FILES.features,
+      content: { version: 1, features: config.features, limits: config.limits },
+    },
+    { file: FILES.styles, content: { version: 1, styles: config.presets.styles } },
+    {
+      file: FILES.cinematography,
+      content: { version: 1, cinematography: config.presets.cinematography },
+    },
+    { file: FILES.cameraMovements, content: { version: 1, camera_movements: movements } },
+    { file: FILES.characterTags, content: { version: 1, character_tags: config.presets.characterTags } },
+    {
+      file: FILES.genres,
+      content: { version: 1, genres: config.presets.genres, tones: config.presets.tones },
+    },
+  ];
+
+  return documents.map(({ file, content }) => ({
+    file,
+    // `lineWidth: 0`: niente righe spezzate a metà, così un prompt lungo resta su una riga sola e
+    // il confronto in git è leggibile.
+    text: stringifyYaml(content, { lineWidth: 0 }),
+  }));
 }
 
 /** Legge un piano di bench (`config/bench/*.yaml`, architettura §4.13). */

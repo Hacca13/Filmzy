@@ -56,4 +56,20 @@ SETTINGS
 SMALL
 - "Moodboard": the last swatch (#1A1B19) is invisible on the dark background: give every swatch a thin light outline.
 - "Luoghi" and the places panel of "Sceneggiatura": place images show Marco and Giulia. Places are empty sets, without people.
+
+UX
+- Shot cards in "Le scene" are crowded. Keep one primary action per card ("Genera"/"Rigenera" with "Cambia servizio" and the audio switch); the audio helper line becomes an info tooltip; "Imposta le immagini" and "Usa un fotogramma come punto di partenza" move into the card's "…" menu or a collapsed row.
+- One primary (amber) button per screen: in "Personaggi" the per-card "Aggiungi" becomes secondary, "Ai luoghi" stays primary.
+- Fewer amber tip banners ("✦"): keep them only where they prevent a mistake or explain a cost; the rest become plain helper text.
+- Confirmations (spending limit, publish, restore, turning off a "Prudenza" switch) are real dialogs over the screen, not cards.
+
+CANVAS ORDER
+Arrange the frames of "Page 1" in rows, in the order the user meets them, each row with a small section label:
+1 "Avvio": Caricamento (first frame of the file), its failure state, Serve una versione nuova, Ripristino dei dati.
+2 "Primo avvio": the four "Benvenuto in Filmzy" steps.
+3 "Home": I miei film with the update window, Aggiornamenti · Stati.
+4 "Creazione": La tua idea, La storia, Moodboard, Moodboard · Stati, Personaggi, Luoghi, Ritocca, Riepilogo, Riepilogo · Stati, Sceneggiatura.
+5 "Scene e montaggio": Le scene, Imposta le immagini, Servizi e lavori, Generazione · Errori, Quanto ho speso, Montaggio ed esporta, Suono ed esportazione · Stati, Stati di base.
+6 "Impostazioni": Connessioni, Connessioni · Gestione, Fornitore, Chi fa cosa, Ruoli · Istruzioni e prove, Spese e tetti, Generazione, Prudenza, Aggiornamenti, I tuoi dati, Avanzate, Avanzate · Prova, pubblicazione e storico, Informazioni.
+Same spacing everywhere, no overlapping frames.
 ```

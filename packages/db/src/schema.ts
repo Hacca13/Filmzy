@@ -1,4 +1,4 @@
-import type { JobStatus } from '@filmzy/contracts';
+import type { InstructionOrigin, JobStatus } from '@filmzy/contracts';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
@@ -48,3 +48,84 @@ export const jobs = sqliteTable(
 );
 
 export type JobRow = typeof jobs.$inferSelect;
+
+/**
+ * La configurazione della troupe (architettura §4.5). La **bozza** è una sola, ed è l'unica copia
+ * modificabile: la riga ha sempre lo stesso id. Le **release** sono immutabili e non si cancellano:
+ * la attiva è quella attivata più di recente, e un ripristino è una pubblicazione nuova, così lo
+ * storico resta lineare.
+ */
+export const DRAFT_ID = 'bozza';
+
+export const troupeDrafts = sqliteTable('troupe_drafts', {
+  id: text('id').primaryKey(),
+  config: text('config').notNull(),
+  fromReleaseId: text('from_release_id'),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type TroupeDraftRow = typeof troupeDrafts.$inferSelect;
+
+export const troupeReleases = sqliteTable(
+  'troupe_releases',
+  {
+    /**
+     * Il numero di pubblicazione, che cresce da sé: è quello che dice qual è l'ultima. Due
+     * pubblicazioni nello stesso millisecondo hanno la stessa data, quindi ordinare per data non
+     * basterebbe a sapere quale viene dopo.
+     */
+    seq: integer('seq').primaryKey({ autoIncrement: true }),
+    id: text('id').notNull().unique(),
+    config: text('config').notNull(),
+    hash: text('hash').notNull(),
+    note: text('note'),
+    author: text('author'),
+    createdAt: integer('created_at').notNull(),
+    activatedAt: integer('activated_at'),
+  },
+  (table) => [index('troupe_releases_attivazione').on(table.activatedAt)],
+);
+
+export type TroupeReleaseRow = typeof troupeReleases.$inferSelect;
+
+/**
+ * Le versioni delle istruzioni (§4.4, D38): quelle del programma e quelle caricate dall'utente.
+ * `family` vuoto significa «la base», non una variante: in SQLite due NULL sono considerati
+ * diversi, quindi un indice unico con NULL non impedirebbe i doppioni.
+ */
+export const instructionVersions = sqliteTable(
+  'instruction_versions',
+  {
+    id: text('id').primaryKey(),
+    instructionsId: text('instructions_id').notNull(),
+    version: integer('version').notNull(),
+    family: text('family').notNull().default(''),
+    origin: text('origin').notNull().$type<InstructionOrigin>(),
+    body: text('body').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('instruction_versions_una_sola').on(
+      table.instructionsId,
+      table.version,
+      table.family,
+    ),
+  ],
+);
+
+export type InstructionVersionRow = typeof instructionVersions.$inferSelect;
+
+/**
+ * Le scelte dell'utente (D36): servizi attivati, predefiniti, regolazioni dei ruoli e tetti di
+ * spesa. Valgono subito, senza pubblicare niente, quindi stanno fuori dalle release. Una riga
+ * sola, in JSON: è un oggetto che si legge e si riscrive tutto insieme.
+ */
+export const USER_SETTINGS_ID = 'utente';
+
+export const settings = sqliteTable('settings', {
+  id: text('id').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export type SettingsRow = typeof settings.$inferSelect;

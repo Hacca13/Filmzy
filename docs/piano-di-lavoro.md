@@ -232,9 +232,9 @@ _Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con musica,
 _Leggere: architettura §2, §10 e §12._
 
 **T6.1** Onboarding e rifinitura dell'interfaccia, procedura guidata al primo avvio compresa.
-**T6.2** Licenza e avviso: `LICENSE` AGPL-3.0, README con l'avviso di uso responsabile e il link alle donazioni (`.github/FUNDING.yml`), nessuna telemetria.
+**T6.2** Licenza e avviso: `LICENSE` AGPL-3.0, README con l'avviso di uso responsabile e il link alle donazioni (`.github/FUNDING.yml`), nessuna telemetria. Più la **pagina di presentazione** del progetto (landing), che spiega cos'è Filmzy, che gira in locale con le chiavi di chi lo usa e dove si scarica: il primo mockup è arrivato col prompt 03 del 22/10.
 **T6.3** Esporta e importa un progetto, come copia di sicurezza.
-**T6.4** Impacchettamento con Electron: `apps/desktop`, installatori per Windows, macOS e Linux costruiti dalla CI, portachiavi, aggiornamenti da GitHub Releases (D44): controllo all'avvio, avviso **una volta** con le novità della versione, «Aggiorna ora» che scarica e installa, «Non ora» che ricorda la versione rifiutata e non insiste, pulsante e interruttore nelle impostazioni. Senza firma del codice i sistemi mostrano un avviso all'installazione.
+**T6.4** Impacchettamento con Electron: `apps/desktop`, installatori per Windows, macOS e Linux costruiti dalla CI, portachiavi, aggiornamenti da GitHub Releases (D44): controllo all'avvio, **finestra sulla home** con le novità della versione e tre scelte — «Aggiorna ora» che scarica e installa, «Ricordamelo più tardi» che torna al prossimo avvio, «Salta questa versione» che non torna finché non esce una versione più nuova — più pulsante e interruttore nelle impostazioni. Senza firma del codice i sistemi mostrano un avviso all'installazione.
 _Fatto quando:_ da un computer senza Node l'installatore avvia l'app, un film di prova si genera con il fornitore finto, un aggiornamento si scarica solo dopo l'ok dell'utente e, dopo l'aggiornamento, i film di prima sono ancora lì.
 **T6.5** Prove su Windows, macOS e Linux: installazione pulita, aggiornamento, chiavi, cartelle dei progetti.
 **T6.6** Test con 5–10 persone non tecniche: dove si bloccano, cosa non capiscono.

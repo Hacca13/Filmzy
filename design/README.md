@@ -24,7 +24,15 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 
 | N. | File | Cosa chiede | Lanciato il | Esito |
 |---|---|---|---|---|
-| 01 | [`storico/01-mockup-iniziale.md`](storico/01-mockup-iniziale.md) | i 6 schermi base, lo stile (scuro, ambra), i componenti | 20/10/2026 | in corso: la risposta di Figma è da esportare in `riferimenti/01-mockup-iniziale/` |
+| 01 | [`storico/01-mockup-iniziale.md`](storico/01-mockup-iniziale.md) | i 6 schermi base, lo stile (scuro, ambra), i componenti | 20/10/2026 | fatto; alcune scelte superate dal prompt 02 |
+| 02 | [`storico/02-film-e-app.md`](storico/02-film-e-app.md) | il film (flusso nuovo, moodboard, ritocco, scene, servizio e audio a ogni generazione, costi) e l'app (suono, primo avvio, Impostazioni, aggiornamenti, dati, avanzate) | 22/10/2026 | fatto, le due parti insieme; da esportare in `riferimenti/02-film-e-app/` |
+| 03 | [`storico/03-solo-desktop-modale-e-landing.md`](storico/03-solo-desktop-modale-e-landing.md) | via la versione mobile, aggiornamento in una modale sulla home con «Ricordamelo più tardi», landing page | 22/10/2026 | fatto; da guardare e correggere |
+
+## Chi fa il design
+
+**Il design lo fa l'agente di Figma, non Claude.** Claude scrive i prompt, li corregge, li archivia qui e — quando l'MCP di Figma è collegato — **legge** il mockup per capire com'è venuto. Non crea e non modifica mai il design da sé: se serve una modifica, la chiede all'agente di Figma con un prompt. Se l'MCP non c'è, si continua con `prossimo-prompt.md`: l'autore lancia e avvisa.
+
+Filmzy è un **programma per computer**, non un sito: nei prompt non si chiedono versioni mobili né layout responsive (il prompt 01 diceva ancora «desktop first, responsive», ed è per quello che il primo mockup aveva anche le schermate per telefono).
 
 ## Regole per i prompt
 

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@filmzy/contracts": "workspace:*",
+    "@filmzy/db": "workspace:*",
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
     "@nestjs/platform-express": "12.1.2",

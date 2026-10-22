@@ -5,5 +5,7 @@
     "rootDir": "src",
     "outDir": "dist"
   },
+  // Solo `src`: la configurazione dei test sta fuori e non va compilata nel programma.
+  "include": ["src"],
   "exclude": ["src/**/*.test.ts"]
 }

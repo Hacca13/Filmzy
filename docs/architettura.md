@@ -25,9 +25,9 @@ Questo documento descrive **com'è fatto** il sistema. Cosa fa il prodotto e per
 | API | NestJS 12 (moduli ES), come server locale | moduli e dependency injection: la struttura è guidata dal framework; gira sul computer dell'utente, in un solo processo, solo su `127.0.0.1` |
 | Lavori lunghi | coda interna al processo, salvata in SQLite | nuovi tentativi, limiti di concorrenza, ripresa dopo la chiusura del programma; nessun Redis |
 | Interfaccia | React + Vite (SPA) | la logica sta nel backend; l'interfaccia mostra e invia |
-| Database | SQLite + Drizzle ORM | un file nella cartella dati dell'utente, fuori da quella del programma (§6.1), nessun servizio da installare; JSON tipizzato con Zod |
+| Database | SQLite + Drizzle ORM, driver `better-sqlite3` (D45) | un file nella cartella dati dell'utente, fuori da quella del programma (§6.1), nessun servizio da installare; JSON tipizzato con Zod |
 | File | cartella locale (`AssetStore`) | un film è una cartella, facile da copiare come backup |
-| Segreti | portachiavi del sistema operativo (Electron `safeStorage`) | le chiavi non stanno in chiaro su disco |
+| Segreti | portachiavi del sistema operativo (Electron `safeStorage`, D45) | le chiavi non stanno in chiaro su disco, e il blob cifrato sta in un file della cartella dati, non nel database: le copie del database non possono portarle via |
 | Trasporto LLM | AI SDK (Vercel), solo dentro gli adapter | molti fornitori, output strutturati con Zod, `baseURL`, `headers` e `fetch` personalizzabili per gateway e proxy |
 | Immagini e video | client ufficiale di fal, solo dentro l'adapter | un'API per molti modelli; in locale si usa sempre il polling |
 | Istruzioni | template LiquidJS | sintassi semplice e sicura anche quando le istruzioni si modificano dalle impostazioni |
@@ -500,6 +500,8 @@ Un solo file di database; i file dei progetti stanno in cartelle accanto. I camp
 | Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), e `model_label` (D36) |
+| Coda | `jobs` | i lavori lunghi (§7): tipo, dato in JSON, stato, priorità, tentativi e `run_after` per l'attesa crescente, chiave di idempotenza unica, film a cui appartengono |
+| Informazioni | `meta` | versione dello schema e versione del programma che ha aperto il database (§6.2) |
 | Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
@@ -563,6 +565,15 @@ sequenceDiagram
 
 Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa: la chiave di idempotenza sta nello scontrino.
 
+### 7.1 Com'è fatta la coda
+
+- **Un processo solo** (§2), quindi niente lease e niente lock: prendere i prossimi lavori è una transazione che li segna «in lavorazione» e li consegna. Chi li esegue è l'**esecutore**, dentro il server: chiede i lavori, li fa fare a chi li sa fare e dice com'è andata. La coda non conosce i domini: un modulo si registra per il tipo di lavoro che sa fare.
+- **Quanti insieme:** pochi e configurabili. Un computer di casa non deve generare quattro video in parallelo, e ogni fornitore ha il suo limite (`max_concurrency` della connessione, §4.3).
+- **Ordine:** prima la priorità più alta, poi chi è arrivato per primo.
+- **Tentativi:** solo per gli errori che hanno senso (`provider_unavailable`, `timeout`, `rate_limited`), con attesa che raddoppia (`run_after`), fino a `max_attempts`; poi il lavoro si ferma col suo codice e decide l'utente (§4.10, D36). Un rifiuto del contenuto o un errore del nostro codice non si ritentano.
+- **Dopo una chiusura:** i lavori rimasti «in lavorazione» tornano in coda all'avvio, perché nessuno li sta più facendo. I tentativi già fatti restano contati, e la chiave di idempotenza evita di pagare due volte.
+- **Annullare:** un lavoro o tutti quelli di un film (quando il film si cancella); i lavori già finiti non si toccano.
+
 ## 8. Continuità e giallo
 
 - Ogni inquadratura ha uno stato di **entrata** e uno di **uscita**: luogo, ora, chi c'è, costumi, oggetti.
@@ -624,7 +635,6 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 
 - Strumento per la marcatura C2PA (opzione dopo l'MVP) e parere legale sugli obblighi di trasparenza prima di una versione 1.0 pubblica (D31).
 - Fornitori della musica e degli effetti sonori (T5.4): per la musica c'è già una candidata nella ricerca del 13/10, per gli effetti serve una ricerca nuova.
-- Driver di SQLite (`better-sqlite3` oppure il modulo `node:sqlite` incluso in Node) e uso del portachiavi (Electron `safeStorage`): da scegliere all'inizio di M2, insieme alla conferma di Drizzle con SQLite (D11).
 - Firma del codice degli installatori, Windows e macOS (M6): senza, i sistemi mostrano un avviso all'installazione. Il flusso degli aggiornamenti è deciso (D44, §6.2).
 - Continuità tra scene consecutive nello stesso luogo e alla stessa ora: oggi la vede solo la segretaria di edizione (§8). Da provare con i test prima di decidere se aggiungere una regola deterministica.
 - Esperimenti A/B dalle impostazioni avanzate (dopo l'MVP).

@@ -8,6 +8,11 @@ coverage/
 .env.*
 !.env.example
 bench-output/
+# Dati di prova in locale: database dei film e file, mai nel repository.
+dati-di-prova/
+*.db
+*.db-wal
+*.db-shm
 CLAUDE.local.md
 .claude/settings.local.json
 .DS_Store

@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 
+import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { JobsModule } from './modules/jobs/jobs.module.js';
 
 /** Radice del server locale: un modulo per dominio (CLAUDE.md), qui si elencano. */
 @Module({
-  imports: [HealthModule],
+  imports: [DatabaseModule.forRoot(), HealthModule, JobsModule],
 })
 export class AppModule {}

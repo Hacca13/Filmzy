@@ -37,7 +37,7 @@ beforeEach(async () => {
   aperto = await openFilmzyDatabase({ dataDir, appVersion: '0.0.0-test' });
   store = createTroupeStore(aperto.db);
   // `offline`: rispondono i fornitori finti, quindi non servono chiavi e non si spende (regola 5).
-  service = new TroupeConfigService(store, CONFIG_DIR, 'offline');
+  service = new TroupeConfigService(store, CONFIG_DIR, 'offline', { env: process.env });
 });
 
 afterEach(() => {

@@ -122,6 +122,9 @@ export type InstructionVersionRow = typeof instructionVersions.$inferSelect;
  */
 export const USER_SETTINGS_ID = 'utente';
 
+/** Le preferenze dell'app (audio dei take, controllo aggiornamenti): non riguardano la troupe. */
+export const APP_PREFERENCES_ID = 'preferenze';
+
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   value: text('value').notNull(),

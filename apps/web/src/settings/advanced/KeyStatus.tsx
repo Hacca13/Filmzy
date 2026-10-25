@@ -1,7 +1,7 @@
 import type { SecretsView } from '@filmzy/contracts';
 import { useState } from 'react';
 
-import { removeSecret, saveSecret } from '../../api/troupe-config';
+import { removeSecret, saveSecret } from '../../api/secrets';
 import { isPlainObject } from '../../forms/json-schema';
 import { describeError } from '../messages';
 

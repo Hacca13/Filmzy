@@ -6,10 +6,10 @@ import {
 } from '@filmzy/contracts';
 import { useMemo, useState } from 'react';
 
+import { fetchSecrets } from '../../api/secrets';
 import {
   discardDraft,
   fetchDraft,
-  fetchSecrets,
   publishDraft,
   resetDraftToProgramValues,
   saveDraft,

@@ -29,7 +29,7 @@ import { valueLabel } from '../../forms/labels';
  */
 
 export interface Item {
-  /** Per le mappe è la chiave (`claude-sonnet`), per gli elenchi `categoria:posizione`. */
+  /** Per le mappe è la chiave della voce, per gli elenchi `categoria:posizione`. */
   id: string;
   value: unknown;
   schema: z.ZodType;

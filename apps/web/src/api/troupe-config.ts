@@ -1,9 +1,4 @@
-import {
-  draftViewSchema,
-  publishResponseSchema,
-  secretsViewSchema,
-  type TroupeConfigData,
-} from '@filmzy/contracts';
+import { draftViewSchema, publishResponseSchema, type TroupeConfigData } from '@filmzy/contracts';
 
 import { getJson, sendJson } from './client';
 
@@ -27,18 +22,4 @@ export function resetDraftToProgramValues() {
 
 export function publishDraft(note: string) {
   return sendJson('POST', '/troupe/publish', publishResponseSchema, { note });
-}
-
-/** Le chiavi: si vede solo se ci sono. Il valore si scrive e non si rilegge mai (D25). */
-
-export function fetchSecrets(signal?: AbortSignal) {
-  return getJson('/secrets', secretsViewSchema, { signal });
-}
-
-export function saveSecret(name: string, value: string) {
-  return sendJson('PUT', `/secrets/${encodeURIComponent(name)}`, secretsViewSchema, { value });
-}
-
-export function removeSecret(name: string) {
-  return sendJson('DELETE', `/secrets/${encodeURIComponent(name)}`, secretsViewSchema);
 }

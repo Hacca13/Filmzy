@@ -1,6 +1,5 @@
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import process from 'node:process';
 
 import type { TroupeConfigData, TroupeDraft, TroupeRelease } from '@filmzy/contracts';
 import type { TroupeStore } from '@filmzy/db';
@@ -15,9 +14,11 @@ import {
   validateInstructions,
   type ConfigEnvironment,
   type ConfigIssue,
+  type SecretSources,
 } from '@filmzy/troupe';
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 
+import { SECRET_SOURCES } from '../secrets/tokens.js';
 import { CONFIG_DIR, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
 
 /**
@@ -46,6 +47,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
     @Inject(TROUPE_STORE) private readonly store: TroupeStore,
     @Inject(CONFIG_DIR) private readonly configDir: string,
     @Inject(TROUPE_ENVIRONMENT) private readonly environment: ConfigEnvironment | undefined,
+    @Inject(SECRET_SOURCES) private readonly secrets: SecretSources,
   ) {}
 
   /**
@@ -242,7 +244,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
       ...effective.issues,
       ...validateConfig(effective.config, {
         ...(this.environment === undefined ? {} : { environment: this.environment }),
-        secrets: { env: process.env },
+        secrets: this.secrets,
       }),
       ...(await validateInstructions(
         effective.config,

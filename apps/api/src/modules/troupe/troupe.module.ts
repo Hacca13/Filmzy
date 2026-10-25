@@ -8,11 +8,13 @@ import {
   FileInstructionsSource,
   type ConfigEnvironment,
   type ConfigSource,
+  type SecretSources,
   type Troupe,
 } from '@filmzy/troupe';
 import { Module, type DynamicModule } from '@nestjs/common';
 
 import { OPENED_DATABASE } from '../database/database.module.js';
+import { SECRET_SOURCES } from '../secrets/tokens.js';
 import { DbConfigSource } from './db-config-source.js';
 import { CONFIG_DIR, CONFIG_SOURCE, TROUPE, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
 import { TroupeConfigService } from './troupe-config.service.js';
@@ -57,12 +59,13 @@ export class TroupeModule {
         },
         {
           provide: TROUPE,
-          useFactory: (configSource: ConfigSource): Troupe =>
+          useFactory: (configSource: ConfigSource, secrets: SecretSources): Troupe =>
             createTroupe({
               configSource,
               instructions: new FileInstructionsSource(path.join(configDir, 'ai', 'instructions')),
+              secrets,
             }),
-          inject: [CONFIG_SOURCE],
+          inject: [CONFIG_SOURCE, SECRET_SOURCES],
         },
         TroupeConfigService,
       ],

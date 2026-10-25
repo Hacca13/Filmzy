@@ -1,7 +1,14 @@
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { TroupeConfigData, TroupeDraft, TroupeRelease } from '@filmzy/contracts';
+import type {
+  DraftView,
+  PublishResponse,
+  ReleaseSummary,
+  TroupeConfigData,
+  TroupeDraft,
+  TroupeRelease,
+} from '@filmzy/contracts';
 import type { TroupeStore } from '@filmzy/db';
 import {
   applyEnvironmentOverlay,
@@ -76,6 +83,60 @@ export class TroupeConfigService implements OnApplicationBootstrap {
 
   draft(): TroupeDraft | undefined {
     return this.store.getDraft();
+  }
+
+  /** La configurazione su cui si lavora: la bozza se c'è, altrimenti la release attiva. */
+  currentConfig(): TroupeConfigData | undefined {
+    return this.store.getDraft()?.config ?? this.store.activeRelease().release?.config;
+  }
+
+  /**
+   * La bozza com'è per le impostazioni avanzate (§4.5): senza bozza si parte dalla release attiva.
+   * «Modifiche non pubblicate» si decide dall'impronta, non da un'etichetta: salvare una bozza
+   * uguale alla release non è una modifica.
+   */
+  async draftView(): Promise<DraftView | undefined> {
+    const { release } = this.store.activeRelease();
+    const draft = this.store.getDraft();
+    const config = draft?.config ?? release?.config;
+    if (config === undefined) return undefined;
+
+    return {
+      config,
+      hasDraft: draft !== undefined,
+      hasUnpublishedChanges: draft !== undefined && configHash(draft.config) !== release?.hash,
+      ...(release === undefined ? {} : { activeRelease: toReleaseSummary(release) }),
+      issues: await this.validate(config),
+    };
+  }
+
+  /** Salva la bozza dell'editor. I problemi del validatore tornano con la vista, non la bloccano. */
+  async editDraft(config: TroupeConfigData): Promise<DraftView | undefined> {
+    const fromReleaseId =
+      this.store.getDraft()?.fromReleaseId ?? this.store.activeRelease().release?.id;
+    this.store.saveDraft(config, fromReleaseId);
+    return this.draftView();
+  }
+
+  /** «Butta via le modifiche»: la bozza sparisce e si torna alla release attiva. */
+  async discardDraft(): Promise<DraftView | undefined> {
+    this.store.deleteDraft();
+    return this.draftView();
+  }
+
+  /** «Riparti dai valori del programma»: la bozza diventa il seme, senza pubblicare. */
+  async resetDraftToSeed(): Promise<DraftView | undefined> {
+    const { draft, issues } = await this.importFromFiles(this.configDir);
+    if (draft === undefined) {
+      this.log.error(`Non riesco a leggere i file di seme: ${describe(issues)}`);
+      return undefined;
+    }
+    return this.draftView();
+  }
+
+  async publishDraft(note: string): Promise<PublishResponse> {
+    const { release, issues } = await this.publish({ note, author: 'utente' });
+    return { ...(release === undefined ? {} : { release: toReleaseSummary(release) }), issues };
   }
 
   /** La bozza si salva anche con problemi: è una copia di lavoro, non la verità (§4.5 punto 1). */
@@ -264,6 +325,17 @@ export class TroupeConfigService implements OnApplicationBootstrap {
     const applied = applyEnvironmentOverlay(config, overlay);
     return { config: applied.config, issues: [...issues, ...applied.issues] };
   }
+}
+
+function toReleaseSummary(release: TroupeRelease): ReleaseSummary {
+  return {
+    id: release.id,
+    hash: release.hash,
+    ...(release.note === undefined ? {} : { note: release.note }),
+    ...(release.author === undefined ? {} : { author: release.author }),
+    createdAt: release.createdAt,
+    ...(release.activatedAt === undefined ? {} : { activatedAt: release.activatedAt }),
+  };
 }
 
 async function exists(file: string): Promise<boolean> {

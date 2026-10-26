@@ -9,12 +9,15 @@ import {
   FileInstructionsSource,
   type ConfigEnvironment,
   type ConfigSource,
+  type InstructionsSource,
   type SecretSources,
   type Troupe,
 } from '@filmzy/troupe';
 import { Module, type DynamicModule } from '@nestjs/common';
 
 import { OPENED_DATABASE } from '../database/database.module.js';
+import { DbInstructionsSource } from '../instructions/db-instructions-source.js';
+import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { SECRET_SOURCES } from '../secrets/tokens.js';
 import { DbConfigSource } from './db-config-source.js';
 import { CONFIG_DIR, CONFIG_SOURCE, TROUPE, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
@@ -72,19 +75,29 @@ export class TroupeModule {
           inject: [TROUPE_STORE],
         },
         {
+          // Le istruzioni del programma, lette dai file, più quelle dell'utente, dal database.
+          provide: INSTRUCTIONS_SOURCE,
+          useFactory: (store: TroupeStore): InstructionsSource =>
+            new DbInstructionsSource(
+              new FileInstructionsSource(path.join(configDir, 'ai', 'instructions')),
+              store,
+            ),
+          inject: [TROUPE_STORE],
+        },
+        {
           provide: TROUPE,
-          useFactory: (configSource: ConfigSource, secrets: SecretSources): Troupe =>
-            createTroupe({
-              configSource,
-              instructions: new FileInstructionsSource(path.join(configDir, 'ai', 'instructions')),
-              secrets,
-            }),
-          inject: [CONFIG_SOURCE, SECRET_SOURCES],
+          useFactory: (
+            configSource: ConfigSource,
+            instructions: InstructionsSource,
+            secrets: SecretSources,
+          ): Troupe => createTroupe({ configSource, instructions, secrets }),
+          inject: [CONFIG_SOURCE, INSTRUCTIONS_SOURCE, SECRET_SOURCES],
         },
         TroupeConfigService,
       ],
       exports: [
         TROUPE,
+        INSTRUCTIONS_SOURCE,
         CONFIG_SOURCE,
         TROUPE_STORE,
         CONFIG_DIR,

@@ -46,6 +46,7 @@ export { renderSection, renderSections, InstructionRenderError } from './instruc
 export {
   FileInstructionsSource,
   InstructionResolveError,
+  parseInstructionsRef,
   resolveInstructions,
 } from './instructions/resolve.js';
 export type {

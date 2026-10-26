@@ -1,28 +1,11 @@
 import type { ConfigIssue, TroupeConfigData } from '@filmzy/contracts';
 import { useState, type ReactNode } from 'react';
 
-import { Panel } from '../../components/ui';
+import { IssueList, Panel } from '../../components/ui';
 import { SchemaField } from '../../forms/SchemaField';
 import { validate } from '../../forms/issues';
 import { classify, formSchemaOf } from '../../forms/json-schema';
 import { splitIssues, type Item, type SectionDef } from './sections';
-
-export function IssueList({ issues }: { issues: readonly ConfigIssue[] }) {
-  if (issues.length === 0) return null;
-  return (
-    <ul className="issues">
-      {issues.map((issue) => (
-        <li
-          key={`${issue.code}:${issue.key ?? ''}:${issue.message}`}
-          data-severity={issue.severity}
-        >
-          {issue.severity === 'error' ? 'Da correggere: ' : 'Attenzione: '}
-          {issue.message}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 interface RowProps {
   item: Item;

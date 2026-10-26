@@ -125,6 +125,7 @@ Fatto il 25/10: la pagina «Avanzate» ha i pannelli «Bozza» per connessioni, 
 
 **T2.4 Istruzioni.** Editor con versioni e varianti, elenco delle variabili, anteprima con un input di esempio; caricamento di un file di istruzioni proprio (con un modello da scaricare e un errore che nomina la variabile sbagliata); avviso quando arriva una versione nuova, con il suo registro dei cambiamenti (D38).
 _Fatto quando:_ si crea una nuova versione senza toccare la precedente; un file proprio caricato si sceglie per un ruolo e uno con una variabile inesistente è rifiutato con un messaggio chiaro.
+Fatto il 26/10: pagina «Istruzioni» nelle Impostazioni, per ruolo: versioni del programma e dell'utente, editor con anteprima sull'esempio fisso, «Carica un file», «Scarica un modello», scelta con «Torna ai valori predefiniti», avviso di versione nuova col registro dei cambiamenti e avviso per il moderatore. Le versioni dell'utente partono da 101 (D47). Test del server: crea una versione senza toccare la precedente, la sceglie e la troupe legge il testo nuovo; un testo con una parola che non esiste è rifiutato col suo nome. **Non fatto:** l'editor delle varianti per famiglia (si copiano da una versione di partenza) e la prova col modello vero (T2.5).
 
 **T2.5 Prova.** Esecuzione di un ruolo dalla bozza della troupe su un input di esempio, con risultato, costo e scontrino `draft_test`.
 _Fatto quando:_ si vede il risultato prima di pubblicare.

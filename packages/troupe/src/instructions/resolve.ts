@@ -124,7 +124,7 @@ export async function resolveInstructions(
   options: ResolveInstructionsOptions,
 ): Promise<ResolvedInstructions> {
   const chosen = options.userRef ?? options.releaseRef;
-  const ref = chosen === undefined ? undefined : parseRef(chosen);
+  const ref = chosen === undefined ? undefined : parseInstructionsRef(chosen);
   const id = ref?.id ?? options.fallbackId;
 
   const manifest = await source.manifest(id);
@@ -217,7 +217,8 @@ async function load(
   return parsed.instruction;
 }
 
-function parseRef(ref: string): { id: string; version: number } {
+/** Legge `id@versione`; lancia `instructions_ref_invalid` se la forma è un'altra. */
+export function parseInstructionsRef(ref: string): { id: string; version: number } {
   const match = /^([a-z0-9_-]+)@([0-9]+)$/.exec(ref);
   if (match?.[1] === undefined || match[2] === undefined) {
     throw new InstructionResolveError(

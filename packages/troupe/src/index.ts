@@ -37,6 +37,8 @@ export type { ForbiddenTerm } from './config/forbidden-terms.js';
 export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
 export { validateInstructions } from './config/instructions.js';
 export type { ValidateInstructionsOptions } from './config/instructions.js';
+export { checkInstructionText, unknownVariables } from './instructions/check.js';
+export type { CheckInstructionOptions, InstructionCheck } from './instructions/check.js';
 export { checkSections, parseInstructionFile, SECTIONS_BY_KIND } from './instructions/parse.js';
 export type { InstructionFile } from './instructions/parse.js';
 export { InstructionParseError } from './instructions/parse.js';
@@ -44,6 +46,7 @@ export { renderSection, renderSections, InstructionRenderError } from './instruc
 export {
   FileInstructionsSource,
   InstructionResolveError,
+  parseInstructionsRef,
   resolveInstructions,
 } from './instructions/resolve.js';
 export type {

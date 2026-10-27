@@ -7,6 +7,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { InstructionsModule } from './modules/instructions/instructions.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { PreferencesModule } from './modules/preferences/preferences.module.js';
+import { ProjectsModule } from './modules/projects/projects.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
@@ -43,6 +44,7 @@ export class AppModule {
         ConnectionsModule,
         InstructionsModule,
         PreferencesModule,
+        ProjectsModule,
         RolesModule,
         SpendModule,
         UpdatesModule.forRoot(

@@ -23,6 +23,11 @@ export function formatEstimate(amount: number): string {
   })} $`;
 }
 
+/** Un conteggio col punto delle migliaia anche sotto i diecimila («2.000»): l'italiano lo toglie da solo. */
+export function formatCount(count: number): string {
+  return count.toLocaleString('it-IT', { useGrouping: 'always' });
+}
+
 /** Una data e un'ora come si leggono in italiano: «27 ottobre 2026, 10:00». */
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('it-IT', { dateStyle: 'long', timeStyle: 'short' });

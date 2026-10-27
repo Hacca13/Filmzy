@@ -15,6 +15,13 @@
       "when": 1792633107518,
       "tag": "0001_troupe-e-impostazioni",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793110121479,
+      "tag": "0002_scontrini",
+      "breakpoints": true
     }
   ]
 }

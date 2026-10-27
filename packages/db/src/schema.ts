@@ -1,5 +1,5 @@
 import type { InstructionOrigin, JobStatus } from '@filmzy/contracts';
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
  * Le tabelle del database locale (architettura §6). Arrivano un pezzo per volta, insieme al task
@@ -132,3 +132,28 @@ export const settings = sqliteTable('settings', {
 });
 
 export type SettingsRow = typeof settings.$inferSelect;
+
+/**
+ * Gli scontrini (architettura §4.11, §6): uno per ogni chiamata a un fornitore, anche fallita. Lo
+ * scontrino intero sta in `receipt` (JSON); le colonne accanto servono a cercare e a sommare senza
+ * leggerlo tutto (la spesa si calcola da qui, D30). Lo stesso scontrino si riscrive durante la sua
+ * vita (`queued` → `running` → `succeeded`): la riga è sempre una, per `id`, così una chiamata
+ * ripetuta non si conta due volte (CLAUDE.md regola 10).
+ */
+export const generations = sqliteTable(
+  'generations',
+  {
+    id: text('id').primaryKey(),
+    purpose: text('purpose').notNull(),
+    role: text('role').notNull(),
+    modelId: text('model_id').notNull(),
+    status: text('status').notNull(),
+    estimatedCostUsd: real('estimated_cost_usd').notNull(),
+    actualCostUsd: real('actual_cost_usd'),
+    createdAt: integer('created_at').notNull(),
+    receipt: text('receipt').notNull(),
+  },
+  (table) => [index('generations_per_scopo').on(table.purpose, table.createdAt)],
+);
+
+export type GenerationRow = typeof generations.$inferSelect;

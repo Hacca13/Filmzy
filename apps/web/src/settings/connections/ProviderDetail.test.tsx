@@ -53,7 +53,7 @@ function overviewOf(
   group: GroupState;
 } {
   const group: GroupState = { group: 'video', providers: [p], ...groupExtra };
-  return { overview: { hasChoices: true, groups: [group] }, group };
+  return { overview: { hasChoices: true, limits: {}, groups: [group] }, group };
 }
 
 function renderDetail(p: ProviderState, groupExtra: Partial<GroupState> = {}): string {
@@ -128,7 +128,7 @@ describe('ProviderWizard', () => {
     return renderToStaticMarkup(
       <ProviderWizard
         group={group}
-        overview={{ hasChoices: false, groups: [group] }}
+        overview={{ hasChoices: false, limits: {}, groups: [group] }}
         onOverview={() => undefined}
         onReload={() => Promise.resolve()}
         onClose={() => undefined}

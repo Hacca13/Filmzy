@@ -8,6 +8,7 @@ import { InstructionsModule } from './modules/instructions/instructions.module.j
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { PreferencesModule } from './modules/preferences/preferences.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
+import { RolesModule } from './modules/roles/roles.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
 import { TroupeModule } from './modules/troupe/troupe.module.js';
 import { UpdatesModule, type UpdateChecker } from './modules/updates/updates.module.js';
@@ -41,6 +42,7 @@ export class AppModule {
         ConnectionsModule,
         InstructionsModule,
         PreferencesModule,
+        RolesModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },
         ),

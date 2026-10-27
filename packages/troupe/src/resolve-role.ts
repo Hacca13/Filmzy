@@ -1,9 +1,10 @@
-import type {
-  Connection,
-  ModelEntry,
-  RoleConfigEntry,
-  RoleId,
-  UserSettings,
+import {
+  modelGroupForKind,
+  type Connection,
+  type ModelEntry,
+  type RoleConfigEntry,
+  type RoleId,
+  type UserSettings,
 } from '@filmzy/contracts';
 
 import type { TroupeConfig } from './config/load-files.js';
@@ -88,9 +89,11 @@ interface PickModelInput {
 }
 
 /**
- * Il servizio che lavorerà: quello regolato dall'utente, altrimenti quello della release. Se il
- * ruolo ha più candidati si prende il primo idoneo — l'ordinamento per politica (`cheap`,
- * `balanced`, `quality`) è compito del router, che arriva dopo.
+ * Il servizio che lavorerà: quello regolato dall'utente per il ruolo; poi il predefinito che
+ * l'utente ha scelto per il gruppo (come fa il router, §4.8 punto 2: se è idoneo passa in testa,
+ * altrimenti si guarda il resto); poi quello della release. Se il ruolo ha più candidati si
+ * prende il primo idoneo — l'ordinamento per politica (`cheap`, `balanced`, `quality`) è compito
+ * del router, che arriva dopo.
  */
 function pickModel(input: PickModelInput): {
   modelId: string;
@@ -98,12 +101,14 @@ function pickModel(input: PickModelInput): {
   connection: Connection;
 } {
   const { config, roleId, role, roleSettings, settings } = input;
+  const declared = role.model !== undefined ? [role.model] : (role.routing?.candidates ?? []);
+  const groupDefault = settings?.defaultModels[modelGroupForKind(role.kind)];
   const candidates =
     roleSettings?.modelId !== undefined
       ? [roleSettings.modelId]
-      : role.model !== undefined
-        ? [role.model]
-        : (role.routing?.candidates ?? []);
+      : groupDefault === undefined
+        ? declared
+        : [groupDefault, ...declared.filter((id) => id !== groupDefault)];
 
   if (candidates.length === 0) {
     throw new ProviderError(

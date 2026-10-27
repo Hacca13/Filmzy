@@ -129,6 +129,7 @@ Fatto il 26/10: pagina «Istruzioni» nelle Impostazioni, per ruolo: versioni de
 
 **T2.5 Prova.** Esecuzione di un ruolo dalla bozza della troupe su un input di esempio, con risultato, costo e scontrino `draft_test`.
 _Fatto quando:_ si vede il risultato prima di pubblicare.
+Fatto il 27/10: pannello «Prova» nella pagina Avanzate: si sceglie un ruolo di testo, si vede il servizio e la stima (`troupe.estimate`), si preme «Prova con un esempio fisso» e si vedono esempio, risultato, costo vero contro stima e durata. Esegue la **bozza salvata** con la stessa troupe (D48), e lo scontrino `draft_test` resta nella nuova tabella `generations`, dove ora finisce ogni scontrino, anche della troupe di esercizio. Test del server: la stima non lascia scontrini; la prova cambia con la bozza e non con la release; una bozza che non si esegue dà un errore col suo codice. **Non fatto:** la prova di immagini e video (M4) e i tetti di spesa sulla prova (T3.1): per ora l'unica protezione è il pulsante dopo la stima.
 
 **T2.6 Pubblica, storico, ripristino.** Differenze rispetto alla release attiva, nota obbligatoria, ripristino come nuova release.
 _Fatto quando:_ un ripristino riporta la configurazione precedente in meno di un minuto.

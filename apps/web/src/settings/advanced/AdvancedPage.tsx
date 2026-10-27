@@ -19,6 +19,7 @@ import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
 import { KeyStatus } from './KeyStatus';
 import { SectionPanel } from './SectionPanel';
+import { TestPanel } from './TestPanel';
 import { orphanIssues, SECTIONS } from './sections';
 
 /**
@@ -76,6 +77,8 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
   const [publishing, setPublishing] = useState(false);
   const [note, setNote] = useState('');
   const [outcome, setOutcome] = useState<PublishResponse>();
+  // Sale a ogni bozza che arriva dal server: la prova rifà la stima sulla bozza nuova.
+  const [draftVersion, setDraftVersion] = useState(0);
 
   // Il confronto è sul testo: la bozza che torna dal server ha le stesse chiavi nello stesso ordine.
   const dirty = useMemo(
@@ -91,6 +94,7 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
   const show = (next: DraftView) => {
     onView(next);
     setConfig(next.config);
+    setDraftVersion((value) => value + 1);
     // Le connessioni possono essere cambiate: lo stato delle chiavi si rilegge.
     fetchSecrets().then(onSecrets, fail);
   };
@@ -268,6 +272,8 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
         <Notice tone="info">Pubblicata. Ha effetto da subito.</Notice>
       )}
       {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
+
+      <TestPanel saved={!dirty} draftVersion={draftVersion} />
 
       {SECTIONS.map((section) => (
         <SectionPanel

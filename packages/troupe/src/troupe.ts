@@ -24,6 +24,7 @@ import {
   type InstructionsSource,
 } from './instructions/resolve.js';
 import { ProviderError } from './provider-error.js';
+import { enforceSpend, type SpendGuard } from './spend.js';
 import { resolveRole, type ResolvedRole } from './resolve-role.js';
 import { routeOptions } from './router.js';
 import type { TranslateInput } from './translators/types.js';
@@ -52,6 +53,8 @@ export interface TroupeOptions {
   configSource: ConfigSource;
   instructions: InstructionsSource;
   receiptSink?: ReceiptSink;
+  /** I limiti di spesa (D30): senza, niente si blocca. */
+  spend?: SpendGuard;
   secrets?: SecretSources;
   /** Iniettabili per i test: così le attese non rallentano e le date non cambiano. */
   now?: () => Date;
@@ -115,6 +118,14 @@ export function createTroupe(options: TroupeOptions): Troupe {
         input,
       );
 
+      const estimatedCostUsd = estimateLlmCostUsd(resolved, prompt);
+      await enforceSpend(options.spend, ctx, {
+        role,
+        connectionId: resolved.connectionId,
+        modelId: resolved.modelId,
+        estimatedCostUsd,
+      });
+
       const receipt = newReceipt({
         role,
         ctx,
@@ -123,7 +134,7 @@ export function createTroupe(options: TroupeOptions): Troupe {
         releaseId,
         roleConfigHash: hashRoleConfig(config, role) ?? '',
         inputHash: configHash(parsedInput),
-        estimatedCostUsd: estimateLlmCostUsd(resolved, prompt),
+        estimatedCostUsd,
         createdAt: started.toISOString(),
       });
       await write(options.receiptSink, receipt);

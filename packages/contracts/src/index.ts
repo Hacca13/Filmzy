@@ -154,8 +154,14 @@ export type {
   GenerationUsage,
   ReceiptInstructionsRef,
 } from './receipt.js';
-export { estimateSchema, spendCapSchema } from './spend.js';
-export type { Estimate, SpendCap } from './spend.js';
+export {
+  estimateSchema,
+  SPEND_LIMITS,
+  spendBreachSchema,
+  spendCapSchema,
+  spendLimitSchema,
+} from './spend.js';
+export type { Estimate, SpendBreach, SpendCap, SpendLimit } from './spend.js';
 export { instructionsRefSchema, roleSettingsSchema, userSettingsSchema } from './settings.js';
 export type { InstructionsRef, RoleSettings, UserSettings } from './settings.js';
 export * from './settings-api.js';

@@ -12,6 +12,7 @@ import { mediaCostUsd } from './cost.js';
 import { ProviderError } from './provider-error.js';
 import type { ReceiptSink } from './receipts.js';
 import { route } from './router.js';
+import { enforceSpend, type SpendGuard } from './spend.js';
 import type { TranslateInput } from './translators/types.js';
 
 /**
@@ -42,6 +43,8 @@ export interface MediaRunnerOptions {
   configSource: ConfigSource;
   assets: AssetStore;
   receiptSink?: ReceiptSink;
+  /** I limiti di spesa (D30): senza, niente si blocca. */
+  spend?: SpendGuard;
   secrets?: SecretSources;
   now?: () => Date;
 }
@@ -93,6 +96,13 @@ export function createMediaRunner(options: MediaRunnerOptions): MediaRunner {
         ...(loaded.settings === undefined ? {} : { settings: loaded.settings }),
         request: asked,
         ...(ctx.modelId === undefined ? {} : { chosenModelId: ctx.modelId }),
+      });
+
+      await enforceSpend(options.spend, ctx, {
+        role,
+        connectionId: chosen.model.connection,
+        modelId: chosen.modelId,
+        estimatedCostUsd: chosen.estimatedCostUsd ?? 0,
       });
 
       const providerRequest = chosen.translator.build(

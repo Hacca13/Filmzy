@@ -1,4 +1,10 @@
-export { ADAPTER_NAMES, llmAdapterFor, mediaAdapterFor, testConnection } from './adapters/index.js';
+export {
+  ADAPTER_NAMES,
+  adapterCanTest,
+  llmAdapterFor,
+  mediaAdapterFor,
+  testConnection,
+} from './adapters/index.js';
 export { FakeProvider, fakeAdapterFactory } from './adapters/fake.js';
 export {
   falAdapterFactory,

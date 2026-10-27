@@ -40,8 +40,21 @@ export class SecretsService {
 
     return {
       secrets: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name)),
-      writable: this.store.writable,
+      writable: this.writable,
     };
+  }
+
+  /** Si possono scrivere chiavi solo con il portachiavi del sistema (Electron, D45). */
+  get writable(): boolean {
+    return this.store.writable;
+  }
+
+  /** Dove sta la chiave di un riferimento, se c'è. Mai il valore. `none` e forme sbagliate: niente. */
+  presence(ref: string): 'env' | 'stored' | undefined {
+    const parsed = parseSecretRef(ref);
+    return parsed === undefined || parsed.kind === 'none'
+      ? undefined
+      : this.foundIn(parsed.kind, parsed.name);
   }
 
   set(name: string, value: string): void {

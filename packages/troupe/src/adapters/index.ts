@@ -77,4 +77,9 @@ export async function testConnection(options: ConnectionTestOptions): Promise<vo
   await factory.testConnection(options);
 }
 
+/** L'adapter sa provare la connessione senza spendere (T2.7)? Serve all'interfaccia per mostrare il pulsante. */
+export function adapterCanTest(adapterName: string): boolean {
+  return ADAPTERS.find((candidate) => candidate.name === adapterName)?.testConnection !== undefined;
+}
+
 export const ADAPTER_NAMES: readonly string[] = ADAPTERS.map((factory) => factory.name);

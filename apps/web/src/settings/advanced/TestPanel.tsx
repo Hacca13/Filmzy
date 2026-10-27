@@ -1,11 +1,14 @@
-import type { DraftTestEstimate, DraftTestResult } from '@filmzy/contracts';
+import type { DraftTestEstimate, DraftTestResult, SpendBreach } from '@filmzy/contracts';
 import { useEffect, useState } from 'react';
 
+import { ApiError } from '../../api/client';
 import { estimateTest, fetchTestableRoles, runTest } from '../../api/draft-test';
 import { Notice, Panel } from '../../components/ui';
 import { formatUsd, formatValue } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
+import { raiseLimit, SpendConfirm } from '../spend/SpendConfirm';
+import { breachOf } from '../spend/model';
 
 interface Props {
   /** Falso quando la bozza ha modifiche non salvate: il server prova quella salvata. */
@@ -65,6 +68,9 @@ function RoleTest({ roleId, saved, draftVersion }: Props & { roleId: string }) {
   const [result, setResult] = useState<DraftTestResult>();
   const [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string>();
+  // Una prova che supera un limite di spesa non parte: si chiede cosa fare (D30).
+  const [breach, setBreach] = useState<{ breach: SpendBreach; connectionId?: string }>();
+  const [raising, setRaising] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -83,16 +89,40 @@ function RoleTest({ roleId, saved, draftVersion }: Props & { roleId: string }) {
     };
   }, [roleId, draftVersion]);
 
-  const run = () => {
+  const run = (spendConfirmed = false) => {
     setRunning(true);
     setProblem(undefined);
     setResult(undefined);
-    runTest(roleId)
+    setBreach(undefined);
+    runTest(roleId, { spendConfirmed })
       .then(setResult, (error: unknown) => {
-        setProblem(describeError(error));
+        const found = breachOf(error);
+        if (found === undefined) {
+          setProblem(describeError(error));
+          return;
+        }
+        const connectionId = error instanceof ApiError ? error.details?.connectionId : undefined;
+        setBreach({ breach: found, ...(connectionId === undefined ? {} : { connectionId }) });
       })
       .finally(() => {
         setRunning(false);
+      });
+  };
+
+  /** «Cambia il tetto»: alza il limite abbastanza perché la prova rientri, e riprova. */
+  const raiseAndRetry = (pending: { breach: SpendBreach; connectionId?: string }) => {
+    setRaising(true);
+    raiseLimit(pending.breach, pending.connectionId)
+      .then(
+        () => {
+          run();
+        },
+        (error: unknown) => {
+          setProblem(describeError(error));
+        },
+      )
+      .finally(() => {
+        setRaising(false);
       });
   };
 
@@ -114,12 +144,29 @@ function RoleTest({ roleId, saved, draftVersion }: Props & { roleId: string }) {
           className="button"
           data-kind="primary"
           disabled={running || !saved || estimate === undefined}
-          onClick={run}
+          onClick={() => {
+            run();
+          }}
         >
           {running ? 'Sto provando…' : 'Prova con un esempio fisso'}
         </button>
       </div>
       {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
+      {breach === undefined ? null : (
+        <SpendConfirm
+          breach={breach.breach}
+          busy={running || raising}
+          onProceed={() => {
+            run(true);
+          }}
+          onRaise={() => {
+            raiseAndRetry(breach);
+          }}
+          onCancel={() => {
+            setBreach(undefined);
+          }}
+        />
+      )}
       {result === undefined ? null : <TestResult result={result} />}
     </>
   );

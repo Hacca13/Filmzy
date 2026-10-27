@@ -1,11 +1,18 @@
-import type { ConnectionsOverview, GroupState, ProviderState } from '@filmzy/contracts';
+import type {
+  ConnectionsOverview,
+  GroupState,
+  ProviderSpend,
+  ProviderState,
+} from '@filmzy/contracts';
 import { useState, type ReactNode } from 'react';
 
 import { fetchConnections } from '../../api/connections';
+import { fetchSpend } from '../../api/spend';
 import { Notice, Panel } from '../../components/ui';
 import { formatUsd } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
+import { spendBadge } from '../spend/model';
 import { GROUP_LABELS, GROUP_ORDER, providerStatus } from './labels';
 import { ProviderDetail } from './ProviderDetail';
 import { ProviderWizard } from './ProviderWizard';
@@ -16,12 +23,19 @@ import { ProviderWizard } from './ProviderWizard';
  */
 export function ConnectionsPage() {
   const { state, setData } = useResource(fetchConnections);
+  // La spesa serve solo agli avvisi sui limiti: se non si legge, la pagina funziona lo stesso.
+  const spend = useResource(fetchSpend);
   const [problem, setProblem] = useState<string>();
 
   if (state.status === 'loading') return <p className="hint">Un attimo…</p>;
   if (state.status === 'error') return <Notice tone="error">{describeError(state.error)}</Notice>;
 
   const overview = state.data;
+  const spendByConnection = new Map(
+    spend.state.status === 'ready'
+      ? spend.state.data.providers.map((entry) => [entry.connectionId, entry])
+      : [],
+  );
   const reload = async () => {
     try {
       setData(await fetchConnections());
@@ -41,6 +55,7 @@ export function ConnectionsPage() {
             key={name}
             group={group}
             overview={overview}
+            spend={spendByConnection}
             onOverview={setData}
             onReload={reload}
           />
@@ -53,11 +68,12 @@ export function ConnectionsPage() {
 interface GroupProps {
   group: GroupState;
   overview: ConnectionsOverview;
+  spend: ReadonlyMap<string, ProviderSpend>;
   onOverview: (overview: ConnectionsOverview) => void;
   onReload: () => Promise<void>;
 }
 
-function GroupPanel({ group, overview, onOverview, onReload }: GroupProps) {
+function GroupPanel({ group, overview, spend, onOverview, onReload }: GroupProps) {
   const [managing, setManaging] = useState<string>();
   const [adding, setAdding] = useState(false);
 
@@ -72,6 +88,7 @@ function GroupPanel({ group, overview, onOverview, onReload }: GroupProps) {
         <ProviderRow
           key={provider.connectionId}
           provider={provider}
+          spend={spend.get(provider.connectionId)}
           isGroupDefault={group.defaultConnectionId === provider.connectionId}
           open={managing === provider.connectionId}
           onToggle={() => {
@@ -116,18 +133,21 @@ function GroupPanel({ group, overview, onOverview, onReload }: GroupProps) {
 
 function ProviderRow({
   provider,
+  spend,
   isGroupDefault,
   open,
   onToggle,
   children,
 }: {
   provider: ProviderState;
+  spend: ProviderSpend | undefined;
   isGroupDefault: boolean;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
   const status = providerStatus(provider);
+  const limit = spendBadge(spend);
 
   return (
     <div className="row" data-open={open}>
@@ -138,6 +158,11 @@ function ProviderRow({
             {status.text}
           </span>
           {isGroupDefault ? <span className="badge">Di solito</span> : null}
+          {limit === undefined ? null : (
+            <span className="badge" data-tone={limit.tone === 'reached' ? 'accent' : 'plain'}>
+              {limit.text}
+            </span>
+          )}
           {provider.monthlyCapUsd === undefined ? null : (
             <span className="hint"> · limite mensile {formatUsd(provider.monthlyCapUsd)}</span>
           )}

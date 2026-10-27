@@ -54,6 +54,11 @@ export class ConnectionsService {
     return {
       groups: MODEL_GROUPS.map((group) => this.groupState(group, config, current)),
       hasChoices: explicit && settings !== undefined,
+      limits: {
+        ...(current.spendCaps.filmBudgetUsd === undefined
+          ? {}
+          : { filmBudgetUsd: current.spendCaps.filmBudgetUsd }),
+      },
     };
   }
 
@@ -146,6 +151,19 @@ export class ConnectionsService {
         spendCaps:
           Object.keys(monthlyByConnection).length === 0 ? rest : { ...rest, monthlyByConnection },
       };
+    });
+    return this.overview();
+  }
+
+  /** Il limite di spesa per film (D30): facoltativo, `null` lo toglie. Si scrive, ma non si applica ancora (T3.1). */
+  async setFilmBudget(usd: number | null): Promise<ConnectionsOverview> {
+    const { config } = await this.effective();
+
+    this.userSettings.update(config, (settings) => {
+      const rest = Object.fromEntries(
+        Object.entries(settings.spendCaps).filter(([name]) => name !== 'filmBudgetUsd'),
+      );
+      return { ...settings, spendCaps: usd === null ? rest : { ...rest, filmBudgetUsd: usd } };
     });
     return this.overview();
   }

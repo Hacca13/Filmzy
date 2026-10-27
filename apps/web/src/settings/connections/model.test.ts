@@ -35,6 +35,7 @@ describe('enabledServiceIds', () => {
   it('raccoglie i servizi attivati del fornitore da tutti i gruppi, senza doppioni', () => {
     const overview: ConnectionsOverview = {
       hasChoices: true,
+      limits: {},
       groups: [
         { group: 'image', providers: [provider('fal', [service('a', true), service('b', false)])] },
         {

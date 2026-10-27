@@ -1,5 +1,6 @@
 import {
   modelGroupSchema,
+  setFilmBudgetBodySchema,
   setGroupDefaultBodySchema,
   setMonthlyCapBodySchema,
   setProviderDefaultBodySchema,
@@ -52,6 +53,11 @@ export class ConnectionsController {
   async test(@Param('id') id: string): Promise<ConnectionTestResult> {
     await this.connections.test(id);
     return { ok: true };
+  }
+
+  @Put('limits/film-budget')
+  setFilmBudget(@Body() body: unknown): Promise<ConnectionsOverview> {
+    return this.connections.setFilmBudget(parseBody(setFilmBudgetBodySchema, body).usd);
   }
 
   @Put('groups/:group/default')

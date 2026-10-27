@@ -1,5 +1,6 @@
 import {
   modelGroupSchema,
+  setConfirmAboveBodySchema,
   setFilmBudgetBodySchema,
   setGroupDefaultBodySchema,
   setMonthlyCapBodySchema,
@@ -58,6 +59,11 @@ export class ConnectionsController {
   @Put('limits/film-budget')
   setFilmBudget(@Body() body: unknown): Promise<ConnectionsOverview> {
     return this.connections.setFilmBudget(parseBody(setFilmBudgetBodySchema, body).usd);
+  }
+
+  @Put('limits/confirm-above')
+  setConfirmAbove(@Body() body: unknown): Promise<ConnectionsOverview> {
+    return this.connections.setConfirmAbove(parseBody(setConfirmAboveBodySchema, body).usd);
   }
 
   @Put('groups/:group/default')

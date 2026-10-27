@@ -25,6 +25,7 @@ import { OPENED_DATABASE } from '../database/database.module.js';
 import { DbInstructionsSource } from '../instructions/db-instructions-source.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { SECRET_SOURCES } from '../secrets/tokens.js';
+import { SpendLedger } from '../spend/spend-ledger.js';
 import { DbConfigSource } from './db-config-source.js';
 import { DraftTestController } from './draft-test.controller.js';
 import { DraftTestService } from './draft-test.service.js';
@@ -33,6 +34,7 @@ import {
   CONFIG_SOURCE,
   DRAFT_TROUPE,
   RECEIPT_STORE,
+  SPEND_LEDGER,
   TROUPE,
   TROUPE_ENVIRONMENT,
   TROUPE_STORE,
@@ -99,6 +101,13 @@ export class TroupeModule {
           inject: [TROUPE_STORE],
         },
         {
+          // Il registro della spesa: la troupe lo interroga prima di ogni chiamata (T3.1, D30).
+          provide: SPEND_LEDGER,
+          useFactory: (receipts: ReceiptStore, configSource: ConfigSource): SpendLedger =>
+            new SpendLedger({ receipts, configSource }),
+          inject: [RECEIPT_STORE, CONFIG_SOURCE],
+        },
+        {
           // Le istruzioni del programma, lette dai file, più quelle dell'utente, dal database.
           provide: INSTRUCTIONS_SOURCE,
           useFactory: (store: TroupeStore): InstructionsSource =>
@@ -115,8 +124,9 @@ export class TroupeModule {
             instructions: InstructionsSource,
             secrets: SecretSources,
             receiptSink: ReceiptStore,
-          ): Troupe => createTroupe({ configSource, instructions, secrets, receiptSink }),
-          inject: [CONFIG_SOURCE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE],
+            spend: SpendLedger,
+          ): Troupe => createTroupe({ configSource, instructions, secrets, receiptSink, spend }),
+          inject: [CONFIG_SOURCE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE, SPEND_LEDGER],
         },
         {
           // Stessa troupe, stesse chiavi e stessi scontrini, ma la configurazione è la bozza.
@@ -126,14 +136,16 @@ export class TroupeModule {
             instructions: InstructionsSource,
             secrets: SecretSources,
             receiptSink: ReceiptStore,
+            spend: SpendLedger,
           ): Troupe =>
             createTroupe({
               configSource: configSourceOver(store, true),
               instructions,
               secrets,
               receiptSink,
+              spend,
             }),
-          inject: [TROUPE_STORE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE],
+          inject: [TROUPE_STORE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE, SPEND_LEDGER],
         },
         TroupeConfigService,
         UserSettingsService,
@@ -145,6 +157,7 @@ export class TroupeModule {
         CONFIG_SOURCE,
         TROUPE_STORE,
         RECEIPT_STORE,
+        SPEND_LEDGER,
         CONFIG_DIR,
         TROUPE_ENVIRONMENT,
         TroupeConfigService,

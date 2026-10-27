@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import type { TroupeStore } from '@filmzy/db';
 import {
   applyEnvironmentOverlay,
@@ -24,6 +26,11 @@ export interface DbConfigSourceOptions {
   /** La cartella `config/` che arriva col programma: serve all'adattamento d'ambiente. */
   configDir: string;
   environment?: ConfigEnvironment;
+  /**
+   * Con `true` la configurazione è la **bozza**, se c'è (la prova, T2.5): serve a vedere cosa farebbe
+   * una modifica prima di pubblicarla. Senza bozza vale la release attiva, come sempre.
+   */
+  preferDraft?: boolean;
 }
 
 export class DbConfigSource implements ConfigSource {
@@ -33,6 +40,7 @@ export class DbConfigSource implements ConfigSource {
 
   async load(): Promise<LoadedConfig> {
     const { release, skipped } = this.options.store.activeRelease();
+    const draft = this.options.preferDraft === true ? this.options.store.getDraft() : undefined;
     const issues: ConfigIssue[] = skipped.map((row) => ({
       severity: 'warning',
       code: 'release_unreadable',
@@ -40,7 +48,7 @@ export class DbConfigSource implements ConfigSource {
       key: row.id,
     }));
 
-    if (release === undefined) {
+    if (release === undefined && draft === undefined) {
       return {
         origin: 'database',
         releaseId: 'nessuna',
@@ -56,7 +64,13 @@ export class DbConfigSource implements ConfigSource {
       };
     }
 
-    const base = { origin: 'database', releaseId: release.id };
+    // Gli scontrini di una prova dicono «bozza»: non è una release, e non si può confondere con una.
+    const base =
+      draft === undefined
+        ? { origin: 'database', releaseId: release?.id ?? 'nessuna' }
+        : { origin: 'bozza', releaseId: 'bozza' };
+    const config = draft?.config ?? release?.config;
+    if (config === undefined) return { ...base, issues };
 
     // Le scelte dell'utente sono un livello di §4.5: se non si leggono non si tira a indovinare,
     // perché «nessuna scelta» vuol dire «tutti i servizi attivi» e si rischia di spendere su un
@@ -81,10 +95,10 @@ export class DbConfigSource implements ConfigSource {
     issues.push(...overlay.issues);
 
     if (overlay.value === undefined) {
-      return { ...base, config: release.config, ...settings, issues };
+      return { ...base, config, ...settings, issues };
     }
 
-    const applied = applyEnvironmentOverlay(release.config, overlay.value);
+    const applied = applyEnvironmentOverlay(config, overlay.value);
     return { ...base, config: applied.config, ...settings, issues: [...issues, ...applied.issues] };
   }
 
@@ -100,7 +114,34 @@ export class DbConfigSource implements ConfigSource {
       this.options.configDir,
       this.options.environment,
     );
-    this.overlay = { ...(overlay === undefined ? {} : { value: overlay }), issues };
+    this.overlay = {
+      ...(overlay === undefined
+        ? {}
+        : { value: withAbsoluteFixtures(overlay, this.options.configDir) }),
+      issues,
+    };
     return this.overlay;
   }
+}
+
+/**
+ * Le risposte registrate dei fornitori finti (`fixtures:`) si scrivono relative alla cartella che
+ * contiene `config/`, non a quella da cui si lancia il server: con `pnpm dev` il server parte da
+ * `apps/api`, e un percorso relativo non troverebbe niente.
+ */
+function withAbsoluteFixtures(overlay: EnvironmentFile, configDir: string): EnvironmentFile {
+  if (overlay.connections === undefined) return overlay;
+
+  const baseDir = path.dirname(configDir);
+  return {
+    ...overlay,
+    connections: Object.fromEntries(
+      Object.entries(overlay.connections).map(([key, connection]) => [
+        key,
+        connection.fixtures === undefined
+          ? connection
+          : { ...connection, fixtures: path.resolve(baseDir, connection.fixtures) },
+      ]),
+    ),
+  };
 }

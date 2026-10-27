@@ -418,3 +418,17 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Perché:** si vede cosa fa una modifica prima che lo faccia a tutti. Provare la bozza salvata (e non un testo mandato al volo) usa esattamente il percorso della pubblicazione: se la prova passa, la pubblicazione non ha sorprese. Stimare prima è D30: con un fornitore vero la prova costa.
 **Scartate:** provare le modifiche non salvate (la bozza viaggerebbe nel corpo e la prova non sarebbe quella che si pubblica); una prova senza stima (nessuna idea della spesa); uno scopo diverso per le prove della troupe di esercizio (gli scontrini si distinguono già per `purpose`).
 **Conseguenze:** **i tetti di spesa non si applicano alla prova finché non ci sono (T3.1)**: l'unica protezione è che la prova parta col pulsante dopo aver visto la stima. La tabella `generations` prepara il calcolo della spesa (T3.1) ma non lo fa. Le risposte registrate dei fornitori finti (`fixtures:`) si risolvono dalla cartella che contiene `config/`, non da quella da cui parte il server.
+
+## D49 · Pubblicare e ripristinare: si vede cosa cambia, il ripristino è una versione nuova — 27/10/2026
+
+**Precisa** architettura §4.5 (punti 3 e 4); chiude T2.6.
+**Decisione:**
+1. **Le differenze le calcola il server** (`diffConfigs`, regola 8), voce per voce e con i campi cambiati: connessioni, modelli e ruoli per chiave; preset per `id` dentro la categoria; funzioni e limiti un valore alla volta. Il confronto è sul contenuto, non sull'ordine delle chiavi (stesso criterio dell'impronta). Si vedono in «Pubblica» (bozza contro configurazione attiva) e in «Ripristina» (cosa tornerebbe com'era).
+2. **Il numero di versione è quello del database** (`seq`, cresce da sé): «Versione 7». Non si calcola contando le righe, che si perderebbe se una non si legge.
+3. **Ripristinare è pubblicare di nuovo una versione vecchia come versione nuova**, con una nota obbligatoria (preparata: «Ripristino della versione 6»). Lo storico resta lineare e non si cancella niente. Passa gli stessi controlli di una pubblicazione: se oggi quella versione non passerebbe (una chiave tolta, un servizio ritirato), non si ripristina, e lo dice con i motivi.
+4. **La bozza segue il ripristino solo se non aveva modifiche non pubblicate.** Altrimenti resta com'è e la pagina continua a dire «hai modifiche non pubblicate»: un ripristino non butta via il lavoro di nessuno. Lo stesso vale per quello che si sta scrivendo e non è ancora salvato.
+5. **«Salva su file» non c'è ancora.** Serve la scelta di una cartella, che in questo programma viene dalla finestra del sistema (Electron, M6). `pnpm troupe export` resta.
+
+**Perché:** pubblicare senza vedere cosa cambia è pubblicare a occhi chiusi; ripristinare deve essere una cosa da niente (il criterio è meno di un minuto, e il test lo verifica), quindi non può chiedere di rifare la bozza a mano né perdere il lavoro in corso.
+**Scartate:** un ripristino che sovrascrive la release attiva (lo storico non sarebbe più una storia); un ripristino che sostituisce sempre la bozza (si perderebbe lavoro non pubblicato); differenze calcolate dall'interfaccia (la logica sta nel backend); numerare le versioni dalla posizione nell'elenco.
+**Conseguenze:** `TroupeRelease` e `ReleaseSummary` hanno un `number` facoltativo. L'elenco dello storico mostra le ultime 200 versioni.

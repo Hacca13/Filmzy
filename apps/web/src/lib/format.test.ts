@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDateTime, formatUsd, formatValue } from './format';
+import { formatDateTime, formatEstimate, formatUsd, formatValue } from './format';
 
 describe('formatUsd', () => {
   it('le frazioni di centesimo hanno quattro decimali, con la virgola', () => {
@@ -14,7 +14,7 @@ describe('formatUsd', () => {
   });
 
   it('zero resta zero', () => {
-    expect(formatUsd(0)).toBe('0,0000 $');
+    expect(formatUsd(0)).toBe('0,00 $');
   });
 });
 
@@ -22,6 +22,15 @@ describe('formatValue', () => {
   it("il testo resta com'è, il resto si scrive rientrato", () => {
     expect(formatValue('ciao')).toBe('ciao');
     expect(formatValue({ a: 1 })).toBe('{\n  "a": 1\n}');
+  });
+});
+
+describe('formatEstimate', () => {
+  it('da dieci centesimi in su due decimali, sotto quattro', () => {
+    expect(formatEstimate(0.42)).toBe('0,42 $');
+    expect(formatEstimate(1.2)).toBe('1,20 $');
+    expect(formatEstimate(0.004)).toBe('0,0040 $');
+    expect(formatEstimate(0)).toBe('0,00 $');
   });
 });
 

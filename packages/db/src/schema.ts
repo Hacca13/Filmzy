@@ -150,10 +150,18 @@ export const generations = sqliteTable(
     status: text('status').notNull(),
     estimatedCostUsd: real('estimated_cost_usd').notNull(),
     actualCostUsd: real('actual_cost_usd'),
+    /** Il fornitore: serve a sommare la spesa del mese per ognuno (D30) senza leggere ogni scontrino. */
+    connectionId: text('connection_id').notNull().default(''),
+    /** Il film, se la chiamata era per un film: serve al limite per film. */
+    projectId: text('project_id'),
     createdAt: integer('created_at').notNull(),
     receipt: text('receipt').notNull(),
   },
-  (table) => [index('generations_per_scopo').on(table.purpose, table.createdAt)],
+  (table) => [
+    index('generations_per_scopo').on(table.purpose, table.createdAt),
+    index('generations_per_fornitore').on(table.connectionId, table.createdAt),
+    index('generations_per_film').on(table.projectId),
+  ],
 );
 
 export type GenerationRow = typeof generations.$inferSelect;

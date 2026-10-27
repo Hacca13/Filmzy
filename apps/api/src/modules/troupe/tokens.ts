@@ -11,3 +11,5 @@ export const TROUPE = Symbol('TROUPE');
 export const DRAFT_TROUPE = Symbol('DRAFT_TROUPE');
 /** Gli scontrini nel database: ogni chiamata a un fornitore ne lascia uno (regola 4). */
 export const RECEIPT_STORE = Symbol('RECEIPT_STORE');
+/** Il registro della spesa (T3.1): la troupe lo interroga prima di ogni chiamata, le Impostazioni lo mostrano. */
+export const SPEND_LEDGER = Symbol('SPEND_LEDGER');

@@ -154,8 +154,14 @@ export type {
   GenerationUsage,
   ReceiptInstructionsRef,
 } from './receipt.js';
-export { estimateSchema, spendCapSchema } from './spend.js';
-export type { Estimate, SpendCap } from './spend.js';
+export {
+  estimateSchema,
+  SPEND_LIMITS,
+  spendBreachSchema,
+  spendCapSchema,
+  spendLimitSchema,
+} from './spend.js';
+export type { Estimate, SpendBreach, SpendCap, SpendLimit } from './spend.js';
 export { instructionsRefSchema, roleSettingsSchema, userSettingsSchema } from './settings.js';
 export type { InstructionsRef, RoleSettings, UserSettings } from './settings.js';
 export * from './settings-api.js';
@@ -164,6 +170,7 @@ export * from './draft-test-api.js';
 export * from './release-history-api.js';
 export * from './connections-api.js';
 export * from './roles-api.js';
+export * from './spend-api.js';
 export { domainEventSchema } from './events.js';
 export type { DomainEvent } from './events.js';
 export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';

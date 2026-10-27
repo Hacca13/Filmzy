@@ -98,5 +98,7 @@ export type { RouteInput, RoutedModel } from './router.js';
 export { createTroupe } from './troupe.js';
 export type { LlmRoleId, RunResult, Troupe, TroupeOptions } from './troupe.js';
 export type { ResolvedRole } from './resolve-role.js';
+export { enforceSpend } from './spend.js';
+export type { SpendCheckInput, SpendGuard } from './spend.js';
 export { ProviderError } from './provider-error.js';
 export type { ProviderErrorDetails } from './provider-error.js';

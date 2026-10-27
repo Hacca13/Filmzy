@@ -1,4 +1,4 @@
-import type { DomainErrorCode } from '@filmzy/contracts';
+import type { DomainErrorCode, SpendBreach } from '@filmzy/contracts';
 
 export interface ProviderErrorDetails {
   role?: string;
@@ -6,6 +6,8 @@ export interface ProviderErrorDetails {
   connectionId?: string;
   field?: string;
   retryAfterS?: number;
+  /** Per `spend_cap_reached`: il limite superato (D30). */
+  spend?: SpendBreach;
 }
 
 /**

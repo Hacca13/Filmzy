@@ -180,6 +180,8 @@ Senza scelte dell'utente (file di seme, test, bench, `pnpm troupe check`) valgon
 
 **Fornitori dalle Impostazioni (T2.7, D50).** Le rotte sono `GET /api/connections` (fornitori divisi per gruppo, con servizi, stato della chiave senza il valore, limite mensile e chi li usa), `PUT /api/connections/:id/services` (servizi attivati), `PUT …/default-service`, `PUT …/monthly-cap`, `POST …/test` (la prova che non costa) e `PUT /api/groups/:gruppo/default`. Ogni modifica risponde con il quadro aggiornato. Se una chiave sparisce non si toglie niente dagli attivati: i servizi si segnano non utilizzabili. `PUT /api/limits/film-budget` scrive il limite per film (che si scrive ma non si applica ancora).
 
+**Spesa e limiti (T3.1, D52).** La spesa si somma dagli scontrini (`generations`: costo vero, altrimenti stima; una chiamata fallita non spende), per fornitore nel mese di calendario e per film. I limiti (mensile di un fornitore, per film, «conferma sopra») sono facoltativi e senza valori preimpostati; senza, non si blocca niente. La troupe chiede a un `SpendGuard` prima di ogni chiamata: se un limite verrebbe superato si ferma con `spend_cap_reached` prima di spendere e di scrivere lo scontrino, e con `ctx.spendConfirmed` l'utente prosegue. Le rotte sono `GET /api/spend` (spesa del mese per fornitore con livelli all'80% e al 100%, limiti e film) e `PUT /api/limits/confirm-above`.
+
 **«Chi fa cosa» (T2.7, D51).** Il servizio di un ruolo si decide così: scelta dell'utente per il ruolo, poi predefinito del gruppo (vale anche per i ruoli di testo), poi release. Le rotte sono `GET /api/roles` (per ogni ruolo: servizio in uso, alternative che può usare, creatività dove accettata, versione delle istruzioni), `PUT /api/roles/:id/service` e `PUT …/temperature`. Cambiando servizio le regolazioni che il nuovo non accetta si scartano, e la risposta lo dice.
 
 Le impostazioni si validano a ogni salvataggio (§5.6) e si **ricontrollano** a ogni nuova release (anche un ripristino), quando si rimuove una chiave e quando cambia lo stato di un servizio: quello che non è più utilizzabile (ritirato, di un altro tipo, senza chiave) esce dagli attivati e dai predefiniti e l'interfaccia lo dice, invece di far fallire le chiamate una a una. La troupe le riceve dalla `ConfigSource`, insieme alla release attiva, e non legge mai il database (§3).
@@ -336,7 +338,7 @@ Ogni errore arriva all'interfaccia con un **codice**, l'indicazione `retryable` 
 | `invalid_output` | risposta fuori schema | sì, con riparazione | riprovare |
 | `content_rejected` | il fornitore rifiuta il contenuto | no | cambiare la richiesta: non si aggira con un altro servizio |
 | `image_rejected` | immagine caricata con persone, marchi o minori (D19) | no | usare un'altra immagine |
-| `spend_cap_reached` | la stima supera un limite scelto dall'utente (film o mese) e lui non conferma | no | alzare il limite o proseguire |
+| `spend_cap_reached` | la stima supera un limite scelto dall'utente (mese di un fornitore, film o «conferma sopra») e lui non ha confermato; i dettagli dicono quale limite, quanto già speso e la stima (D52) | no | alzare il limite o proseguire |
 | `no_eligible_model` | nessun servizio soddisfa i requisiti, compreso quello scelto dall'utente (D36) | no | cambiare scelta o attivare un altro servizio |
 | `config_invalid`, `role_disabled` | configurazione | no | correggere le impostazioni |
 | `invalid_request`, `not_found` | richiesta sbagliata o elemento che non esiste più | no | ricaricare |

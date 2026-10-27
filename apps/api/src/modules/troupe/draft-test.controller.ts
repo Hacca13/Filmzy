@@ -1,6 +1,12 @@
-import type { DraftTestEstimate, DraftTestResult, TestableRoles } from '@filmzy/contracts';
-import { Controller, Get, HttpCode, Param, Post, UseFilters } from '@nestjs/common';
+import {
+  draftTestRunBodySchema,
+  type DraftTestEstimate,
+  type DraftTestResult,
+  type TestableRoles,
+} from '@filmzy/contracts';
+import { Body, Controller, Get, HttpCode, Param, Post, UseFilters } from '@nestjs/common';
 
+import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { DraftTestService } from './draft-test.service.js';
 
@@ -23,7 +29,9 @@ export class DraftTestController {
 
   @Post(':roleId/run')
   @HttpCode(200)
-  run(@Param('roleId') roleId: string): Promise<DraftTestResult> {
-    return this.test.run(roleId);
+  run(@Param('roleId') roleId: string, @Body() body: unknown): Promise<DraftTestResult> {
+    // Senza corpo è come dire «non ho confermato niente».
+    const { spendConfirmed } = parseBody(draftTestRunBodySchema, body ?? {});
+    return this.test.run(roleId, spendConfirmed);
   }
 }

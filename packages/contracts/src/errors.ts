@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { spendBreachSchema } from './spend.js';
+
 /**
  * Codici di errore del dominio (architettura §4.10). Niente riserve automatiche: ogni errore dice
  * perché la chiamata è fallita e se ha senso riprovare; i messaggi per l'utente stanno
@@ -42,6 +44,8 @@ export const domainErrorDetailsSchema = z.object({
   connectionId: z.string().min(1).optional(),
   field: z.string().min(1).optional(),
   retryAfterS: z.number().positive().optional(),
+  /** Per `spend_cap_reached`: il limite superato e di quanto (D30). */
+  spend: spendBreachSchema.optional(),
 });
 
 /**

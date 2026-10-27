@@ -392,3 +392,29 @@ textarea.editor {
   width: auto;
   min-height: 0;
 }
+
+/* Spese e «Cambia servizio» (T3.1) */
+progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}
+
+.service-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.service-options .button {
+  width: 100%;
+  text-align: left;
+  font-weight: 400;
+}
+
+.service-options .button[aria-selected='true'] {
+  border-color: var(--accent);
+}

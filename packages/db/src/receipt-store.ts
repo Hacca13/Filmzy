@@ -3,7 +3,7 @@ import {
   type GenerationPurpose,
   type GenerationReceipt,
 } from '@filmzy/contracts';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, gte, sql } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { generations, type GenerationRow } from './schema.js';
@@ -20,7 +20,20 @@ export interface ReceiptStore {
   get: (id: string) => GenerationReceipt | undefined;
   /** I più recenti per primi. Le righe che non si leggono (forma sbagliata) si saltano. */
   list: (options?: { purpose?: GenerationPurpose; limit?: number }) => GenerationReceipt[];
+  /** Quanto si è speso da `since` in poi, per fornitore (D30): il mese corrente, di solito. */
+  spentByConnectionSince: (since: Date) => Record<string, number>;
+  /** Quanto si è speso per un film, dall'inizio. */
+  spentOnProject: (projectId: string) => number;
+  /** Quanto si è speso per ogni film. */
+  spentByProject: () => Record<string, number>;
 }
+
+/**
+ * Il costo di uno scontrino ai fini della spesa (D30): quello vero se si sa; altrimenti la stima,
+ * tranne per una chiamata fallita, che non ha speso niente. Si somma una riga per scontrino, quindi
+ * una chiamata ripetuta non si conta due volte (regola 10).
+ */
+const COST = sql`COALESCE(${generations.actualCostUsd}, CASE WHEN ${generations.status} = 'failed' THEN 0 ELSE ${generations.estimatedCostUsd} END)`;
 
 export function createReceiptStore(db: FilmzyDb): ReceiptStore {
   return {
@@ -31,6 +44,8 @@ export function createReceiptStore(db: FilmzyDb): ReceiptStore {
         purpose: receipt.purpose,
         role: receipt.role,
         modelId: receipt.modelId,
+        connectionId: receipt.connectionId,
+        projectId: receipt.projectId ?? null,
         status: receipt.status,
         estimatedCostUsd: receipt.estimatedCostUsd,
         actualCostUsd: receipt.actualCostUsd ?? null,
@@ -47,6 +62,37 @@ export function createReceiptStore(db: FilmzyDb): ReceiptStore {
     get(id) {
       const [row] = db.select().from(generations).where(eq(generations.id, id)).all();
       return row === undefined ? undefined : toReceipt(row);
+    },
+
+    spentByConnectionSince(since) {
+      const rows = db
+        .select({ connectionId: generations.connectionId, spent: sql<number>`SUM(${COST})` })
+        .from(generations)
+        .where(gte(generations.createdAt, since.getTime()))
+        .groupBy(generations.connectionId)
+        .all();
+      return Object.fromEntries(rows.map((row) => [row.connectionId, row.spent]));
+    },
+
+    spentOnProject(projectId) {
+      const [row] = db
+        .select({ spent: sql<number>`COALESCE(SUM(${COST}), 0)` })
+        .from(generations)
+        .where(eq(generations.projectId, projectId))
+        .all();
+      return row?.spent ?? 0;
+    },
+
+    spentByProject() {
+      const rows = db
+        .select({ projectId: generations.projectId, spent: sql<number>`SUM(${COST})` })
+        .from(generations)
+        .where(sql`${generations.projectId} IS NOT NULL`)
+        .groupBy(generations.projectId)
+        .all();
+      return Object.fromEntries(
+        rows.flatMap((row) => (row.projectId === null ? [] : [[row.projectId, row.spent]])),
+      );
     },
 
     list({ purpose, limit = 50 } = {}) {

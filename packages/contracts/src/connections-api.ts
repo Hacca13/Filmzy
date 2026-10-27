@@ -82,7 +82,10 @@ export const connectionsOverviewSchema = z.object({
   groups: z.array(groupStateSchema),
   hasChoices: z.boolean(),
   /** I limiti di spesa che non sono di un fornitore. Facoltativi: nessuno è preimpostato (D36). */
-  limits: z.object({ filmBudgetUsd: z.number().positive().optional() }),
+  limits: z.object({
+    filmBudgetUsd: z.number().positive().optional(),
+    confirmAboveUsd: z.number().positive().optional(),
+  }),
 });
 
 export type ConnectionsOverview = z.infer<typeof connectionsOverviewSchema>;
@@ -113,6 +116,11 @@ export type SetMonthlyCapBody = z.infer<typeof setMonthlyCapBodySchema>;
 export const setFilmBudgetBodySchema = setMonthlyCapBodySchema;
 
 export type SetFilmBudgetBody = SetMonthlyCapBody;
+
+/** `PUT /limits/confirm-above`: «chiedi conferma sopra questa cifra»; `null` lo toglie. */
+export const setConfirmAboveBodySchema = setMonthlyCapBodySchema;
+
+export type SetConfirmAboveBody = SetMonthlyCapBody;
 
 /** `POST /connections/:id/test`: la prova che non costa. Un fallimento è un errore del dominio. */
 export const connectionTestResultSchema = z.object({ ok: z.literal(true) });

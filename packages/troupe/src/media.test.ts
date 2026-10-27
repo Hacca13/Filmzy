@@ -134,3 +134,70 @@ describe('submit e collect con il fornitore finto', () => {
     });
   });
 });
+
+describe('limiti di spesa nei lavori di media (D30)', () => {
+  const breach = { limit: 'film_budget', limitUsd: 10, spentUsd: 9.9, estimatedUsd: 0.5 } as const;
+
+  async function runner(
+    check: () => Promise<typeof breach | undefined>,
+    receipts: MemoryReceiptSink,
+  ) {
+    const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-media-'));
+    return createMediaRunner({
+      configSource: sourceOf(offline),
+      assets: new LocalAssetStore(dir),
+      receiptSink: receipts,
+      spend: { check },
+    });
+  }
+
+  it('un limite superato ferma il lavoro prima di mandarlo: nessuno scontrino', async () => {
+    const receipts = new MemoryReceiptSink();
+    const media = await runner(() => Promise.resolve(breach), receipts);
+
+    await expect(
+      media.submit('camera_operator', request(), { purpose: 'product', projectId: 'film-1' }),
+    ).rejects.toMatchObject({ code: 'spend_cap_reached', details: { spend: breach } });
+    expect(receipts.all()).toEqual([]);
+  });
+
+  it("con «prosegui» il lavoro parte e lo scontrino c'è", async () => {
+    const receipts = new MemoryReceiptSink();
+    const media = await runner(() => Promise.resolve(breach), receipts);
+
+    const job = await media.submit('camera_operator', request(), {
+      purpose: 'product',
+      spendConfirmed: true,
+    });
+
+    expect(job.estimatedCostUsd).toBeGreaterThan(0);
+    expect(receipts.all()).toHaveLength(1);
+  });
+
+  it('il guardiano riceve fornitore, film e stima del servizio scelto', async () => {
+    const seen: unknown[] = [];
+    const receipts = new MemoryReceiptSink();
+    const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-media-'));
+    const media = createMediaRunner({
+      configSource: sourceOf(offline),
+      assets: new LocalAssetStore(dir),
+      receiptSink: receipts,
+      spend: {
+        check: (input) => {
+          seen.push(input);
+          return Promise.resolve(undefined);
+        },
+      },
+    });
+
+    await media.submit('camera_operator', request(), { purpose: 'product', projectId: 'film-1' });
+
+    expect(seen).toEqual([
+      expect.objectContaining({
+        connectionId: 'fal',
+        projectId: 'film-1',
+        estimatedCostUsd: expect.any(Number) as number,
+      }),
+    ]);
+  });
+});

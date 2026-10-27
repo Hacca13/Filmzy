@@ -201,3 +201,58 @@ describe('si ferma prima di spendere', () => {
     ).rejects.toMatchObject({ code: 'invalid_request' });
   });
 });
+
+describe('estimate (T2.5)', () => {
+  it('dice servizio e costo prima di chiamare nessuno', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { troupe, receipts } = troupeWith(FIXTURES);
+
+    const estimate = await troupe.estimate(
+      'cinematographer',
+      ROLE_INPUT_EXAMPLES.cinematographer as never,
+    );
+
+    expect(estimate).toMatchObject({ modelId: 'claude-sonnet', modelLabel: 'Claude Sonnet' });
+    expect(estimate.estimatedCostUsd).toBeGreaterThan(0);
+    // Stimare non è generare: niente scontrino, niente rete.
+    expect(receipts.all()).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('lo scontrino parte con la stessa stima che si era vista', async () => {
+    const { troupe, receipts } = troupeWith(FIXTURES);
+    const input = ROLE_INPUT_EXAMPLES.cinematographer as never;
+
+    const estimate = await troupe.estimate('cinematographer', input);
+    await troupe.run('cinematographer', input, ctx);
+
+    expect(receipts.last()?.estimatedCostUsd).toBe(estimate.estimatedCostUsd);
+  });
+
+  it('la stima è prudente: non sta sotto il costo vero', async () => {
+    const { troupe } = troupeWith(FIXTURES);
+    const input = ROLE_INPUT_EXAMPLES.cinematographer as never;
+
+    const estimate = await troupe.estimate('cinematographer', input);
+    const { receipt } = await troupe.run('cinematographer', input, ctx);
+
+    expect(estimate.estimatedCostUsd).toBeGreaterThanOrEqual(receipt.actualCostUsd ?? 0);
+  });
+
+  it('un ruolo non di testo non si stima qui', async () => {
+    const { troupe } = troupeWith(FIXTURES);
+
+    await expect(troupe.estimate('camera_operator' as never, {} as never)).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+  });
+
+  it('un input sbagliato si dice prima, senza stimare', async () => {
+    const { troupe } = troupeWith(FIXTURES);
+
+    await expect(troupe.estimate('cinematographer', {} as never)).rejects.toMatchObject({
+      code: 'invalid_request',
+    });
+  });
+});

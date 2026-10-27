@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   ROLE_IO,
   type GenerationContext,
+  type Estimate,
   type GenerationReceipt,
   type ModelOption,
   type RoleId,
@@ -65,6 +66,12 @@ export interface Troupe {
   ): Promise<RunResult<Role>>;
 
   /**
+   * Quanto costerebbe `run` con questo input, prima di lanciarlo (architettura §4.1, D30): il
+   * servizio che lavorerebbe e una stima **prudente**. Non chiama nessun fornitore.
+   */
+  estimate<Role extends LlmRoleId>(role: Role, input: RoleInput<Role>): Promise<Estimate>;
+
+  /**
    * I servizi tra cui l'utente può scegliere per questa richiesta (architettura §4.1, §4.8, D36):
    * nome, costo stimato e voto delle prove. È quello che alimenta «Cambia servizio».
    *
@@ -89,16 +96,7 @@ export function createTroupe(options: TroupeOptions): Troupe {
   return {
     async run(role, input, ctx) {
       const started = now();
-      const io = ROLE_IO[role];
-      const outputSchema = 'output' in io ? io.output : undefined;
-      if (outputSchema === undefined) {
-        throw new ProviderError(
-          'invalid_request',
-          false,
-          `Il ruolo "${role}" non è un ruolo di testo: usa "submit".`,
-          { role },
-        );
-      }
+      const { inputSchema, outputSchema } = textRole(role);
 
       // La scelta del servizio per singola generazione non riguarda i ruoli di testo (§4.1).
       if (ctx.modelId !== undefined) {
@@ -110,40 +108,22 @@ export function createTroupe(options: TroupeOptions): Troupe {
         );
       }
 
-      const parsedInput = io.input.safeParse(input);
-      if (!parsedInput.success) {
-        throw new ProviderError(
-          'invalid_request',
-          false,
-          `L'input del ruolo "${role}" non è valido: ${parsedInput.error.issues
-            .map((issue) => `${issue.path.join('.')} ${issue.message}`)
-            .join('; ')}.`,
-          { role, field: parsedInput.error.issues[0]?.path.join('.') },
-        );
-      }
-
-      const loaded = await options.configSource.load();
-      if (loaded.config === undefined) {
-        throw new ProviderError(
-          'config_invalid',
-          false,
-          `La configurazione non si è caricata: ${loaded.issues.map((issue) => issue.message).join(' ')}`,
-          { role },
-        );
-      }
-
-      const resolved = resolveRole(loaded.config, role, loaded.settings);
-      const instructions = await resolveInstructionsFor(options.instructions, resolved);
-      const prompt = await renderPrompt(instructions.sections, parsedInput.data, resolved);
+      const { parsedInput, releaseId, config, resolved, instructions, prompt } = await prepareRun(
+        options,
+        role,
+        inputSchema,
+        input,
+      );
 
       const receipt = newReceipt({
         role,
         ctx,
         resolved,
         instructions,
-        releaseId: loaded.releaseId,
-        roleConfigHash: hashRoleConfig(loaded.config, role) ?? '',
-        inputHash: configHash(parsedInput.data),
+        releaseId,
+        roleConfigHash: hashRoleConfig(config, role) ?? '',
+        inputHash: configHash(parsedInput),
+        estimatedCostUsd: estimateLlmCostUsd(resolved, prompt),
         createdAt: started.toISOString(),
       });
       await write(options.receiptSink, receipt);
@@ -191,6 +171,16 @@ export function createTroupe(options: TroupeOptions): Troupe {
       return { data: attempt.data as RoleOutput<typeof role>, receipt: closed };
     },
 
+    async estimate(role, input) {
+      const { inputSchema } = textRole(role);
+      const { resolved, prompt } = await prepareRun(options, role, inputSchema, input);
+      return {
+        modelId: resolved.modelId,
+        modelLabel: resolved.model.label,
+        estimatedCostUsd: estimateLlmCostUsd(resolved, prompt),
+      };
+    },
+
     async options(role, request) {
       const loaded = await options.configSource.load();
       if (loaded.config === undefined) {
@@ -210,6 +200,97 @@ export function createTroupe(options: TroupeOptions): Troupe {
       });
     },
   };
+}
+
+/** Un ruolo di testo ha uno schema di risposta; gli altri passano da `submit` (architettura §4.2). */
+function textRole(role: string): { inputSchema: z.ZodType; outputSchema: z.ZodType } {
+  const io = ROLE_IO[role as RoleId];
+  if (!('output' in io)) {
+    throw new ProviderError(
+      'invalid_request',
+      false,
+      `Il ruolo "${role}" non è un ruolo di testo: usa "submit".`,
+      { role },
+    );
+  }
+  return { inputSchema: io.input, outputSchema: io.output };
+}
+
+interface PreparedRun {
+  /** L'input già controllato dallo schema del ruolo. */
+  parsedInput: unknown;
+  releaseId: string;
+  config: NonNullable<Awaited<ReturnType<ConfigSource['load']>>['config']>;
+  resolved: ResolvedRole;
+  instructions: Awaited<ReturnType<typeof resolveInstructionsFor>>;
+  prompt: { system?: string; user: string };
+}
+
+/**
+ * Tutto quello che serve prima di chiamare un fornitore: input valido, configurazione, ruolo e
+ * servizio risolti, istruzioni rese. Lo usano `run` e `estimate`, così la stima parte dallo stesso
+ * testo che poi verrebbe inviato.
+ */
+async function prepareRun(
+  options: TroupeOptions,
+  role: string,
+  inputSchema: z.ZodType,
+  input: unknown,
+): Promise<PreparedRun> {
+  const parsedInput = inputSchema.safeParse(input);
+  if (!parsedInput.success) {
+    throw new ProviderError(
+      'invalid_request',
+      false,
+      `L'input del ruolo "${role}" non è valido: ${parsedInput.error.issues
+        .map((issue) => `${issue.path.join('.')} ${issue.message}`)
+        .join('; ')}.`,
+      { role, field: parsedInput.error.issues[0]?.path.join('.') },
+    );
+  }
+
+  const loaded = await options.configSource.load();
+  if (loaded.config === undefined) {
+    throw new ProviderError(
+      'config_invalid',
+      false,
+      `La configurazione non si è caricata: ${loaded.issues.map((issue) => issue.message).join(' ')}`,
+      { role },
+    );
+  }
+
+  const resolved = resolveRole(loaded.config, role, loaded.settings);
+  const instructions = await resolveInstructionsFor(options.instructions, resolved);
+  const prompt = await renderPrompt(instructions.sections, parsedInput.data, resolved);
+
+  return {
+    parsedInput: parsedInput.data,
+    releaseId: loaded.releaseId,
+    config: loaded.config,
+    resolved,
+    instructions,
+    prompt,
+  };
+}
+
+/** Circa quattro caratteri per token: per una stima basta, e sbaglia per eccesso nelle lingue lunghe. */
+const CHARS_PER_TOKEN = 4;
+
+/** Se il ruolo non dice quanto può scrivere al massimo, si stima un'uscita media-lunga. */
+const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
+
+/**
+ * Una stima **prudente** del costo di una chiamata di testo (D30): ingresso dal testo che verrebbe
+ * inviato, uscita pari al massimo che il ruolo concede. Lo scontrino dirà il costo vero.
+ */
+function estimateLlmCostUsd(resolved: ResolvedRole, prompt: { system?: string; user: string }) {
+  const maxTokens = resolved.params.max_tokens;
+  return (
+    llmCostUsd(resolved.model.pricing, {
+      inputTokens: Math.ceil(((prompt.system?.length ?? 0) + prompt.user.length) / CHARS_PER_TOKEN),
+      outputTokens: typeof maxTokens === 'number' ? maxTokens : DEFAULT_MAX_OUTPUT_TOKENS,
+    }) ?? 0
+  );
 }
 
 async function resolveInstructionsFor(source: InstructionsSource, resolved: ResolvedRole) {
@@ -365,6 +446,7 @@ interface NewReceiptInput {
   releaseId: string;
   roleConfigHash: string;
   inputHash: string;
+  estimatedCostUsd: number;
   createdAt: string;
 }
 
@@ -398,7 +480,7 @@ function newReceipt(input: NewReceiptInput): GenerationReceipt {
     }),
     status: 'queued',
     attempts: 0,
-    estimatedCostUsd: 0,
+    estimatedCostUsd: input.estimatedCostUsd,
     createdAt: input.createdAt,
   };
 }

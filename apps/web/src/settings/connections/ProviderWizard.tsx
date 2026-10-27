@@ -1,4 +1,4 @@
-import type { ConnectionsOverview, GroupState, ProviderState } from '@filmzy/contracts';
+import type { ConnectionsOverview, GroupState, ModelGroup, ProviderState } from '@filmzy/contracts';
 import { useState } from 'react';
 
 import { setGroupDefault, setProviderDefault, setServices } from '../../api/connections';
@@ -7,7 +7,7 @@ import { useAction } from '../use-action';
 import { CapBox } from './CapBox';
 import { KeyBox } from './KeyBox';
 import { GROUP_LABELS, providerStatus } from './labels';
-import { enabledServiceIds } from './model';
+import { enabledServiceIds, serviceGroups } from './model';
 import { ServiceList } from './ServiceList';
 
 export type WizardStep = 'provider' | 'key' | 'services' | 'cap';
@@ -81,7 +81,7 @@ export function ProviderWizard({
       ) : null}
       {step === 'services' && provider !== undefined ? (
         <ServicesStep
-          group={group}
+          groups={[{ group: group.group, hasDefault: group.defaultConnectionId !== undefined }]}
           provider={provider}
           overview={overview}
           showCap={!steps.includes('cap')}
@@ -161,7 +161,7 @@ function ChooseProvider({
   );
 }
 
-function KeyStep({
+export function KeyStep({
   provider,
   onReload,
   onNext,
@@ -195,8 +195,8 @@ function KeyStep({
   );
 }
 
-function ServicesStep({
-  group,
+export function ServicesStep({
+  groups,
   provider,
   overview,
   showCap,
@@ -204,7 +204,8 @@ function ServicesStep({
   onNext,
   onCancel,
 }: {
-  group: GroupState;
+  /** I gruppi in cui il fornitore lavora: in ognuno, se non c'è un fornitore «di solito», diventa questo. */
+  groups: { group: ModelGroup; hasDefault: boolean }[];
   provider: ProviderState;
   overview: ConnectionsOverview;
   showCap: boolean;
@@ -238,9 +239,14 @@ function ServicesStep({
         defaultId !== undefined && selected.includes(defaultId) ? defaultId : selected[0];
       if (chosen !== undefined) {
         latest = await setProviderDefault(provider.connectionId, chosen);
-        // Se per questo tipo di lavoro non c'è ancora un fornitore di solito, diventa questo.
-        if (group.defaultConnectionId === undefined) {
-          latest = await setGroupDefault(group.group, provider.connectionId);
+        // Dove non c'è ancora un fornitore di solito, diventa questo. Un gruppo in cui il
+        // fornitore non ha servizi attivati non ne ha uno da proporre: lo si salta.
+        for (const { group, hasDefault } of groups) {
+          const serves = provider.services.some(
+            (service) =>
+              selected.includes(service.modelId) && serviceGroups(service).includes(group),
+          );
+          if (!hasDefault && serves) latest = await setGroupDefault(group, provider.connectionId);
         }
       }
       onOverview(latest);

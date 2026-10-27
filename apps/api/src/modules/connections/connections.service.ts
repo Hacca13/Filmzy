@@ -200,6 +200,17 @@ export class ConnectionsService {
     }
   }
 
+  /** Il servizio si può usare adesso: non ritirato, di un fornitore acceso e con la chiave (§4.3). */
+  isUsable(config: TroupeConfig, modelId: string): boolean {
+    const model = config.models[modelId];
+    const connection = model === undefined ? undefined : config.connections[model.connection];
+    return (
+      model !== undefined &&
+      connection !== undefined &&
+      this.unusableReason(connection, model) === undefined
+    );
+  }
+
   /** Perché un servizio non si può usare adesso (§4.3): ritirato, fornitore spento, chiave mancante. */
   private unusableReason(connection: Connection, model: ModelEntry): UnusableReason | undefined {
     if (model.status === 'retired') return 'retired';

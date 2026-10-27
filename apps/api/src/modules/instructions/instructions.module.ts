@@ -6,5 +6,6 @@ import { InstructionsService } from './instructions.service.js';
 @Module({
   controllers: [InstructionsController],
   providers: [InstructionsService],
+  exports: [InstructionsService],
 })
 export class InstructionsModule {}

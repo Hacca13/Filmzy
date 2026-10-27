@@ -25,10 +25,12 @@ export class SecretsService {
         if (parsed === undefined || parsed.kind === 'none') continue;
 
         const key = `${parsed.kind}:${parsed.name}`;
+        const foundIn = this.foundIn(parsed.kind, parsed.name);
         const status = byKey.get(key) ?? {
           name: parsed.name,
           source: parsed.kind,
-          present: this.isPresent(parsed.kind, parsed.name),
+          present: foundIn !== undefined,
+          ...(foundIn === undefined ? {} : { foundIn }),
           connectionIds: [],
         };
         if (!status.connectionIds.includes(connectionId)) status.connectionIds.push(connectionId);
@@ -50,9 +52,10 @@ export class SecretsService {
     this.store.delete(name);
   }
 
-  private isPresent(kind: 'env' | 'secret', name: string): boolean {
-    if (kind === 'secret') return this.store.has(name);
-    const value = this.sources.env?.[name];
-    return value !== undefined && value.trim() !== '';
+  /** Una `env:` si cerca prima nell'ambiente e poi fra le chiavi salvate (D50); una `secret:` solo fra le salvate. */
+  private foundIn(kind: 'env' | 'secret', name: string): 'env' | 'stored' | undefined {
+    const value = kind === 'env' ? this.sources.env?.[name] : undefined;
+    if (value !== undefined && value.trim() !== '') return 'env';
+    return this.store.has(name) ? 'stored' : undefined;
   }
 }

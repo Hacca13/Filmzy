@@ -56,7 +56,15 @@ describe('secretPresence', () => {
     expect(secretPresence('none')?.satisfied).toBe(true);
   });
 
-  it('senza portachiavi un secret: non è soddisfatto (il portachiavi arriva in T2.7)', () => {
+  it('una variabile mancante ripiega sulla chiave salvata con lo stesso nome (D50)', () => {
+    expect(secretPresence('env:FAL_KEY', { env: {} })?.satisfied).toBe(false);
+    expect(secretPresence('env:FAL_KEY', { env: {}, keychain })?.satisfied).toBe(true);
+    expect(secretPresence('env:FAL_KEY', { env: { FAL_KEY: '  ' }, keychain })?.satisfied).toBe(
+      true,
+    );
+  });
+
+  it('senza portachiavi un secret: non è soddisfatto', () => {
     expect(secretPresence('secret:FAL_KEY')?.satisfied).toBe(false);
     expect(secretPresence('secret:FAL_KEY', { keychain })?.satisfied).toBe(true);
   });
@@ -71,5 +79,17 @@ describe('readSecret', () => {
     expect(readSecret('env:FAL_KEY', { env: { FAL_KEY: 'chiave' } })).toBe('chiave');
     expect(readSecret('secret:FAL_KEY', { keychain })).toBe('chiave-dal-portachiavi');
     expect(readSecret('none')).toBeUndefined();
+  });
+
+  it("la variabile d'ambiente vince sulla chiave salvata, ma una vuota non la nasconde", () => {
+    expect(readSecret('env:FAL_KEY', { env: { FAL_KEY: 'da-env' }, keychain })).toBe('da-env');
+    expect(readSecret('env:FAL_KEY', { env: { FAL_KEY: '' }, keychain })).toBe(
+      'chiave-dal-portachiavi',
+    );
+    expect(readSecret('env:FAL_KEY', { env: {}, keychain })).toBe('chiave-dal-portachiavi');
+  });
+
+  it("un secret: non guarda mai le variabili d'ambiente", () => {
+    expect(readSecret('secret:FAL_KEY', { env: { FAL_KEY: 'da-env' } })).toBeUndefined();
   });
 });

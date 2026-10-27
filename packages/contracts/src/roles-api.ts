@@ -74,7 +74,7 @@ export const setRoleServiceBodySchema = z.object({ modelId: modelIdSchema.nullab
 export type SetRoleServiceBody = z.infer<typeof setRoleServiceBodySchema>;
 
 /** `PUT /roles/:id/temperature`: `null` torna al valore del programma. I limiti li controlla il server. */
-export const setRoleTemperatureBodySchema = z.object({ value: z.number().finite().nullable() });
+export const setRoleTemperatureBodySchema = z.object({ value: z.number().nullable() });
 
 export type SetRoleTemperatureBody = z.infer<typeof setRoleTemperatureBodySchema>;
 

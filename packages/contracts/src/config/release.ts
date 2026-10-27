@@ -56,6 +56,8 @@ export type TroupeConfigData = z.infer<typeof troupeConfigSchema>;
  */
 export const troupeReleaseSchema = z.object({
   id: z.string().min(1),
+  /** Il numero di pubblicazione («Versione 7»): lo dà il database, cresce da sé. */
+  number: z.number().int().positive().optional(),
   config: troupeConfigSchema,
   hash: z.string().min(1),
   note: z.string().min(1).optional(),

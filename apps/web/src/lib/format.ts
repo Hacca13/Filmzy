@@ -10,6 +10,11 @@ export function formatUsd(amount: number): string {
   })} $`;
 }
 
+/** Una data e un'ora come si leggono in italiano: «27 ottobre 2026, 10:00». */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('it-IT', { dateStyle: 'long', timeStyle: 'short' });
+}
+
 /** Un valore qualsiasi, leggibile: oggetti e liste a capo e rientrati, il testo com'è. */
 export function formatValue(value: unknown): string {
   return typeof value === 'string' ? value : JSON.stringify(value, null, 2);

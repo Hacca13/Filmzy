@@ -2,8 +2,10 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
+  ConfigDiff,
   DraftView,
   PublishResponse,
+  ReleaseList,
   ReleaseSummary,
   TroupeConfigData,
   TroupeDraft,
@@ -14,6 +16,7 @@ import {
   applyEnvironmentOverlay,
   configHash,
   configToYamlFiles,
+  diffConfigs,
   hasErrors,
   loadConfigFiles,
   loadEnvironmentOverlay,
@@ -45,6 +48,9 @@ export interface PublishResult {
 export interface ImportResult extends PublishResult {
   draft?: TroupeDraft;
 }
+
+/** Quante pubblicazioni mostra lo storico: abbastanza da non fermarsi mai, senza leggere all'infinito. */
+const MAX_HISTORY = 200;
 
 @Injectable()
 export class TroupeConfigService implements OnApplicationBootstrap {
@@ -164,8 +170,12 @@ export class TroupeConfigService implements OnApplicationBootstrap {
     return this.publishConfig(draft.config, options);
   }
 
-  /** Ripristinare è pubblicare di nuovo una release vecchia, così lo storico resta lineare. */
-  async restore(releaseId: string, author?: string): Promise<PublishResult> {
+  /**
+   * Ripristinare è pubblicare di nuovo una release vecchia, così lo storico resta lineare (§4.5
+   * punto 4). La bozza segue il ripristino solo se non aveva modifiche non pubblicate: altrimenti
+   * resta com'è, e un ripristino non butta via il lavoro di nessuno.
+   */
+  async restore(releaseId: string, author?: string, note?: string): Promise<PublishResult> {
     const release = this.store.getRelease(releaseId);
     if (release === undefined) {
       return {
@@ -180,10 +190,56 @@ export class TroupeConfigService implements OnApplicationBootstrap {
       };
     }
 
-    return this.publishConfig(release.config, {
-      note: `ripristino della release ${releaseId}`,
+    const draftWasClean = this.draftIsClean();
+    const result = await this.publishConfig(release.config, {
+      note: note ?? `ripristino della release ${releaseId}`,
       ...(author === undefined ? {} : { author }),
     });
+    if (result.release !== undefined && draftWasClean) {
+      this.store.saveDraft(result.release.config, result.release.id);
+    }
+    return result;
+  }
+
+  async restoreRelease(releaseId: string, note: string): Promise<PublishResponse> {
+    const { release, issues } = await this.restore(releaseId, 'utente', note);
+    return { ...(release === undefined ? {} : { release: toReleaseSummary(release) }), issues };
+  }
+
+  /** Senza bozza, o con una bozza uguale alla release attiva, non c'è lavoro da proteggere. */
+  private draftIsClean(): boolean {
+    const draft = this.store.getDraft();
+    const active = this.store.activeRelease().release;
+    return (
+      draft === undefined || (active !== undefined && configHash(draft.config) === active.hash)
+    );
+  }
+
+  /** Cosa cambia pubblicando la bozza, rispetto alla release attiva. Senza bozza, niente. */
+  draftDiff(): ConfigDiff {
+    const draft = this.store.getDraft();
+    const active = this.store.activeRelease().release;
+    if (draft === undefined || active === undefined) return { changes: [] };
+    return { changes: diffConfigs(active.config, draft.config) };
+  }
+
+  /** Cosa tornerebbe com'era ripristinando quella release. `undefined` se non c'è. */
+  releaseDiff(releaseId: string): ConfigDiff | undefined {
+    const release = this.store.getRelease(releaseId);
+    const active = this.store.activeRelease().release;
+    if (release === undefined || active === undefined) return undefined;
+    return { changes: diffConfigs(active.config, release.config) };
+  }
+
+  /** Lo storico, dalla più recente, con quale è quella attiva. */
+  releaseList(): ReleaseList {
+    const activeId = this.store.activeRelease().release?.id;
+    return {
+      releases: this.store.listReleases(MAX_HISTORY).map((release) => ({
+        ...toReleaseSummary(release),
+        isActive: release.id === activeId,
+      })),
+    };
   }
 
   /** Dai file di seme alla bozza (§4.5). Con `publish` la pubblica anche, se non ha errori. */
@@ -330,6 +386,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
 function toReleaseSummary(release: TroupeRelease): ReleaseSummary {
   return {
     id: release.id,
+    ...(release.number === undefined ? {} : { number: release.number }),
     hash: release.hash,
     ...(release.note === undefined ? {} : { note: release.note }),
     ...(release.author === undefined ? {} : { author: release.author }),

@@ -102,4 +102,17 @@ export interface AdapterFactory {
   name: string;
   llm?(options: AdapterOptions): LlmAdapter;
   media?(options: AdapterOptions): MediaAdapter;
+  /**
+   * La prova di connessione che non costa (T2.7): una richiesta in sola lettura che dice se il
+   * fornitore risponde e se la chiave è buona. Lancia un `ProviderError` se qualcosa non va.
+   */
+  testConnection?(options: ConnectionTestOptions): Promise<void>;
+}
+
+export interface ConnectionTestOptions extends AdapterOptions {
+  /**
+   * L'id di un servizio di questa connessione presso il fornitore: serve a chi non ha una richiesta
+   * in sola lettura senza argomenti (fal chiede di quale servizio si vuole il prezzo).
+   */
+  sampleProviderModel?: string;
 }

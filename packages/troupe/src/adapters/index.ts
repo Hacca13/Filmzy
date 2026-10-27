@@ -2,7 +2,13 @@ import { anthropicAdapterFactory, openAiCompatibleAdapterFactory } from './ai-sd
 import { fakeAdapterFactory } from './fake.js';
 import { falAdapterFactory } from './fal.js';
 import { ProviderError } from '../provider-error.js';
-import type { AdapterFactory, AdapterOptions, LlmAdapter, MediaAdapter } from './types.js';
+import type {
+  AdapterFactory,
+  AdapterOptions,
+  ConnectionTestOptions,
+  LlmAdapter,
+  MediaAdapter,
+} from './types.js';
 
 /**
  * L'indice dei plugin (architettura §4.12, caso C): una famiglia nuova si aggiunge qui e non tocca
@@ -52,6 +58,28 @@ export function mediaAdapterFor(options: AdapterOptions): MediaAdapter {
     );
   }
   return factory.media(options);
+}
+
+/**
+ * La prova di connessione che non costa (T2.7): dice se il fornitore risponde e se la chiave è
+ * buona, con una lettura. Lancia un `ProviderError` col motivo; non genera mai niente.
+ */
+export async function testConnection(options: ConnectionTestOptions): Promise<void> {
+  const factory = factoryFor(options);
+  if (factory.testConnection === undefined) {
+    throw new ProviderError(
+      'config_invalid',
+      false,
+      `L'adapter "${factory.name}" non sa ancora provare la connessione.`,
+      { connectionId: options.connectionId, field: 'adapter' },
+    );
+  }
+  await factory.testConnection(options);
+}
+
+/** L'adapter sa provare la connessione senza spendere (T2.7)? Serve all'interfaccia per mostrare il pulsante. */
+export function adapterCanTest(adapterName: string): boolean {
+  return ADAPTERS.find((candidate) => candidate.name === adapterName)?.testConnection !== undefined;
 }
 
 export const ADAPTER_NAMES: readonly string[] = ADAPTERS.map((factory) => factory.name);

@@ -18,6 +18,8 @@ export type SecretRef = z.infer<typeof secretRefSchema>;
  * stringa aperta (configKeySchema): un nuovo adapter non tocca questo schema (§4.12 caso C).
  */
 export const connectionSchema = z.strictObject({
+  /** Il nome per l'utente («fal.ai»); senza, si usa l'id della connessione. */
+  label: z.string().min(1).optional(),
   adapter: configKeySchema,
   base_url: z.url().optional(),
   api_key: secretRefSchema,

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { draftViewSchema, type DraftView } from '@filmzy/contracts';
+import type { ConfigEnvironment } from '@filmzy/troupe';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { createApp } from '../create-app.js';
@@ -44,14 +45,21 @@ export class Client {
   }
 }
 
-/** Il server vero, con una cartella dati sua e i fornitori finti (regola d'oro 5: zero spesa). */
-export async function startApp(cipher?: SecretCipher) {
+/**
+ * Il server vero, con una cartella dati sua. Di norma i fornitori sono finti (`offline`, regola
+ * d'oro 5: zero spesa); con `'none'` valgono le connessioni vere del seme e le loro chiavi, che
+ * i test mettono finte in variabili d'ambiente: nessuno le chiama.
+ */
+export async function startApp(
+  cipher?: SecretCipher,
+  environment: ConfigEnvironment | 'none' = 'offline',
+) {
   const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-impostazioni-'));
   const app: NestExpressApplication = await createApp({
     logger: false,
     dataDir,
     configDir: CONFIG_DIR,
-    environment: 'offline',
+    ...(environment === 'none' ? {} : { environment }),
     ...(cipher === undefined ? {} : { cipher }),
   });
   await app.listen(0, '127.0.0.1');

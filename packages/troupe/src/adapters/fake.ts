@@ -327,6 +327,8 @@ export const fakeAdapterFactory: AdapterFactory = {
   name: 'fake',
   llm: (options: AdapterOptions) => providerFor(options),
   media: (options: AdapterOptions) => providerFor(options),
+  // Il fornitore finto risponde sempre, e senza chiave: non c'è niente da provare.
+  testConnection: () => Promise.resolve(),
 };
 
 /** Una sola istanza per connessione, così i lavori messi in coda si ritrovano nel polling. */

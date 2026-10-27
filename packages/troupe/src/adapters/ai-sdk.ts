@@ -12,9 +12,11 @@ import { z } from 'zod';
 
 import { ProviderError } from '../provider-error.js';
 import { readSecret } from '../config/secrets.js';
+import { keyFor, probe, trimTrailingSlash } from './probe.js';
 import type {
   AdapterFactory,
   AdapterOptions,
+  ConnectionTestOptions,
   LlmAdapter,
   LlmRequest,
   LlmResponse,
@@ -204,12 +206,51 @@ function isTimeout(error: unknown): boolean {
   return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 }
 
+/**
+ * L'elenco dei modelli: una lettura gratuita che il fornitore rifiuta con 401 se la chiave non
+ * vale (verificato sulla pagina «List Models» di Anthropic, 25/10/2026). Stesse intestazioni che
+ * manda l'SDK per generare, così se la prova passa passa anche il lavoro vero.
+ */
+async function testAnthropicConnection(options: ConnectionTestOptions): Promise<void> {
+  const key = keyFor(options);
+  // L'SDK vuole l'indirizzo con `/v1` in fondo, e lo stesso vale per il `base_url` della configurazione.
+  const base = trimTrailingSlash(options.connection.base_url ?? 'https://api.anthropic.com/v1');
+  await probe(options, {
+    url: `${base}/models?limit=1`,
+    headers: { 'x-api-key': key ?? '', 'anthropic-version': '2023-06-01' },
+  });
+}
+
+/**
+ * Il protocollo compatibile con OpenAI ha `GET {base_url}/models`. Alcuni gateway lo lasciano
+ * pubblico: lì la prova dice che il servizio risponde, ma non può provare la chiave.
+ */
+async function testOpenAiCompatibleConnection(options: ConnectionTestOptions): Promise<void> {
+  const base = options.connection.base_url;
+  if (base === undefined) {
+    throw new ProviderError(
+      'config_invalid',
+      false,
+      `La connessione "${options.connectionId}" usa l'adapter openai_compatible ma non ha un base_url.`,
+      { connectionId: options.connectionId, field: 'base_url' },
+    );
+  }
+
+  const key = keyFor(options);
+  await probe(options, {
+    url: `${trimTrailingSlash(base)}/models`,
+    ...(key === undefined ? {} : { headers: { Authorization: `Bearer ${key}` } }),
+  });
+}
+
 export const anthropicAdapterFactory: AdapterFactory = {
   name: 'anthropic',
   llm: (options) => aiSdkLlmAdapter(options, anthropicModel),
+  testConnection: testAnthropicConnection,
 };
 
 export const openAiCompatibleAdapterFactory: AdapterFactory = {
   name: 'openai_compatible',
   llm: (options) => aiSdkLlmAdapter(options, openAiCompatibleModel),
+  testConnection: testOpenAiCompatibleConnection,
 };

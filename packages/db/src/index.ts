@@ -11,6 +11,8 @@ export {
 } from './paths.js';
 export type { DataDirOptions } from './paths.js';
 export { createPreferencesStore } from './preferences-store.js';
+export { createProjectStore } from './project-store.js';
+export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
 export type { ReceiptStore } from './receipt-store.js';
 export type { PreferencesStore } from './preferences-store.js';
@@ -23,6 +25,7 @@ export {
   instructionVersions,
   jobs,
   meta,
+  projects,
   settings,
   troupeDrafts,
   troupeReleases,
@@ -32,6 +35,7 @@ export type {
   GenerationRow,
   InstructionVersionRow,
   JobRow,
+  ProjectRow,
   SettingsRow,
   TroupeDraftRow,
   TroupeReleaseRow,

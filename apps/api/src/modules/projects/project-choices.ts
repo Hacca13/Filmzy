@@ -1,6 +1,7 @@
 import {
   IDEA_MAX_LENGTH,
   PROJECT_DURATIONS_S,
+  type ProjectDefaults,
   TITLE_MAX_LENGTH,
   type ProjectChoice,
   type ProjectOptions,
@@ -19,6 +20,9 @@ const TITLE_WORDS = 5;
 
 const FALLBACK_TITLE = 'Il mio film';
 
+/** La durata proposta se c'è fra le scelte: un minuto, che costa il giusto per una prima prova. */
+const DEFAULT_DURATION_S = 60;
+
 /** Punteggiatura e spazi che non stanno bene in fondo a un titolo. */
 const TRAILING_PUNCTUATION = /[\s.,;:!?…«»"'’‘“”-]+$/u;
 
@@ -36,8 +40,29 @@ function enabledChoices(
     }));
 }
 
-export function projectOptions(presets: TroupePresetsData): ProjectOptions {
+/** La prima voce attiva, o niente se non ce ne sono: ogni scelta del wizard parte da lì. */
+function firstId(choices: readonly ProjectChoice[]): string | undefined {
+  return choices[0]?.id;
+}
+
+function defaultsOf(options: Omit<ProjectOptions, 'defaults'>): ProjectDefaults {
+  const genre = firstId(options.genres);
+  const tone = firstId(options.tones);
+  const style = firstId(options.styles);
+  const cinematography = firstId(options.cinematography);
+  const durationS =
+    options.durationsS.find((duration) => duration === DEFAULT_DURATION_S) ?? options.durationsS[0];
   return {
+    ...(genre === undefined ? {} : { genre }),
+    ...(tone === undefined ? {} : { tone }),
+    ...(style === undefined ? {} : { style }),
+    ...(cinematography === undefined ? {} : { cinematography }),
+    ...(durationS === undefined ? {} : { durationS }),
+  };
+}
+
+export function projectOptions(presets: TroupePresetsData): ProjectOptions {
+  const options = {
     genres: enabledChoices(presets.genres),
     tones: enabledChoices(presets.tones),
     styles: enabledChoices(presets.styles),
@@ -46,6 +71,7 @@ export function projectOptions(presets: TroupePresetsData): ProjectOptions {
     ideaMaxLength: IDEA_MAX_LENGTH,
     titleMaxLength: TITLE_MAX_LENGTH,
   };
+  return { ...options, defaults: defaultsOf(options) };
 }
 
 /** Il primo campo scelto che non è fra le voci attive dei preset: serve a dire quale correggere. */

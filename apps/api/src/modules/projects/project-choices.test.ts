@@ -57,6 +57,28 @@ describe('projectOptions', () => {
   });
 });
 
+describe('le voci già scelte', () => {
+  it('sono la prima voce attiva di ogni gruppo e un minuto di durata', () => {
+    expect(projectOptions(presets).defaults).toEqual({
+      genre: 'drama',
+      tone: 'dark',
+      style: 'realistic',
+      cinematography: 'noir',
+      durationS: 60,
+    });
+  });
+
+  it('un gruppo senza voci attive non ne propone nessuna', () => {
+    const none = { ...presets, genres: [], styles: presets.styles.slice(1) };
+
+    expect(projectOptions(none).defaults).toEqual({
+      tone: 'dark',
+      cinematography: 'noir',
+      durationS: 60,
+    });
+  });
+});
+
 describe('unknownChoice', () => {
   it('non trova niente se le scelte sono tutte attive, o se non ce ne sono', () => {
     expect(

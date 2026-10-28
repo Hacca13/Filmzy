@@ -59,6 +59,9 @@ describe('le scelte del wizard', () => {
     // Nel seme gli altri stili sono spenti: non si possono scegliere.
     expect(choices.styles.map((style) => style.id)).not.toContain('anime');
     expect(choices.durationsS).toContain(60);
+    // Le voci già scelte sono fra quelle offerte: un film si può creare scrivendo solo l'idea.
+    expect(choices.styles.map((style) => style.id)).toContain(choices.defaults.style);
+    expect(choices.durationsS).toContain(choices.defaults.durationS);
   });
 });
 

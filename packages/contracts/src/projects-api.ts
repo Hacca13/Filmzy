@@ -23,6 +23,20 @@ export const projectChoiceSchema = z.object({
 
 export type ProjectChoice = z.infer<typeof projectChoiceSchema>;
 
+/**
+ * Le voci già scelte quando si apre il wizard, così per partire basta scrivere l'idea (T3.2). Le sceglie
+ * il backend (regola 8): ogni campo manca solo se non c'è nessuna voce attiva da proporre.
+ */
+export const projectDefaultsSchema = z.object({
+  genre: configKeySchema.optional(),
+  tone: configKeySchema.optional(),
+  style: configKeySchema.optional(),
+  cinematography: configKeySchema.optional(),
+  durationS: projectDurationSchema.optional(),
+});
+
+export type ProjectDefaults = z.infer<typeof projectDefaultsSchema>;
+
 /** Cosa si può scegliere nel wizard: solo le voci attive dei preset, e i limiti dei campi. */
 export const projectOptionsSchema = z.object({
   genres: z.array(projectChoiceSchema),
@@ -30,6 +44,7 @@ export const projectOptionsSchema = z.object({
   styles: z.array(projectChoiceSchema),
   cinematography: z.array(projectChoiceSchema),
   durationsS: z.array(projectDurationSchema),
+  defaults: projectDefaultsSchema,
   ideaMaxLength: z.number().int().positive(),
   titleMaxLength: z.number().int().positive(),
 });

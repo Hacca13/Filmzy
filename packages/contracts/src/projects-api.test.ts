@@ -70,6 +70,7 @@ describe('projectOptionsSchema', () => {
       styles: [{ id: 'realistic', label: 'Realistico', description: 'Ripresa dal vero' }],
       cinematography: [{ id: 'noir', label: 'Noir' }],
       durationsS: [30, 60],
+      defaults: { genre: 'drama', durationS: 60 },
       ideaMaxLength: IDEA_MAX_LENGTH,
       titleMaxLength: 80,
     };

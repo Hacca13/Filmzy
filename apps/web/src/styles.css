@@ -613,3 +613,88 @@ a.button {
 .confirm p {
   margin: 0;
 }
+
+/* «La storia»: la bozza della sceneggiatura (T3.4) */
+.story,
+.screenplay {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.screenplay h3,
+.screenplay h4,
+.screenplay p {
+  margin: 0;
+}
+
+.scenes,
+.proposals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scene {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  background: var(--row);
+  border-radius: 12px;
+}
+
+.scene p {
+  margin: 0;
+}
+
+.versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  max-width: 16rem;
+  padding: 8px 14px;
+  background: var(--row);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.version[data-selected='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.revise {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.revise label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.revise textarea {
+  padding: 12px 16px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font: inherit;
+  resize: vertical;
+}

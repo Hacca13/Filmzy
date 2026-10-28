@@ -224,15 +224,24 @@ describe('impostazioni avanzate (T2.3)', () => {
         (await client.call('GET', '/preferences')).body,
       );
 
-      expect(preferences).toEqual({ takeAudio: false, checkForUpdates: true });
+      expect(preferences).toEqual({
+        takeAudio: false,
+        checkForUpdates: true,
+        moderation: true,
+      });
     });
 
     it('quello che si sceglie si ritrova', async () => {
-      await client.call('PUT', '/preferences', { takeAudio: true, checkForUpdates: false });
+      await client.call('PUT', '/preferences', {
+        takeAudio: true,
+        checkForUpdates: false,
+        moderation: false,
+      });
 
       expect((await client.call('GET', '/preferences')).body).toEqual({
         takeAudio: true,
         checkForUpdates: false,
+        moderation: false,
       });
     });
 

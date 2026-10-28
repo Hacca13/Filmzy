@@ -19,15 +19,28 @@ beforeEach(async () => {
 });
 
 describe("preferenze dell'app", () => {
-  it('senza niente di salvato: audio spento e controllo acceso', () => {
-    expect(store.get()).toEqual({ takeAudio: false, checkForUpdates: true });
+  it('senza niente di salvato: audio spento, controllo e moderatore accesi', () => {
+    expect(store.get()).toEqual({ takeAudio: false, checkForUpdates: true, moderation: true });
   });
 
   it('quello che si salva si rilegge, e salvare di nuovo sostituisce', () => {
-    store.save({ takeAudio: true, checkForUpdates: true });
-    store.save({ takeAudio: true, checkForUpdates: false });
+    store.save({ takeAudio: true, checkForUpdates: true, moderation: true });
+    store.save({ takeAudio: true, checkForUpdates: false, moderation: false });
 
-    expect(store.get()).toEqual({ takeAudio: true, checkForUpdates: false });
+    expect(store.get()).toEqual({ takeAudio: true, checkForUpdates: false, moderation: false });
+  });
+
+  it('le preferenze salvate prima del moderatore lo trovano acceso e tengono le altre scelte', () => {
+    aperto.db
+      .insert(settings)
+      .values({
+        id: APP_PREFERENCES_ID,
+        value: JSON.stringify({ takeAudio: true, checkForUpdates: false }),
+        updatedAt: 0,
+      })
+      .run();
+
+    expect(store.get()).toEqual({ takeAudio: true, checkForUpdates: false, moderation: true });
   });
 
   it('una riga rovinata non rompe niente: si riparte dai valori di partenza', () => {
@@ -46,7 +59,7 @@ describe("preferenze dell'app", () => {
   });
 
   it('sta in una riga diversa da quella delle scelte della troupe', () => {
-    store.save({ takeAudio: true, checkForUpdates: true });
+    store.save({ takeAudio: true, checkForUpdates: true, moderation: true });
 
     const ids = aperto.db
       .select()

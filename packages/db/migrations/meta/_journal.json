@@ -57,6 +57,13 @@
       "when": 1793150913255,
       "tag": "0007_schede-e-file",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793151825217,
+      "tag": "0008_luoghi",
+      "breakpoints": true
     }
   ]
 }

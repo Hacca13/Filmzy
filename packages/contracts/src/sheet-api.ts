@@ -74,3 +74,17 @@ export const lockSheetBodySchema = z.strictObject({
 });
 
 export type LockSheetBody = z.infer<typeof lockSheetBodySchema>;
+
+/**
+ * Cosa porta in coda il lavoro «fai le tre immagini della scheda» (`character_sheet`): il tentativo
+ * da riempire, il servizio già scelto e la conferma del limite di spesa, se l'utente l'ha data.
+ */
+export const sheetJobPayloadSchema = z.object({
+  projectId: z.string().min(1),
+  characterId: characterIdSchema,
+  attempt: z.number().int().positive(),
+  modelId: modelIdSchema,
+  spendConfirmed: z.boolean().optional(),
+});
+
+export type SheetJobPayload = z.infer<typeof sheetJobPayloadSchema>;

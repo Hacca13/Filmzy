@@ -13,3 +13,8 @@ export const DRAFT_TROUPE = Symbol('DRAFT_TROUPE');
 export const RECEIPT_STORE = Symbol('RECEIPT_STORE');
 /** Il registro della spesa (T3.1): la troupe lo interroga prima di ogni chiamata, le Impostazioni lo mostrano. */
 export const SPEND_LEDGER = Symbol('SPEND_LEDGER');
+/**
+ * Chi crea un esecutore dei lavori delle immagini e dei video (T3.6): i file dei fornitori si copiano
+ * subito nella cartella del film (regola d'oro 11), quindi serve una cartella per film.
+ */
+export const MEDIA_RUNNER_FACTORY = Symbol('MEDIA_RUNNER_FACTORY');

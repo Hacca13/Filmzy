@@ -7,7 +7,7 @@ import type {
   SuggestCastBody,
   UpdateCharacterBody,
 } from '@filmzy/contracts';
-import type { CharacterStore, ScreenplayStore } from '@filmzy/db';
+import type { CharacterStore, ScreenplayStore, SheetStore } from '@filmzy/db';
 import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -23,7 +23,7 @@ import {
   tagChoices,
   usableSuggestions,
 } from './casting-input.js';
-import { CHARACTER_STORE } from './tokens.js';
+import { CHARACTER_STORE, SHEET_STORE } from './tokens.js';
 
 /**
  * Il cast del film (T3.5, architettura §3.1, D18, D22): il direttore del casting propone i
@@ -37,6 +37,7 @@ import { CHARACTER_STORE } from './tokens.js';
 export class CastService {
   constructor(
     @Inject(CHARACTER_STORE) private readonly store: CharacterStore,
+    @Inject(SHEET_STORE) private readonly sheets: SheetStore,
     @Inject(SCREENPLAY_STORE) private readonly screenplays: ScreenplayStore,
     @Inject(TROUPE) private readonly troupe: Troupe,
     @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
@@ -48,7 +49,7 @@ export class CastService {
     this.projects.get(projectId);
     const config = await this.config();
     return {
-      characters: this.store.list(projectId),
+      characters: this.store.list(projectId).map((character) => this.withSheet(character)),
       maxCharacters: config.limits.max_characters,
       tags: tagChoices(config),
     };
@@ -170,7 +171,7 @@ export class CastService {
 
     const updated = this.store.update(characterId, body);
     if (updated === undefined) throw domainError(404, 'not_found', { details: { field: 'id' } });
-    return updated;
+    return this.withSheet(updated);
   }
 
   /** «Scarta» un personaggio già aggiunto. */
@@ -178,6 +179,18 @@ export class CastService {
     this.projects.get(projectId);
     this.characterOf(projectId, characterId);
     this.store.remove(characterId);
+    this.sheets.removeFor(characterId);
+  }
+
+  /**
+   * I riferimenti del personaggio sono le tre immagini della scheda **bloccata** (T3.6): senza
+   * volto bloccato la scheda è ancora vuota.
+   */
+  private withSheet(character: Character): Character {
+    return {
+      ...character,
+      sheet: this.sheets.lockedAssetIds(character.id).map((assetId) => ({ assetId })),
+    };
   }
 
   /** Il personaggio deve essere di quel film: l'id di un altro film non vale. */

@@ -53,12 +53,13 @@ export class Client {
 export async function startApp(
   cipher?: SecretCipher,
   environment: ConfigEnvironment | 'none' = 'offline',
+  configDir: string = CONFIG_DIR,
 ) {
   const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-impostazioni-'));
   const app: NestExpressApplication = await createApp({
     logger: false,
     dataDir,
-    configDir: CONFIG_DIR,
+    configDir,
     ...(environment === 'none' ? {} : { environment }),
     ...(cipher === undefined ? {} : { cipher }),
   });

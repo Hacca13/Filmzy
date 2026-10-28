@@ -153,6 +153,7 @@ Fatto il 28/10 (D53): tabella `projects` e rotte `/api/projects`; le scelte (gen
 
 **T3.3 Moderatore.** Controllo dei testi dell'utente prima di ogni spesa (impostazione prudente), comprese le richieste di modifica allo sceneggiatore.
 _Fatto quando:_ il nome di una persona famosa o una richiesta vietata vengono fermati con un messaggio semplice e un suggerimento.
+Fatto il 28/10 (D54): `ModerationService` (ruolo `moderator`, con scontrino e limiti) davanti all'idea e al titolo del film, creati o rivisti; il «no» porta motivo e suggerimento (`content_rejected`) e non lascia niente di salvato; se il moderatore non risponde il testo non passa. Pagina «Impostazioni › Prudenza» con il controllo dei testi, acceso all'inizio, e l'avvertenza prima di spegnerlo. Lo riusano «Parla con lo sceneggiatore» (T3.4) e le descrizioni di personaggi e scene. Provato col server vero e un moderatore finto che dice sempre di no. **Non fatto:** le altre due accortezze del design (solo personaggi generati, dicitura nei titoli), il controllo delle immagini (T4.8).
 
 **T3.4 Bozza della sceneggiatura.** `screenwriter` nei modi `draft` e `revise`: bozza breve con personaggi e luoghi proposti; «Parla con lo sceneggiatore» come richiesta a turno singolo, moderata; versioni.
 _Fatto quando:_ la bozza ha scene riassunte e proposte di personaggi e luoghi; ogni richiesta di modifica crea una nuova versione e la precedente resta consultabile.

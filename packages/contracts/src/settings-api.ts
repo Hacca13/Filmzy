@@ -87,16 +87,23 @@ export type SetSecretBody = z.infer<typeof setSecretBodySchema>;
 /**
  * Le preferenze dell'app: non sono affari della troupe, quindi stanno fuori da `UserSettings`.
  * `takeAudio` è la preferenza di partenza per generare le clip con l'audio (D43, spenta);
- * `checkForUpdates` accende il controllo all'avvio (D44).
+ * `checkForUpdates` accende il controllo all'avvio (D44). `moderation` è la prudenza del moderatore
+ * sui testi prima di ogni spesa (T3.3, D54): accesa all'inizio; il valore di partenza vale anche per
+ * le preferenze salvate prima che esistesse.
  */
 export const appPreferencesSchema = z.object({
   takeAudio: z.boolean(),
   checkForUpdates: z.boolean(),
+  moderation: z.boolean().default(true),
 });
 
 export type AppPreferences = z.infer<typeof appPreferencesSchema>;
 
-export const DEFAULT_APP_PREFERENCES: AppPreferences = { takeAudio: false, checkForUpdates: true };
+export const DEFAULT_APP_PREFERENCES: AppPreferences = {
+  takeAudio: false,
+  checkForUpdates: true,
+  moderation: true,
+};
 
 /** `POST /updates/check`: l'esito del controllo, a richiesta (D44). */
 export const updateCheckResultSchema = z.discriminatedUnion('status', [

@@ -161,6 +161,7 @@ Fatto il 28/10 (D55): tabella `screenplays` (migrazione `0005`) con le versioni,
 
 **T3.5 Casting.** Numero di personaggi (non oltre `limits.max_characters`), proposte dalla bozza e durante le scene, tag e dettagli facoltativi; card Aggiungi / Cambia / Scarta; il cast attuale è sempre nell'input.
 _Fatto quando:_ le proposte sono quante richieste, rispettano trama e stile, senza doppioni; i dettagli facoltativi si possono ignorare e le istruzioni funzionano anche a campi vuoti.
+Fatto il 28/10 (D56): tabella `characters` (migrazione `0006`); il casting parte dalla bozza e riceve sempre il cast attuale e le proposte sul tavolo; le proposte sono ripulite (ruoli dei preset, niente doppioni, non più di quante richieste) e il massimo di `max_characters` lo applica il server. In app, «I personaggi» nella pagina del film: numero di personaggi con la stima, card **Aggiungi / Cambia / Scarta**, ruolo e dettagli facoltativi rivedibili (testo moderato). Il film passa alla fase `cast` col primo personaggio. **Non fatto:** le proposte durante le scene (`mode: scene`), il cast riutilizzabile fra film, le proposte che sopravvivono alla chiusura del programma.
 
 **T3.6 Schede personaggio.** Character designer a tre angolazioni, scelta, blocco del volto; «Cambia servizio» (T3.1).
 _Fatto quando:_ un personaggio bloccato ha tre immagini di riferimento salvate.

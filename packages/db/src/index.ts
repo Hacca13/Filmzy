@@ -11,6 +11,8 @@ export {
 } from './paths.js';
 export type { DataDirOptions } from './paths.js';
 export { createPreferencesStore } from './preferences-store.js';
+export { createCharacterStore } from './character-store.js';
+export type { CharacterChanges, CharacterStore, NewCharacter } from './character-store.js';
 export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
@@ -22,6 +24,7 @@ export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';
 export {
   APP_PREFERENCES_ID,
+  characters,
   DRAFT_ID,
   generations,
   instructionVersions,
@@ -35,6 +38,7 @@ export {
   USER_SETTINGS_ID,
 } from './schema.js';
 export type {
+  CharacterRow,
   GenerationRow,
   InstructionVersionRow,
   JobRow,

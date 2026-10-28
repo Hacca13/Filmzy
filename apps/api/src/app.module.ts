@@ -1,6 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { ConfigEnvironment } from '@filmzy/troupe';
 
+import { CastModule } from './modules/cast/cast.module.js';
 import { ConnectionsModule } from './modules/connections/connections.module.js';
 import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -42,6 +43,7 @@ export class AppModule {
           ...(options.configDir === undefined ? {} : { configDir: options.configDir }),
           ...(options.environment === undefined ? {} : { environment: options.environment }),
         }),
+        CastModule,
         ConnectionsModule,
         InstructionsModule,
         PreferencesModule,

@@ -7,6 +7,7 @@ import { formatDateTime } from '../lib/format';
 import { useResource } from '../lib/use-resource';
 import { describeError } from '../settings/messages';
 import { choiceLabel, formatDuration } from './model';
+import { CastPanel } from './cast/CastPanel';
 import { StoryPanel } from './story/StoryPanel';
 import { ideaHref } from './routes';
 
@@ -73,6 +74,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       </section>
 
       <StoryPanel filmId={film.id} />
+      <CastPanel filmId={film.id} />
     </section>
   );
 }

@@ -50,6 +50,13 @@
       "when": 1793150272157,
       "tag": "0006_personaggi",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793150913255,
+      "tag": "0007_schede-e-file",
+      "breakpoints": true
     }
   ]
 }

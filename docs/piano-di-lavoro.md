@@ -157,6 +157,7 @@ Fatto il 28/10 (D54): `ModerationService` (ruolo `moderator`, con scontrino e li
 
 **T3.4 Bozza della sceneggiatura.** `screenwriter` nei modi `draft` e `revise`: bozza breve con personaggi e luoghi proposti; «Parla con lo sceneggiatore» come richiesta a turno singolo, moderata; versioni.
 _Fatto quando:_ la bozza ha scene riassunte e proposte di personaggi e luoghi; ogni richiesta di modifica crea una nuova versione e la precedente resta consultabile.
+Fatto il 28/10 (D55): tabella `screenplays` (migrazione `0005`) con le versioni, che non si cambiano né si cancellano; «Scrivi la bozza» (anche da zero, a ogni volta una versione nuova) e «Parla con lo sceneggiatore» (una richiesta a turno singolo, moderata, sull'ultima versione), con la stima in dollari prima e la conferma sopra un limite di spesa. In app, «La storia» nella pagina del film: scene riassunte, personaggi e luoghi proposti, elenco delle versioni da rileggere. Provato col server vero e il fornitore finto. **Non fatto:** la tappa `final` (T3.8) e il confronto tra versioni.
 
 **T3.5 Casting.** Numero di personaggi (non oltre `limits.max_characters`), proposte dalla bozza e durante le scene, tag e dettagli facoltativi; card Aggiungi / Cambia / Scarta; il cast attuale è sempre nell'input.
 _Fatto quando:_ le proposte sono quante richieste, rispettano trama e stile, senza doppioni; i dettagli facoltativi si possono ignorare e le istruzioni funzionano anche a campi vuoti.

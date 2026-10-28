@@ -190,3 +190,29 @@ export const projects = sqliteTable(
 );
 
 export type ProjectRow = typeof projects.$inferSelect;
+
+/**
+ * Le versioni della sceneggiatura (architettura §6): una riga per ogni versione di un film, per
+ * tappa (`draft` o `final`). Non si cambiano e non si cancellano: ogni richiesta ne scrive una
+ * nuova. `content` è la sceneggiatura intera in JSON; `request` la richiesta dell'utente che l'ha
+ * prodotta; `generation_id` lo scontrino della chiamata. Il numero di versione è unico per film e
+ * tappa.
+ */
+export const screenplays = sqliteTable(
+  'screenplays',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    stage: text('stage').notNull(),
+    version: integer('version').notNull(),
+    content: text('content').notNull(),
+    request: text('request'),
+    generationId: text('generation_id'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('screenplays_per_versione').on(table.projectId, table.stage, table.version),
+  ],
+);
+
+export type ScreenplayRow = typeof screenplays.$inferSelect;

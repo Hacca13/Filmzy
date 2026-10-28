@@ -20,6 +20,7 @@ describe('describeError', () => {
       'content_rejected',
       'invalid_output',
       'no_eligible_model',
+      'spend_cap_reached',
     ]) {
       const message = describeError(httpError(code));
 
@@ -31,6 +32,38 @@ describe('describeError', () => {
 
   it('un rifiuto del contenuto non invita ad aggirarlo con un altro servizio (D36)', () => {
     expect(describeError(httpError('content_rejected'))).toContain('non si prova con un altro');
+  });
+
+  describe('il «no» del moderatore (T3.3)', () => {
+    const rejected = (moderation: { reason: string; suggestion?: string }) =>
+      new ApiError('http_error', {
+        status: 422,
+        serverCode: 'content_rejected',
+        details: { moderation },
+      });
+
+    it('dice il motivo e il suggerimento così come li ha scritti il moderatore', () => {
+      const message = describeError(
+        rejected({
+          reason: 'Il testo nomina una persona famosa.',
+          suggestion: 'Inventa un personaggio che le somigli.',
+        }),
+      );
+
+      expect(message).toBe(
+        'Questo testo non si può usare. Il testo nomina una persona famosa. Suggerimento: Inventa un personaggio che le somigli.',
+      );
+    });
+
+    it('senza suggerimento dice solo il motivo, senza un «Suggerimento:» vuoto', () => {
+      const message = describeError(rejected({ reason: 'Contenuto non ammesso.' }));
+
+      expect(message).toBe('Questo testo non si può usare. Contenuto non ammesso.');
+    });
+
+    it('un rifiuto senza motivo del moderatore (quello di un servizio) resta la frase di prima', () => {
+      expect(describeError(httpError('content_rejected'))).toContain('non si prova con un altro');
+    });
   });
 
   it('un server che non risponde dice di riaprire il programma', () => {

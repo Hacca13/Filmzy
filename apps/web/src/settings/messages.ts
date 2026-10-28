@@ -1,3 +1,5 @@
+import type { ModerationRejection } from '@filmzy/contracts';
+
 import { ApiError } from '../api/client';
 
 /**
@@ -25,12 +27,27 @@ const BY_SERVER_CODE: Record<string, string> = {
   no_eligible_model:
     'Nessun servizio adatto a questo lavoro. Attivane uno nelle impostazioni, oppure cambia la scelta.',
   role_disabled: 'Questo ruolo è spento. Accendilo per provarlo.',
+  spend_cap_reached:
+    'Questa operazione supera un limite di spesa che hai scelto. Puoi cambiarlo in «Spese e tetti».',
 };
+
+/**
+ * Il «no» del moderatore a un testo (T3.3): il motivo e, se c'è, come riformularlo. Sono frasi che
+ * il moderatore scrive già in parole semplici e nella lingua del film, quindi si mostrano così.
+ */
+function describeModeration({ reason, suggestion }: ModerationRejection): string {
+  const hint = suggestion === undefined ? '' : ` Suggerimento: ${suggestion}`;
+  return `Questo testo non si può usare. ${reason}${hint}`;
+}
 
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'network_error') {
       return 'Filmzy non risponde. Chiudi il programma e riaprilo.';
+    }
+    const moderation = error.details?.moderation;
+    if (error.serverCode === 'content_rejected' && moderation !== undefined) {
+      return describeModeration(moderation);
     }
     const known = error.serverCode === undefined ? undefined : BY_SERVER_CODE[error.serverCode];
     if (known !== undefined) return known;

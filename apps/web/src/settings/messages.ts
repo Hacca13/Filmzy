@@ -40,6 +40,11 @@ function describeModeration({ reason, suggestion }: ModerationRejection): string
   return `Questo testo non si può usare. ${reason}${hint}`;
 }
 
+/** La frase per un codice del dominio, se c'è (ad esempio il motivo per cui un'immagine è fallita). */
+export function describeCode(code: string | undefined): string | undefined {
+  return code === undefined ? undefined : BY_SERVER_CODE[code];
+}
+
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'network_error') {

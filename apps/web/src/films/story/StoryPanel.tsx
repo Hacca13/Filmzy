@@ -94,7 +94,6 @@ function useEstimate(
 ): number | undefined {
   const load = useCallback(
     (signal: AbortSignal) => estimateScreenplay(filmId, { mode }, signal),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- la versione non entra nella chiamata: serve solo a rifarla
     [filmId, mode, lastVersionId],
   );
   const { state } = useResource(load);

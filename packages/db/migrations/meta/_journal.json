@@ -43,6 +43,13 @@
       "when": 1793149749557,
       "tag": "0005_sceneggiature",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793150272157,
+      "tag": "0006_personaggi",
+      "breakpoints": true
     }
   ]
 }

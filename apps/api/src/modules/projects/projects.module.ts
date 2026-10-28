@@ -62,6 +62,6 @@ class ProjectsController {
       inject: [OPENED_DATABASE],
     },
   ],
-  exports: [PROJECT_STORE],
+  exports: [PROJECT_STORE, ProjectsService],
 })
 export class ProjectsModule {}

@@ -8,7 +8,13 @@ import {
   type CastSuggestions,
   type Character,
 } from '@filmzy/contracts';
-import { createCharacterStore, type CharacterStore, type OpenedDatabase } from '@filmzy/db';
+import {
+  createCharacterStore,
+  createSheetStore,
+  type CharacterStore,
+  type OpenedDatabase,
+  type SheetStore,
+} from '@filmzy/db';
 import {
   Body,
   Controller,
@@ -29,7 +35,7 @@ import { ModerationModule } from '../moderation/moderation.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { CastService } from './cast.service.js';
-import { CHARACTER_STORE } from './tokens.js';
+import { CHARACTER_STORE, SHEET_STORE } from './tokens.js';
 
 /**
  * Le rotte del cast (T3.5). Nessuna logica: decide il servizio. Chiedere le proposte chiama un
@@ -86,7 +92,12 @@ class CastController {
       useFactory: (opened: OpenedDatabase): CharacterStore => createCharacterStore(opened.db),
       inject: [OPENED_DATABASE],
     },
+    {
+      provide: SHEET_STORE,
+      useFactory: (opened: OpenedDatabase): SheetStore => createSheetStore(opened.db),
+      inject: [OPENED_DATABASE],
+    },
   ],
-  exports: [CHARACTER_STORE],
+  exports: [CHARACTER_STORE, SHEET_STORE],
 })
 export class CastModule {}

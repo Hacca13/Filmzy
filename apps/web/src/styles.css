@@ -740,3 +740,58 @@ a.button {
   align-items: flex-end;
   gap: 16px;
 }
+
+/* La scheda del personaggio: tre immagini per tentativo (T3.6) */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sheet h5 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.attempts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attempt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-images {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sheet-images figure {
+  margin: 0;
+}
+
+.sheet-images img,
+.sheet-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}

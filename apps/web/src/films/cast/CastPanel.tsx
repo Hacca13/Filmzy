@@ -104,6 +104,7 @@ function CastView({ filmId, cast, reload }: ViewProps) {
           {cast.characters.map((character) => (
             <CharacterCard
               key={character.id}
+              filmId={filmId}
               character={character}
               tags={cast.tags}
               busy={busy}

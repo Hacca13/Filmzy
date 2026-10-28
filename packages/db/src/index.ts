@@ -17,6 +17,8 @@ export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
+export { createSheetStore } from './sheet-store.js';
+export type { AssetRecord, SheetImagePatch, SheetStore } from './sheet-store.js';
 export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';
 export type { ReceiptStore } from './receipt-store.js';
 export type { PreferencesStore } from './preferences-store.js';
@@ -24,6 +26,8 @@ export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';
 export {
   APP_PREFERENCES_ID,
+  assets,
+  characterSheetImages,
   characters,
   DRAFT_ID,
   generations,
@@ -38,7 +42,9 @@ export {
   USER_SETTINGS_ID,
 } from './schema.js';
 export type {
+  AssetRow,
   CharacterRow,
+  CharacterSheetImageRow,
   GenerationRow,
   InstructionVersionRow,
   JobRow,

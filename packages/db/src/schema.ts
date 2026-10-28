@@ -236,6 +236,8 @@ export const characters = sqliteTable(
     appearance: text('appearance').notNull(),
     voiceId: text('voice_id'),
     proposalId: text('proposal_id'),
+    /** Il tentativo della scheda su cui il volto è bloccato (T3.6); vuoto se non lo è. */
+    lockedAttempt: integer('locked_attempt'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -243,3 +245,46 @@ export const characters = sqliteTable(
 );
 
 export type CharacterRow = typeof characters.$inferSelect;
+
+/**
+ * I file dei fornitori, copiati subito nella cartella del film (regola d'oro 11, architettura §6):
+ * una riga per file. L'id è il checksum (lo stesso file non si salva due volte); `path` è relativo
+ * alla cartella dei dati, così i dati si possono spostare.
+ */
+export const assets = sqliteTable('assets', {
+  id: text('id').primaryKey(),
+  path: text('path').notNull(),
+  contentType: text('content_type').notNull(),
+  bytes: integer('bytes').notNull(),
+  projectId: text('project_id'),
+  /** Lo scontrino della chiamata che l'ha prodotto (D36). */
+  generationId: text('generation_id'),
+  createdAt: integer('created_at').notNull(),
+});
+
+export type AssetRow = typeof assets.$inferSelect;
+
+/**
+ * Le immagini della scheda dei personaggi (T3.6): una riga per angolazione e per tentativo. Lo
+ * stato segue il lavoro in coda che le fa; `asset_id` c'è quando l'immagine è pronta.
+ */
+export const characterSheetImages = sqliteTable(
+  'character_sheet_images',
+  {
+    id: text('id').primaryKey(),
+    characterId: text('character_id').notNull(),
+    attempt: integer('attempt').notNull(),
+    angle: text('angle').notNull(),
+    status: text('status').notNull(),
+    assetId: text('asset_id'),
+    receiptId: text('receipt_id'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('sheet_images_per_angolo').on(table.characterId, table.attempt, table.angle),
+  ],
+);
+
+export type CharacterSheetImageRow = typeof characterSheetImages.$inferSelect;

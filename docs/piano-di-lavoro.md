@@ -165,6 +165,7 @@ Fatto il 28/10 (D56): tabella `characters` (migrazione `0006`); il casting parte
 
 **T3.6 Schede personaggio.** Character designer a tre angolazioni, scelta, blocco del volto; «Cambia servizio» (T3.1).
 _Fatto quando:_ un personaggio bloccato ha tre immagini di riferimento salvate.
+Fatto il 28/10 (D57): ogni richiesta è un tentativo di tre immagini (fronte, profilo, tre quarti) fatto da un lavoro in coda, con l'esito di ciascuna; i file si copiano subito nella cartella del film e si aprono da `/api/assets/…`. «Cambia servizio» (stima dell'intera scheda), controllo del limite di spesa prima di mettere in coda, «Scegli questo e blocca il volto» (e «Sblocca»): il personaggio col volto bloccato ha tre immagini di riferimento. Provato col server vero, la coda e il fornitore finto. **Non fatto:** la ripresa di un lavoro dopo un riavvio senza rifare le richieste (T4.3), i riferimenti nelle inquadrature (T4.x).
 
 **T3.7 Luoghi.** `set_designer`: 3–4 immagini per luogo, scelta; i luoghi scelti entrano nella Bibbia con le immagini di riferimento; «Cambia servizio» (T3.1).
 _Fatto quando:_ ogni luogo ha un'immagine scelta e salvata.

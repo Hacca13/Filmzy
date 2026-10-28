@@ -1,4 +1,5 @@
 import { healthResponseSchema } from '@filmzy/contracts';
+import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ApiError, getJson, sendJson } from './client';
@@ -88,6 +89,26 @@ describe('sendJson', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
+  });
+
+  it('una risposta «204 Nessun contenuto» è valida se lo schema accetta il vuoto, e non si legge come JSON', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+
+    await expect(
+      sendJson('DELETE', '/x', z.undefined(), undefined, { fetchImpl: fetchSpy }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('una risposta vuota dove lo schema si aspetta qualcosa è una risposta fuori formato', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+
+    await expect(
+      sendJson('DELETE', '/x', healthResponseSchema, undefined, { fetchImpl: fetchSpy }),
+    ).rejects.toMatchObject({ code: 'invalid_response' });
   });
 
   it('senza corpo non manda né corpo né intestazione', async () => {

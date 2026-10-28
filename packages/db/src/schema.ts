@@ -288,3 +288,48 @@ export const characterSheetImages = sqliteTable(
 );
 
 export type CharacterSheetImageRow = typeof characterSheetImages.$inferSelect;
+
+/**
+ * I luoghi del film (architettura §6): quelli che l'utente ha aggiunto dalle proposte della bozza.
+ * `prompt` è la descrizione in inglese scritta dallo sceneggiatore; `proposal_id` collega il luogo
+ * alla proposta da cui viene (D18); `chosen_asset_id` è l'immagine scelta come riferimento (T3.7).
+ */
+export const locations = sqliteTable(
+  'locations',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    prompt: text('prompt').notNull(),
+    proposalId: text('proposal_id'),
+    chosenAssetId: text('chosen_asset_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('locations_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type LocationRow = typeof locations.$inferSelect;
+
+/**
+ * I tentativi di immagini del set di un luogo (T3.7): ogni richiesta è una chiamata sola che dà
+ * più immagini, quindi lo stato è uno solo e i file stanno in `asset_ids` (JSON).
+ */
+export const locationAttempts = sqliteTable(
+  'location_attempts',
+  {
+    id: text('id').primaryKey(),
+    locationId: text('location_id').notNull(),
+    attempt: integer('attempt').notNull(),
+    status: text('status').notNull(),
+    assetIds: text('asset_ids').notNull(),
+    receiptId: text('receipt_id'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [uniqueIndex('location_attempts_per_tentativo').on(table.locationId, table.attempt)],
+);
+
+export type LocationAttemptRow = typeof locationAttempts.$inferSelect;

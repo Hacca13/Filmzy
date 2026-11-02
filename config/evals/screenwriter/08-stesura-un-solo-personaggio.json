@@ -1,0 +1,164 @@
+{
+  "name": "stesura: un solo personaggio scelto",
+  "input": {
+    "mode": "final",
+    "idea": "Una bobina dimenticata sull’ultimo treno della sera.",
+    "genre": {
+      "id": "drama",
+      "label": "Drammatico"
+    },
+    "tone": {
+      "id": "moving",
+      "label": "Commovente"
+    },
+    "style": {
+      "id": "realistic",
+      "label": "Realistico",
+      "description": "Ripresa dal vero, colori naturali",
+      "hint": "photorealistic live-action film still, natural skin tones",
+      "enabled": true
+    },
+    "durationS": 60,
+    "language": "it",
+    "maxCharacters": 1,
+    "dialogueEnabled": false,
+    "characters": [
+      {
+        "id": "c-anna",
+        "name": "Anna",
+        "tag": "protagonist",
+        "role": "protagonist",
+        "description": "Una donna sui 35 anni che torna nella sua città natale",
+        "appearance": {
+          "apparentAge": "35",
+          "build": "media",
+          "hair": "riccia, rossa, raccolta",
+          "face": "lentiggini, sorriso aperto",
+          "clothing": "giacca di jeans chiara",
+          "prompt": "a woman in her mid-30s, curly red hair, freckles, light denim jacket"
+        },
+        "sheet": [],
+        "proposalId": "anna-p"
+      }
+    ],
+    "locations": [
+      {
+        "id": "l-stazione",
+        "name": "La stazione",
+        "description": "Stazione di provincia, di notte, con una sola banchina",
+        "prompt": "a small provincial train station at night, a single platform, sodium lights",
+        "references": [],
+        "proposalId": "stazione-p"
+      }
+    ],
+    "draft": {
+      "title": "L’ultima corsa",
+      "logline": "Una bobina dimenticata sull’ultimo treno cambia la notte di tre persone.",
+      "characters": [
+        {
+          "id": "anna-p",
+          "name": "Anna",
+          "role": "protagonista"
+        },
+        {
+          "id": "marco-p",
+          "name": "Marco",
+          "role": "alleato"
+        },
+        {
+          "id": "oste-p",
+          "name": "L’oste",
+          "role": "comparsa"
+        }
+      ],
+      "locations": [
+        {
+          "id": "stazione-p",
+          "name": "La stazione",
+          "description": "Stazione di provincia, di notte, con una sola banchina",
+          "prompt": "a small provincial train station at night, a single platform, sodium lights"
+        }
+      ],
+      "scenes": [
+        {
+          "number": 1,
+          "heading": "La stazione, notte",
+          "locationId": "stazione-p",
+          "timeOfDay": "notte",
+          "characterIds": [
+            "anna-p"
+          ],
+          "summary": "Anna aspetta l’ultimo treno e trova una bobina su una panchina.",
+          "beats": [],
+          "durationS": 20
+        },
+        {
+          "number": 2,
+          "heading": "La locanda, notte",
+          "timeOfDay": "notte",
+          "characterIds": [
+            "anna-p",
+            "marco-p",
+            "oste-p"
+          ],
+          "summary": "Anna mostra la bobina a Marco e all’oste, che la riconosce.",
+          "beats": [],
+          "durationS": 20
+        },
+        {
+          "number": 3,
+          "heading": "La banchina, alba",
+          "locationId": "stazione-p",
+          "timeOfDay": "alba",
+          "characterIds": [
+            "anna-p",
+            "marco-p"
+          ],
+          "summary": "Anna e Marco riportano la bobina sul primo treno del mattino.",
+          "beats": [],
+          "durationS": 20
+        }
+      ]
+    },
+    "request": null,
+    "accepted": []
+  },
+  "expect": {
+    "count": {
+      "characters": {
+        "max": 0
+      },
+      "locations": {
+        "max": 0
+      },
+      "scenes": {
+        "min": 2,
+        "max": 6
+      }
+    },
+    "subset": [
+      {
+        "values": "scenes[*].characterIds",
+        "of": "characters[*].id"
+      },
+      {
+        "values": "scenes[*].locationId",
+        "of": "locations[*].id"
+      }
+    ],
+    "range": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 10,
+        "max": 30
+      }
+    ],
+    "sum": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 42,
+        "max": 78
+      }
+    ]
+  }
+}

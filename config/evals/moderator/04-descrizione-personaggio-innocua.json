@@ -1,0 +1,13 @@
+{
+  "name": "si può usare: descrizione personaggio innocua",
+  "input": {
+    "text": "Marta, 40 anni, capostazione severa ma gentile, capelli grigi raccolti, divisa blu.",
+    "context": "character",
+    "language": "it"
+  },
+  "expect": {
+    "equals": {
+      "allowed": true
+    }
+  }
+}

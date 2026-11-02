@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -207,4 +207,145 @@ describe('le valutazioni dei ruoli di testo (§4.13)', () => {
     expect(due?.passed).toBe(false);
     expect(due?.problems.join(' ')).toContain('[[char:tomas]]');
   }, 30_000);
+});
+
+describe('gli esempi fissi degli altri ruoli di testo (T3.10)', () => {
+  const evaluate = (role: string, extra: Partial<Parameters<typeof runEval>[0]> = {}) =>
+    runEval({
+      role,
+      configDir: CONFIG_DIR,
+      evalsDir: path.join(CONFIG_DIR, 'evals'),
+      environment: 'offline',
+      ...extra,
+    });
+
+  // Quanti esempi per ruolo: lo sceneggiatore ne ha cinque per la bozza e cinque per la stesura.
+  it.each([
+    ['moderator', 5],
+    ['casting', 5],
+    ['screenwriter', 10],
+    ['shot_planner', 5],
+    ['cinematographer', 5],
+  ])(
+    '%s: %i esempi, tutti con un ingresso valido per il suo ruolo',
+    async (role, count) => {
+      const result = await evaluate(role);
+
+      expect(result.cases).toHaveLength(count);
+      // Se un ingresso non fosse valido il ruolo fallirebbe prima di rispondere, senza risposta.
+      expect(result.cases.every((esito) => esito.output !== undefined)).toBe(true);
+      expect(result.totalCostUsd).toBeGreaterThan(0);
+    },
+    60_000,
+  );
+
+  it('le regole mordono: il fornitore finto approva sempre, quindi il moderatore sbaglia dove la risposta giusta è «no»', async () => {
+    const { cases } = await evaluate('moderator');
+    const byName = (part: string) => cases.find((esito) => esito.name.includes(part));
+    const stopped = cases.filter((esito) => esito.name.startsWith('va fermato'));
+
+    expect(byName('idea innocua')?.passed).toBe(true);
+    expect(byName('persona famosa')?.passed).toBe(false);
+    expect(byName('persona famosa')?.problems.join(' ')).toContain(
+      '"allowed" dovrebbe essere false',
+    );
+    expect(stopped).toHaveLength(3);
+    expect(stopped.every((esito) => !esito.passed)).toBe(true);
+  }, 60_000);
+
+  it('le regole mordono: la stesura che cita ciò che non le è stato dato non passa', async () => {
+    const { cases } = await evaluate('screenwriter');
+    const stesura = cases.find((esito) => esito.name.includes('l’oste non è stato scelto'));
+
+    expect(stesura?.passed).toBe(false);
+    expect(stesura?.problems.join(' ')).toContain(
+      'che non c\'è in "characters[*].id" dell\'ingresso',
+    );
+    expect(cases.filter((esito) => esito.name.startsWith('bozza')).every((e) => !e.passed)).toBe(
+      true,
+    );
+  }, 60_000);
+
+  it('il rapporto si salva con esempi, risposte e scontrini, e ha data e ambiente nel nome', async () => {
+    const outputDir = await mkdtemp(path.join(tmpdir(), 'filmzy-valutazioni-'));
+
+    const result = await evaluate('shot_planner', { outputDir });
+    const again = await evaluate('shot_planner', { outputDir });
+
+    const files = await readdir(outputDir);
+    expect(files).toHaveLength(2);
+    expect(files.every((name) => /^eval-shot_planner-offline-.+\.json$/.test(name))).toBe(true);
+    expect(result.reportFile).not.toBe(again.reportFile);
+    const report = JSON.parse(await readFile(result.reportFile ?? '', 'utf8')) as {
+      role: string;
+      cases: unknown[];
+      receipts: unknown[];
+    };
+    expect(report.role).toBe('shot_planner');
+    expect(report.cases).toHaveLength(5);
+    expect(report.receipts).toHaveLength(5);
+  }, 60_000);
+
+  it('se il rapporto non si può salvare il risultato resta, con il motivo', async () => {
+    const blocker = path.join(await mkdtemp(path.join(tmpdir(), 'filmzy-valutazioni-')), 'file');
+    await writeFile(blocker, 'non una cartella');
+
+    // La «cartella» del rapporto è sotto un file: non si può creare.
+    const result = await evaluate('moderator', { outputDir: path.join(blocker, 'dentro') });
+
+    expect(result.cases).toHaveLength(5);
+    expect(result.reportFile).toBeUndefined();
+    expect(result.reportProblem).toBeTruthy();
+  }, 60_000);
+
+  it('il servizio da provare è un id di configurazione, mai un percorso', async () => {
+    await expect(evaluate('moderator', { modelId: '../../fuori' })).rejects.toThrow();
+  });
+
+  it('con i fornitori veri si chiede prima di spendere, e se si dice no non parte nessuna chiamata', async () => {
+    let asked: { estimate: number; calls: number } | undefined;
+
+    await expect(
+      evaluate('moderator', {
+        confirm: (estimate, calls) => {
+          asked = { estimate, calls };
+          return Promise.resolve(false);
+        },
+      }),
+    ).rejects.toThrow(/annullata/i);
+
+    expect(asked?.calls).toBe(5);
+    expect(asked?.estimate).toBeGreaterThan(0);
+  });
+
+  it('un esempio scritto male ferma la valutazione prima di spendere, e dice quale file', async () => {
+    const evalsDir = await mkdtemp(path.join(tmpdir(), 'filmzy-esempi-'));
+    await mkdir(path.join(evalsDir, 'moderator'));
+    await writeFile(
+      path.join(evalsDir, 'moderator', '01-buono.json'),
+      JSON.stringify({
+        name: 'buono',
+        input: { text: 'Un faro.', context: 'idea', language: 'it' },
+      }),
+    );
+    await writeFile(
+      path.join(evalsDir, 'moderator', '02-rotto.json'),
+      JSON.stringify({ name: 'rotto', input: {}, expect: { notcontains: ['x'] } }),
+    );
+    let asked = false;
+
+    await expect(
+      runEval({
+        role: 'moderator',
+        configDir: CONFIG_DIR,
+        evalsDir,
+        environment: 'offline',
+        confirm: () => {
+          asked = true;
+          return Promise.resolve(true);
+        },
+      }),
+    ).rejects.toThrow(/02-rotto\.json/);
+    expect(asked).toBe(false);
+  });
 });

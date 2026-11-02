@@ -1,0 +1,59 @@
+{
+  "name": "bozza: commedia da 30 secondi, un solo personaggio",
+  "input": {
+    "mode": "draft",
+    "idea": "Un uomo cerca di restituire un ombrello che non è suo.",
+    "genre": {
+      "id": "comedy",
+      "label": "Commedia"
+    },
+    "tone": {
+      "id": "light",
+      "label": "Leggero"
+    },
+    "style": {
+      "id": "realistic",
+      "label": "Realistico",
+      "description": "Ripresa dal vero, colori naturali",
+      "hint": "photorealistic live-action film still, natural skin tones",
+      "enabled": true
+    },
+    "durationS": 30,
+    "language": "it",
+    "maxCharacters": 1,
+    "dialogueEnabled": false,
+    "characters": [],
+    "locations": [],
+    "draft": null,
+    "request": null,
+    "accepted": []
+  },
+  "expect": {
+    "count": {
+      "characters": {
+        "max": 1
+      },
+      "scenes": {
+        "min": 1,
+        "max": 4
+      },
+      "scenes[*].beats": {
+        "max": 0
+      }
+    },
+    "range": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 10,
+        "max": 30
+      }
+    ],
+    "sum": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 21,
+        "max": 39
+      }
+    ]
+  }
+}

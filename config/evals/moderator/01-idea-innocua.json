@@ -1,0 +1,13 @@
+{
+  "name": "si può usare: idea innocua",
+  "input": {
+    "text": "Un vecchio pescatore ritrova nella rete la lanterna del faro che si credeva perduta.",
+    "context": "idea",
+    "language": "it"
+  },
+  "expect": {
+    "equals": {
+      "allowed": true
+    }
+  }
+}

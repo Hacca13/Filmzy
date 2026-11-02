@@ -1,0 +1,59 @@
+{
+  "name": "bozza: thriller da 90 secondi, con dialoghi",
+  "input": {
+    "mode": "draft",
+    "idea": "Una custode scopre che qualcuno entra di notte nella biblioteca.",
+    "genre": {
+      "id": "thriller",
+      "label": "Thriller"
+    },
+    "tone": {
+      "id": "dark",
+      "label": "Cupo"
+    },
+    "style": {
+      "id": "realistic",
+      "label": "Realistico",
+      "description": "Ripresa dal vero, colori naturali",
+      "hint": "photorealistic live-action film still, natural skin tones",
+      "enabled": true
+    },
+    "durationS": 90,
+    "language": "it",
+    "maxCharacters": 2,
+    "dialogueEnabled": true,
+    "characters": [],
+    "locations": [],
+    "draft": null,
+    "request": null,
+    "accepted": []
+  },
+  "expect": {
+    "count": {
+      "characters": {
+        "max": 2
+      },
+      "scenes": {
+        "min": 3,
+        "max": 10
+      },
+      "scenes[*].beats": {
+        "max": 0
+      }
+    },
+    "range": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 10,
+        "max": 30
+      }
+    ],
+    "sum": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 63,
+        "max": 117
+      }
+    ]
+  }
+}

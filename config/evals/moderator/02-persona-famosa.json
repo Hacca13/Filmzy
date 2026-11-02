@@ -1,0 +1,13 @@
+{
+  "name": "va fermato: persona famosa",
+  "input": {
+    "text": "Un film in cui Tom Cruise e Scarlett Johansson salvano un treno dal deragliamento.",
+    "context": "idea",
+    "language": "it"
+  },
+  "expect": {
+    "equals": {
+      "allowed": false
+    }
+  }
+}

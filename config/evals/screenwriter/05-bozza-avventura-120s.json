@@ -1,0 +1,59 @@
+{
+  "name": "bozza: avventura da 120 secondi",
+  "input": {
+    "mode": "draft",
+    "idea": "Due fratelli cercano la chiave di una vecchia barca nascosta sul lago.",
+    "genre": {
+      "id": "adventure",
+      "label": "Avventura"
+    },
+    "tone": {
+      "id": "light",
+      "label": "Leggero"
+    },
+    "style": {
+      "id": "realistic",
+      "label": "Realistico",
+      "description": "Ripresa dal vero, colori naturali",
+      "hint": "photorealistic live-action film still, natural skin tones",
+      "enabled": true
+    },
+    "durationS": 120,
+    "language": "it",
+    "maxCharacters": 2,
+    "dialogueEnabled": false,
+    "characters": [],
+    "locations": [],
+    "draft": null,
+    "request": null,
+    "accepted": []
+  },
+  "expect": {
+    "count": {
+      "characters": {
+        "max": 2
+      },
+      "scenes": {
+        "min": 4,
+        "max": 13
+      },
+      "scenes[*].beats": {
+        "max": 0
+      }
+    },
+    "range": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 10,
+        "max": 30
+      }
+    ],
+    "sum": [
+      {
+        "values": "scenes[*].durationS",
+        "min": 84,
+        "max": 156
+      }
+    ]
+  }
+}

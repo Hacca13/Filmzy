@@ -181,6 +181,7 @@ Fatto il 2/11 (D60): una scena alla volta, dall'ultima stesura finale, con la st
 
 **T3.10 Valutazioni.** Cinque esempi fissi ciascuno per moderatore, casting, sceneggiatore (bozza e stesura) e aiuto regista.
 _Fatto quando:_ `pnpm eval` produce un report per ognuno.
+Fatto il 2/11 (D61): cinque esempi fissi per moderatore, casting e aiuto regista e dieci per lo sceneggiatore (cinque di bozza, cinque di stesura), accanto ai cinque del direttore della fotografia; regole nuove sui campi (valore, numero di elementi, limiti, somma, solo gli id dati, nessun doppione) e rapporto salvato in `bench-output/valutazioni/`. Col fornitore finto ogni ruolo gira su tutti gli esempi (ingressi validi) e le regole mordono; con un servizio vero si lancia a mano (`pnpm eval <ruolo> --model <servizio>`) e costa. Manca: il giudizio di un LLM su una griglia.
 
 ## M4 — Storyboard, immagini dell'inquadratura e video (7–10 giornate)
 

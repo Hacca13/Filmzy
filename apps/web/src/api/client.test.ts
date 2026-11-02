@@ -1,7 +1,7 @@
 import { healthResponseSchema } from '@filmzy/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiError, getJson } from './client';
+import { ApiError, getJson, sendJson } from './client';
 
 /** Un `fetch` finto che risponde sempre con la stessa risposta: i test non usano la rete. */
 function fakeFetch(response: Response): typeof fetch {
@@ -71,5 +71,56 @@ describe('getJson', () => {
     const error = await failureOf(fakeFetch(brokenBody));
 
     expect(error).toMatchObject({ code: 'network_error' });
+  });
+});
+
+describe('sendJson', () => {
+  it('manda il corpo come JSON con il metodo scelto', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(Response.json({ status: 'ok' })));
+
+    await sendJson('PUT', '/troupe/draft', healthResponseSchema, { a: 1 }, { fetchImpl: fetchSpy });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/troupe/draft',
+      expect.objectContaining({
+        method: 'PUT',
+        body: '{"a":1}',
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+  });
+
+  it('senza corpo non manda né corpo né intestazione', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(Response.json({ status: 'ok' })));
+
+    await sendJson('DELETE', '/troupe/draft', healthResponseSchema, undefined, {
+      fetchImpl: fetchSpy,
+    });
+
+    expect(fetchSpy.mock.calls[0]?.[1]).not.toHaveProperty('body');
+  });
+
+  it("porta i dettagli dell'errore del dominio: il campo sbagliato, per esempio", async () => {
+    const error = await sendJson(
+      'POST',
+      '/troupe/publish',
+      healthResponseSchema,
+      {},
+      {
+        fetchImpl: fakeFetch(
+          Response.json(
+            { code: 'invalid_request', retryable: false, details: { field: 'note' } },
+            { status: 400 },
+          ),
+        ),
+      },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      code: 'http_error',
+      status: 400,
+      serverCode: 'invalid_request',
+      details: { field: 'note' },
+    });
   });
 });

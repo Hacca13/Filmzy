@@ -229,6 +229,8 @@ Il `modelId` scelto per una generazione (D36) non è un livello di configurazion
 
 La configurazione risolta di ogni ruolo produce un hash, che finisce nello scontrino.
 
+**Impostazioni avanzate (T2.3, D46).** Le rotte sono `GET/PUT/DELETE /api/troupe/draft` (leggi, salva, butta via la bozza; senza bozza si parte dalla release attiva), `POST /api/troupe/draft/reset` (la bozza torna ai file di seme), `POST /api/troupe/publish` (nota obbligatoria), `GET /api/secrets` e `PUT/DELETE /api/secrets/:name` (stato delle chiavi e scrittura, mai lettura), `GET/PUT /api/preferences` e `POST /api/updates/check`. Il corpo si controlla con gli schemi di `packages/contracts/src/settings-api.ts`; un errore risponde con `code`, `retryable` e `details.field`, mai col valore ricevuto. L'interfaccia disegna i moduli dagli stessi schemi Zod che il server usa per validare.
+
 **Segreti (D25, D29):** una chiave si cita nella configurazione con `env:NOME` (variabile d'ambiente: seme, test, sviluppo) o con `secret:NOME` (dal portachiavi del sistema operativo). L'utente le inserisce da «Impostazioni > Connessioni», con una procedura guidata anche al primo avvio: collega un fornitore, incolla la chiave, «Prova la connessione» (una chiamata gratuita), sceglie i modelli da aggiungere ed eventualmente un tetto di spesa mensile, poi li assegna ai ruoli in «Chi fa cosa». Le chiavi stanno nel portachiavi (Electron `safeStorage`), non nel database, e sono in sola scrittura per l'interfaccia: si vede «Chiave collegata ••••1a2b». Non finiscono nei log né negli export (`pnpm troupe export` scrive solo i riferimenti).
 
 ### 4.6 Validazione
@@ -323,6 +325,7 @@ Ogni errore arriva all'interfaccia con un **codice**, l'indicazione `retryable` 
 | `provider_auth_failed` | chiave non valida o scaduta | no | sostituire la chiave |
 | `provider_quota_exhausted` | credito o limite esauriti presso il fornitore | no | ricaricare il conto o cambiare servizio |
 | `secret_missing` | la chiave non è stata inserita o è stata tolta | no | inserirla in Impostazioni > Connessioni |
+| `secret_store_unavailable` | non c'è il portachiavi del sistema (prima dell'app installata, D45): la chiave non si può salvare | no | usare il file `.env` in sviluppo, o installare il programma |
 | `invalid_output` | risposta fuori schema | sì, con riparazione | riprovare |
 | `content_rejected` | il fornitore rifiuta il contenuto | no | cambiare la richiesta: non si aggira con un altro servizio |
 | `image_rejected` | immagine caricata con persone, marchi o minori (D19) | no | usare un'altra immagine |
@@ -523,6 +526,7 @@ I dati stanno nella **cartella dati dell'utente** del sistema operativo (`app.ge
 <cartella dati>/
 ├─ filmzy.db              database SQLite (film, scontrini, impostazioni, coda)
 ├─ filmzy.db.backup-<versione>   copia fatta prima di una migrazione
+├─ chiavi.dat             le chiavi dei fornitori, cifrate: fuori dal database (D45, D46)
 ├─ log/                   registro degli eventi (pino)
 └─ progetti/<id>/         file dei film: immagini, take, audio, esportazioni
 ```

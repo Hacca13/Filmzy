@@ -43,6 +43,14 @@ export function databaseFile(dataDir: string): string {
   return path.join(dataDir, 'filmzy.db');
 }
 
+/**
+ * Il file delle chiavi dei fornitori, cifrate. Sta **fuori dal database** (D45): una copia del
+ * database gira (copie di sicurezza, diagnostica) e le chiavi non devono uscire con lei.
+ */
+export function secretsFile(dataDir: string): string {
+  return path.join(dataDir, 'chiavi.dat');
+}
+
 /** La cartella dei film: immagini, take, audio ed esportazioni. Si può spostare (§6.1). */
 export function projectsDir(dataDir: string): string {
   return path.join(dataDir, 'progetti');

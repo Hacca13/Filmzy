@@ -1,11 +1,21 @@
 export { DatabaseError } from './errors.js';
 export { MIGRATIONS_DIR, openFilmzyDatabase } from './open.js';
 export type { FilmzyDb, OpenDatabaseOptions, OpenedDatabase } from './open.js';
-export { APP_DIR_NAME, databaseFile, logDir, projectsDir, resolveDataDir } from './paths.js';
+export {
+  APP_DIR_NAME,
+  databaseFile,
+  logDir,
+  projectsDir,
+  resolveDataDir,
+  secretsFile,
+} from './paths.js';
 export type { DataDirOptions } from './paths.js';
+export { createPreferencesStore } from './preferences-store.js';
+export type { PreferencesStore } from './preferences-store.js';
 export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';
 export {
+  APP_PREFERENCES_ID,
   DRAFT_ID,
   instructionVersions,
   jobs,

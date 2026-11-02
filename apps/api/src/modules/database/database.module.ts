@@ -22,6 +22,8 @@ import {
 
 export const OPENED_DATABASE = Symbol('OPENED_DATABASE');
 export const JOB_QUEUE = Symbol('JOB_QUEUE');
+/** La cartella dati dell'utente (§6.1): serve anche a chi scrive file accanto al database. */
+export const DATA_DIR = Symbol('DATA_DIR');
 
 export interface DatabaseModuleOptions {
   /** La cartella dati: in Electron la dà il sistema (M6), nei test è una temporanea. */
@@ -45,17 +47,20 @@ class DatabaseLifecycle implements OnApplicationShutdown {
 @Module({})
 export class DatabaseModule {
   static forRoot(options: DatabaseModuleOptions = {}): DynamicModule {
+    const dataDir = options.dataDir ?? resolveDataDir();
+
     return {
       module: DatabaseModule,
       // Globale: il database è uno solo e serve a tutti i moduli di dominio, che altrimenti
       // dovrebbero importarlo uno per uno senza nessun motivo.
       global: true,
       providers: [
+        { provide: DATA_DIR, useValue: dataDir },
         {
           provide: OPENED_DATABASE,
           useFactory: async (): Promise<OpenedDatabase> => {
             const opened = await openFilmzyDatabase({
-              dataDir: options.dataDir ?? resolveDataDir(),
+              dataDir,
               appVersion: options.appVersion ?? process.env.FILMZY_APP_VERSION ?? '0.0.0-sviluppo',
             });
 
@@ -74,7 +79,7 @@ export class DatabaseModule {
         },
         DatabaseLifecycle,
       ],
-      exports: [OPENED_DATABASE, JOB_QUEUE],
+      exports: [OPENED_DATABASE, JOB_QUEUE, DATA_DIR],
     };
   }
 }

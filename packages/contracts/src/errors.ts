@@ -12,6 +12,8 @@ export const DOMAIN_ERROR_CODES = [
   'provider_auth_failed',
   'provider_quota_exhausted',
   'secret_missing',
+  // Non c'è il portachiavi del sistema (prima di Electron, D45): la chiave non si può salvare.
+  'secret_store_unavailable',
   'invalid_output',
   'content_rejected',
   'image_rejected',

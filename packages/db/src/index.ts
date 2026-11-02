@@ -11,12 +11,15 @@ export {
 } from './paths.js';
 export type { DataDirOptions } from './paths.js';
 export { createPreferencesStore } from './preferences-store.js';
+export { createReceiptStore } from './receipt-store.js';
+export type { ReceiptStore } from './receipt-store.js';
 export type { PreferencesStore } from './preferences-store.js';
 export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';
 export {
   APP_PREFERENCES_ID,
   DRAFT_ID,
+  generations,
   instructionVersions,
   jobs,
   meta,
@@ -26,6 +29,7 @@ export {
   USER_SETTINGS_ID,
 } from './schema.js';
 export type {
+  GenerationRow,
   InstructionVersionRow,
   JobRow,
   SettingsRow,

@@ -2,7 +2,13 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { createTroupeStore, type OpenedDatabase, type TroupeStore } from '@filmzy/db';
+import {
+  createReceiptStore,
+  createTroupeStore,
+  type OpenedDatabase,
+  type ReceiptStore,
+  type TroupeStore,
+} from '@filmzy/db';
 import {
   configEnvironmentFromEnv,
   createTroupe,
@@ -20,7 +26,17 @@ import { DbInstructionsSource } from '../instructions/db-instructions-source.js'
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { SECRET_SOURCES } from '../secrets/tokens.js';
 import { DbConfigSource } from './db-config-source.js';
-import { CONFIG_DIR, CONFIG_SOURCE, TROUPE, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
+import { DraftTestController } from './draft-test.controller.js';
+import { DraftTestService } from './draft-test.service.js';
+import {
+  CONFIG_DIR,
+  CONFIG_SOURCE,
+  DRAFT_TROUPE,
+  RECEIPT_STORE,
+  TROUPE,
+  TROUPE_ENVIRONMENT,
+  TROUPE_STORE,
+} from './tokens.js';
 import { TroupeConfigController } from './troupe-config.controller.js';
 import { TroupeConfigService } from './troupe-config.service.js';
 
@@ -51,11 +67,18 @@ export class TroupeModule {
   static forRoot(options: TroupeModuleOptions = {}): DynamicModule {
     const configDir = options.configDir ?? defaultConfigDir(process.env);
     const environment = options.environment ?? configEnvironmentFromEnv(process.env);
+    const configSourceOver = (store: TroupeStore, preferDraft: boolean): ConfigSource =>
+      new DbConfigSource({
+        store,
+        configDir,
+        preferDraft,
+        ...(environment === undefined ? {} : { environment }),
+      });
 
     return {
       module: TroupeModule,
       global: true,
-      controllers: [TroupeConfigController],
+      controllers: [TroupeConfigController, DraftTestController],
       providers: [
         { provide: CONFIG_DIR, useValue: configDir },
         { provide: TROUPE_ENVIRONMENT, useValue: environment },
@@ -65,13 +88,13 @@ export class TroupeModule {
           inject: [OPENED_DATABASE],
         },
         {
+          provide: RECEIPT_STORE,
+          useFactory: (opened: OpenedDatabase): ReceiptStore => createReceiptStore(opened.db),
+          inject: [OPENED_DATABASE],
+        },
+        {
           provide: CONFIG_SOURCE,
-          useFactory: (store: TroupeStore): ConfigSource =>
-            new DbConfigSource({
-              store,
-              configDir,
-              ...(environment === undefined ? {} : { environment }),
-            }),
+          useFactory: (store: TroupeStore): ConfigSource => configSourceOver(store, false),
           inject: [TROUPE_STORE],
         },
         {
@@ -90,16 +113,36 @@ export class TroupeModule {
             configSource: ConfigSource,
             instructions: InstructionsSource,
             secrets: SecretSources,
-          ): Troupe => createTroupe({ configSource, instructions, secrets }),
-          inject: [CONFIG_SOURCE, INSTRUCTIONS_SOURCE, SECRET_SOURCES],
+            receiptSink: ReceiptStore,
+          ): Troupe => createTroupe({ configSource, instructions, secrets, receiptSink }),
+          inject: [CONFIG_SOURCE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE],
+        },
+        {
+          // Stessa troupe, stesse chiavi e stessi scontrini, ma la configurazione è la bozza.
+          provide: DRAFT_TROUPE,
+          useFactory: (
+            store: TroupeStore,
+            instructions: InstructionsSource,
+            secrets: SecretSources,
+            receiptSink: ReceiptStore,
+          ): Troupe =>
+            createTroupe({
+              configSource: configSourceOver(store, true),
+              instructions,
+              secrets,
+              receiptSink,
+            }),
+          inject: [TROUPE_STORE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE],
         },
         TroupeConfigService,
+        DraftTestService,
       ],
       exports: [
         TROUPE,
         INSTRUCTIONS_SOURCE,
         CONFIG_SOURCE,
         TROUPE_STORE,
+        RECEIPT_STORE,
         CONFIG_DIR,
         TROUPE_ENVIRONMENT,
         TroupeConfigService,

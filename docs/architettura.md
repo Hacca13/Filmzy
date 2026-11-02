@@ -206,7 +206,7 @@ Esempi completi nei file di seme: `config/ai/*.yaml`, `config/presets/*.yaml`, `
 **In esercizio vive nel database SQLite locale e si modifica da Impostazioni > Avanzate** (decisioni D2 e D29). Funziona come un deploy:
 
 1. **Bozza:** l'unica copia modificabile, validata a ogni salvataggio.
-2. **Prova:** dalla bozza si esegue un ruolo su un input di esempio, con risultato e costo reali, prima di pubblicare.
+2. **Prova (T2.5, D48):** dalla bozza **salvata** si esegue un ruolo di testo sul suo input di esempio fisso, con risultato e costo reali, prima di pubblicare. È la stessa troupe con la bozza al posto della release (`DbConfigSource` con `preferDraft`); la stima (`troupe.estimate`, senza chiamare nessuno) si vede prima e la prova parte solo col pulsante. Le rotte sono `GET /api/troupe/test/roles`, `POST /api/troupe/test/:ruolo/estimate` e `POST …/run`. Lo scontrino ha `purpose: 'draft_test'` e `releaseId: 'bozza'`. I ruoli di immagini e video si provano da M4.
 3. **Pubblicazione:** crea una *release* immutabile, con configurazione completa, versioni delle istruzioni bloccate, hash, nota e autore. Il programma la ricarica subito, senza riavvio.
 4. **Ripristino:** si ripubblica una release precedente come nuova release, così lo storico resta lineare.
 
@@ -510,7 +510,7 @@ Un solo file di database; i file dei progetti stanno in cartelle accanto. I camp
 | Impostazioni | `settings` | scelte dell'utente che valgono subito, senza pubblicare: funzioni, limiti e tetti di spesa, servizi attivati e servizio predefinito per ruolo o tipo (D36). Non ci sono utenti, crediti né caparre: la spesa si calcola dagli scontrini (D30) |
 | Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
-| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini, con `model_id` (il servizio che ha lavorato), e `model_label` (D36) |
+| Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini: una riga per `id`, aggiornata durante la vita della chiamata (regola 10), con le colonne per cercare e sommare (`purpose`, `role`, `model_id`, `status`, costi) e lo scontrino intero in JSON (D36, D48) |
 | Coda | `jobs` | i lavori lunghi (§7): tipo, dato in JSON, stato, priorità, tentativi e `run_after` per l'attesa crescente, chiave di idempotenza unica, film a cui appartengono |
 | Informazioni | `meta` | versione dello schema e versione del programma che ha aperto il database (§6.2) |
 | Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ROLE_INPUT_EXAMPLES } from './examples.js';
+import { exampleShotSpec } from './examples.js';
 import {
   SHOT_DURATION_RANGE_S,
   changeShotBodySchema,
@@ -10,7 +10,7 @@ import {
   shotPlansSchema,
 } from './shots-api.js';
 
-const shot = ROLE_INPUT_EXAMPLES.cinematographer.shot;
+const shot = exampleShotSpec;
 
 const scene = {
   sceneNumber: 1,

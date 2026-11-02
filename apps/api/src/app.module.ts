@@ -17,6 +17,7 @@ import { RolesModule } from './modules/roles/roles.module.js';
 import { ScreenplayModule } from './modules/screenplay/screenplay.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
 import { SheetsModule } from './modules/sheets/sheets.module.js';
+import { ShotsModule } from './modules/shots/shots.module.js';
 import { SpendModule } from './modules/spend/spend.module.js';
 import { TroupeModule } from './modules/troupe/troupe.module.js';
 import { UpdatesModule, type UpdateChecker } from './modules/updates/updates.module.js';
@@ -57,6 +58,7 @@ export class AppModule {
         RolesModule,
         ScreenplayModule,
         SheetsModule,
+        ShotsModule,
         SpendModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },

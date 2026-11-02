@@ -1,11 +1,11 @@
-import { ROLE_INPUT_EXAMPLES, shotSpecSchema, type ShotSpec } from '@filmzy/contracts';
+import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '@filmzy/contracts';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { openFilmzyDatabase, type OpenedDatabase } from './open.js';
 import { createShotStore, type NewShotPlan, type ShotStore } from './shot-store.js';
 import { tempDataDir } from './test.fixtures.js';
 
-const example = shotSpecSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer.shot);
+const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
 
 const shot = (id: string, sceneNumber: number): ShotSpec => ({
   ...example,

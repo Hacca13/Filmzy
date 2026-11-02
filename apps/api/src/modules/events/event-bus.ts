@@ -1,5 +1,6 @@
 import type { DomainEvent } from '@filmzy/contracts';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
+import { Subject } from 'rxjs';
 
 type Listener = (event: DomainEvent) => void;
 
@@ -12,9 +13,18 @@ type Listener = (event: DomainEvent) => void;
  * registro e si va avanti.
  */
 @Injectable()
-export class EventBus {
+export class EventBus implements OnModuleDestroy {
   private readonly log = new Logger('Eventi');
   private readonly listeners = new Set<Listener>();
+  private readonly shutdown = new Subject<void>();
+
+  /** Si completa quando il server si ferma: i flussi aperti devono finire, o la chiusura aspetterebbe per sempre. */
+  readonly closing = this.shutdown.asObservable();
+
+  onModuleDestroy(): void {
+    this.shutdown.next();
+    this.shutdown.complete();
+  }
 
   publish(event: DomainEvent): void {
     for (const listener of [...this.listeners]) {

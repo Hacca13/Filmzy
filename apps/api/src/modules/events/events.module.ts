@@ -1,5 +1,5 @@
 import { Controller, Module, Sse, type MessageEvent } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, takeUntil } from 'rxjs';
 
 import { EventBus } from './event-bus.js';
 
@@ -17,7 +17,7 @@ class EventsController {
 
   @Sse()
   stream(): Observable<MessageEvent> {
-    return new Observable<MessageEvent>((subscriber) => {
+    const stream = new Observable<MessageEvent>((subscriber) => {
       const unsubscribe = this.bus.subscribe((event) => {
         subscriber.next({ data: event });
       });
@@ -31,6 +31,8 @@ class EventsController {
         clearInterval(beat);
       };
     });
+    // Quando il server si ferma il flusso finisce: senza, una finestra aperta bloccherebbe la chiusura.
+    return stream.pipe(takeUntil(this.bus.closing));
   }
 }
 

@@ -1,5 +1,5 @@
 import type { Job, JobStatus } from '@filmzy/contracts';
-import type { JobQueue } from '@filmzy/db';
+import type { EnqueueInput, JobQueue } from '@filmzy/db';
 import {
   Inject,
   Injectable,
@@ -86,6 +86,18 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     this.stopping = true;
     if (this.timer !== undefined) clearInterval(this.timer);
     await this.drain();
+  }
+
+  /**
+   * Mette un lavoro in coda, lo annuncia («in coda») e dà subito una guardata: è il modo in cui i
+   * moduli chiedono un lavoro. L'annuncio serve a chi mostra cosa si sta facendo (la card) anche
+   * quando il lavoro deve aspettare il suo turno (T4.4).
+   */
+  enqueue(input: EnqueueInput): Job {
+    const job = this.queue.enqueue(input);
+    this.announce(job, 'queued');
+    this.wake();
+    return job;
   }
 
   /** Dà una guardata alla coda adesso: lo chiama chi mette un lavoro in coda. */

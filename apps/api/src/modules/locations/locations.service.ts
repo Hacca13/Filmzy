@@ -11,13 +11,7 @@ import {
   type SheetOptions,
   type StartSheetBody,
 } from '@filmzy/contracts';
-import {
-  projectsDir,
-  type JobQueue,
-  type LocationStore,
-  type ScreenplayStore,
-  type SheetStore,
-} from '@filmzy/db';
+import { projectsDir, type LocationStore, type ScreenplayStore, type SheetStore } from '@filmzy/db';
 import {
   ProviderError,
   type ConfigSource,
@@ -31,7 +25,7 @@ import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { SHEET_STORE } from '../cast/tokens.js';
-import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
+import { DATA_DIR } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
@@ -79,7 +73,6 @@ export class LocationsService implements OnModuleInit {
     @Inject(SPEND_LEDGER) private readonly spend: SpendGuard,
     @Inject(MEDIA_RUNNER_FACTORY) private readonly mediaFor: (dir: string) => MediaRunner,
     @Inject(DATA_DIR) private readonly dataDir: string,
-    @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     private readonly runner: JobRunner,
     private readonly projects: ProjectsService,
   ) {}
@@ -171,13 +164,12 @@ export class LocationsService implements OnModuleInit {
       modelId: chosen.modelId,
       ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     };
-    this.queue.enqueue({
+    this.runner.enqueue({
       kind: LOCATION_JOB_KIND,
       payload,
       projectId,
       idempotencyKey: `${LOCATION_JOB_KIND}:${locationId}:${String(attempt)}`,
     });
-    this.runner.wake();
     return this.store.images(locationId);
   }
 

@@ -6,6 +6,8 @@ import { subscribeEvents, type LiveEvent } from './events';
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
   onopen: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  readyState = 1;
   onmessage: ((message: { data: string }) => void) | null = null;
   closed = false;
 
@@ -19,6 +21,10 @@ class FakeEventSource {
 
   open(): void {
     this.onopen?.();
+  }
+
+  fail(): void {
+    this.onerror?.();
   }
 
   send(data: string): void {
@@ -96,14 +102,52 @@ describe('subscribeEvents', () => {
     expect(received).toEqual([]);
   });
 
-  it('alla riconnessione, ma non alla prima apertura, avvisa che può essere cambiato qualsiasi cosa', () => {
+  it('a ogni apertura, anche la prima, avvisa che può essere cambiato qualcosa: fra la lettura e il flusso passa del tempo', () => {
     const received: LiveEvent[] = [];
     const off = subscribeEvents((event) => received.push(event));
 
     FakeEventSource.instances[0]?.open();
-    expect(received).toEqual([]);
-    FakeEventSource.instances[0]?.open();
     expect(received).toEqual([{ type: 'reconnected' }]);
+    FakeEventSource.instances[0]?.open();
+    expect(received).toEqual([{ type: 'reconnected' }, { type: 'reconnected' }]);
+    off();
+  });
+
+  it('se il browser rinuncia, dopo qualche secondo si riapre da capo; se nel frattempo non ascolta più nessuno, no', () => {
+    vi.useFakeTimers();
+    try {
+      const off = subscribeEvents(() => undefined);
+      const first = FakeEventSource.instances[0];
+      if (first === undefined) throw new Error('doveva aprirsi');
+
+      first.readyState = 2;
+      first.fail();
+      expect(first.closed).toBe(true);
+      vi.advanceTimersByTime(3000);
+      expect(FakeEventSource.instances).toHaveLength(2);
+
+      const second = FakeEventSource.instances[1];
+      if (second === undefined) throw new Error('doveva riaprirsi');
+      second.readyState = 2;
+      second.fail();
+      off();
+      vi.advanceTimersByTime(10_000);
+      expect(FakeEventSource.instances).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('mentre il browser sta riprovando da solo non si fa niente', () => {
+    const off = subscribeEvents(() => undefined);
+    const only = FakeEventSource.instances[0];
+    if (only === undefined) throw new Error('doveva aprirsi');
+
+    only.readyState = 0;
+    only.fail();
+
+    expect(only.closed).toBe(false);
+    expect(FakeEventSource.instances).toHaveLength(1);
     off();
   });
 

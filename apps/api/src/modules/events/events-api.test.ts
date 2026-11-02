@@ -76,6 +76,31 @@ async function until(condition: () => boolean, what: string): Promise<void> {
   throw new Error(`non è arrivato in tempo: ${what}`);
 }
 
+describe('la chiusura del server', () => {
+  it('con un flusso ancora aperto il server si chiude lo stesso, e il flusso finisce', async () => {
+    const other = await startApp();
+    const url = await other.app.getUrl();
+    const response = await fetch(`${url}/api/events`);
+    const reader = response.body?.getReader();
+    if (reader === undefined) throw new Error('il flusso non ha un corpo');
+    // Si legge finché il flusso finisce (o cade): il server in chiusura deve chiuderlo.
+    const ended = (async () => {
+      for (;;) {
+        try {
+          const chunk = await reader.read();
+          if (chunk.done) return true;
+        } catch {
+          return true;
+        }
+      }
+    })();
+
+    await other.app.close();
+
+    expect(await ended).toBe(true);
+  }, 15_000);
+});
+
 describe('GET /api/events', () => {
   it('è un flusso di eventi, e chi lo apre lo vede aperto', async () => {
     const stream = await listen();
@@ -85,7 +110,7 @@ describe('GET /api/events', () => {
     await stream.stop();
   });
 
-  it('mentre il video si gira arrivano «in lavorazione» e «finito», con il film e l’inquadratura', async () => {
+  it('mentre il video si gira arrivano «in coda», «in lavorazione» e «finito», con il film e l’inquadratura', async () => {
     const film = await filmWithShot(client);
     const stream = await listen();
 
@@ -99,7 +124,7 @@ describe('GET /api/events', () => {
     await stream.stop();
 
     const take = stream.events.filter((event) => event.kind === 'take_generate');
-    expect(take.map((event) => event.status)).toEqual(['running', 'done']);
+    expect(take.map((event) => event.status)).toEqual(['queued', 'running', 'done']);
     expect(take.every((event) => event.projectId === film.film.id)).toBe(true);
     expect(take.every((event) => event.subjectId === film.shot.id)).toBe(true);
   }, 30_000);

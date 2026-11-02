@@ -6,7 +6,7 @@ import {
   type SheetImageStatus,
   type ShotTake,
 } from '@filmzy/contracts';
-import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { shots, takes, type TakeRow } from './schema.js';
@@ -50,8 +50,8 @@ export interface TakeStore {
   list: (shotId: string) => ShotTake[];
   /** La clip del take riuscito più recente di ogni inquadratura del film che ne ha una. */
   latestClips: (projectId: string) => Record<string, string>;
-  /** Le inquadrature del film che hanno un take in coda o in lavorazione adesso. */
-  inProgress: (projectId: string) => string[];
+  /** Le inquadrature del film con un take in coda o in lavorazione adesso (non più vecchio di `since`: uno più vecchio si è perso). */
+  inProgress: (projectId: string, since: Date) => string[];
 }
 
 export interface TakeStoreOptions {
@@ -135,14 +135,20 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         .map(toTake);
     },
 
-    inProgress(projectId) {
+    inProgress(projectId, since) {
       const shotIds = shotIdsOf(projectId);
       if (shotIds.length === 0) return [];
 
       const rows = db
         .selectDistinct({ shotId: takes.shotId })
         .from(takes)
-        .where(and(inArray(takes.shotId, shotIds), inArray(takes.status, ['queued', 'running'])))
+        .where(
+          and(
+            inArray(takes.shotId, shotIds),
+            inArray(takes.status, ['queued', 'running']),
+            gte(takes.createdAt, since.getTime()),
+          ),
+        )
         .all();
       return rows.map((row) => row.shotId);
     },

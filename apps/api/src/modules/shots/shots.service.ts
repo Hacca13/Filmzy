@@ -23,6 +23,7 @@ import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
+import { STALE_WORK_MS } from './work.js';
 
 /**
  * Le inquadrature (T3.9, architettura §3.1, §5.2): l'aiuto regista divide una scena della
@@ -75,8 +76,9 @@ export class ShotsService {
 
   /** Cosa si sta facendo adesso per ogni inquadratura del film (T4.4): il video vince sulle immagini. */
   private workingNow(projectId: string): Record<string, Work> {
-    const working: Record<string, Work> = { ...this.store.drawing(projectId) };
-    for (const shotId of this.takes.inProgress(projectId)) working[shotId] = 'video';
+    const since = new Date(Date.now() - STALE_WORK_MS);
+    const working: Record<string, Work> = { ...this.store.drawing(projectId, since) };
+    for (const shotId of this.takes.inProgress(projectId, since)) working[shotId] = 'video';
     return working;
   }
 

@@ -79,6 +79,24 @@ describe("l'esecutore della coda (§7)", () => {
     expect(JSON.stringify(heard)).not.toContain('testo dell’utente');
   });
 
+  it('mettere un lavoro in coda dal modulo lo annuncia «in coda» e lo fa partire (T4.4)', async () => {
+    runner.register('prova', () => Promise.resolve());
+
+    const messo = runner.enqueue({
+      kind: 'prova',
+      payload: { shotId: 'shot-1' },
+      projectId: 'film-1',
+    });
+    await runner.drain();
+
+    expect(heard.map((event) => event.type === 'job.changed' && event.status)).toEqual([
+      'queued',
+      'running',
+      'done',
+    ]);
+    expect(queue.get(messo.id)?.status).toBe('done');
+  });
+
   it('un lavoro fallito lo dice come tale; uno che ritenta torna «in coda»', async () => {
     runner.register('tecnico', () =>
       Promise.reject(Object.assign(new Error('Non risponde.'), { code: 'timeout' })),

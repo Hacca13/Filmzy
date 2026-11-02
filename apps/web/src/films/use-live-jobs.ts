@@ -21,15 +21,21 @@ export function matchesFilter(event: LiveEvent, filter: LiveFilter): boolean {
 
 /**
  * Chiama `onChange` quando un lavoro che interessa cambia stato (o dopo una riconnessione): chi la
- * riceve rilegge la sua risorsa. `onChange` può cambiare a ogni disegno: si usa l'ultima.
+ * riceve rilegge la sua risorsa. Senza `filter` non ascolta niente. `onChange` può cambiare a ogni
+ * disegno: si usa l'ultimo, e l'ascolto non si ricrea.
  */
-export function useLiveJobs(filter: LiveFilter, onChange: () => void): void {
+export function useLiveJobs(filter: LiveFilter | undefined, onChange: () => void): void {
   const latest = useRef(onChange);
-  latest.current = onChange;
-  const { projectId, subjectId } = filter;
-  const kinds = filter.kinds.join(',');
+  useEffect(() => {
+    latest.current = onChange;
+  });
+
+  const kinds = filter?.kinds.join(',');
+  const projectId = filter?.projectId;
+  const subjectId = filter?.subjectId;
 
   useEffect(() => {
+    if (kinds === undefined) return undefined;
     const wanted: LiveFilter = {
       kinds: kinds === '' ? [] : kinds.split(','),
       ...(projectId === undefined ? {} : { projectId }),

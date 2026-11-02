@@ -194,6 +194,7 @@ Nota da T1.6: il bench genera tutte le immagini delle schede (angolazioni × ten
 
 **T4.1 Storyboard.** Due o tre varianti per inquadratura, scelta; «Cambia servizio» (T3.1).
 _Fatto quando:_ la variante scelta diventa il riferimento visivo della card.
+Fatto il 2/11 (D62): per ogni inquadratura il direttore della fotografia scrive il prompt e `storyboard_artist` disegna tre varianti con il volto bloccato dei personaggi e il set scelto come riferimenti; servizio e stima (testo più immagini) prima, limite di spesa controllato prima di mettere in coda; la variante scelta è il riferimento della card. Un piano da rifare non si disegna. Manca: il modo `end_frame` e le immagini impostate dall'utente (T4.2), il moodboard (T4.10), un avviso se un personaggio non ha il volto bloccato.
 
 **T4.2 Imposta le immagini.** Funzione `keyframes`. Per ogni inquadratura l'utente imposta immagini come ispirazione, primo o ultimo fotogramma (generate o prese da un take); il movimento si sceglie da una lista; l'ultimo fotogramma mancante lo genera `storyboard_artist` in modo `end_frame`, con «Cambia servizio» (T3.1); il router rispetta la scelta (D20).
 _Fatto quando:_ l'utente fissa primo e ultimo fotogramma e il take parte da lì; con una combinazione che nessun modello accetta riceve un messaggio semplice, senza spese e senza declassamenti in silenzio.

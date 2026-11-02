@@ -138,7 +138,12 @@ function build() {
       const { assetIds } = await mediaBehaviour();
       return {
         state: 'succeeded',
-        receipt: { id: 'scontrino-immagini' },
+        receipt: {
+          id: 'scontrino-immagini',
+          modelId: 'servizio-a',
+          modelLabel: 'Servizio A (quello che ha lavorato)',
+          actualCostUsd: 0.24,
+        },
         assets: assetIds.map((assetId) => ({
           assetId,
           path: path.join(dataDir, 'progetti', film.id, 'immagini', `${assetId}.png`),
@@ -436,6 +441,20 @@ describe('il lavoro in coda', () => {
       attempt: 1,
       status: 'succeeded',
       assetIds: ['img-1', 'img-2', 'img-3'],
+    });
+  });
+
+  it('il tentativo dice con quale servizio è fatto fin dall’inizio, e alla fine il servizio vero e il costo vero', async () => {
+    const service = build();
+    const started = await service.start(film.id, 'shot-1', 'storyboard', { modelId: 'servizio-b' });
+    expect(started.attempts[0]?.modelLabel).toBe('Servizio B');
+
+    await runQueued();
+
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
+      status: 'succeeded',
+      modelLabel: 'Servizio A (quello che ha lavorato)',
+      costUsd: 0.24,
     });
   });
 

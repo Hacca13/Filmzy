@@ -334,6 +334,9 @@ export const locationAttempts = sqliteTable(
     assetIds: text('asset_ids').notNull(),
     receiptId: text('receipt_id'),
     errorCode: text('error_code'),
+    /** Il servizio e il costo vero: li mostra l'intestazione del tentativo. */
+    modelLabel: text('model_label'),
+    costUsd: real('cost_usd'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -400,6 +403,8 @@ export const storyboardAttempts = sqliteTable(
     assetIds: text('asset_ids').notNull(),
     receiptId: text('receipt_id'),
     errorCode: text('error_code'),
+    modelLabel: text('model_label'),
+    costUsd: real('cost_usd'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },

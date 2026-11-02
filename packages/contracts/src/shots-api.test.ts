@@ -22,6 +22,7 @@ const scene = {
   shots: [shot],
   chosenStoryboards: {},
   latestTakes: {},
+  working: {},
 };
 
 describe('scenePlanSchema', () => {
@@ -36,6 +37,19 @@ describe('scenePlanSchema', () => {
   it('rifiuta una scena senza numero valido e un’inquadratura che non è una scheda', () => {
     expect(scenePlanSchema.safeParse({ ...scene, sceneNumber: 0 }).success).toBe(false);
     expect(scenePlanSchema.safeParse({ ...scene, shots: [{ id: 'x' }] }).success).toBe(false);
+  });
+});
+
+describe('working', () => {
+  it('dice cosa si sta facendo per ogni inquadratura che ha un lavoro, e non ammette altro', () => {
+    expect(
+      scenePlanSchema.parse({ ...scene, working: { 'shot-1': 'video', 'shot-2': 'end_frame' } })
+        .working,
+    ).toEqual({ 'shot-1': 'video', 'shot-2': 'end_frame' });
+    expect(
+      scenePlanSchema.safeParse({ ...scene, working: { 'shot-1': 'montaggio' } }).success,
+    ).toBe(false);
+    expect(scenePlanSchema.safeParse({ ...scene, working: undefined }).success).toBe(false);
   });
 });
 

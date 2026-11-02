@@ -8,6 +8,7 @@ import {
   shotIdSchema,
   takeIdSchema,
 } from './ids.js';
+import { jobStatusSchema } from './jobs.js';
 
 /**
  * Eventi che partono dai lavori in coda e arrivano all'interfaccia via SSE (architettura §5.4).
@@ -15,6 +16,25 @@ import {
  * `content_rejected` (§4.10), ma resta un tipo a parte perché l'interfaccia lo mostra senza
  * «Riprova».
  */
+/**
+ * Un lavoro in coda ha cambiato stato (T4.4, D67): è una **notifica di cambiamento**, non il dato.
+ * L'interfaccia, che la riceve via SSE, rilegge la risorsa che le interessa (i take di
+ * un'inquadratura, le immagini di un luogo…) invece di fidarsi di un messaggio: così un evento perso
+ * non lascia la schermata sbagliata. `subjectId` è ciò a cui il lavoro si riferisce (l'inquadratura, il
+ * luogo, il personaggio) quando il lavoro lo dice.
+ */
+export const jobChangedEventSchema = z.object({
+  type: z.literal('job.changed'),
+  jobId: z.string().min(1),
+  /** Che lavoro è, come lo chiama il modulo che lo fa (`take_generate`, `storyboard_images`…). */
+  kind: z.string().min(1),
+  status: jobStatusSchema,
+  projectId: projectIdSchema.optional(),
+  subjectId: z.string().min(1).optional(),
+});
+
+export type JobChangedEvent = z.infer<typeof jobChangedEventSchema>;
+
 export const generationQueuedEventSchema = z.object({
   type: z.literal('generation.queued'),
   generationId: generationIdSchema,
@@ -89,6 +109,7 @@ export const exportReadyEventSchema = z.object({
 });
 
 export const domainEventSchema = z.discriminatedUnion('type', [
+  jobChangedEventSchema,
   generationQueuedEventSchema,
   generationRunningEventSchema,
   takeReadyEventSchema,

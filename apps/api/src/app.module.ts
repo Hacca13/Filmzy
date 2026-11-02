@@ -5,6 +5,7 @@ import { AssetsModule } from './modules/assets/assets.module.js';
 import { CastModule } from './modules/cast/cast.module.js';
 import { ConnectionsModule } from './modules/connections/connections.module.js';
 import { DatabaseModule } from './modules/database/database.module.js';
+import { EventsModule } from './modules/events/events.module.js';
 import { FinalScreenplayModule } from './modules/final-screenplay/final-screenplay.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstructionsModule } from './modules/instructions/instructions.module.js';
@@ -63,6 +64,7 @@ export class AppModule {
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },
         ),
+        EventsModule,
         HealthModule,
         JobsModule,
         LocationsModule,

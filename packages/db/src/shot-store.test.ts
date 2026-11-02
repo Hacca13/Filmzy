@@ -202,6 +202,26 @@ describe('lo storyboard di un’inquadratura', () => {
     expect(store.chosenStoryboards('film-1')).toEqual({ a2: 'z' });
   });
 
+  it('si sa cosa si sta disegnando adesso per ogni inquadratura, e l’ultimo fotogramma vince', () => {
+    store.replaceScene(plan(1, ['a1', 'a2', 'a3']));
+    store.replaceScene({ ...plan(1, ['b1']), projectId: 'film-2' });
+    store.startStoryboard('a1', 'storyboard');
+    store.startStoryboard('a2', 'storyboard');
+    store.startStoryboard('a2', 'end_frame');
+    store.startStoryboard('b1', 'storyboard');
+    const done = store.startStoryboard('a3', 'storyboard');
+    store.finishStoryboard('a3', 'storyboard', done, { status: 'succeeded', assetIds: ['x'] });
+
+    expect(store.drawing('film-1')).toEqual({ a1: 'storyboard', a2: 'end_frame' });
+    expect(store.drawing('film-2')).toEqual({ b1: 'storyboard' });
+    expect(store.drawing('non-c-e')).toEqual({});
+
+    store.finishStoryboard('a1', 'storyboard', 1, { status: 'running' });
+    expect(store.drawing('film-1').a1).toBe('storyboard');
+    store.finishStoryboard('a1', 'storyboard', 1, { status: 'failed', errorCode: 'timeout' });
+    expect(store.drawing('film-1')).toEqual({ a2: 'end_frame' });
+  });
+
   it('rifare la scena toglie le inquadrature di prima con i loro tentativi e la loro scelta', () => {
     store.replaceScene(plan(1, ['a1']));
     store.replaceScene(plan(2, ['b1']));

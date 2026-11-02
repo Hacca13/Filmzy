@@ -129,6 +129,26 @@ describe('la clip più recente di ogni inquadratura', () => {
   });
 });
 
+describe('le inquadrature con un take in corso', () => {
+  it('sono quelle con un take in coda o in lavorazione, e solo del film', () => {
+    const waiting = store.start('a1', kling);
+    const running = store.start('a2', kling);
+    store.finish(running.id, { status: 'running' });
+    const done = store.start('a2', seedance);
+    store.finish(done.id, { status: 'succeeded', assetId: 'clip' });
+    const elsewhere = store.start('b1', kling);
+
+    expect(store.inProgress('film-1').sort()).toEqual(['a1', 'a2']);
+    expect(store.inProgress('film-2')).toEqual(['b1']);
+    expect(store.inProgress('non-c-e')).toEqual([]);
+
+    store.finish(waiting.id, { status: 'failed', errorCode: 'timeout' });
+    store.finish(running.id, { status: 'succeeded', assetId: 'clip-2' });
+    store.finish(elsewhere.id, { status: 'succeeded', assetId: 'clip-3' });
+    expect(store.inProgress('film-1')).toEqual([]);
+  });
+});
+
 describe('rifare il piano della scena', () => {
   it('porta via i take delle inquadrature di prima, e lascia quelli delle altre scene', () => {
     const gone = store.start('a1', kling);

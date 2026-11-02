@@ -2,6 +2,35 @@ import { describe, expect, it } from 'vitest';
 
 import { domainEventSchema } from './events.js';
 
+describe('job.changed (T4.4)', () => {
+  it('dice che lavoro è, in che stato è e a cosa si riferisce', () => {
+    const event = {
+      type: 'job.changed' as const,
+      jobId: 'j-1',
+      kind: 'take_generate',
+      status: 'running' as const,
+      projectId: 'film-1',
+      subjectId: 'shot-1',
+    };
+
+    expect(domainEventSchema.parse(event)).toEqual(event);
+  });
+
+  it('il film e l’oggetto sono facoltativi (un lavoro può non averli), lo stato no e non si inventa', () => {
+    expect(
+      domainEventSchema.safeParse({ type: 'job.changed', jobId: 'j-1', kind: 'x', status: 'done' })
+        .success,
+    ).toBe(true);
+    expect(
+      domainEventSchema.safeParse({ type: 'job.changed', jobId: 'j-1', kind: 'x', status: 'boh' })
+        .success,
+    ).toBe(false);
+    expect(
+      domainEventSchema.safeParse({ type: 'job.changed', jobId: 'j-1', kind: 'x' }).success,
+    ).toBe(false);
+  });
+});
+
 describe('domainEventSchema', () => {
   it('accetta take.ready', () => {
     const event = {

@@ -37,6 +37,11 @@ export const scenePlanSchema = z.object({
   chosenStoryboards: z.record(shotIdSchema, assetIdSchema),
   /** La clip del take riuscito più recente di ogni inquadratura (T4.3): è ciò che la card fa vedere. */
   latestTakes: z.record(shotIdSchema, assetIdSchema),
+  /**
+   * Cosa si sta facendo adesso per ogni inquadratura che ha un lavoro in coda o in corso (T4.4): la card
+   * lo dice e, quando il lavoro finisce, passa da sola a «pronto». Il video vince sulle immagini.
+   */
+  working: z.record(shotIdSchema, z.enum(['storyboard', 'end_frame', 'video'])),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

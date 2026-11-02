@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   shotStoryboardSchema,
   shotSpecSchema,
+  storyboardModeSchema,
   sheetImageStatusSchema,
   storyboardAttemptSchema,
   type ShotSpec,
@@ -81,6 +82,8 @@ export interface ShotStore {
   chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
   /** La variante scelta di ogni inquadratura del film che ne ha una. */
   chosenStoryboards: (projectId: string) => Record<string, string>;
+  /** Cosa si sta disegnando adesso (tentativo in coda o in lavorazione) per ogni inquadratura del film; l'ultimo fotogramma vince sullo storyboard. */
+  drawing: (projectId: string) => Record<string, StoryboardMode>;
 }
 
 export interface ShotStoreOptions {
@@ -298,6 +301,33 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         .set({ chosenAssetId: assetId ?? null })
         .where(eq(shots.id, shotId))
         .run();
+    },
+
+    drawing(projectId) {
+      const shotIds = db
+        .select({ id: shots.id })
+        .from(shots)
+        .where(eq(shots.projectId, projectId))
+        .all()
+        .map((shot) => shot.id);
+      if (shotIds.length === 0) return {};
+
+      const rows = db
+        .select()
+        .from(storyboardAttempts)
+        .where(
+          and(
+            inArray(storyboardAttempts.shotId, shotIds),
+            inArray(storyboardAttempts.status, ['queued', 'running']),
+          ),
+        )
+        .all();
+      const drawing: Record<string, StoryboardMode> = {};
+      for (const row of rows) {
+        const mode = storyboardModeSchema.parse(row.mode);
+        if (drawing[row.shotId] === undefined || mode === 'end_frame') drawing[row.shotId] = mode;
+      }
+      return drawing;
     },
 
     chosenStoryboards(projectId) {

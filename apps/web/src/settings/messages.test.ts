@@ -92,3 +92,15 @@ describe('il riepilogo cambiato nel frattempo (T3.8)', () => {
     expect(describeError(stale)).not.toBe(describeError(httpError('invalid_request')));
   });
 });
+
+describe('i film senza luoghi (T3.9)', () => {
+  it('prima di pensare le inquadrature la frase dice di aggiungere un luogo', () => {
+    const noLocations = new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field: 'locations' },
+    });
+
+    expect(describeError(noLocations)).toContain('almeno un luogo');
+  });
+});

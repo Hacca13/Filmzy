@@ -177,6 +177,7 @@ Fatto il 2/11 (D59): il codice confronta bozza e scelte; dove la bozza cita ciò
 
 **T3.9 Inquadrature.** Aiuto regista: scene → ShotSpec → striscia di card; movimento di macchina scelto da `camera_movements`.
 _Fatto quando:_ ogni inquadratura ha gli stati di continuità di entrata e uscita e un movimento valido.
+Fatto il 2/11 (D60): una scena alla volta, dall'ultima stesura finale, con la stima prima e il limite di spesa controllato; la Bibbia (senza immagini), la durata ammessa, i movimenti attivi e l'uscita della scena prima vanno all'aiuto regista; il codice rende le schede coerenti (id, riferimenti, personaggi e luoghi esistenti, movimento valido). Striscia di card per scena con il movimento da scegliere da una lista; il piano si rifà (sostituisce) e si segna da rifare se la scena cambia dopo. Servono almeno un luogo. Manca: la verifica della continuità (R1, T5.1), cambiare a mano azione e piano, «Pensa tutte le scene».
 
 **T3.10 Valutazioni.** Cinque esempi fissi ciascuno per moderatore, casting, sceneggiatore (bozza e stesura) e aiuto regista.
 _Fatto quando:_ `pnpm eval` produce un report per ognuno.

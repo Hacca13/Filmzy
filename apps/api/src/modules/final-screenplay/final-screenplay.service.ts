@@ -12,6 +12,7 @@ import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
+import { charactersWithoutImages, locationsWithoutImages } from '../bible/without-images.js';
 import { CHARACTER_STORE } from '../cast/tokens.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
 import { ModerationService } from '../moderation/moderation.service.js';
@@ -169,8 +170,8 @@ function forTheModel(
   accepted: ReturnType<typeof acceptedFromAnswers>,
 ) {
   return {
-    characters: characters.map((character) => ({ ...character, sheet: [] })),
-    locations: locations.map((location) => ({ ...location, references: [] })),
+    characters: charactersWithoutImages(characters),
+    locations: locationsWithoutImages(locations),
     accepted,
   };
 }

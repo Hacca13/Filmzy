@@ -64,6 +64,13 @@
       "when": 1793151825217,
       "tag": "0008_luoghi",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793619594502,
+      "tag": "0009_piani-inquadrature",
+      "breakpoints": true
     }
   ]
 }

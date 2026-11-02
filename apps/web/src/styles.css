@@ -873,3 +873,91 @@ a.button {
   font: inherit;
   resize: vertical;
 }
+
+/* Le inquadrature (T3.9) */
+.shots {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scene-shots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.scene-shots h3,
+.scene-shots p {
+  margin: 0;
+}
+
+/* La striscia: le card una dopo l'altra, come un fumetto; se non stanno si scorre di lato. */
+.shot-strip {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 8px;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.shot-card {
+  display: flex;
+  flex: 0 0 16rem;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--row);
+  border-radius: 12px;
+}
+
+.shot-card p {
+  margin: 0;
+}
+
+.shot-number {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shot-action {
+  font-weight: 600;
+}
+
+.shot-card label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shot-card select {
+  padding: 8px 10px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.shot-continuity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.shot-continuity div {
+  display: flex;
+  gap: 6px;
+}
+
+.shot-continuity dt {
+  font-weight: 600;
+}
+
+.shot-continuity dd {
+  margin: 0;
+}

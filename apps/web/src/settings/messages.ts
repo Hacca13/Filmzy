@@ -45,6 +45,14 @@ export function describeCode(code: string | undefined): string | undefined {
   return code === undefined ? undefined : BY_SERVER_CODE[code];
 }
 
+/** Le richieste sbagliate che hanno una frase propria, per campo (T3.8, T3.9). */
+const BY_INVALID_FIELD: Record<string, string> = {
+  // Il cast o i luoghi sono cambiati dopo l'ultimo controllo del riepilogo.
+  answers:
+    'Le differenze fra la bozza e le tue scelte sono cambiate. Ho aggiornato il riepilogo: controlla le risposte e riprova.',
+  locations: 'Aggiungi almeno un luogo al film prima di pensare le inquadrature.',
+};
+
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'network_error') {
@@ -54,9 +62,11 @@ export function describeError(error: unknown): string {
     if (error.serverCode === 'content_rejected' && moderation !== undefined) {
       return describeModeration(moderation);
     }
-    // Le risposte al riepilogo non valgono più: il cast o i luoghi sono cambiati dopo l'ultimo controllo.
-    if (error.serverCode === 'invalid_request' && error.details?.field === 'answers') {
-      return 'Le differenze fra la bozza e le tue scelte sono cambiate. Ho aggiornato il riepilogo: controlla le risposte e riprova.';
+    // Una richiesta sbagliata che l'utente può sistemare: la frase dice cosa manca invece di «controlla i campi».
+    if (error.serverCode === 'invalid_request') {
+      const field = error.details?.field;
+      const specific = field === undefined ? undefined : BY_INVALID_FIELD[field];
+      if (specific !== undefined) return specific;
     }
     const known = error.serverCode === undefined ? undefined : BY_SERVER_CODE[error.serverCode];
     if (known !== undefined) return known;

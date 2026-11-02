@@ -24,6 +24,7 @@ import {
   usableSuggestions,
 } from './casting-input.js';
 import { CHARACTER_STORE, SHEET_STORE } from './tokens.js';
+import { characterWithSheet } from './with-sheet.js';
 
 /**
  * Il cast del film (T3.5, architettura §3.1, D18, D22): il direttore del casting propone i
@@ -187,10 +188,7 @@ export class CastService {
    * volto bloccato la scheda è ancora vuota.
    */
   private withSheet(character: Character): Character {
-    return {
-      ...character,
-      sheet: this.sheets.lockedAssetIds(character.id).map((assetId) => ({ assetId })),
-    };
+    return characterWithSheet(character, this.sheets);
   }
 
   /** Il personaggio deve essere di quel film: l'id di un altro film non vale. */

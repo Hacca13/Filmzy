@@ -3,6 +3,7 @@ import type { ConfigEnvironment } from '@filmzy/troupe';
 
 import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { InstructionsModule } from './modules/instructions/instructions.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { PreferencesModule } from './modules/preferences/preferences.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
@@ -36,6 +37,7 @@ export class AppModule {
           ...(options.configDir === undefined ? {} : { configDir: options.configDir }),
           ...(options.environment === undefined ? {} : { environment: options.environment }),
         }),
+        InstructionsModule,
         PreferencesModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },

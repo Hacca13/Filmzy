@@ -14,11 +14,11 @@ import {
   resetDraftToProgramValues,
   saveDraft,
 } from '../../api/troupe-config';
-import { Notice, Panel } from '../../components/ui';
+import { IssueList, Notice, Panel } from '../../components/ui';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
 import { KeyStatus } from './KeyStatus';
-import { IssueList, SectionPanel } from './SectionPanel';
+import { SectionPanel } from './SectionPanel';
 import { orphanIssues, SECTIONS } from './sections';
 
 /**

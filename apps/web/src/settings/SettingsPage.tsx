@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { AdvancedPage } from './advanced/AdvancedPage';
 import { GenerationPage } from './GenerationPage';
+import { InstructionsPage } from './instructions/InstructionsPage';
 import { UpdatesPage } from './UpdatesPage';
 
 interface Section {
@@ -14,6 +15,7 @@ interface Section {
 const SECTIONS: Section[] = [
   { id: 'generazione', label: 'Generazione', page: () => <GenerationPage /> },
   { id: 'aggiornamenti', label: 'Aggiornamenti', page: () => <UpdatesPage /> },
+  { id: 'istruzioni', label: 'Istruzioni', page: () => <InstructionsPage /> },
   { id: 'avanzate', label: 'Avanzate', page: () => <AdvancedPage /> },
 ];
 

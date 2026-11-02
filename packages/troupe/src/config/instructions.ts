@@ -1,5 +1,6 @@
 import { ROLE_INPUT_EXAMPLES } from '@filmzy/contracts';
 
+import { unknownVariables } from '../instructions/check.js';
 import { renderSections } from '../instructions/render.js';
 import {
   FileInstructionsSource,
@@ -93,12 +94,7 @@ function declaredVariableIssues(
   resolved: ResolvedInstructions,
   example: unknown,
 ): ConfigIssue[] {
-  if (typeof example !== 'object' || example === null) return [];
-  const available = new Set(Object.keys(example));
-
-  return resolved.variables
-    .filter((variable) => !available.has(variable))
-    .map((variable) =>
+  return unknownVariables(resolved.variables, example).map((variable) =>
       issue(
         roleId,
         'instruction_variable_unknown',

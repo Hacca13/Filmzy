@@ -1,7 +1,4 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 
 import {
   appPreferencesSchema,
@@ -10,64 +7,14 @@ import {
   publishResponseSchema,
   secretsViewSchema,
   updateCheckResultSchema,
-  type DraftView,
 } from '@filmzy/contracts';
 import { secretsFile } from '@filmzy/db';
 import type { ConfigSource } from '@filmzy/troupe';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { createApp } from '../../create-app.js';
-import type { SecretCipher } from '../secrets/secret-cipher.js';
+import { fakeCipher, startApp, type Client, type Reply } from '../../test-support/app-client.js';
 import { CONFIG_SOURCE } from './tokens.js';
-
-const CONFIG_DIR = fileURLToPath(new URL('../../../../../config', import.meta.url));
-
-/** Un cifrario finto ma reversibile: basta a provare che sul disco non resta il testo in chiaro. */
-const fakeCipher: SecretCipher = {
-  isAvailable: () => true,
-  encrypt: (plain) => Buffer.from(`cifrato:${Buffer.from(plain).toString('base64')}`),
-  decrypt: (data) => Buffer.from(data.toString().slice('cifrato:'.length), 'base64').toString(),
-};
-
-interface Reply {
-  status: number;
-  text: string;
-  body: unknown;
-}
-
-class Client {
-  constructor(private readonly baseUrl: string) {}
-
-  async call(method: string, route: string, body?: unknown): Promise<Reply> {
-    const response = await fetch(`${this.baseUrl}/api${route}`, {
-      method,
-      ...(body === undefined
-        ? {}
-        : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
-    });
-    const text = await response.text();
-    return { status: response.status, text, body: text === '' ? undefined : JSON.parse(text) };
-  }
-
-  async draft(): Promise<DraftView> {
-    return draftViewSchema.parse((await this.call('GET', '/troupe/draft')).body);
-  }
-}
-
-/** Il server vero, con una cartella dati sua e i fornitori finti (regola d'oro 5: zero spesa). */
-async function startApp(cipher?: SecretCipher) {
-  const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-impostazioni-'));
-  const app: NestExpressApplication = await createApp({
-    logger: false,
-    dataDir,
-    configDir: CONFIG_DIR,
-    environment: 'offline',
-    ...(cipher === undefined ? {} : { cipher }),
-  });
-  await app.listen(0, '127.0.0.1');
-  return { app, dataDir, client: new Client(await app.getUrl()) };
-}
 
 function errorCode(reply: Reply): string {
   return domainErrorSchema.parse(reply.body).code;

@@ -159,6 +159,7 @@ export type { Estimate, SpendCap } from './spend.js';
 export { instructionsRefSchema, roleSettingsSchema, userSettingsSchema } from './settings.js';
 export type { InstructionsRef, RoleSettings, UserSettings } from './settings.js';
 export * from './settings-api.js';
+export * from './instructions-api.js';
 export { domainEventSchema } from './events.js';
 export type { DomainEvent } from './events.js';
 export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';

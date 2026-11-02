@@ -1,3 +1,4 @@
+import type { ConfigIssue } from '@filmzy/contracts';
 import type { ReactNode } from 'react';
 
 /** I pezzi di interfaccia che tornano in tutte le impostazioni: pannello, interruttore, avviso. */
@@ -49,5 +50,23 @@ export function Notice({ tone, children }: { tone: 'error' | 'info'; children: R
     <p className="notice" data-tone={tone} role={tone === 'error' ? 'alert' : 'status'}>
       {children}
     </p>
+  );
+}
+
+/** I problemi del validatore, uno per riga, col loro peso (da correggere o solo da sapere). */
+export function IssueList({ issues }: { issues: readonly ConfigIssue[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <ul className="issues">
+      {issues.map((issue) => (
+        <li
+          key={`${issue.code}:${issue.key ?? ''}:${issue.message}`}
+          data-severity={issue.severity}
+        >
+          {issue.severity === 'error' ? 'Da correggere: ' : 'Attenzione: '}
+          {issue.message}
+        </li>
+      ))}
+    </ul>
   );
 }

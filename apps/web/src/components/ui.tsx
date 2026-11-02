@@ -131,7 +131,7 @@ export function Notice({
   return (
     <div className="notice boxed" data-tone={tone} role={role}>
       <Chip tone={tone}>{title}</Chip>
-      <p>{children}</p>
+      <div className="notice-body">{children}</div>
     </div>
   );
 }

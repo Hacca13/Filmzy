@@ -89,7 +89,9 @@ export function ImageAttemptsSection<T extends ImageSet>({
             <li key={attempt.attempt} className="attempt">
               <div className="attempt-head">
                 <strong>{`Tentativo ${String(attempt.attempt)}`}</strong>
-                <span className="hint">{attemptWho(attempt)}</span>
+                {attemptWho(attempt) === '' ? null : (
+                  <span className="hint">{attemptWho(attempt)}</span>
+                )}
               </div>
               {attempt.assetIds.length === 0 ? (
                 <div

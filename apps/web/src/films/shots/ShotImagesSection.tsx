@@ -48,6 +48,7 @@ export function ShotImagesSection({
   const resource = useResource(load);
   const images = useLastReady(resource.state);
   const action = useAction();
+  const notice = images === undefined ? undefined : videoNotice(images.videoServices);
 
   const change = (current: ShotImages, assetId: string, use: ImageUse | undefined) => {
     action.run(async () => {
@@ -123,12 +124,14 @@ export function ShotImagesSection({
               })}
             </div>
           )}
-          {videoNotice(images.videoServices) === undefined ? null : (
+          {notice === undefined ? null : (
             <>
               <Notice tone="error" title="Non compatibile">
-                {videoNotice(images.videoServices)}
+                {notice}
               </Notice>
-              <p className="hint">Nessuna ripresa generata · Nessuna spesa</p>
+              <p className="hint">
+                Con questa combinazione non parte nessuna ripresa e non si spende niente.
+              </p>
             </>
           )}
         </>

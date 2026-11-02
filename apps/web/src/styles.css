@@ -16,6 +16,13 @@
   --accent-ink: #201b12;
   --accent-soft: #352b19;
   --danger: #b83e38;
+  /* I toni dei chip e dei riquadri di stato */
+  --ok-bg: #233328;
+  --ok-ink: #b0d6b6;
+  --info-bg: #233142;
+  --info-ink: #b1cff4;
+  --error-bg: #392321;
+  --error-ink: #f7a49e;
 }
 
 * {
@@ -207,19 +214,21 @@ h2 {
   border: 0;
 }
 
-.notice.boxed p {
-  margin: 0;
+.notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   line-height: 1.55;
 }
 
 .notice.boxed[data-tone='info'] {
-  background: #233142;
-  color: #b1cff4;
+  background: var(--info-bg);
+  color: var(--info-ink);
 }
 
 .notice.boxed[data-tone='error'] {
-  background: #392321;
-  color: #f7a49e;
+  background: var(--error-bg);
+  color: var(--error-ink);
 }
 
 /* I chip di stato: confermato, da controllare, informazione, errore */
@@ -236,8 +245,8 @@ h2 {
 }
 
 .chip[data-tone='confirmed'] {
-  background: #233328;
-  color: #b0d6b6;
+  background: var(--ok-bg);
+  color: var(--ok-ink);
 }
 
 .chip[data-tone='warning'] {
@@ -246,13 +255,13 @@ h2 {
 }
 
 .chip[data-tone='info'] {
-  background: #233142;
-  color: #b1cff4;
+  background: var(--info-bg);
+  color: var(--info-ink);
 }
 
 .chip[data-tone='error'] {
-  background: #392321;
-  color: #f7a49e;
+  background: var(--error-bg);
+  color: var(--error-ink);
 }
 
 a:focus-visible,
@@ -881,9 +890,9 @@ a.button {
   flex-direction: column;
   gap: 14px;
   padding: 24px;
-  background: #392321;
-  border-color: #f7a49e;
-  color: #f7a49e;
+  background: var(--error-bg);
+  border-color: var(--error-ink);
+  color: var(--error-ink);
   line-height: 1.5;
 }
 

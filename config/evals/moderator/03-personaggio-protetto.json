@@ -1,0 +1,13 @@
+{
+  "name": "va fermato: personaggio protetto",
+  "input": {
+    "text": "Topolino e Paperino aprono un’osteria in un western.",
+    "context": "idea",
+    "language": "it"
+  },
+  "expect": {
+    "equals": {
+      "allowed": false
+    }
+  }
+}

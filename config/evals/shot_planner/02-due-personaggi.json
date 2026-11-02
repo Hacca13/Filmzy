@@ -1,0 +1,186 @@
+{
+  "name": "scena con due personaggi",
+  "input": {
+    "scene": {
+      "number": 1,
+      "heading": "La piazza, sera",
+      "locationId": "piazza",
+      "timeOfDay": "sera",
+      "characterIds": [
+        "anna",
+        "marco"
+      ],
+      "summary": "Anna incontra Marco davanti alla fontana e gli porge una lettera.",
+      "beats": [],
+      "durationS": 24,
+      "id": "scene-1"
+    },
+    "bible": {
+      "project": {
+        "id": "proj-1",
+        "title": "Il corto di Anna",
+        "idea": "Una donna torna nella sua città natale per ritrovare un vecchio amico",
+        "genre": "drama",
+        "tone": "moving",
+        "language": "it",
+        "durationS": 60
+      },
+      "style": {
+        "id": "realistic",
+        "label": "Realistico",
+        "description": "Ripresa dal vero, colori naturali",
+        "hint": "photorealistic live-action film still, natural skin tones",
+        "enabled": true
+      },
+      "cinematography": {
+        "id": "handheld_warm",
+        "label": "Camera a mano, luce calda",
+        "description": "Vicina ai personaggi, intima, un po’ mossa",
+        "camera": "handheld camera, subtle natural shake, close and medium shots",
+        "lighting": "warm practical lights, soft shadows",
+        "lens": "35mm, shallow depth of field",
+        "grade": "warm tones, gentle contrast",
+        "enabled": true
+      },
+      "characters": [
+        {
+          "id": "anna",
+          "name": "Anna",
+          "tag": "protagonist",
+          "role": "protagonist",
+          "description": "Una donna sui 35 anni che torna nella sua città natale",
+          "appearance": {
+            "apparentAge": "35",
+            "build": "media",
+            "hair": "riccia, rossa, raccolta",
+            "face": "lentiggini, sorriso aperto",
+            "clothing": "giacca di jeans chiara",
+            "prompt": "a woman in her mid-30s, curly red hair, freckles, light denim jacket"
+          },
+          "sheet": []
+        },
+        {
+          "id": "marco",
+          "name": "Marco",
+          "tag": "ally",
+          "role": "alleato",
+          "description": "Un vecchio amico di Anna, rimasto in paese a fare il fabbro",
+          "appearance": {
+            "apparentAge": "40",
+            "build": "robusta",
+            "hair": "corti, scuri",
+            "face": "barba curata, occhi stanchi",
+            "clothing": "grembiule di cuoio sopra una camicia a quadri",
+            "prompt": "a sturdy man in his early 40s, short dark hair, trimmed beard, leather apron over a plaid shirt"
+          },
+          "sheet": []
+        }
+      ],
+      "locations": [
+        {
+          "id": "piazza",
+          "name": "La piazza del paese",
+          "description": "Piazza centrale al tramonto",
+          "prompt": "a small town square at sunset, warm light",
+          "references": []
+        }
+      ],
+      "limits": {
+        "maxCharacters": 2
+      }
+    },
+    "shotDurationS": {
+      "min": 3,
+      "max": 8
+    },
+    "previousExit": null,
+    "cameraMovements": [
+      {
+        "id": "push_in",
+        "label": "Avvicinati",
+        "description": "La camera si avvicina piano al soggetto",
+        "hint": "slow, steady push-in, the camera moves closer to the subject",
+        "endFrameHint": "the camera has moved closer: tighter framing on the subject, same angle",
+        "enabled": true
+      },
+      {
+        "id": "static",
+        "label": "Resta fermo",
+        "description": "La camera non si muove",
+        "hint": "locked-off camera, no camera movement",
+        "endFrameHint": "the camera has not moved: same framing, only the subjects have moved",
+        "enabled": true
+      },
+      {
+        "id": "pull_out",
+        "label": "Allontanati",
+        "description": "La camera si allontana piano dal soggetto",
+        "hint": "slow, steady pull-out, the camera moves away from the subject",
+        "endFrameHint": "the camera has moved back: wider framing on the subject",
+        "enabled": true
+      },
+      {
+        "id": "pan",
+        "label": "Panoramica",
+        "description": "La camera ruota da un lato all’altro",
+        "hint": "slow horizontal pan",
+        "endFrameHint": "the camera has panned: same position, new part of the scene in frame",
+        "enabled": true
+      }
+    ],
+    "language": "it",
+    "moodboard": null
+  },
+  "expect": {
+    "count": {
+      "shots": {
+        "min": 1,
+        "max": 9
+      }
+    },
+    "subset": [
+      {
+        "values": "shots[*].characters[*].characterId",
+        "of": "bible.characters[*].id"
+      },
+      {
+        "values": "shots[*].location.locationId",
+        "of": "bible.locations[*].id"
+      },
+      {
+        "values": "shots[*].intent.cameraMovement",
+        "of": "cameraMovements[*].id"
+      },
+      {
+        "values": "shots[*].continuity.entry.locationId",
+        "of": "bible.locations[*].id"
+      },
+      {
+        "values": "shots[*].continuity.exit.locationId",
+        "of": "bible.locations[*].id"
+      },
+      {
+        "values": "shots[*].continuity.entry.present",
+        "of": "bible.characters[*].id"
+      },
+      {
+        "values": "shots[*].continuity.exit.present",
+        "of": "bible.characters[*].id"
+      }
+    ],
+    "range": [
+      {
+        "values": "shots[*].intent.durationS",
+        "min": 3,
+        "max": 8
+      }
+    ],
+    "sum": [
+      {
+        "values": "shots[*].intent.durationS",
+        "min": 14,
+        "max": 34
+      }
+    ]
+  }
+}

@@ -172,10 +172,13 @@ async function commandEval(
     return 2;
   }
 
+  const reportDir = path.resolve('bench-output', 'valutazioni');
   const result = await runEval({
     role,
     configDir,
     evalsDir: path.resolve('config/evals'),
+    // Il rapporto si salva (esempi, risposte, scontrini) per confrontare servizi e istruzioni.
+    outputDir: reportDir,
     ...(environment === undefined ? {} : { environment }),
     ...(modelId === undefined ? {} : { modelId }),
   });
@@ -193,5 +196,6 @@ async function commandEval(
   console.log(
     `\n${environment === 'offline' ? 'Costo simulato (niente di speso)' : 'Spesa'}: ${result.totalCostUsd.toFixed(4)} $`,
   );
+  console.log(`Rapporto salvato in ${reportDir}`);
   return passati === result.cases.length ? 0 : 1;
 }

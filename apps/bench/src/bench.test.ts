@@ -208,3 +208,79 @@ describe('le valutazioni dei ruoli di testo (§4.13)', () => {
     expect(due?.problems.join(' ')).toContain('[[char:tomas]]');
   }, 30_000);
 });
+
+describe('gli esempi fissi degli altri ruoli di testo (T3.10)', () => {
+  const evaluate = (role: string, outputDir?: string) =>
+    runEval({
+      role,
+      configDir: CONFIG_DIR,
+      evalsDir: path.join(CONFIG_DIR, 'evals'),
+      environment: 'offline',
+      ...(outputDir === undefined ? {} : { outputDir }),
+    });
+
+  // Quanti esempi per ruolo: lo sceneggiatore ne ha cinque per la bozza e cinque per la stesura.
+  it.each([
+    ['moderator', 5],
+    ['casting', 5],
+    ['screenwriter', 10],
+    ['shot_planner', 5],
+    ['cinematographer', 5],
+  ])(
+    '%s: %i esempi, tutti con un ingresso valido per il suo ruolo',
+    async (role, count) => {
+      const result = await evaluate(role);
+
+      expect(result.cases).toHaveLength(count);
+      // Se un ingresso non fosse valido il ruolo fallirebbe prima di rispondere, senza risposta.
+      expect(result.cases.every((esito) => esito.output !== undefined)).toBe(true);
+      expect(result.totalCostUsd).toBeGreaterThan(0);
+    },
+    60_000,
+  );
+
+  it('le regole mordono: il fornitore finto approva sempre, quindi il moderatore sbaglia dove la risposta giusta è «no»', async () => {
+    const { cases } = await evaluate('moderator');
+    const byName = (part: string) => cases.find((esito) => esito.name.includes(part));
+
+    expect(byName('idea innocua')?.passed).toBe(true);
+    expect(byName('persona famosa')?.passed).toBe(false);
+    expect(byName('persona famosa')?.problems.join(' ')).toContain(
+      '"allowed" dovrebbe essere false',
+    );
+    expect(cases.filter((esito) => esito.name.startsWith('va fermato'))).toHaveLength(3);
+    expect(
+      cases.filter((esito) => esito.name.startsWith('va fermato')).every((e) => !e.passed),
+    ).toBe(true);
+  });
+
+  it('le regole mordono: la stesura che cita ciò che non le è stato dato non passa', async () => {
+    const { cases } = await evaluate('screenwriter');
+    const stesura = cases.find((esito) => esito.name.includes('l’oste non è stato scelto'));
+
+    expect(stesura?.passed).toBe(false);
+    expect(stesura?.problems.join(' ')).toContain(
+      'che non c\'è in "characters[*].id" dell\'ingresso',
+    );
+    expect(cases.filter((esito) => esito.name.startsWith('bozza')).every((e) => !e.passed)).toBe(
+      true,
+    );
+  });
+
+  it('il rapporto di un ruolo si salva con esempi, risposte e scontrini', async () => {
+    const outputDir = await mkdtemp(path.join(tmpdir(), 'filmzy-valutazioni-'));
+
+    await evaluate('shot_planner', outputDir);
+
+    const report = JSON.parse(
+      await readFile(path.join(outputDir, 'eval-shot_planner.json'), 'utf8'),
+    ) as {
+      role: string;
+      cases: unknown[];
+      receipts: unknown[];
+    };
+    expect(report.role).toBe('shot_planner');
+    expect(report.cases).toHaveLength(5);
+    expect(report.receipts).toHaveLength(5);
+  });
+});

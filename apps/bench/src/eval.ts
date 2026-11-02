@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -10,6 +10,8 @@ import {
 } from '@filmzy/troupe';
 import { z } from 'zod';
 
+import { checkRules, rulesSchema } from './eval-rules.js';
+
 /**
  * Le valutazioni dei ruoli di testo (architettura §4.13): esempi fissi in `config/evals/<ruolo>/`,
  * il ruolo gira su ognuno e si controlla che la risposta rispetti lo schema e poche regole
@@ -20,18 +22,8 @@ import { z } from 'zod';
 const exampleSchema = z.object({
   name: z.string().min(1),
   input: z.unknown(),
-  /**
-   * Regole semplici: niente giudizi di gusto, solo cose verificabili. Si applicano al `prompt`
-   * della risposta se c'è (così `maxChars` è confrontabile con `target.maxPromptChars`),
-   * altrimenti a tutta la risposta scritta in JSON.
-   */
-  expect: z
-    .object({
-      maxChars: z.number().int().positive().optional(),
-      contains: z.array(z.string().min(1)).optional(),
-      notContains: z.array(z.string().min(1)).optional(),
-    })
-    .optional(),
+  /** Regole semplici (vedi `eval-rules.ts`): niente giudizi di gusto, solo cose verificabili. */
+  expect: rulesSchema.optional(),
 });
 
 export interface EvalCase {
@@ -87,7 +79,7 @@ export async function runEval(options: EvalOptions): Promise<EvalResult> {
         purpose: 'eval',
         ...(options.modelId === undefined ? {} : { modelId: options.modelId }),
       });
-      const problems = check(result.data, example.expect);
+      const problems = checkRules(result.data, example.input, example.expect);
 
       cases.push({
         name: example.name,
@@ -115,40 +107,14 @@ export async function runEval(options: EvalOptions): Promise<EvalResult> {
   };
 
   if (options.outputDir !== undefined) {
+    await mkdir(options.outputDir, { recursive: true });
+    const suffix = options.modelId === undefined ? '' : `-${options.modelId}`;
     await writeFile(
-      path.join(options.outputDir, `eval-${options.role}.json`),
+      path.join(options.outputDir, `eval-${options.role}${suffix}.json`),
       `${JSON.stringify({ ...result, receipts: receipts.all() }, null, 2)}\n`,
       'utf8',
     );
   }
 
   return result;
-}
-
-function check(output: unknown, expect: z.infer<typeof exampleSchema>['expect']): string[] {
-  const problems: string[] = [];
-  if (expect === undefined) return problems;
-
-  const text = checkedText(output);
-  if (expect.maxChars !== undefined && text.length > expect.maxChars) {
-    problems.push(
-      `la risposta è lunga ${String(text.length)} caratteri, il massimo è ${String(expect.maxChars)}`,
-    );
-  }
-  for (const needle of expect.contains ?? []) {
-    if (!text.includes(needle)) problems.push(`manca "${needle}"`);
-  }
-  for (const needle of expect.notContains ?? []) {
-    if (text.includes(needle)) problems.push(`non dovrebbe contenere "${needle}"`);
-  }
-  return problems;
-}
-
-/** Il testo su cui valgono le regole: il prompt dei ruoli che ne scrivono uno, altrimenti tutto. */
-function checkedText(output: unknown): string {
-  if (typeof output === 'object' && output !== null && 'prompt' in output) {
-    const { prompt } = output;
-    if (typeof prompt === 'string') return prompt;
-  }
-  return JSON.stringify(output);
 }

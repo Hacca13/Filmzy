@@ -55,6 +55,63 @@ describe('resolveRole sul seme', () => {
   });
 });
 
+describe('il predefinito del gruppo (T2.7)', () => {
+  const allEnabled = (config: TroupeConfig) =>
+    Object.keys(config.models).filter((id) => config.models[id]?.status !== 'retired');
+
+  it('un ruolo di testo usa il servizio predefinito del gruppo al posto di quello della release', () => {
+    const settings: UserSettings = {
+      ...noSettings,
+      enabledModelIds: allEnabled(seed),
+      defaultModels: { text: 'claude-sonnet' },
+    };
+
+    // Il moderatore della release usa claude-haiku: il predefinito dell'utente vince.
+    expect(resolveRole(seed, 'moderator', settings).modelId).toBe('claude-sonnet');
+  });
+
+  it('il servizio scelto per il ruolo vince sul predefinito del gruppo', () => {
+    const settings: UserSettings = {
+      ...noSettings,
+      enabledModelIds: allEnabled(seed),
+      defaultModels: { text: 'claude-sonnet' },
+      roleSettings: { moderator: { modelId: 'claude-haiku' } },
+    };
+
+    expect(resolveRole(seed, 'moderator', settings).modelId).toBe('claude-haiku');
+  });
+
+  it('se il predefinito non è idoneo (non attivato) si guarda quello della release', () => {
+    const settings: UserSettings = {
+      ...noSettings,
+      enabledModelIds: ['claude-haiku'],
+      defaultModels: { text: 'claude-sonnet' },
+    };
+
+    expect(resolveRole(seed, 'moderator', settings).modelId).toBe('claude-haiku');
+  });
+
+  it('un predefinito di un altro gruppo non tocca i ruoli di testo', () => {
+    const settings: UserSettings = {
+      ...noSettings,
+      enabledModelIds: allEnabled(seed),
+      defaultModels: { video: 'seedance-2' },
+    };
+
+    expect(resolveRole(seed, 'moderator', settings).modelId).toBe('claude-haiku');
+  });
+
+  it('per un ruolo con candidati il predefinito del gruppo passa in testa', () => {
+    const settings: UserSettings = {
+      ...noSettings,
+      enabledModelIds: allEnabled(seed),
+      defaultModels: { video: 'seedance-2' },
+    };
+
+    expect(resolveRole(seed, 'camera_operator', settings).modelId).toBe('seedance-2');
+  });
+});
+
 describe("le scelte dell'utente vincono sulla release (D38)", () => {
   it('cambia il servizio del ruolo', () => {
     const settings: UserSettings = {

@@ -54,6 +54,11 @@ export class ConnectionsService {
     return {
       groups: MODEL_GROUPS.map((group) => this.groupState(group, config, current)),
       hasChoices: explicit && settings !== undefined,
+      limits: {
+        ...(current.spendCaps.filmBudgetUsd === undefined
+          ? {}
+          : { filmBudgetUsd: current.spendCaps.filmBudgetUsd }),
+      },
     };
   }
 
@@ -150,6 +155,19 @@ export class ConnectionsService {
     return this.overview();
   }
 
+  /** Il limite di spesa per film (D30): facoltativo, `null` lo toglie. Si scrive, ma non si applica ancora (T3.1). */
+  async setFilmBudget(usd: number | null): Promise<ConnectionsOverview> {
+    const { config } = await this.effective();
+
+    this.userSettings.update(config, (settings) => {
+      const rest = Object.fromEntries(
+        Object.entries(settings.spendCaps).filter(([name]) => name !== 'filmBudgetUsd'),
+      );
+      return { ...settings, spendCaps: usd === null ? rest : { ...rest, filmBudgetUsd: usd } };
+    });
+    return this.overview();
+  }
+
   /** La prova che non costa. Se qualcosa non va, lancia un `ProviderError` che il filtro traduce. */
   async test(connectionId: string): Promise<void> {
     const { config } = await this.effective();
@@ -198,6 +216,17 @@ export class ConnectionsService {
     if (reason !== undefined) {
       throw domainError(400, 'invalid_request', { details: { field: 'modelIds', modelId } });
     }
+  }
+
+  /** Il servizio si può usare adesso: non ritirato, di un fornitore acceso e con la chiave (§4.3). */
+  isUsable(config: TroupeConfig, modelId: string): boolean {
+    const model = config.models[modelId];
+    const connection = model === undefined ? undefined : config.connections[model.connection];
+    return (
+      model !== undefined &&
+      connection !== undefined &&
+      this.unusableReason(connection, model) === undefined
+    );
   }
 
   /** Perché un servizio non si può usare adesso (§4.3): ritirato, fornitore spento, chiave mancante. */

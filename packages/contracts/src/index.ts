@@ -163,6 +163,7 @@ export * from './instructions-api.js';
 export * from './draft-test-api.js';
 export * from './release-history-api.js';
 export * from './connections-api.js';
+export * from './roles-api.js';
 export { domainEventSchema } from './events.js';
 export type { DomainEvent } from './events.js';
 export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';

@@ -44,3 +44,8 @@ export function setMonthlyCap(connectionId: string, usd: number | null) {
 export function testConnection(connectionId: string) {
   return sendJson('POST', `${connection(connectionId)}/test`, connectionTestResultSchema);
 }
+
+/** Il limite di spesa per film; `null` lo toglie. Per ora si scrive e basta (T3.1). */
+export function setFilmBudget(usd: number | null) {
+  return sendJson('PUT', '/limits/film-budget', connectionsOverviewSchema, { usd });
+}

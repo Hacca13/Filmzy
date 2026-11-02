@@ -7,10 +7,9 @@ import {
   type InstructionVersionInfo,
   type InstructionsOverview,
   type PreviewInstructionsResponse,
+  type RoleId,
   type RoleInstructions,
-  type RoleSettings,
   type TroupeConfigData,
-  type UserSettings,
 } from '@filmzy/contracts';
 import type { TroupeStore } from '@filmzy/db';
 import {
@@ -23,7 +22,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { TROUPE_STORE } from '../troupe/tokens.js';
-import { UserSettingsService } from '../troupe/user-settings.service.js';
+import { updateRoleSettings, UserSettingsService } from '../troupe/user-settings.service.js';
 import { isUserFile } from './db-instructions-source.js';
 import { INSTRUCTIONS_SOURCE } from './tokens.js';
 
@@ -120,11 +119,10 @@ export class InstructionsService {
     if (version !== null) await this.entryOf(instructionsId, version);
 
     this.userSettings.update(config, (settings) =>
-      withInstructionsChoice(
-        settings,
-        roleId as RoleKey,
-        version === null ? undefined : `${instructionsId}@${String(version)}`,
-      ),
+      updateRoleSettings(settings, roleId, (current) => ({
+        ...current,
+        instructions: version === null ? undefined : `${instructionsId}@${String(version)}`,
+      })),
     );
     return this.roleInstructions(config, roleId);
   }
@@ -155,7 +153,7 @@ export class InstructionsService {
   ): Promise<RoleInstructions> {
     const { role, instructionsId } = this.roleOf(config, roleId);
     const manifest = await this.source.manifest(instructionsId);
-    const chosen = this.store.getSettings().settings?.roleSettings[roleId as RoleKey]?.instructions;
+    const chosen = this.store.getSettings().settings?.roleSettings[roleId as RoleId]?.instructions;
     // Stessa precedenza di `resolveInstructions`: scelta dell'utente, release, consigliata.
     const pinned = chosen ?? role.instructions;
     const inUse =
@@ -211,28 +209,6 @@ export class InstructionsService {
       .map((row) => row.version);
     return Math.max(USER_INSTRUCTION_VERSION_BASE, ...mine) + 1;
   }
-}
-
-type RoleKey = keyof UserSettings['roleSettings'];
-
-/**
- * Le scelte con la versione di istruzioni di un ruolo cambiata (o tolta). Se al ruolo non resta
- * nessuna regolazione, la sua voce sparisce: niente righe vuote in `roleSettings`.
- */
-function withInstructionsChoice(
-  settings: UserSettings,
-  roleId: RoleKey,
-  ref: string | undefined,
-): UserSettings {
-  const { [roleId]: current, ...others } = settings.roleSettings;
-  const role: RoleSettings = { ...current };
-  if (ref === undefined) delete role.instructions;
-  else role.instructions = ref;
-
-  return {
-    ...settings,
-    roleSettings: Object.keys(role).length === 0 ? others : { ...others, [roleId]: role },
-  };
 }
 
 /** Il numero di versione lo dà il programma: nel testo si riscrive, così il file combacia. */

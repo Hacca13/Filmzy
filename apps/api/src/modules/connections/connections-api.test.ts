@@ -248,6 +248,24 @@ describe('fornitori e servizi (T2.7)', () => {
     });
   });
 
+  it('il limite di spesa per film si mette e si toglie, e nessuno è preimpostato', async () => {
+    expect((await overview()).limits).toEqual({});
+
+    const set = await put('/limits/film-budget', { usd: 12 });
+    expect(connectionsOverviewSchema.parse(set.body).limits).toEqual({ filmBudgetUsd: 12 });
+    // Il limite di un fornitore e quello per film convivono: toccare uno non cambia l'altro.
+    const cap = await put('/connections/fal/monthly-cap', { usd: 30 });
+    expect(connectionsOverviewSchema.parse(cap.body).limits).toEqual({ filmBudgetUsd: 12 });
+
+    const cleared = await put('/limits/film-budget', { usd: null });
+    expect(connectionsOverviewSchema.parse(cleared.body).limits).toEqual({});
+    expect(
+      provider(connectionsOverviewSchema.parse(cleared.body), 'video', 'fal').monthlyCapUsd,
+    ).toBe(30);
+
+    expect((await put('/limits/film-budget', { usd: 0 })).status).toBe(400);
+  });
+
   it("provare un fornitore che non c'è è 404", async () => {
     expect((await client.call('POST', '/connections/inventata/test')).status).toBe(404);
   });

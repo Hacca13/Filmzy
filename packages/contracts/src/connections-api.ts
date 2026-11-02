@@ -81,6 +81,8 @@ export type GroupState = z.infer<typeof groupStateSchema>;
 export const connectionsOverviewSchema = z.object({
   groups: z.array(groupStateSchema),
   hasChoices: z.boolean(),
+  /** I limiti di spesa che non sono di un fornitore. Facoltativi: nessuno è preimpostato (D36). */
+  limits: z.object({ filmBudgetUsd: z.number().positive().optional() }),
 });
 
 export type ConnectionsOverview = z.infer<typeof connectionsOverviewSchema>;
@@ -106,6 +108,11 @@ export const setMonthlyCapBodySchema = z.object({
 });
 
 export type SetMonthlyCapBody = z.infer<typeof setMonthlyCapBodySchema>;
+
+/** `PUT /limits/film-budget`: il limite di spesa per film; `null` lo toglie. Stessa forma del limite mensile. */
+export const setFilmBudgetBodySchema = setMonthlyCapBodySchema;
+
+export type SetFilmBudgetBody = SetMonthlyCapBody;
 
 /** `POST /connections/:id/test`: la prova che non costa. Un fallimento è un errore del dominio. */
 export const connectionTestResultSchema = z.object({ ok: z.literal(true) });

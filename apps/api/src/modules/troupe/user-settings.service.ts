@@ -1,4 +1,4 @@
-import type { TroupeConfigData, UserSettings } from '@filmzy/contracts';
+import type { RoleId, RoleSettings, TroupeConfigData, UserSettings } from '@filmzy/contracts';
 import type { TroupeStore } from '@filmzy/db';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -50,5 +50,35 @@ export function implicitSettings(config: TroupeConfigData): UserSettings {
     defaultModelByConnection: {},
     spendCaps: {},
     roleSettings: {},
+  };
+}
+
+function withoutUndefined<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
+}
+
+/**
+ * Cambia le regolazioni di un ruolo (modello, creatività, istruzioni: D38). `change` può mettere
+ * `undefined` per togliere un campo; se al ruolo non resta niente la sua voce sparisce, perché in
+ * `roleSettings` non devono restare righe vuote.
+ */
+export function updateRoleSettings(
+  settings: UserSettings,
+  roleId: string,
+  change: (current: RoleSettings) => RoleSettings,
+): UserSettings {
+  const next = withoutUndefined(change(settings.roleSettings[roleId as RoleId] ?? {}));
+  const params = next.params === undefined ? undefined : withoutUndefined(next.params);
+  const role = withoutUndefined({
+    ...next,
+    params: params !== undefined && Object.keys(params).length > 0 ? params : undefined,
+  });
+
+  const others = Object.entries(settings.roleSettings).filter(([id]) => id !== roleId);
+  return {
+    ...settings,
+    roleSettings: Object.fromEntries(
+      Object.keys(role).length === 0 ? others : [...others, [roleId, role]],
+    ),
   };
 }

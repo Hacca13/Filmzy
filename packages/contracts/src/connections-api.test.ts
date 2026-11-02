@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   connectionsOverviewSchema,
+  setFilmBudgetBodySchema,
   setGroupDefaultBodySchema,
   setMonthlyCapBodySchema,
   setServicesBodySchema,
@@ -20,6 +21,14 @@ describe('setMonthlyCapBodySchema', () => {
       expect(setMonthlyCapBodySchema.safeParse(body).success).toBe(false);
     },
   );
+});
+
+describe('setFilmBudgetBodySchema', () => {
+  it('un importo positivo, oppure null per nessun limite', () => {
+    expect(setFilmBudgetBodySchema.parse({ usd: 12 })).toEqual({ usd: 12 });
+    expect(setFilmBudgetBodySchema.parse({ usd: null })).toEqual({ usd: null });
+    expect(setFilmBudgetBodySchema.safeParse({ usd: 0 }).success).toBe(false);
+  });
 });
 
 describe('setServicesBodySchema', () => {
@@ -46,6 +55,7 @@ describe('connectionsOverviewSchema', () => {
   it('un gruppo con un fornitore, i suoi servizi e la chiave senza il valore', () => {
     const overview = {
       hasChoices: true,
+      limits: { filmBudgetUsd: 10 },
       groups: [
         {
           group: 'video',
@@ -87,6 +97,7 @@ describe('connectionsOverviewSchema', () => {
   it('non porta mai il valore di una chiave, nemmeno se qualcuno lo aggiungesse', () => {
     const parsed = connectionsOverviewSchema.parse({
       hasChoices: false,
+      limits: {},
       groups: [
         {
           group: 'text',

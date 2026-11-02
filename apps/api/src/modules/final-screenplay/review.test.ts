@@ -145,3 +145,28 @@ describe('acceptedFromAnswers', () => {
     expect(acceptedFromAnswers([], [])).toEqual([]);
   });
 });
+
+describe('compareDraftWithChoices: senza proposalId', () => {
+  it('un personaggio scelto senza legame con la bozza, ma con lo stesso nome, vale come quello della bozza', () => {
+    const written = { id: 'c-9', name: ' anna ' } as unknown as Character;
+    const keys = compareDraftWithChoices(draft(), [written], [stazione]).map((d) => d.key);
+
+    // Anna non compare né come «non scelto» né come «non nella bozza»; l'oste resta da decidere.
+    expect(keys).toEqual(['character:not_chosen:oste-p']);
+  });
+
+  it('due scelti con lo stesso nome prendono una proposta sola: l’altro è «non nella bozza»', () => {
+    const first = { id: 'c-8', name: 'Anna' } as unknown as Character;
+    const second = { id: 'c-9', name: 'anna' } as unknown as Character;
+    const keys = compareDraftWithChoices(draft(), [first, second], [stazione]).map((d) => d.key);
+
+    expect(keys).toEqual(['character:not_chosen:oste-p', 'character:not_in_draft:c-9']);
+  });
+
+  it('il legame col proposalId vince sul nome', () => {
+    const renamed = { id: 'c-1', name: 'Annetta', proposalId: 'anna-p' } as unknown as Character;
+    const keys = compareDraftWithChoices(draft(), [renamed], [stazione]).map((d) => d.key);
+
+    expect(keys).toEqual(['character:not_chosen:oste-p']);
+  });
+});

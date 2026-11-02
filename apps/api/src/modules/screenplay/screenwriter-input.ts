@@ -29,9 +29,10 @@ export interface ScreenwriterInputArgs {
  * quelli basta l'id (lo legge il modello, non l'utente). Lo stile serve intero e senza non si può
  * scrivere, quindi manca → `config_invalid`.
  *
- * Nella bozza e nelle sue modifiche personaggi e luoghi scelti non servono: la bozza li propone, non
- * li usa. Nella stesura ufficiale (`chosen`) lo sceneggiatore riceve invece cast e luoghi scelti, e gli
- * elementi della bozza che l'utente ha deciso di tenere al riepilogo (D18).
+ * Nella bozza e nelle sue modifiche non si passano cast e luoghi scelti, anche se ci sono: la bozza
+ * deve continuare a proporre personaggi e luoghi con i propri id, perché il riepilogo (T3.8) li
+ * confronta con le scelte. Nella stesura ufficiale (`chosen`) lo sceneggiatore riceve invece cast e
+ * luoghi scelti, e gli elementi della bozza che l'utente ha deciso di tenere al riepilogo (D18).
  */
 export function screenwriterInput(args: ScreenwriterInputArgs): ScreenwriterInput {
   const { project, config } = args;

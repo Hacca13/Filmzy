@@ -651,6 +651,11 @@ a.button {
   margin: 0;
 }
 
+.beats {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
 .versions {
   display: flex;
   flex-wrap: wrap;

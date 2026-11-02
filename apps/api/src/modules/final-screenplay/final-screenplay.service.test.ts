@@ -379,3 +379,22 @@ describe('la stesura corretta a mano', () => {
     expect(codeOf(error)).toBe('not_found');
   });
 });
+
+describe('la stesura dopo una modifica del cast', () => {
+  it('se un personaggio è stato tolto dal film si corregge lo stesso, e la scena non lo cita più', async () => {
+    await build().write(film.id, {
+      answers: [{ key: 'character:not_chosen:oste-p', decision: 'adapt' }],
+    });
+    const latest = store.latest(film.id, 'final');
+    if (latest === undefined) throw new Error('la stesura doveva esserci');
+    expect(latest.screenplay.scenes[0]?.characterIds).toEqual(['c-anna']);
+
+    // Anna è stata tolta dal cast: la stesura la cita ancora, ma il titolo si può correggere.
+    const edited = await build({ characters: [] }).edit(film.id, {
+      screenplay: { ...latest.screenplay, title: 'La corsa di notte' },
+    });
+
+    expect(edited.version).toBe(2);
+    expect(edited.screenplay.scenes[0]?.characterIds).toEqual([]);
+  });
+});

@@ -19,6 +19,7 @@ import {
 import { fetchLocations } from '../../api/locations';
 import { Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
+import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
@@ -47,32 +48,44 @@ export function FinalPanel({ filmId }: { filmId: string }) {
   );
   const review = useResource(loadReview);
   const versions = useResource(loadVersions);
+  // Mentre si ricarica resta il dato di prima: la schermata non si smonta e non perde il testo
+  // che l'utente sta correggendo né le risposte che ha già dato.
+  const reviewData = useLastReady(review.state);
+  const versionsData = useLastReady(versions.state);
+  const reload = () => {
+    review.reload();
+    versions.reload();
+  };
 
   return (
     <section className="panel final" id="la-sceneggiatura-finale">
       <h2>Il riepilogo e la sceneggiatura finale</h2>
       {review.state.status === 'error' ? (
         isNotFound(review.state.error) ? (
-          <p className="hint">
-            Quando avrai scritto la bozza nella sezione «La storia», qui la confronteremo con le tue
-            scelte e potrai chiedere la sceneggiatura finale.
-          </p>
+          <>
+            <p className="hint">
+              Quando avrai scritto la bozza nella sezione «La storia», qui la confronteremo con le
+              tue scelte e potrai chiedere la sceneggiatura finale.
+            </p>
+            <div className="actions">
+              <button type="button" className="button" onClick={reload}>
+                Controlla di nuovo
+              </button>
+            </div>
+          </>
         ) : (
           <Notice tone="error">{describeError(review.state.error)}</Notice>
         )
       ) : versions.state.status === 'error' ? (
         <Notice tone="error">{describeError(versions.state.error)}</Notice>
-      ) : review.state.status === 'loading' || versions.state.status === 'loading' ? (
+      ) : reviewData === undefined || versionsData === undefined ? (
         <p className="hint">Un attimo…</p>
       ) : (
         <FinalSection
           filmId={filmId}
-          review={review.state.data}
-          versions={versions.state.data.versions}
-          reload={() => {
-            review.reload();
-            versions.reload();
-          }}
+          review={reviewData}
+          versions={versionsData.versions}
+          reload={reload}
         />
       )}
     </section>
@@ -81,6 +94,12 @@ export function FinalPanel({ filmId }: { filmId: string }) {
 
 const isNotFound = (error: unknown) =>
   error instanceof ApiError && error.serverCode === 'not_found';
+
+/** Il server ha rifiutato le risposte perché le differenze sono cambiate nel frattempo. */
+const isStaleAnswers = (error: unknown) =>
+  error instanceof ApiError &&
+  error.serverCode === 'invalid_request' &&
+  error.details?.field === 'answers';
 
 interface SectionProps {
   filmId: string;
@@ -133,6 +152,14 @@ function FinalSection({ filmId, review, versions, reload }: SectionProps) {
               writeFinal(filmId, {
                 answers: answersFor(review.differences, answers),
                 spendConfirmed,
+              }).catch((error: unknown) => {
+                // Il cast è cambiato dopo l'ultimo controllo: le risposte non valgono più.
+                // Si rilegge il riepilogo e l'utente risponde di nuovo (il messaggio lo spiega).
+                if (isStaleAnswers(error)) {
+                  setAnswers({});
+                  reload();
+                }
+                throw error;
               }),
             );
           }}
@@ -154,6 +181,9 @@ function FinalSection({ filmId, review, versions, reload }: SectionProps) {
           versions={versions}
           newestId={newest.id}
           selectedId={chosenId ?? newest.id}
+          // Mentre lo sceneggiatore scrive non si corregge: la correzione diventerebbe una versione
+          // che la nuova stesura scavalcherebbe subito.
+          locked={written.running}
           onSelect={setChosenId}
           onSaved={() => {
             setChosenId(undefined);
@@ -185,12 +215,22 @@ interface StoryProps {
   versions: readonly ScreenplayVersionSummary[];
   newestId: string;
   selectedId: string;
+  /** Una nuova stesura è in scrittura: le correzioni aspettano. */
+  locked: boolean;
   onSelect: (versionId: string | undefined) => void;
   onSaved: () => void;
 }
 
 /** La stesura ufficiale: si rilegge, si scelgono le versioni e, sull'ultima, si corregge il testo. */
-function FinalStory({ filmId, versions, newestId, selectedId, onSelect, onSaved }: StoryProps) {
+function FinalStory({
+  filmId,
+  versions,
+  newestId,
+  selectedId,
+  locked,
+  onSelect,
+  onSaved,
+}: StoryProps) {
   const [editing, setEditing] = useState(false);
   const action = useAction();
   const loadVersion = useCallback(
@@ -227,7 +267,7 @@ function FinalStory({ filmId, versions, newestId, selectedId, onSelect, onSaved 
       ) : editing && !readingOld ? (
         <FinalEditor
           screenplay={version.state.data.screenplay}
-          busy={action.busy}
+          busy={action.busy || locked}
           onSave={(screenplay) => {
             action.run(async () => {
               await editFinal(filmId, { screenplay });
@@ -256,6 +296,7 @@ function FinalStory({ filmId, versions, newestId, selectedId, onSelect, onSaved 
               <button
                 type="button"
                 className="button"
+                disabled={locked}
                 onClick={() => {
                   setEditing(true);
                 }}

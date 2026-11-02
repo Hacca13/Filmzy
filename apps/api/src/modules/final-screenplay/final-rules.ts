@@ -1,10 +1,12 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { Character, Location, Screenplay } from '@filmzy/contracts';
 
 import { domainError } from '../../http/domain-error.js';
 
 type Bible = {
-  characters: readonly Pick<Character, 'id'>[];
-  locations: readonly Pick<Location, 'id'>[];
+  characters: readonly Pick<Character, 'id' | 'proposalId'>[];
+  locations: readonly Pick<Location, 'id' | 'proposalId'>[];
 };
 
 /**
@@ -12,63 +14,94 @@ type Bible = {
  * le proposte di personaggi e luoghi sono vuote per definizione (si usano solo quelli scelti), e le
  * scene possono citare solo personaggi e luoghi che esistono.
  *
- * Un modello può sbagliare e citare un id che non c'è. Non si butta una stesura pagata per questo:
- * si tolgono i riferimenti che non portano a niente, e il testo della scena resta com'è.
+ * Un modello può sbagliare. Se cita un personaggio o un luogo con l'id che aveva nella bozza (la
+ * proposta) lo si ricollega a quello scelto; se cita un id che non c'è, si toglie il riferimento
+ * e il testo della scena resta com'è. Non si butta una stesura pagata per questo.
  */
 export function settleFinal(output: Screenplay, bible: Bible): Screenplay {
-  const known = knownIds(bible);
+  const asCharacter = resolver(bible.characters);
+  const asLocation = resolver(bible.locations);
 
   return {
     ...output,
     characters: [],
     locations: [],
-    scenes: output.scenes.map(({ locationId, characterIds, ...scene }) => ({
-      ...scene,
-      characterIds: characterIds.filter((id) => known.characters.has(id)),
-      ...(locationId !== undefined && known.locations.has(locationId) ? { locationId } : {}),
-    })),
+    scenes: output.scenes.map(({ locationId, characterIds, ...scene }) => {
+      const location = locationId === undefined ? undefined : asLocation(locationId);
+      return {
+        ...scene,
+        characterIds: [...new Set(characterIds.flatMap((id) => asCharacter(id) ?? []))],
+        ...(location === undefined ? {} : { locationId: location }),
+      };
+    }),
   };
 }
 
+/** Da un id citato a quello vero: lo stesso id, o l'elemento scelto a partire da quella proposta. */
+function resolver(chosen: readonly { id: string; proposalId?: string | undefined }[]) {
+  const known = new Set(chosen.map((item) => item.id));
+  const byProposal = new Map(
+    chosen.flatMap((item) =>
+      item.proposalId === undefined ? [] : [[item.proposalId, item.id] as const],
+    ),
+  );
+  return (id: string): string | undefined => (known.has(id) ? id : byProposal.get(id));
+}
+
 /**
- * Il testo corretto a mano dall'utente deve essere una stesura vera: niente proposte e nessuna
- * scena che citi un personaggio o un luogo che il film non ha. Lo dice il server, perché
- * l'interfaccia non conosce gli id.
+ * Il testo corretto a mano dall'utente deve essere una stesura vera: niente proposte, scene con
+ * numeri diversi e nessuna scena che citi un personaggio o un luogo che il film non ha. Lo dice il
+ * server, perché l'interfaccia non conosce gli id.
+ *
+ * Una citazione che c'era già nella versione precedente passa: se l'utente ha tolto un personaggio
+ * dal film dopo la stesura, non per questo deve restare bloccato fuori dalle correzioni. Chi salva
+ * la ripulisce con `settleFinal`.
  */
-export function assertFinalIsConsistent(screenplay: Screenplay, bible: Bible): void {
+export function assertFinalIsConsistent(
+  screenplay: Screenplay,
+  bible: Bible,
+  previous: Screenplay,
+): void {
   if (screenplay.characters.length > 0) {
     throw domainError(400, 'invalid_request', { details: { field: 'screenplay.characters' } });
   }
   if (screenplay.locations.length > 0) {
     throw domainError(400, 'invalid_request', { details: { field: 'screenplay.locations' } });
   }
-  const known = knownIds(bible);
-  const citesUnknown = screenplay.scenes.some(
+
+  const numbers = screenplay.scenes.map((scene) => scene.number);
+  const known = {
+    characters: new Set(bible.characters.map((character) => character.id)),
+    locations: new Set(bible.locations.map((location) => location.id)),
+  };
+  const citedBefore = {
+    characters: new Set(previous.scenes.flatMap((scene) => scene.characterIds)),
+    locations: new Set(previous.scenes.flatMap((scene) => scene.locationId ?? [])),
+  };
+  const citesNew = screenplay.scenes.some(
     (scene) =>
-      scene.characterIds.some((id) => !known.characters.has(id)) ||
-      (scene.locationId !== undefined && !known.locations.has(scene.locationId)),
+      scene.characterIds.some(
+        (id) => !known.characters.has(id) && !citedBefore.characters.has(id),
+      ) ||
+      (scene.locationId !== undefined &&
+        !known.locations.has(scene.locationId) &&
+        !citedBefore.locations.has(scene.locationId)),
   );
-  if (citesUnknown) {
+  if (new Set(numbers).size !== numbers.length || citesNew) {
     throw domainError(400, 'invalid_request', { details: { field: 'screenplay.scenes' } });
   }
 }
 
-function knownIds(bible: Bible) {
-  return {
-    characters: new Set(bible.characters.map((character) => character.id)),
-    locations: new Set(bible.locations.map((location) => location.id)),
-  };
-}
-
-/** Gli stessi dati? Le due stesure sono già passate da Zod, quindi hanno le chiavi nello stesso ordine. */
+/** Gli stessi dati? Il confronto è sul contenuto: l'ordine delle chiavi non conta. */
 export function isSameScreenplay(a: Screenplay, b: Screenplay): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return isDeepStrictEqual(a, b);
 }
 
 /**
  * Le parole che l'utente ha cambiato rispetto alla versione precedente, da far controllare al
  * moderatore (T3.3): solo i campi di testo cambiati, così non si ripaga un testo già controllato.
- * Vuoto se è cambiato soltanto qualcosa che non è testo (durata, personaggi di una scena).
+ * Vuoto se è cambiato soltanto qualcosa che non è testo (durata, personaggi di una scena). Le
+ * scene si riconoscono dal numero, che `assertFinalIsConsistent` garantisce diverso per ognuna.
  */
 export function changedText(previous: Screenplay, next: Screenplay): string {
   const before = textsOf(previous);

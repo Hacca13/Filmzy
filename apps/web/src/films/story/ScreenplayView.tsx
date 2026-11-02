@@ -1,6 +1,7 @@
 import type { Screenplay, ScreenplayVersionSummary } from '@filmzy/contracts';
 
-import { namesOf, sceneMeta, totalDuration, versionLabel, versionNote } from './model';
+import { SceneList } from './SceneList';
+import { totalDuration, versionLabel, versionNote } from './model';
 
 /** La bozza come si legge: titolo, trama in una riga, scene riassunte, personaggi e luoghi proposti. */
 export function ScreenplayView({ screenplay }: { screenplay: Screenplay }) {
@@ -11,19 +12,7 @@ export function ScreenplayView({ screenplay }: { screenplay: Screenplay }) {
       <p className="hint">
         {screenplay.scenes.length} scene · circa {totalDuration(screenplay)}
       </p>
-      <ol className="scenes">
-        {screenplay.scenes.map((scene) => {
-          const people = namesOf(scene.characterIds, screenplay.characters);
-          return (
-            <li key={scene.number} className="scene">
-              <strong>{scene.heading}</strong>
-              <span className="hint">{sceneMeta(scene)}</span>
-              <p>{scene.summary}</p>
-              {people.length === 0 ? null : <p className="hint">Con {people.join(', ')}</p>}
-            </li>
-          );
-        })}
-      </ol>
+      <SceneList scenes={screenplay.scenes} people={screenplay.characters} />
       {screenplay.characters.length === 0 ? null : (
         <section>
           <h4>Personaggi proposti</h4>

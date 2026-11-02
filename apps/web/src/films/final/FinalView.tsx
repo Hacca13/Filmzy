@@ -1,6 +1,7 @@
 import type { Screenplay } from '@filmzy/contracts';
 
-import { namesOf, sceneMeta, totalDuration } from '../story/model';
+import { SceneList } from '../story/SceneList';
+import { totalDuration } from '../story/model';
 
 interface Named {
   id: string;
@@ -8,8 +9,9 @@ interface Named {
 }
 
 /**
- * La sceneggiatura finale come si legge (T3.8): titolo, trama, scene con chi ci sta e dove. I nomi
- * vengono dal cast e dai luoghi del film, perché nella stesura le scene citano solo quelli.
+ * La sceneggiatura finale come si legge (T3.8): titolo, trama, scene con i passaggi, chi ci sta e
+ * dove, e le note dello sceneggiatore (per esempio perché ha adattato la storia alle scelte). I
+ * nomi vengono dal cast e dai luoghi del film, perché nella stesura le scene citano solo quelli.
  */
 export function FinalView({
   screenplay,
@@ -27,24 +29,13 @@ export function FinalView({
       <p className="hint">
         {screenplay.scenes.length} scene · circa {totalDuration(screenplay)}
       </p>
-      <ol className="scenes">
-        {screenplay.scenes.map((scene) => {
-          const people = namesOf(scene.characterIds, characters);
-          const place = namesOf(
-            scene.locationId === undefined ? [] : [scene.locationId],
-            locations,
-          );
-          return (
-            <li key={scene.number} className="scene">
-              <strong>{scene.heading}</strong>
-              <span className="hint">{sceneMeta(scene)}</span>
-              <p>{scene.summary}</p>
-              {people.length === 0 ? null : <p className="hint">Con {people.join(', ')}</p>}
-              {place.length === 0 ? null : <p className="hint">Luogo: {place.join(', ')}</p>}
-            </li>
-          );
-        })}
-      </ol>
+      <SceneList scenes={screenplay.scenes} people={characters} places={locations} />
+      {screenplay.notes === undefined ? null : (
+        <section>
+          <h4>Note dello sceneggiatore</h4>
+          <p>{screenplay.notes}</p>
+        </section>
+      )}
     </article>
   );
 }

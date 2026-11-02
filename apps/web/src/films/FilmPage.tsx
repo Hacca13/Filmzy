@@ -78,7 +78,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       <StoryPanel filmId={film.id} />
       <CastPanel filmId={film.id} />
       <LocationsPanel filmId={film.id} />
-      <FinalPanel filmId={film.id} />
+      <FinalPanel key={film.id} filmId={film.id} />
     </section>
   );
 }

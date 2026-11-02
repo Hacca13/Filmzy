@@ -53,31 +53,49 @@ export function finalVersionNote(version: ScreenplayVersionSummary): string {
   return version.generationId === undefined ? 'Corretta a mano' : 'Scritta dallo sceneggiatore';
 }
 
-/** I testi che l'utente può correggere: titolo, trama e, per ogni scena, intestazione, momento e riassunto. */
+/**
+ * I testi che l'utente può correggere: titolo, trama, note e, per ogni scena, intestazione, momento,
+ * riassunto e passaggi (`beats`, uno per riga). Le note e i passaggi possono restare vuoti.
+ */
 export interface FinalEdits {
   title: string;
   logline: string;
-  scenes: { heading: string; timeOfDay: string; summary: string }[];
+  notes: string;
+  scenes: { heading: string; timeOfDay: string; summary: string; beats: string }[];
 }
 
 export function editsOf(screenplay: Screenplay): FinalEdits {
   return {
     title: screenplay.title,
     logline: screenplay.logline,
-    scenes: screenplay.scenes.map(({ heading, timeOfDay, summary }) => ({
+    notes: screenplay.notes ?? '',
+    scenes: screenplay.scenes.map(({ heading, timeOfDay, summary, beats }) => ({
       heading,
       timeOfDay,
       summary,
+      beats: beats.join('\n'),
     })),
   };
 }
 
-/** La stesura con i testi corretti (senza spazi ai bordi): il resto, personaggi e luoghi compresi, non si tocca. */
+/** Le righe di un campo a più righe, senza spazi ai bordi e senza righe vuote. */
+const linesOf = (text: string): string[] =>
+  text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+
+/**
+ * La stesura con i testi corretti (senza spazi ai bordi): il resto, personaggi e luoghi di ogni
+ * scena compresi, non si tocca. Delle note vuote si toglie il campo.
+ */
 export function applyEdits(screenplay: Screenplay, edits: FinalEdits): Screenplay {
+  const notes = edits.notes.trim();
   return {
-    ...screenplay,
     title: edits.title.trim(),
     logline: edits.logline.trim(),
+    characters: screenplay.characters,
+    locations: screenplay.locations,
     scenes: screenplay.scenes.map((scene, index) => {
       const edit = edits.scenes[index];
       return edit === undefined
@@ -87,14 +105,20 @@ export function applyEdits(screenplay: Screenplay, edits: FinalEdits): Screenpla
             heading: edit.heading.trim(),
             timeOfDay: edit.timeOfDay.trim(),
             summary: edit.summary.trim(),
+            beats: linesOf(edit.beats),
           };
     }),
+    ...(notes === '' ? {} : { notes }),
   };
 }
 
-/** Si può salvare se qualcosa è cambiato e nessun testo è rimasto vuoto. */
+/** Si può salvare se qualcosa è cambiato e nessun testo obbligatorio è rimasto vuoto. */
 export function canSave(screenplay: Screenplay, edits: FinalEdits): boolean {
-  const texts = [edits.title, edits.logline, ...edits.scenes.flatMap((s) => Object.values(s))];
-  if (texts.some((text) => text.trim() === '')) return false;
+  const required = [
+    edits.title,
+    edits.logline,
+    ...edits.scenes.flatMap(({ heading, timeOfDay, summary }) => [heading, timeOfDay, summary]),
+  ];
+  if (required.some((text) => text.trim() === '')) return false;
   return JSON.stringify(applyEdits(screenplay, edits)) !== JSON.stringify(screenplay);
 }

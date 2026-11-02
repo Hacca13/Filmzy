@@ -131,13 +131,16 @@ export class FinalScreenplayService {
   async edit(projectId: string, body: EditFinalBody): Promise<ScreenplayVersion> {
     const project = this.projects.get(projectId);
     const latest = this.screenplays.latest(projectId, 'final');
-    assertFinalIsConsistent(body.screenplay, {
+    const bible = {
       characters: this.characters.list(projectId),
       locations: this.locations.list(projectId),
-    });
-    if (isSameScreenplay(latest.screenplay, body.screenplay)) return latest;
+    };
+    assertFinalIsConsistent(body.screenplay, bible, latest.screenplay);
+    // Si salva ripulita: un personaggio tolto dal film dopo la stesura non resta citato nelle scene.
+    const next = settleFinal(body.screenplay, bible);
+    if (isSameScreenplay(latest.screenplay, next)) return latest;
 
-    const text = changedText(latest.screenplay, body.screenplay);
+    const text = changedText(latest.screenplay, next);
     if (text !== '') {
       await this.moderation.assertAllowed({
         text,
@@ -146,7 +149,7 @@ export class FinalScreenplayService {
         projectId,
       });
     }
-    return this.store.create({ projectId, stage: 'final', screenplay: body.screenplay });
+    return this.store.create({ projectId, stage: 'final', screenplay: next });
   }
 
   private async config(): Promise<TroupeConfig> {

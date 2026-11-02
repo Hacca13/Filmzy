@@ -10,16 +10,19 @@ interface Props {
   onCancel: () => void;
 }
 
+type SceneEdits = FinalEdits['scenes'][number];
+
 /**
- * La sceneggiatura finale come testo da correggere (T3.8): titolo, trama e, per ogni scena,
- * intestazione, momento e riassunto. Non chiama lo sceneggiatore e non costa: ogni salvataggio è
- * una versione nuova, e il server controlla che le scene citino solo cast e luoghi del film.
+ * La sceneggiatura finale come testo da correggere (T3.8): titolo, trama, note e, per ogni scena,
+ * intestazione, momento, riassunto e passaggi. Non chiama lo sceneggiatore e non costa: ogni
+ * salvataggio è una versione nuova, e il server controlla che le scene citino solo cast e luoghi
+ * del film.
  */
 export function FinalEditor({ screenplay, busy, onSave, onCancel }: Props) {
   const [edits, setEdits] = useState<FinalEdits>(() => editsOf(screenplay));
   const savable = canSave(screenplay, edits);
 
-  const setScene = (index: number, patch: Partial<FinalEdits['scenes'][number]>) => {
+  const setScene = (index: number, patch: Partial<SceneEdits>) => {
     setEdits((current) => ({
       ...current,
       scenes: current.scenes.map((scene, at) => (at === index ? { ...scene, ...patch } : scene)),
@@ -82,9 +85,27 @@ export function FinalEditor({ screenplay, busy, onSave, onCancel }: Props) {
                 setScene(index, { summary: event.target.value });
               }}
             />
+            <label htmlFor={`${id}-beats`}>Passaggi (uno per riga)</label>
+            <textarea
+              id={`${id}-beats`}
+              rows={4}
+              value={scene.beats}
+              onChange={(event) => {
+                setScene(index, { beats: event.target.value });
+              }}
+            />
           </fieldset>
         );
       })}
+      <label htmlFor="final-notes">Note dello sceneggiatore</label>
+      <textarea
+        id="final-notes"
+        rows={3}
+        value={edits.notes}
+        onChange={(event) => {
+          setEdits({ ...edits, notes: event.target.value });
+        }}
+      />
       <p className="hint">
         Ogni salvataggio crea una versione nuova: quella di prima resta. Chi compare in una scena e
         dove si svolge non si cambia da qui.

@@ -90,7 +90,7 @@ describe('assertFinalIsConsistent', () => {
   it('accetta una stesura coerente', () => {
     expect(
       codeOf(() => {
-        assertFinalIsConsistent(screenplay(), bible);
+        assertFinalIsConsistent(screenplay(), bible, screenplay());
       }),
     ).toBeUndefined();
   });
@@ -101,14 +101,14 @@ describe('assertFinalIsConsistent', () => {
     });
     expect(
       codeOf(() => {
-        assertFinalIsConsistent(withProposals, bible);
+        assertFinalIsConsistent(withProposals, bible, screenplay());
       }),
     ).toBe('invalid_request:screenplay.characters');
 
     const unknown = screenplay({}, { characterIds: ['fantasma'] });
     expect(
       codeOf(() => {
-        assertFinalIsConsistent(unknown, bible);
+        assertFinalIsConsistent(unknown, bible, screenplay());
       }),
     ).toBe('invalid_request:screenplay.scenes');
   });
@@ -133,5 +133,69 @@ describe('changedText', () => {
       scenes: [firstScene, { ...firstScene, number: 2, summary: 'Una scena nuova.' }],
     });
     expect(changedText(screenplay(), next)).toContain('Una scena nuova.');
+  });
+});
+
+describe('settleFinal: gli id della bozza', () => {
+  const linked = {
+    characters: [{ id: 'c-1', proposalId: 'anna-p' }],
+    locations: [{ id: 'l-1', proposalId: 'stazione-p' }],
+  };
+
+  it('se il modello cita una proposta della bozza la ricollega a quella scelta, senza doppioni', () => {
+    const output = screenplay({}, { characterIds: ['anna-p', 'c-1'], locationId: 'stazione-p' });
+    const [scene] = settleFinal(output, linked).scenes;
+
+    expect(scene).toMatchObject({ characterIds: ['c-1'], locationId: 'l-1' });
+  });
+});
+
+describe('assertFinalIsConsistent: dopo una modifica del cast', () => {
+  it('una citazione che c’era già nella versione precedente non blocca la correzione', () => {
+    const previous = screenplay({}, { characterIds: ['c-1', 'tolto'] });
+    const next = screenplay({ title: 'La corsa' }, { characterIds: ['c-1', 'tolto'] });
+
+    expect(
+      codeOf(() => {
+        assertFinalIsConsistent(next, bible, previous);
+      }),
+    ).toBeUndefined();
+    // E chi salva la ripulisce.
+    expect(settleFinal(next, bible).scenes[0]?.characterIds).toEqual(['c-1']);
+  });
+
+  it('una citazione nuova di un id che non esiste invece è rifiutata', () => {
+    const previous = screenplay({}, { characterIds: ['c-1', 'tolto'] });
+    const next = screenplay({}, { characterIds: ['c-1', 'mai-esistito'] });
+
+    expect(
+      codeOf(() => {
+        assertFinalIsConsistent(next, bible, previous);
+      }),
+    ).toBe('invalid_request:screenplay.scenes');
+  });
+
+  it('due scene con lo stesso numero sono rifiutate: non si saprebbe quale testo controllare', () => {
+    const twice = screenplay({ scenes: [firstScene, { ...firstScene, summary: 'Un’altra.' }] });
+
+    expect(
+      codeOf(() => {
+        assertFinalIsConsistent(twice, bible, screenplay());
+      }),
+    ).toBe('invalid_request:screenplay.scenes');
+  });
+});
+
+describe('isSameScreenplay', () => {
+  it('confronta il contenuto, non l’ordine delle chiavi', () => {
+    const reordered: Screenplay = {
+      scenes: screenplay().scenes,
+      locations: [],
+      characters: [],
+      logline: 'Una bobina dimenticata.',
+      title: 'L’ultima corsa',
+    };
+
+    expect(isSameScreenplay(screenplay(), reordered)).toBe(true);
   });
 });

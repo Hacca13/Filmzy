@@ -50,7 +50,7 @@ const screenplay: Screenplay = {
       timeOfDay: 'notte',
       characterIds: ['c-1', 'sconosciuto'],
       summary: 'Anna trova la bobina.',
-      beats: [],
+      beats: ['Anna entra', 'Trova la bobina'],
       durationS: 30,
     },
   ],
@@ -167,6 +167,23 @@ describe('FinalView', () => {
     expect(html).toContain('Luogo: La stazione');
     expect(html).not.toContain('sconosciuto');
   });
+
+  it('mostra i passaggi delle scene e le note dello sceneggiatore, se ci sono', () => {
+    const html = renderToStaticMarkup(
+      <FinalView
+        screenplay={{ ...screenplay, notes: 'Ho tolto l’oste: non l’hai scelto.' }}
+        characters={[]}
+        locations={[]}
+      />,
+    );
+
+    expect(html).toContain('Trova la bobina');
+    expect(html).toContain('Note dello sceneggiatore');
+    expect(html).toContain('Ho tolto l’oste');
+    expect(
+      renderToStaticMarkup(<FinalView screenplay={screenplay} characters={[]} locations={[]} />),
+    ).not.toContain('Note dello sceneggiatore');
+  });
 });
 
 describe('la correzione a mano', () => {
@@ -174,8 +191,14 @@ describe('la correzione a mano', () => {
     expect(editsOf(screenplay)).toEqual({
       title: 'L’ultima corsa',
       logline: 'Una bobina dimenticata.',
+      notes: '',
       scenes: [
-        { heading: 'INT. STAZIONE - NOTTE', timeOfDay: 'notte', summary: 'Anna trova la bobina.' },
+        {
+          heading: 'INT. STAZIONE - NOTTE',
+          timeOfDay: 'notte',
+          summary: 'Anna trova la bobina.',
+          beats: 'Anna entra\nTrova la bobina',
+        },
       ],
     });
   });
@@ -199,7 +222,7 @@ describe('la correzione a mano', () => {
     expect(
       canSave(screenplay, {
         ...edits,
-        scenes: [{ heading: 'INT. STAZIONE', timeOfDay: 'notte', summary: '' }],
+        scenes: [{ heading: 'INT. STAZIONE', timeOfDay: 'notte', summary: '', beats: '' }],
       }),
     ).toBe(false);
   });
@@ -220,3 +243,43 @@ describe('la correzione a mano', () => {
     expect(html).toContain('Salva la correzione');
   });
 });
+
+describe('passaggi e note nella correzione', () => {
+  it('i passaggi si scrivono uno per riga: le righe vuote si perdono e gli spazi ai bordi si tolgono', () => {
+    const edits = editsOf(screenplay);
+    const next = applyEdits(screenplay, {
+      ...edits,
+      scenes: [{ ...firstEdit(edits), beats: ' Anna entra \n\n  Trova una lettera ' }],
+    });
+
+    expect(next.scenes[0]?.beats).toEqual(['Anna entra', 'Trova una lettera']);
+  });
+
+  it('le note vuote tolgono il campo; quelle scritte restano senza spazi ai bordi', () => {
+    const edits = editsOf({ ...screenplay, notes: 'Una nota.' });
+    const without = applyEdits({ ...screenplay, notes: 'Una nota.' }, { ...edits, notes: '  ' });
+    const withNote = applyEdits(screenplay, { ...edits, notes: ' Ho adattato la storia. ' });
+
+    expect(without).not.toHaveProperty('notes');
+    expect(withNote.notes).toBe('Ho adattato la storia.');
+  });
+
+  it('cambiare solo i passaggi o le note basta per salvare, e lasciarli vuoti non lo impedisce', () => {
+    const edits = editsOf(screenplay);
+
+    expect(canSave(screenplay, { ...edits, notes: 'Una nota.' })).toBe(true);
+    expect(
+      canSave(screenplay, {
+        ...edits,
+        scenes: [{ ...firstEdit(edits), beats: '' }],
+      }),
+    ).toBe(true);
+  });
+});
+
+/** La prima scena delle correzioni: nel test c'è sempre. */
+function firstEdit(edits: ReturnType<typeof editsOf>) {
+  const [first] = edits.scenes;
+  if (first === undefined) throw new Error('la stesura di prova ha una scena');
+  return first;
+}

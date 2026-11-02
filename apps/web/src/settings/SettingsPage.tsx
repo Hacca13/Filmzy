@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { AdvancedPage } from './advanced/AdvancedPage';
+import { ConnectionsPage } from './connections/ConnectionsPage';
 import { GenerationPage } from './GenerationPage';
 import { InstructionsPage } from './instructions/InstructionsPage';
 import { UpdatesPage } from './UpdatesPage';
@@ -13,6 +14,7 @@ interface Section {
 
 /** Le voci del menu che esistono già; le altre del design arrivano con i loro task (T2.4–T2.7). */
 const SECTIONS: Section[] = [
+  { id: 'connessioni', label: 'Connessioni', page: () => <ConnectionsPage /> },
   { id: 'generazione', label: 'Generazione', page: () => <GenerationPage /> },
   { id: 'aggiornamenti', label: 'Aggiornamenti', page: () => <UpdatesPage /> },
   { id: 'istruzioni', label: 'Istruzioni', page: () => <InstructionsPage /> },

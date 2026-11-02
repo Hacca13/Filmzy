@@ -23,6 +23,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { TROUPE_STORE } from '../troupe/tokens.js';
+import { UserSettingsService } from '../troupe/user-settings.service.js';
 import { isUserFile } from './db-instructions-source.js';
 import { INSTRUCTIONS_SOURCE } from './tokens.js';
 
@@ -38,6 +39,7 @@ export class InstructionsService {
   constructor(
     @Inject(TROUPE_STORE) private readonly store: TroupeStore,
     @Inject(INSTRUCTIONS_SOURCE) private readonly source: InstructionsSource,
+    private readonly userSettings: UserSettingsService,
   ) {}
 
   async overview(): Promise<InstructionsOverview> {
@@ -117,11 +119,7 @@ export class InstructionsService {
     const { instructionsId } = this.roleOf(config, roleId);
     if (version !== null) await this.entryOf(instructionsId, version);
 
-    const stored = this.store.getSettings();
-    if (stored.problem !== undefined) throw domainError(500, 'config_invalid');
-    const settings = stored.settings ?? implicitSettings(config);
-
-    this.store.saveSettings(
+    this.userSettings.update(config, (settings) =>
       withInstructionsChoice(
         settings,
         roleId as RoleKey,
@@ -216,23 +214,6 @@ export class InstructionsService {
 }
 
 type RoleKey = keyof UserSettings['roleSettings'];
-
-/**
- * Le scelte dell'utente quando non ce n'è ancora nessuna: «tutti i servizi attivi» (§4.3). Si
- * scrivono per intero perché, appena esiste una riga, il filtro sugli attivati vale: una riga con
- * l'elenco vuoto spegnerebbe tutto.
- */
-function implicitSettings(config: TroupeConfigData): UserSettings {
-  return {
-    enabledModelIds: Object.entries(config.models)
-      .filter(([, model]) => model.status !== 'retired')
-      .map(([id]) => id),
-    defaultModels: {},
-    defaultModelByConnection: {},
-    spendCaps: {},
-    roleSettings: {},
-  };
-}
 
 /**
  * Le scelte con la versione di istruzioni di un ruolo cambiata (o tolta). Se al ruolo non resta

@@ -42,7 +42,7 @@ export class SecretsModule {
         },
         SecretsService,
       ],
-      exports: [SECRET_STORE, SECRET_SOURCES],
+      exports: [SECRET_STORE, SECRET_SOURCES, SecretsService],
     };
   }
 }

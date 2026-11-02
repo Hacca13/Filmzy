@@ -13,7 +13,7 @@ export function App() {
       <p>I tuoi cortometraggi, con l'intelligenza artificiale.</p>
       <ServerStatus />
       <p>
-        <a href="#/impostazioni/generazione">Impostazioni</a>
+        <a href="#/impostazioni/connessioni">Impostazioni</a>
       </p>
     </main>
   );

@@ -2,6 +2,10 @@
  * I riferimenti ai segreti nella configurazione (architettura §4.5, D25): `env:NOME` (variabile
  * d'ambiente), `env:NOME?` (facoltativa), `secret:NOME` (portachiavi del sistema) o `none`.
  *
+ * **`env:NOME` ripiega sul portachiavi** (D50): la variabile d'ambiente vince, ma se manca si cerca
+ * una chiave salvata con lo stesso NOME. È ciò che permette all'utente di inserire da Impostazioni
+ * la chiave di un fornitore che il seme cita con `env:`, senza toccare la configurazione.
+ *
  * Il validatore chiede solo se una chiave **c'è**, mai quale sia: così una chiave non può finire
  * in un messaggio, in un log o in un export. Il valore lo legge soltanto l'adapter che deve
  * chiamare il fornitore, con `readSecret`.
@@ -55,9 +59,8 @@ export function secretPresence(
   if (parsed.kind === 'none') return { satisfied: true, parsed };
 
   const present =
-    parsed.kind === 'env'
-      ? isNonEmpty(sources.env?.[parsed.name])
-      : (sources.keychain?.has(parsed.name) ?? false);
+    (parsed.kind === 'env' && isNonEmpty(sources.env?.[parsed.name])) ||
+    (sources.keychain?.has(parsed.name) ?? false);
 
   return { satisfied: present || parsed.optional, parsed };
 }
@@ -66,7 +69,9 @@ export function secretPresence(
 export function readSecret(ref: string, sources: SecretSources = {}): string | undefined {
   const parsed = parseSecretRef(ref);
   if (parsed === undefined || parsed.kind === 'none') return undefined;
-  return parsed.kind === 'env' ? sources.env?.[parsed.name] : sources.keychain?.get(parsed.name);
+
+  const fromEnv = parsed.kind === 'env' ? sources.env?.[parsed.name] : undefined;
+  return isNonEmpty(fromEnv) ? fromEnv : sources.keychain?.get(parsed.name);
 }
 
 function isNonEmpty(value: string | undefined): boolean {

@@ -2,9 +2,11 @@ import { ApiError, createFalClient } from '@fal-ai/client';
 
 import { readSecret } from '../config/secrets.js';
 import { ProviderError } from '../provider-error.js';
+import { keyFor, probe } from './probe.js';
 import type {
   AdapterFactory,
   AdapterOptions,
+  ConnectionTestOptions,
   MediaAdapter,
   MediaFile,
   MediaRequest,
@@ -252,7 +254,31 @@ function toProviderError(
   );
 }
 
+/**
+ * Il prezzo di un servizio: una lettura gratuita che vuole una chiave valida (401 se non lo è).
+ * Verificato sulla pagina «Model Pricing» di fal, 27/10/2026: `GET /v1/models/pricing?endpoint_id=`
+ * con `Authorization: Key …`. L'elenco dei servizi di fal non serve: lì la chiave è facoltativa,
+ * quindi non proverebbe niente.
+ */
+async function testFalConnection(options: ConnectionTestOptions): Promise<void> {
+  const key = keyFor(options);
+  if (options.sampleProviderModel === undefined) {
+    throw new ProviderError(
+      'config_invalid',
+      false,
+      `La connessione "${options.connectionId}" non ha nessun servizio con cui provarla.`,
+      { connectionId: options.connectionId },
+    );
+  }
+
+  await probe(options, {
+    url: `https://api.fal.ai/v1/models/pricing?endpoint_id=${encodeURIComponent(options.sampleProviderModel)}`,
+    headers: { Authorization: `Key ${key ?? ''}` },
+  });
+}
+
 export const falAdapterFactory: AdapterFactory = {
   name: 'fal',
   media: (options) => falMediaAdapter(options, falQueueFromClient(options), fetchFalFile(options)),
+  testConnection: testFalConnection,
 };

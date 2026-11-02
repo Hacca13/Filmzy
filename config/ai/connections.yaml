@@ -6,6 +6,7 @@ version: 1
 
 connections:
   anthropic:
+    label: Anthropic
     adapter: anthropic
     api_key: env:ANTHROPIC_API_KEY
     # base_url: https://gateway.esempio.it/anthropic/v1   # facoltativo: gateway o proxy LLM
@@ -15,6 +16,7 @@ connections:
     enabled: true
 
   openrouter:
+    label: OpenRouter
     adapter: openai_compatible        # una chiave, molti modelli
     base_url: https://openrouter.ai/api/v1
     api_key: env:OPENROUTER_API_KEY?
@@ -23,6 +25,7 @@ connections:
     enabled: false                    # da accendere quando serve
 
   local:
+    label: Modelli sul tuo computer
     adapter: openai_compatible        # Ollama, vLLM, LM Studio, gateway compatibili
     base_url: http://localhost:11434/v1
     api_key: none
@@ -31,6 +34,7 @@ connections:
     enabled: false
 
   fal:
+    label: fal.ai
     adapter: fal
     api_key: env:FAL_KEY
     http_proxy: env:HTTPS_PROXY?
@@ -43,6 +47,7 @@ connections:
     enabled: true
 
   elevenlabs:
+    label: ElevenLabs
     adapter: elevenlabs               # musica (D24); più avanti voci. Regione dei dati e conservazione dei file: da verificare
     api_key: env:ELEVENLABS_API_KEY?  # in esercizio l'utente la inserisce da "Impostazioni > Connessioni" (D25)
     timeout_s: 300

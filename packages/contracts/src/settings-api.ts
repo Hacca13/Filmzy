@@ -64,6 +64,8 @@ export const secretStatusSchema = z.object({
   name: z.string().min(1),
   source: z.enum(['env', 'secret']),
   present: z.boolean(),
+  /** Dove si trova, se c'è: la variabile d'ambiente (`.env`) o la chiave salvata dal programma. */
+  foundIn: z.enum(['env', 'stored']).optional(),
   connectionIds: z.array(z.string().min(1)),
 });
 

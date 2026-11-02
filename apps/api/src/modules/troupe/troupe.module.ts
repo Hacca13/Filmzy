@@ -39,6 +39,7 @@ import {
 } from './tokens.js';
 import { TroupeConfigController } from './troupe-config.controller.js';
 import { TroupeConfigService } from './troupe-config.service.js';
+import { UserSettingsService } from './user-settings.service.js';
 
 /**
  * La cartella `config/` che arriva col programma. Si risale dal file, non dalla cartella da cui
@@ -135,6 +136,7 @@ export class TroupeModule {
           inject: [TROUPE_STORE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE],
         },
         TroupeConfigService,
+        UserSettingsService,
         DraftTestService,
       ],
       exports: [
@@ -146,6 +148,7 @@ export class TroupeModule {
         CONFIG_DIR,
         TROUPE_ENVIRONMENT,
         TroupeConfigService,
+        UserSettingsService,
       ],
     };
   }

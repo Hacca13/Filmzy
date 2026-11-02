@@ -75,7 +75,7 @@ describe('diffConfigs', () => {
     expect(changes).toContainEqual({
       section: 'connections',
       key: 'fal',
-      label: 'fal',
+      label: 'fal.ai',
       kind: 'removed',
       fields: [],
     });

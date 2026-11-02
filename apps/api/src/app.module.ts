@@ -1,6 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { ConfigEnvironment } from '@filmzy/troupe';
 
+import { AssetsModule } from './modules/assets/assets.module.js';
 import { CastModule } from './modules/cast/cast.module.js';
 import { ConnectionsModule } from './modules/connections/connections.module.js';
 import { DatabaseModule } from './modules/database/database.module.js';
@@ -13,6 +14,7 @@ import type { SecretCipher } from './modules/secrets/secret-cipher.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ScreenplayModule } from './modules/screenplay/screenplay.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
+import { SheetsModule } from './modules/sheets/sheets.module.js';
 import { SpendModule } from './modules/spend/spend.module.js';
 import { TroupeModule } from './modules/troupe/troupe.module.js';
 import { UpdatesModule, type UpdateChecker } from './modules/updates/updates.module.js';
@@ -43,6 +45,7 @@ export class AppModule {
           ...(options.configDir === undefined ? {} : { configDir: options.configDir }),
           ...(options.environment === undefined ? {} : { environment: options.environment }),
         }),
+        AssetsModule,
         CastModule,
         ConnectionsModule,
         InstructionsModule,
@@ -50,6 +53,7 @@ export class AppModule {
         ProjectsModule,
         RolesModule,
         ScreenplayModule,
+        SheetsModule,
         SpendModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },

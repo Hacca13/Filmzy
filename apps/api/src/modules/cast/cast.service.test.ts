@@ -11,9 +11,11 @@ import {
 import {
   createCharacterStore,
   createScreenplayStore,
+  createSheetStore,
   openFilmzyDatabase,
   type CharacterStore,
   type ScreenplayStore,
+  type SheetStore,
 } from '@filmzy/db';
 import type { ConfigSource, LoadedConfig, Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
@@ -78,6 +80,7 @@ const suggest = (name: string, extra: Partial<CastingSuggestion> = {}): CastingS
 
 let characters: CharacterStore;
 let screenplays: ScreenplayStore;
+let sheets: SheetStore;
 let inputs: { input: CastingInput; ctx: GenerationContext }[];
 let estimated: CastingInput[];
 let moderated: ModerationRequest[];
@@ -112,7 +115,15 @@ function build(options: { rejects?: boolean } = {}) {
       reached.push(phase);
     },
   } as unknown as ProjectsService;
-  return new CastService(characters, screenplays, troupe, configSource, projects, moderation);
+  return new CastService(
+    characters,
+    sheets,
+    screenplays,
+    troupe,
+    configSource,
+    projects,
+    moderation,
+  );
 }
 
 async function failure(call: () => Promise<unknown>): Promise<HttpException> {
@@ -132,6 +143,7 @@ beforeEach(async () => {
   });
   characters = createCharacterStore(opened.db);
   screenplays = createScreenplayStore(opened.db);
+  sheets = createSheetStore(opened.db);
   inputs = [];
   estimated = [];
   moderated = [];

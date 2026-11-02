@@ -9,6 +9,13 @@ import { describe, expect, it } from 'vitest';
 
 import { CharacterCard, SuggestionCard } from './Cards';
 import {
+  angleLabel,
+  attemptIsComplete,
+  attemptLabel,
+  imageStatusText,
+  sheetIsWorking,
+} from './sheet-model';
+import {
   appearanceSummary,
   countOptions,
   profileDraftOf,
@@ -131,6 +138,7 @@ describe('CharacterCard', () => {
     renderToStaticMarkup(
       <ul>
         <CharacterCard
+          filmId="film-1"
           character={character}
           tags={tags}
           busy={busy}
@@ -152,5 +160,54 @@ describe('CharacterCard', () => {
 
   it('senza modifiche «Salva» è spento: non c’è niente da salvare', () => {
     expect(render()).toContain('disabled=""');
+  });
+});
+
+describe('sheet-model', () => {
+  const attempt = (statuses: ('queued' | 'running' | 'succeeded' | 'failed')[]) => ({
+    attempt: 2,
+    createdAt: '2026-10-28T10:00:00.000Z',
+    images: (['front', 'profile', 'three_quarter'] as const).map((angle, index) => ({
+      angle,
+      status: statuses[index] ?? 'queued',
+    })),
+  });
+
+  it('le angolazioni hanno nomi semplici', () => {
+    expect(['front', 'profile', 'three_quarter'].map((a) => angleLabel(a as never))).toEqual([
+      'Fronte',
+      'Profilo',
+      'Tre quarti',
+    ]);
+  });
+
+  it('ogni stato dice cosa sta succedendo, e un’immagine fallita dice perché in parole semplici', () => {
+    expect(imageStatusText('queued')).toBe('In coda…');
+    expect(imageStatusText('running')).toBe('Sto disegnando…');
+    expect(imageStatusText('failed', 'content_rejected')).toContain('rifiutato');
+    expect(imageStatusText('failed', 'codice_inventato')).toContain('Puoi riprovare');
+  });
+
+  it('si continua a guardare finché qualcosa lavora, e basta quando tutto è finito', () => {
+    const base = { characterId: 'c-1' };
+
+    expect(
+      sheetIsWorking({ ...base, attempts: [attempt(['succeeded', 'running', 'queued'])] }),
+    ).toBe(true);
+    expect(
+      sheetIsWorking({ ...base, attempts: [attempt(['succeeded', 'failed', 'succeeded'])] }),
+    ).toBe(false);
+    expect(sheetIsWorking({ ...base, attempts: [] })).toBe(false);
+  });
+
+  it('un tentativo si sceglie solo se tutte e tre le immagini sono pronte', () => {
+    expect(attemptIsComplete(attempt(['succeeded', 'succeeded', 'succeeded']))).toBe(true);
+    expect(attemptIsComplete(attempt(['succeeded', 'failed', 'succeeded']))).toBe(false);
+    expect(attemptIsComplete({ ...attempt([]), images: [] })).toBe(false);
+  });
+
+  it('il tentativo col volto bloccato lo dice', () => {
+    expect(attemptLabel(attempt([]), undefined)).toBe('Tentativo 2');
+    expect(attemptLabel(attempt([]), 2)).toBe('Tentativo 2 · volto bloccato');
   });
 });

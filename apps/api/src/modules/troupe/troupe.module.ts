@@ -11,11 +11,14 @@ import {
 } from '@filmzy/db';
 import {
   configEnvironmentFromEnv,
+  createMediaRunner,
   createTroupe,
   FileInstructionsSource,
+  LocalAssetStore,
   type ConfigEnvironment,
   type ConfigSource,
   type InstructionsSource,
+  type MediaRunner,
   type SecretSources,
   type Troupe,
 } from '@filmzy/troupe';
@@ -33,6 +36,7 @@ import {
   CONFIG_DIR,
   CONFIG_SOURCE,
   DRAFT_TROUPE,
+  MEDIA_RUNNER_FACTORY,
   RECEIPT_STORE,
   SPEND_LEDGER,
   TROUPE,
@@ -147,6 +151,26 @@ export class TroupeModule {
             }),
           inject: [TROUPE_STORE, INSTRUCTIONS_SOURCE, SECRET_SOURCES, RECEIPT_STORE, SPEND_LEDGER],
         },
+        {
+          // Un esecutore dei lavori di immagine e video per ogni cartella di film (T3.6).
+          provide: MEDIA_RUNNER_FACTORY,
+          useFactory:
+            (
+              configSource: ConfigSource,
+              secrets: SecretSources,
+              receiptSink: ReceiptStore,
+              spend: SpendLedger,
+            ) =>
+            (assetsDir: string): MediaRunner =>
+              createMediaRunner({
+                configSource,
+                assets: new LocalAssetStore(assetsDir),
+                receiptSink,
+                secrets,
+                spend,
+              }),
+          inject: [CONFIG_SOURCE, SECRET_SOURCES, RECEIPT_STORE, SPEND_LEDGER],
+        },
         TroupeConfigService,
         UserSettingsService,
         DraftTestService,
@@ -158,6 +182,7 @@ export class TroupeModule {
         TROUPE_STORE,
         RECEIPT_STORE,
         SPEND_LEDGER,
+        MEDIA_RUNNER_FACTORY,
         CONFIG_DIR,
         TROUPE_ENVIRONMENT,
         TroupeConfigService,

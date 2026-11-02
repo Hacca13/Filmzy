@@ -1,6 +1,7 @@
 import type { CastingSuggestion, Character, ProjectChoice } from '@filmzy/contracts';
 import { useState } from 'react';
 
+import { SheetSection } from './SheetSection';
 import {
   appearanceSummary,
   profileDraftOf,
@@ -74,6 +75,7 @@ export function SuggestionCard({
 }
 
 interface CharacterCardProps {
+  filmId: string;
   character: Character;
   tags: readonly ProjectChoice[];
   busy: boolean;
@@ -87,7 +89,14 @@ type ProfileDraftValue = ReturnType<typeof toProfile>;
  * Un personaggio già nel film. Il ruolo e i dettagli facoltativi (carattere, come si comporta, cosa
  * vuole) si possono rivedere: servono a tenerlo coerente, e si possono lasciare vuoti (D22).
  */
-export function CharacterCard({ character, tags, busy, onSave, onRemove }: CharacterCardProps) {
+export function CharacterCard({
+  filmId,
+  character,
+  tags,
+  busy,
+  onSave,
+  onRemove,
+}: CharacterCardProps) {
   const original = profileDraftOf(character.profile);
   const [tag, setTag] = useState(character.tag);
   const [draft, setDraft] = useState<ProfileDraft>(original);
@@ -131,6 +140,7 @@ export function CharacterCard({ character, tags, busy, onSave, onRemove }: Chara
       {field('personality', 'Carattere')}
       {field('behavior', 'Come si comporta')}
       {field('goal', 'Cosa vuole')}
+      <SheetSection filmId={filmId} characterId={character.id} />
       <div className="actions">
         <button
           type="button"

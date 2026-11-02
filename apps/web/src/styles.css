@@ -16,6 +16,13 @@
   --accent-ink: #201b12;
   --accent-soft: #352b19;
   --danger: #b83e38;
+  /* I toni dei chip e dei riquadri di stato */
+  --ok-bg: #233328;
+  --ok-ink: #b0d6b6;
+  --info-bg: #233142;
+  --info-ink: #b1cff4;
+  --error-bg: #392321;
+  --error-ink: #f7a49e;
 }
 
 * {
@@ -196,6 +203,65 @@ h2 {
 
 .notice[data-tone='error'] {
   border: 1px solid var(--danger);
+}
+
+/* Un avviso con il suo chip in cima (come nel disegno): blu per informare, rosso per un errore */
+.notice.boxed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border: 0;
+}
+
+.notice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  line-height: 1.55;
+}
+
+.notice.boxed[data-tone='info'] {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.notice.boxed[data-tone='error'] {
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+/* I chip di stato: confermato, da controllare, informazione, errore */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.chip[data-tone='confirmed'] {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.chip[data-tone='warning'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chip[data-tone='info'] {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.chip[data-tone='error'] {
+  background: var(--error-bg);
+  color: var(--error-ink);
 }
 
 a:focus-visible,
@@ -757,7 +823,8 @@ a.button {
 
 .sheet h5 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .attempts {
@@ -767,6 +834,17 @@ a.button {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.attempt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.attempt-head .hint {
+  margin: 0;
 }
 
 .attempt {
@@ -805,6 +883,76 @@ a.button {
 .sheet-images.wide img,
 .sheet-placeholder.wide {
   aspect-ratio: 16 / 9;
+}
+
+/* Un tentativo fallito: lo dice dove sarebbe l'immagine, in rosso (come nel disegno) */
+.sheet-placeholder[data-tone='error'] {
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  background: var(--error-bg);
+  border-color: var(--error-ink);
+  color: var(--error-ink);
+  line-height: 1.5;
+}
+
+/* La variante scelta ha il contorno in evidenza e il suo chip al posto del pulsante */
+.sheet-images figure[data-chosen='true'] img {
+  border: 2px solid var(--accent);
+}
+
+.sheet-images figcaption {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+/* «Imposta le immagini»: miniature con il ruolo scelto sopra, e «Come usarla» sotto */
+.use-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.use-grid figure {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 200px;
+  margin: 0;
+}
+
+.use-grid label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.use-picture {
+  position: relative;
+}
+
+.use-picture img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.use-chip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+
+.use-grid select {
+  padding: 8px 10px;
+  background: var(--row);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font: inherit;
 }
 
 /* Il riepilogo e la sceneggiatura finale (T3.8) */
@@ -921,7 +1069,40 @@ a.button {
 
 .storyboard-panel h4 {
   margin: 0;
-  font-size: 15px;
+  font-size: 22px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.icon-button {
+  padding: 0 8px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text);
+}
+
+.scene-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scene-head h3 {
+  margin: 0;
 }
 
 .shot-card {

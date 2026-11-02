@@ -163,7 +163,7 @@ export class LocationsService implements OnModuleInit {
     if (latest?.status === 'queued' || latest?.status === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'images' } });
     }
-    const attempt = this.store.startAttempt(locationId);
+    const attempt = this.store.startAttempt(locationId, chosen.label);
     const payload: LocationJobPayload = {
       projectId,
       locationId,
@@ -241,6 +241,8 @@ export class LocationsService implements OnModuleInit {
         status: 'succeeded',
         assetIds: assets.map((asset) => asset.assetId),
         receiptId: receipt.id,
+        modelLabel: receipt.modelLabel,
+        ...(receipt.actualCostUsd === undefined ? {} : { costUsd: receipt.actualCostUsd }),
       });
     } catch (error) {
       const errorCode = error instanceof ProviderError ? error.code : 'unknown';

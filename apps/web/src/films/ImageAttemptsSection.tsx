@@ -1,10 +1,10 @@
 import type { SheetOptions, StartSheetBody } from '@filmzy/contracts';
 
 import { assetUrl } from '../api/sheet';
-import { Notice } from '../components/ui';
+import { Chip, Notice, ToneIcon } from '../components/ui';
 import { useAction } from '../settings/use-action';
 import { GenerateBar, useGeneration } from './generation';
-import { attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
+import { attemptWho, attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
 import { useOnIncrease } from './use-on-increase';
 import { useWatched } from './use-watched';
 
@@ -87,21 +87,32 @@ export function ImageAttemptsSection<T extends ImageSet>({
         <ul className="attempts">
           {images.attempts.map((attempt) => (
             <li key={attempt.attempt} className="attempt">
-              <strong>{`Tentativo ${String(attempt.attempt)}`}</strong>
+              <div className="attempt-head">
+                <strong>{`Tentativo ${String(attempt.attempt)}`}</strong>
+                {attemptWho(attempt) === '' ? null : (
+                  <span className="hint">{attemptWho(attempt)}</span>
+                )}
+              </div>
               {attempt.assetIds.length === 0 ? (
-                <div className={wide ? 'sheet-placeholder wide' : 'sheet-placeholder'}>
+                <div
+                  className={wide ? 'sheet-placeholder wide' : 'sheet-placeholder'}
+                  data-tone={attempt.status === 'failed' ? 'error' : undefined}
+                >
+                  {attempt.status === 'failed' ? <ToneIcon tone="error" size={26} /> : null}
                   {describeAttempt(attempt, workingText)}
                 </div>
               ) : (
                 <div className={wide ? 'sheet-images wide' : 'sheet-images'}>
                   {attempt.assetIds.map((assetId, index) => (
-                    <figure key={assetId}>
+                    <figure key={assetId} data-chosen={assetId === images.chosenAssetId}>
                       <img
                         src={assetUrl(assetId)}
                         alt={`${imageLabel}, immagine ${String(index + 1)}`}
                       />
                       {assetId === images.chosenAssetId ? (
-                        <figcaption className="hint">{chosenText}</figcaption>
+                        <figcaption>
+                          <Chip tone="confirmed">{chosenText}</Chip>
+                        </figcaption>
                       ) : (
                         <button
                           type="button"

@@ -76,6 +76,9 @@ describe('lo storyboard di un’inquadratura', () => {
     const done = await untilDone(path);
     expect(done.attempts[0]?.status).toBe('succeeded');
     expect(done.attempts[0]?.assetIds.length).toBeGreaterThan(0);
+    // L'intestazione del tentativo dice con quale servizio è fatto e quanto è costato davvero.
+    expect(done.attempts[0]?.modelLabel).toBeTruthy();
+    expect(typeof done.attempts[0]?.costUsd).toBe('number');
     const file = await fetch(`${baseUrl}/api/assets/${done.attempts[0]?.assetIds[0] ?? ''}`);
     expect(file.status).toBe(200);
     expect(file.headers.get('content-type')).toContain('image/png');

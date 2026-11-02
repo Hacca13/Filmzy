@@ -66,7 +66,7 @@ export interface ShotStore {
   /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più. */
   updateSpec: (shotId: string, spec: ShotSpec) => boolean;
   /** Apre un nuovo tentativo (in coda) dello storyboard o dell'ultimo fotogramma e ne dà il numero. */
-  startStoryboard: (shotId: string, mode: StoryboardMode) => number;
+  startStoryboard: (shotId: string, mode: StoryboardMode, modelLabel?: string) => number;
   finishStoryboard: (
     shotId: string,
     mode: StoryboardMode,
@@ -104,6 +104,8 @@ function toAttempt(row: StoryboardAttemptRow) {
     createdAt: new Date(row.createdAt).toISOString(),
     assetIds,
     ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
+    ...(row.modelLabel === null ? {} : { modelLabel: row.modelLabel }),
+    ...(row.costUsd === null ? {} : { costUsd: row.costUsd }),
   });
 }
 
@@ -237,7 +239,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
       return changes > 0;
     },
 
-    startStoryboard(shotId, mode) {
+    startStoryboard(shotId, mode, modelLabel) {
       return db.transaction((tx) => {
         const last = tx
           .select({ attempt: storyboardAttempts.attempt })
@@ -256,6 +258,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
             attempt,
             status: 'queued',
             assetIds: '[]',
+            ...(modelLabel === undefined ? {} : { modelLabel }),
             createdAt: at,
             updatedAt: at,
           })
@@ -271,6 +274,8 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           assetIds: JSON.stringify(patch.assetIds ?? []),
           receiptId: patch.receiptId ?? null,
           errorCode: patch.errorCode ?? null,
+          costUsd: patch.costUsd ?? null,
+          ...(patch.modelLabel === undefined ? {} : { modelLabel: patch.modelLabel }),
           updatedAt: now().getTime(),
         })
         .where(and(inMode(shotId, mode), eq(storyboardAttempts.attempt, attempt)))

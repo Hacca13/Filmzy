@@ -18,7 +18,7 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 |---|---|
 | `prossimo-prompt.md` | l'unico prompt da lanciare adesso, con le note su cosa controllare nella risposta |
 | `storico/` | i prompt già lanciati, uno per file, numerati nell'ordine in cui sono stati dati (`NN-nome-breve.md`) |
-| `riferimenti/` | il codice delle schermate scaricato da Figma via MCP (un `.tsx` per schermata, con testi, colori e misure esatti), non le immagini. `riferimenti/02-film-e-app/` ha l'indice dei file e dei nodi di Figma; si riscarica dopo ogni prompt di correzione, e le versioni precedenti restano nella storia di git (così `git diff` mostra cosa è cambiato) |
+| `riferimenti/` | il codice delle schermate scaricato da Figma via MCP (un `.tsx` per schermata, con testi, colori e misure esatti), non le immagini; per le tavole più grandi un riassunto (`03-inquadrature.md`). `riferimenti/02-film-e-app/` ha l'indice dei file e dei nodi di Figma; si riscarica dopo ogni prompt di correzione, e le versioni precedenti restano nella storia di git (così `git diff` mostra cosa è cambiato) |
 
 ## Storico dei prompt lanciati
 
@@ -29,7 +29,7 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 | 03 | [`storico/03-solo-desktop-modale-e-landing.md`](storico/03-solo-desktop-modale-e-landing.md) | via la versione mobile, aggiornamento in una modale sulla home con «Ricordamelo più tardi», landing page | 22/10/2026 | fatto; la landing è messa da parte dal prompt 04; corretto dal prompt 05 |
 | 04 | [`storico/04-schermata-di-caricamento.md`](storico/04-schermata-di-caricamento.md) | via la landing page; al suo posto una schermata di caricamento all'avvio | 22/10/2026 | fatto; corretto dal prompt 05 |
 | 05 | [`storico/05-correzioni-del-mockup.md`](storico/05-correzioni-del-mockup.md) | le correzioni dopo la lettura via MCP: parole, intestazione e passi uguali ovunque, finestra di aggiornamento, avvio, «Le scene», suono, impostazioni, consigli di UX, tavola «Componenti», ordine delle tavole | 22/10/2026 | fatto; il codice delle 42 schermate è in `riferimenti/02-film-e-app/` |
-| 06 | [`storico/06-inquadrature-storyboard-e-immagini.md`](storico/06-inquadrature-storyboard-e-immagini.md) | tre schermate nuove: «Le inquadrature» (striscia di card per scena), il pannello con «Storyboard», «Imposta le immagini» e «Ultimo fotogramma», e i loro stati; più i testi a 11 px portati a 13 px | 02/11/2026 | in lavorazione: quando l'agente di Figma ha finito, si riscarica il codice delle schermate in `riferimenti/` |
+| 06 | [`storico/06-inquadrature-storyboard-e-immagini.md`](storico/06-inquadrature-storyboard-e-immagini.md) | tre schermate nuove: «Le inquadrature» (striscia di card per scena), il pannello con «Storyboard», «Imposta le immagini» e «Ultimo fotogramma», e i loro stati; più i testi a 11 px portati a 13 px | 02/11/2026 | fatto il 02/11: tre tavole nuove (nodi `82:7538`, `82:7704`, `82:8455`), riassunte in `riferimenti/03-inquadrature.md`; preso nell'interfaccia quasi tutto (l'elenco di cosa no è lì); i testi a 13 px sulle schermate vecchie non sono stati riscaricati |
 
 ## Chi fa il design
 

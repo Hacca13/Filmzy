@@ -135,6 +135,8 @@ describe('i luoghi del film', () => {
     const done = await untilDone(images);
     const assetId = done.attempts[0]?.assetIds[0] ?? '';
     expect(done.attempts[0]?.status).toBe('succeeded');
+    expect(done.attempts[0]?.modelLabel).toBeTruthy();
+    expect(typeof done.attempts[0]?.costUsd).toBe('number');
     const file = await fetch(`${baseUrl}/api/assets/${assetId}`);
     expect(file.status).toBe(200);
     expect(file.headers.get('content-type')).toContain('image/png');

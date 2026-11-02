@@ -10,6 +10,9 @@ import type { MediaInput } from '@filmzy/troupe';
  * relativo alla cartella dei dati e si controlla prima di leggere: un record rovinato non deve
  * poter far leggere un file fuori da lì (CLAUDE.md, «Sicuro»).
  *
+ * `use` dice a cosa serve: un riferimento (volto, set) o l'immagine da modificare (l'ultimo fotogramma
+ * nasce dal primo, D20).
+ *
  * `undefined` se il file non c'è più (cartella ripulita a mano, record vecchio): chi chiama decide
  * se si può andare avanti senza quel riferimento.
  */
@@ -17,6 +20,7 @@ export async function referenceInput(
   files: Pick<SheetStore, 'getAsset'>,
   dataDir: string,
   assetId: string,
+  use: 'reference' | 'base_image' = 'reference',
 ): Promise<MediaInput | undefined> {
   const record = files.getAsset(assetId);
   if (record === undefined) return undefined;
@@ -27,7 +31,7 @@ export async function referenceInput(
 
   try {
     return {
-      use: 'reference',
+      use,
       file: {
         fileName: path.basename(file),
         contentType: record.contentType,

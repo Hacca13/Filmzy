@@ -3,6 +3,7 @@ import {
   type CinematographerInput,
   type ShotSpec,
   type StoryBible,
+  type StoryboardMode,
 } from '@filmzy/contracts';
 import type { TroupeConfig } from '@filmzy/troupe';
 
@@ -13,6 +14,9 @@ import { domainError } from '../../http/domain-error.js';
  * un'inquadratura (T4.1). Il prompt è per una **famiglia** di servizi (la sintassi dei personaggi e
  * i limiti cambiano), perciò `family` è quella del servizio che l'utente ha scelto.
  *
+ * Per l'ultimo fotogramma (`end_frame`, T4.2) il prompt dice solo cosa cambia rispetto al primo, che
+ * viene modificato (D20): la destinazione è `end` e gli ingressi dati sono il primo e l'ultimo.
+ *
  * Il direttore non riceve i riferimenti visivi (architettura §4.7): li aggiunge il traduttore, e per
  * questo qui le immagini si tolgono dalla scheda e dal luogo. Un piano che cita un personaggio o un
  * luogo che il film non ha più non si può disegnare: si dice di rifarlo.
@@ -22,8 +26,9 @@ export function cinematographerInputFor(args: {
   bible: StoryBible;
   config: TroupeConfig;
   family: string;
+  mode: StoryboardMode;
 }): CinematographerInput {
-  const { spec, bible, config, family } = args;
+  const { spec, bible, config, family, mode } = args;
 
   const location = bible.locations.find((candidate) => candidate.id === spec.location.locationId);
   if (location === undefined) {
@@ -62,8 +67,8 @@ export function cinematographerInputFor(args: {
       family,
       kind: 'image',
       maxPromptChars: STORYBOARD_PROMPT_MAX_CHARS,
-      frame: 'start',
-      inputs: ['references'],
+      frame: mode === 'end_frame' ? 'end' : 'start',
+      inputs: mode === 'end_frame' ? ['first_frame', 'last_frame'] : ['references'],
     },
   };
 }

@@ -283,7 +283,7 @@ beforeEach(async () => {
 
 describe('i servizi e il prezzo', () => {
   it('il prezzo di ogni servizio è quello delle immagini più il testo del prompt', async () => {
-    const { options: priced } = await build().options(film.id, 'shot-1');
+    const { options: priced } = await build().options(film.id, 'shot-1', 'storyboard');
 
     expect(priced.map((option) => [option.modelId, option.estimatedCostUsd])).toEqual([
       ['servizio-a', 0.24 + WRITING_COST_USD],
@@ -296,7 +296,7 @@ describe('i servizi e il prezzo', () => {
     await rm(path.join(references, 'asset-1.png'));
     await rm(path.join(references, 'asset-4.png'));
 
-    const { options: priced } = await build().options(film.id, 'shot-1');
+    const { options: priced } = await build().options(film.id, 'shot-1', 'storyboard');
 
     expect(priced).toHaveLength(2);
   });
@@ -304,7 +304,7 @@ describe('i servizi e il prezzo', () => {
 
 describe('chiedere lo storyboard', () => {
   it('mette in coda un tentativo col servizio predefinito e un’impronta che non lo conta due volte', async () => {
-    const storyboard = await build().start(film.id, 'shot-1', {});
+    const storyboard = await build().start(film.id, 'shot-1', 'storyboard', {});
 
     expect(storyboard.attempts.map((attempt) => [attempt.attempt, attempt.status])).toEqual([
       [1, 'queued'],
@@ -313,29 +313,37 @@ describe('chiedere lo storyboard', () => {
     expect(enqueued[0]).toMatchObject({
       kind: STORYBOARD_JOB_KIND,
       projectId: film.id,
-      idempotencyKey: `${STORYBOARD_JOB_KIND}:shot-1:1`,
-      payload: { projectId: film.id, shotId: 'shot-1', attempt: 1, modelId: 'servizio-a' },
+      idempotencyKey: `${STORYBOARD_JOB_KIND}:shot-1:storyboard:1`,
+      payload: {
+        projectId: film.id,
+        shotId: 'shot-1',
+        attempt: 1,
+        mode: 'storyboard',
+        modelId: 'servizio-a',
+      },
     });
   });
 
   it('il servizio scelto è un requisito, e uno che non è tra quelli adatti non si sostituisce', async () => {
     const service = build();
 
-    expect(await failure(() => service.start(film.id, 'shot-1', { modelId: 'altro' }))).toEqual({
+    expect(
+      await failure(() => service.start(film.id, 'shot-1', 'storyboard', { modelId: 'altro' })),
+    ).toEqual({
       status: 409,
       code: 'no_eligible_model',
     });
-    expect(store.storyboard('shot-1').attempts).toEqual([]);
+    expect(store.storyboard('shot-1', 'storyboard').attempts).toEqual([]);
 
-    await service.start(film.id, 'shot-1', { modelId: 'servizio-b' });
+    await service.start(film.id, 'shot-1', 'storyboard', { modelId: 'servizio-b' });
     expect(enqueued[0]?.payload).toMatchObject({ modelId: 'servizio-b' });
   });
 
   it('mentre un tentativo lavora non se ne apre un altro', async () => {
     const service = build();
-    await service.start(film.id, 'shot-1', {});
+    await service.start(film.id, 'shot-1', 'storyboard', {});
 
-    expect(await failure(() => service.start(film.id, 'shot-1', {}))).toEqual({
+    expect(await failure(() => service.start(film.id, 'shot-1', 'storyboard', {}))).toEqual({
       status: 409,
       code: 'invalid_request',
     });
@@ -346,26 +354,26 @@ describe('chiedere lo storyboard', () => {
     const service = build();
 
     const replies = await Promise.allSettled([
-      service.start(film.id, 'shot-1', {}),
-      service.start(film.id, 'shot-1', {}),
+      service.start(film.id, 'shot-1', 'storyboard', {}),
+      service.start(film.id, 'shot-1', 'storyboard', {}),
     ]);
 
     expect(replies.map((reply) => reply.status).sort()).toEqual(['fulfilled', 'rejected']);
     expect(enqueued).toHaveLength(1);
-    expect(store.storyboard('shot-1').attempts).toHaveLength(1);
+    expect(store.storyboard('shot-1', 'storyboard').attempts).toHaveLength(1);
   });
 
   it('un limite di spesa ferma prima di mettere in coda, e la conferma dell’utente lo supera', async () => {
     breach = { limit: 'confirm_above', limitUsd: 0.1, spentUsd: 0, estimatedUsd: 0.27 };
     const service = build();
 
-    await expect(service.start(film.id, 'shot-1', {})).rejects.toMatchObject({
+    await expect(service.start(film.id, 'shot-1', 'storyboard', {})).rejects.toMatchObject({
       code: 'spend_cap_reached',
     });
     expect(enqueued).toEqual([]);
-    expect(store.storyboard('shot-1').attempts).toEqual([]);
+    expect(store.storyboard('shot-1', 'storyboard').attempts).toEqual([]);
 
-    await service.start(film.id, 'shot-1', { spendConfirmed: true });
+    await service.start(film.id, 'shot-1', 'storyboard', { spendConfirmed: true });
     expect(enqueued[0]?.payload).toMatchObject({ spendConfirmed: true });
   });
 
@@ -373,11 +381,11 @@ describe('chiedere lo storyboard', () => {
     const service = build();
     plan.screenplay.scenes = [{ ...scene, summary: 'Una scena riscritta.' }];
 
-    expect(await failure(() => service.start(film.id, 'shot-1', {}))).toEqual({
+    expect(await failure(() => service.start(film.id, 'shot-1', 'storyboard', {}))).toEqual({
       status: 409,
       code: 'invalid_request',
     });
-    expect(await failure(() => service.start(film.id, 'non-c-e', {}))).toEqual({
+    expect(await failure(() => service.start(film.id, 'non-c-e', 'storyboard', {}))).toEqual({
       status: 404,
       code: 'not_found',
     });
@@ -387,7 +395,7 @@ describe('chiedere lo storyboard', () => {
 
 describe('il lavoro in coda', () => {
   it('il direttore della fotografia scrive il prompt, poi il servizio disegna con il volto e il set', async () => {
-    await build().start(film.id, 'shot-1', { spendConfirmed: true });
+    await build().start(film.id, 'shot-1', 'storyboard', { spendConfirmed: true });
     await runQueued();
 
     expect(written).toHaveLength(1);
@@ -419,11 +427,11 @@ describe('il lavoro in coda', () => {
   });
 
   it('le immagini si copiano nella cartella del film e il tentativo le elenca', async () => {
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
     expect(registered.map((asset) => asset.id)).toEqual(['img-1', 'img-2', 'img-3']);
-    const attempt = store.storyboard('shot-1').attempts[0];
+    const attempt = store.storyboard('shot-1', 'storyboard').attempts[0];
     expect(attempt).toMatchObject({
       attempt: 1,
       status: 'succeeded',
@@ -433,7 +441,7 @@ describe('il lavoro in coda', () => {
 
   it('un riferimento il cui file non c’è più si salta, e il personaggio non si cita nel prompt', async () => {
     const service = build();
-    await service.start(film.id, 'shot-1', {});
+    await service.start(film.id, 'shot-1', 'storyboard', {});
     // Il record c'è ma il file è sparito: lo stesso di una cartella ripulita a mano.
     await rm(path.join(dataDir, 'progetti', film.id, 'riferimenti', 'asset-1.png'));
 
@@ -441,15 +449,15 @@ describe('il lavoro in coda', () => {
 
     expect(submitted[0]?.request.characterIds).toEqual([]);
     expect(inputsOf().map((input) => new TextDecoder().decode(input.file.bytes))).toEqual(['SET']);
-    expect(store.storyboard('shot-1').attempts[0]?.status).toBe('succeeded');
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]?.status).toBe('succeeded');
   });
 
   it('se il servizio rifiuta, il tentativo lo dice col codice e non si prova un altro servizio', async () => {
     mediaBehaviour = () => Promise.reject(new ProviderError('content_rejected', false, 'no'));
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
-    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
       status: 'failed',
       errorCode: 'content_rejected',
     });
@@ -459,10 +467,10 @@ describe('il lavoro in coda', () => {
 
   it('se il direttore della fotografia non riesce, non si spende per le immagini', async () => {
     writerBehaviour = () => Promise.reject(new ProviderError('spend_cap_reached', false, 'tetto'));
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
-    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
       status: 'failed',
       errorCode: 'spend_cap_reached',
     });
@@ -471,23 +479,23 @@ describe('il lavoro in coda', () => {
 
   it('un servizio che non dà immagini è un errore, non un tentativo riuscito e vuoto', async () => {
     mediaBehaviour = () => Promise.resolve({ assetIds: [] });
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
-    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
       status: 'failed',
       errorCode: 'invalid_output',
     });
   });
 
   it('un lavoro ripetuto su un tentativo già chiuso non spende di nuovo e non cancella le varianti', async () => {
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
     await runQueued();
 
     expect(written).toHaveLength(1);
     expect(submitted).toHaveLength(1);
-    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
       status: 'succeeded',
       assetIds: ['img-1', 'img-2', 'img-3'],
     });
@@ -495,17 +503,17 @@ describe('il lavoro in coda', () => {
 
   it('un errore imprevisto chiude il tentativo come «unknown»: il lavoro non resta a metà', async () => {
     mediaBehaviour = () => Promise.reject(new Error('disco pieno'));
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
-    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+    expect(store.storyboard('shot-1', 'storyboard').attempts[0]).toMatchObject({
       status: 'failed',
       errorCode: 'unknown',
     });
   });
 
   it('se il piano è stato rifatto mentre il lavoro aspettava, non c’è più niente da fare', async () => {
-    await build().start(film.id, 'shot-1', {});
+    await build().start(film.id, 'shot-1', 'storyboard', {});
     store.replaceScene({
       projectId: film.id,
       sceneNumber: 1,
@@ -524,24 +532,145 @@ describe('il lavoro in coda', () => {
 describe('scegliere la variante', () => {
   it('vale solo una variante di un tentativo riuscito di quell’inquadratura', async () => {
     const service = build();
-    await service.start(film.id, 'shot-1', {});
+    await service.start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
     expect(
-      await failure(() => Promise.resolve(service.choose(film.id, 'shot-1', 'altra'))),
+      await failure(() =>
+        Promise.resolve(service.choose(film.id, 'shot-1', 'storyboard', 'altra')),
+      ),
     ).toEqual({ status: 409, code: 'invalid_request' });
-    expect(service.choose(film.id, 'shot-1', 'img-2').chosenAssetId).toBe('img-2');
+    expect(service.choose(film.id, 'shot-1', 'storyboard', 'img-2').chosenAssetId).toBe('img-2');
     expect(store.chosenStoryboards(film.id)).toEqual({ 'shot-1': 'img-2' });
   });
 
   it('una variante di un tentativo fallito non si può scegliere', async () => {
     mediaBehaviour = () => Promise.reject(new ProviderError('timeout', true, 'lento'));
     const service = build();
-    await service.start(film.id, 'shot-1', {});
+    await service.start(film.id, 'shot-1', 'storyboard', {});
     await runQueued();
 
     expect(
-      await failure(() => Promise.resolve(service.choose(film.id, 'shot-1', 'img-1'))),
+      await failure(() =>
+        Promise.resolve(service.choose(film.id, 'shot-1', 'storyboard', 'img-1')),
+      ),
     ).toEqual({ status: 409, code: 'invalid_request' });
+  });
+});
+
+describe('l’ultimo fotogramma', () => {
+  /** L'utente ha impostato il primo fotogramma: un'immagine di cui il file esiste. */
+  const withFirstFrame = (assetId = 'asset-1') => {
+    const stored = store.get('shot-1');
+    if (stored === undefined) throw new Error('l’inquadratura doveva esserci');
+    store.updateSpec('shot-1', {
+      ...stored.spec,
+      images: [{ use: 'first_frame', from: 'generate', assetId }],
+    });
+  };
+
+  it('senza il primo fotogramma non c’è cosa modificare: lo dice, prima di spendere', async () => {
+    const service = build();
+
+    expect(await failure(() => service.options(film.id, 'shot-1', 'end_frame'))).toEqual({
+      status: 409,
+      code: 'invalid_request',
+    });
+    expect(await failure(() => service.start(film.id, 'shot-1', 'end_frame', {}))).toEqual({
+      status: 409,
+      code: 'invalid_request',
+    });
+    expect(enqueued).toEqual([]);
+  });
+
+  it('ha i suoi tentativi, numerati a parte, e il lavoro dice il modo', async () => {
+    withFirstFrame();
+    const service = build();
+    await service.start(film.id, 'shot-1', 'storyboard', {});
+    await runQueued(0);
+
+    const started = await service.start(film.id, 'shot-1', 'end_frame', {});
+
+    expect(started.attempts.map((attempt) => [attempt.attempt, attempt.status])).toEqual([
+      [1, 'queued'],
+    ]);
+    expect(enqueued[1]).toMatchObject({
+      idempotencyKey: `${STORYBOARD_JOB_KIND}:shot-1:end_frame:1`,
+      payload: { mode: 'end_frame', attempt: 1 },
+    });
+    expect(store.storyboard('shot-1', 'storyboard').attempts).toHaveLength(1);
+  });
+
+  it('il servizio riceve il primo fotogramma da modificare, poi i volti e il set', async () => {
+    withFirstFrame();
+    await build().start(film.id, 'shot-1', 'end_frame', {});
+    await runQueued();
+
+    expect(cinematographerInputSchema.parse(written[0]?.input).target).toMatchObject({
+      frame: 'end',
+      inputs: ['first_frame', 'last_frame'],
+    });
+    expect(submitted[0]?.request.idempotencyKey).toBe('shot-1:end_frame:1');
+    expect(
+      inputsOf().map((input) => [input.use, new TextDecoder().decode(input.file.bytes)]),
+    ).toEqual([
+      ['base_image', 'VOLTO'],
+      ['reference', 'VOLTO'],
+      ['reference', 'SET'],
+    ]);
+    expect(store.storyboard('shot-1', 'end_frame').attempts[0]?.status).toBe('succeeded');
+  });
+
+  it('se il primo fotogramma non c’è più sul disco il tentativo fallisce, senza spendere per le immagini', async () => {
+    withFirstFrame('asset-4');
+    const service = build();
+    await service.start(film.id, 'shot-1', 'end_frame', {});
+    await rm(path.join(dataDir, 'progetti', film.id, 'riferimenti', 'asset-4.png'));
+
+    await runQueued();
+
+    expect(store.storyboard('shot-1', 'end_frame').attempts[0]).toMatchObject({
+      status: 'failed',
+      errorCode: 'invalid_request',
+    });
+    expect(submitted).toEqual([]);
+  });
+
+  it('scegliere una variante la imposta come ultimo fotogramma, al posto di quello di prima', async () => {
+    withFirstFrame();
+    const service = build();
+    await service.start(film.id, 'shot-1', 'end_frame', {});
+    await runQueued();
+
+    const chosen = service.choose(film.id, 'shot-1', 'end_frame', 'img-2');
+
+    expect(chosen.chosenAssetId).toBe('img-2');
+    expect(store.get('shot-1')?.spec.images).toEqual([
+      { use: 'first_frame', from: 'generate', assetId: 'asset-1' },
+      { use: 'last_frame', from: 'generate', assetId: 'img-2' },
+    ]);
+    // Lo storyboard non si tocca.
+    expect(store.chosenStoryboards(film.id)).toEqual({});
+
+    expect(service.choose(film.id, 'shot-1', 'end_frame', 'img-3').chosenAssetId).toBe('img-3');
+    expect(store.get('shot-1')?.spec.images.filter((i) => i.use === 'last_frame')).toHaveLength(1);
+    expect(
+      await failure(() => Promise.resolve(service.choose(film.id, 'shot-1', 'end_frame', 'x'))),
+    ).toEqual({ status: 409, code: 'invalid_request' });
+  });
+
+  it('se l’ultimo fotogramma impostato non viene da questi tentativi, non si segna come scelto', async () => {
+    withFirstFrame();
+    const stored = store.get('shot-1');
+    if (stored === undefined) throw new Error('l’inquadratura doveva esserci');
+    store.updateSpec('shot-1', {
+      ...stored.spec,
+      images: [...stored.spec.images, { use: 'last_frame', from: 'generate', assetId: 'altrove' }],
+    });
+    const service = build();
+    await service.start(film.id, 'shot-1', 'end_frame', {});
+    await runQueued();
+
+    expect(service.storyboard(film.id, 'shot-1', 'end_frame').chosenAssetId).toBeUndefined();
   });
 });

@@ -9,6 +9,7 @@ import {
   type StartSheetBody,
   type StoryBible,
   type StoryboardJobPayload,
+  type StoryboardMode,
 } from '@filmzy/contracts';
 import {
   projectsDir,
@@ -44,10 +45,21 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { isStale } from './plan-shots.js';
+import { imageAssetId, withLastFrame } from './shot-images.js';
 import { cinematographerInputFor, storyboardReferences } from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
 
 const ROLE = 'storyboard_artist';
+
+/**
+ * L'ultimo fotogramma nasce dal primo, che l'utente deve aver impostato (D20): senza, non c'è cosa
+ * modificare e lo si dice prima di spendere.
+ */
+function assertCanDraw(spec: ShotSpec, mode: StoryboardMode): void {
+  if (mode === 'end_frame' && imageAssetId(spec, 'first_frame') === undefined) {
+    throw domainError(409, 'invalid_request', { details: { field: 'firstFrame' } });
+  }
+}
 
 /** Quante varianti se la configurazione del ruolo non lo dice: «due o tre» (piano T4.1). */
 const FALLBACK_VARIANTS = 3;
@@ -58,7 +70,10 @@ type MediaRequest = Parameters<MediaRunner['submit']>[1];
 /** Il tipo di lavoro in coda che fa le varianti di storyboard di un'inquadratura. */
 export const STORYBOARD_JOB_KIND = 'storyboard_images';
 
-/** I riferimenti già letti dai file: i volti bloccati e il set, nell'ordine in cui li legge il traduttore. */
+/**
+ * Le immagini già lette dai file, nell'ordine in cui le legge il traduttore: l'immagine da
+ * modificare (solo per l'ultimo fotogramma), i volti bloccati e il set.
+ */
 interface ReadReferences {
   inputs: MediaInput[];
   /** I personaggi che hanno davvero un riferimento: gli altri non si citano nel prompt. */
@@ -70,6 +85,10 @@ interface ReadReferences {
  * varianti dell'immagine e se ne sceglie una, che resta come riferimento visivo della card. Il
  * direttore della fotografia scrive il prompt (un'unica chiamata di testo), poi il servizio
  * immagini lo disegna con il volto bloccato dei personaggi e l'immagine del set come riferimenti.
+ *
+ * Lo stesso lavoro fa l'**ultimo fotogramma** (T4.2, D20, `end_frame`): parte dal primo fotogramma
+ * impostato dall'utente, che il servizio modifica secondo il movimento di macchina; per questo
+ * servono un servizio che sa modificare un'immagine e il primo fotogramma già impostato.
  *
  * Come per schede e luoghi: le immagini sono un lavoro in coda (regola 9), i file si copiano subito
  * nella cartella del film (regola 11), servizio e stima si vedono prima (D36, D30) e il limite di
@@ -100,23 +119,30 @@ export class StoryboardService implements OnModuleInit {
   }
 
   /** I servizi tra cui scegliere, con la stima di tutto il tentativo (testo e immagini). */
-  async options(projectId: string, shotId: string): Promise<SheetOptions> {
+  async options(projectId: string, shotId: string, mode: StoryboardMode): Promise<SheetOptions> {
     const { stored } = this.target(projectId, shotId);
+    assertCanDraw(stored.spec, mode);
     const config = await this.config();
     const bible = await this.bible.assemble(projectId);
-    return { options: await this.priced(stored.spec, bible, config) };
+    return { options: await this.priced(stored.spec, bible, config, mode) };
   }
 
   /** «Fai lo storyboard»: controlla servizio e limiti di spesa, poi mette in coda un tentativo. */
-  async start(projectId: string, shotId: string, body: StartSheetBody): Promise<ShotStoryboard> {
+  async start(
+    projectId: string,
+    shotId: string,
+    mode: StoryboardMode,
+    body: StartSheetBody,
+  ): Promise<ShotStoryboard> {
     const { stored } = this.target(projectId, shotId);
     this.assertPlanCurrent(projectId, stored);
+    assertCanDraw(stored.spec, mode);
 
     const config = await this.config();
     const bible = await this.bible.assemble(projectId);
     const chosen = await chooseImageService({
       role: ROLE,
-      options: await this.priced(stored.spec, bible, config),
+      options: await this.priced(stored.spec, bible, config, mode),
       body,
       config,
       spend: this.spend,
@@ -126,15 +152,16 @@ export class StoryboardService implements OnModuleInit {
     // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte la stessa
     // inquadratura. Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo, senza
     // altre attese in mezzo: con un doppio clic la seconda richiesta lo trova già aperto.
-    const latest = this.store.storyboard(shotId).attempts[0];
+    const latest = this.store.storyboard(shotId, mode).attempts[0];
     if (latest?.status === 'queued' || latest?.status === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'storyboard' } });
     }
-    const attempt = this.store.startStoryboard(shotId);
+    const attempt = this.store.startStoryboard(shotId, mode);
     const payload: StoryboardJobPayload = {
       projectId,
       shotId,
       attempt,
+      mode,
       modelId: chosen.modelId,
       ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     };
@@ -142,29 +169,54 @@ export class StoryboardService implements OnModuleInit {
       kind: STORYBOARD_JOB_KIND,
       payload,
       projectId,
-      idempotencyKey: `${STORYBOARD_JOB_KIND}:${shotId}:${String(attempt)}`,
+      idempotencyKey: `${STORYBOARD_JOB_KIND}:${shotId}:${mode}:${String(attempt)}`,
     });
     this.runner.wake();
-    return this.store.storyboard(shotId);
+    return this.storyboardOf(stored.spec, shotId, mode);
   }
 
-  storyboard(projectId: string, shotId: string): ShotStoryboard {
-    this.target(projectId, shotId);
-    return this.store.storyboard(shotId);
+  storyboard(projectId: string, shotId: string, mode: StoryboardMode): ShotStoryboard {
+    const { stored } = this.target(projectId, shotId);
+    return this.storyboardOf(stored.spec, shotId, mode);
   }
 
-  /** «Scegli questa»: la variante deve essere di un tentativo riuscito di quell'inquadratura. */
-  choose(projectId: string, shotId: string, assetId: string): ShotStoryboard {
-    this.target(projectId, shotId);
+  /**
+   * «Scegli questa»: la variante deve essere di un tentativo riuscito di quell'inquadratura. Quella
+   * dello storyboard diventa il riferimento della card; quella dell'ultimo fotogramma diventa
+   * l'ultimo fotogramma impostato (al posto di quello di prima).
+   */
+  choose(projectId: string, shotId: string, mode: StoryboardMode, assetId: string): ShotStoryboard {
+    const { stored } = this.target(projectId, shotId);
     const known = this.store
-      .storyboard(shotId)
+      .storyboard(shotId, mode)
       .attempts.some(
         (attempt) => attempt.status === 'succeeded' && attempt.assetIds.includes(assetId),
       );
     if (!known) throw domainError(409, 'invalid_request', { details: { field: 'assetId' } });
 
-    this.store.chooseStoryboard(shotId, assetId);
-    return this.store.storyboard(shotId);
+    if (mode === 'storyboard') {
+      this.store.chooseStoryboard(shotId, assetId);
+    } else if (!this.store.updateSpec(shotId, withLastFrame(stored.spec, assetId))) {
+      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
+    }
+    return this.storyboard(projectId, shotId, mode);
+  }
+
+  /**
+   * I tentativi di un modo. La variante scelta dello storyboard sta nel database; quella dell'ultimo
+   * fotogramma è l'immagine impostata nella scheda, se è una di queste.
+   */
+  private storyboardOf(spec: ShotSpec, shotId: string, mode: StoryboardMode): ShotStoryboard {
+    const storyboard = this.store.storyboard(shotId, mode);
+    if (mode === 'storyboard') return storyboard;
+
+    const lastFrame = imageAssetId(spec, 'last_frame');
+    const isOurs = storyboard.attempts.some(
+      (attempt) => lastFrame !== undefined && attempt.assetIds.includes(lastFrame),
+    );
+    return isOurs && lastFrame !== undefined
+      ? { ...storyboard, chosenAssetId: lastFrame }
+      : storyboard;
   }
 
   /**
@@ -174,7 +226,7 @@ export class StoryboardService implements OnModuleInit {
    */
   private async makeImages(rawPayload: unknown): Promise<void> {
     const payload = storyboardJobPayloadSchema.parse(rawPayload);
-    const { projectId, shotId, attempt } = payload;
+    const { projectId, shotId, attempt, mode } = payload;
 
     const stored = this.store.get(shotId);
     if (stored === undefined) {
@@ -188,12 +240,12 @@ export class StoryboardService implements OnModuleInit {
     // Un lavoro ripetuto (per esempio dopo un riavvio) su un tentativo già chiuso non rifà niente:
     // non si paga due volte (regola 10) e non si cancellano le varianti già pronte.
     const current = this.store
-      .storyboard(shotId)
+      .storyboard(shotId, mode)
       .attempts.find((candidate) => candidate.attempt === attempt);
     if (current?.status === 'succeeded' || current?.status === 'failed') return;
 
     try {
-      this.store.finishStoryboard(shotId, attempt, { status: 'running' });
+      this.store.finishStoryboard(shotId, mode, attempt, { status: 'running' });
       const config = await this.config();
       const bible = await this.bible.assemble(projectId);
       const family = this.familyOf(config, payload.modelId);
@@ -206,14 +258,14 @@ export class StoryboardService implements OnModuleInit {
 
       const written = await this.troupe.run(
         'cinematographer',
-        cinematographerInputFor({ spec: stored.spec, bible, config, family }),
+        cinematographerInputFor({ spec: stored.spec, bible, config, family, mode }),
         context,
       );
-      const references = await this.readReferences(stored.spec, bible);
+      const references = await this.readReferences(stored.spec, bible, mode);
       const media = this.mediaFor(path.join(projectsDir(this.dataDir), projectId, 'immagini'));
       const job = await media.submit(
         ROLE,
-        this.requestFor(config, stored.spec, references, written.data, attempt),
+        this.requestFor(config, stored.spec, references, written.data, mode, attempt),
         { ...context, modelId: payload.modelId },
       );
 
@@ -226,15 +278,15 @@ export class StoryboardService implements OnModuleInit {
         { dataDir: this.dataDir, projectId, generationId: receipt.id },
         assets,
       );
-      this.store.finishStoryboard(shotId, attempt, {
+      this.store.finishStoryboard(shotId, mode, attempt, {
         status: 'succeeded',
         assetIds: assets.map((asset) => asset.assetId),
         receiptId: receipt.id,
       });
     } catch (error) {
       const errorCode = error instanceof ProviderError ? error.code : 'unknown';
-      this.log.warn(`Storyboard fallito: ${errorCode}.`);
-      this.store.finishStoryboard(shotId, attempt, { status: 'failed', errorCode });
+      this.log.warn(`Storyboard (${mode}) fallito: ${errorCode}.`);
+      this.store.finishStoryboard(shotId, mode, attempt, { status: 'failed', errorCode });
     }
   }
 
@@ -248,14 +300,16 @@ export class StoryboardService implements OnModuleInit {
     spec: ShotSpec,
     bible: StoryBible,
     config: TroupeConfig,
+    mode: StoryboardMode,
   ): Promise<ModelOption[]> {
     const options = await this.troupe.options(
       ROLE,
       this.requestFor(
         config,
         spec,
-        this.pricingReferences(spec, bible),
+        this.pricingReferences(spec, bible, mode),
         { prompt: spec.intent.action },
+        mode,
         0,
       ),
     );
@@ -271,6 +325,7 @@ export class StoryboardService implements OnModuleInit {
         bible,
         config,
         family: this.familyOf(config, reference.modelId),
+        mode,
       }),
     );
     return options.map((option) => ({
@@ -285,6 +340,7 @@ export class StoryboardService implements OnModuleInit {
     spec: ShotSpec,
     references: ReadReferences,
     visual: { prompt: string; negativePrompt?: string | undefined },
+    mode: StoryboardMode,
     attempt: number,
   ): MediaRequest {
     const variants = variantsOf(config, ROLE, FALLBACK_VARIANTS);
@@ -296,7 +352,7 @@ export class StoryboardService implements OnModuleInit {
       inputs: references.inputs,
       characterIds: references.characterIds,
       params: { variants },
-      idempotencyKey: `${spec.id}:storyboard:${String(attempt)}`,
+      idempotencyKey: `${spec.id}:${mode}:${String(attempt)}`,
     };
   }
 
@@ -305,27 +361,43 @@ export class StoryboardService implements OnModuleInit {
    * appartengono, non cosa contengono. Non si legge nessun file (le immagini si leggono una volta
    * sola, quando il lavoro disegna).
    */
-  private pricingReferences(spec: ShotSpec, bible: StoryBible): ReadReferences {
+  private pricingReferences(
+    spec: ShotSpec,
+    bible: StoryBible,
+    mode: StoryboardMode,
+  ): ReadReferences {
     const wanted = storyboardReferences(spec, bible);
-    const count = wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1);
-    const standIn: MediaInput = {
-      use: 'reference',
+    const standIn = (use: 'reference' | 'base_image'): MediaInput => ({
+      use,
       file: { fileName: 'riferimento.png', contentType: 'image/png', bytes: new Uint8Array() },
-    };
+    });
+    const count = wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1);
     return {
-      inputs: Array.from({ length: count }, () => standIn),
+      inputs: [
+        ...(mode === 'end_frame' ? [standIn('base_image')] : []),
+        ...Array.from({ length: count }, () => standIn('reference')),
+      ],
       characterIds: wanted.characters.map((entry) => entry.characterId),
     };
   }
 
   /**
-   * I file dei riferimenti, nell'ordine in cui il traduttore conta i personaggi: prima i volti, poi
-   * il set. Un file che non c'è più (cartella ripulita a mano) si salta: l'immagine verrà senza
-   * quel riferimento, e il personaggio non si cita nel prompt.
+   * I file delle immagini, nell'ordine in cui il traduttore conta i personaggi: prima l'immagine da
+   * modificare (per l'ultimo fotogramma), poi i volti, poi il set. Un riferimento il cui file non c'è
+   * più (cartella ripulita a mano) si salta: l'immagine verrà senza, e il personaggio non si cita
+   * nel prompt. L'immagine da modificare invece è indispensabile: senza, il tentativo non parte.
    */
-  private async readReferences(spec: ShotSpec, bible: StoryBible): Promise<ReadReferences> {
+  private async readReferences(
+    spec: ShotSpec,
+    bible: StoryBible,
+    mode: StoryboardMode,
+  ): Promise<ReadReferences> {
     const wanted = storyboardReferences(spec, bible);
-    const [faces, set] = await Promise.all([
+    const firstFrame = mode === 'end_frame' ? imageAssetId(spec, 'first_frame') : undefined;
+    const [base, faces, set] = await Promise.all([
+      firstFrame === undefined
+        ? undefined
+        : referenceInput(this.files, this.dataDir, firstFrame, 'base_image'),
       Promise.all(
         wanted.characters.map(async ({ characterId, assetId }) => ({
           characterId,
@@ -337,11 +409,19 @@ export class StoryboardService implements OnModuleInit {
         : referenceInput(this.files, this.dataDir, wanted.locationAssetId),
     ]);
 
+    if (mode === 'end_frame' && base === undefined) {
+      throw new ProviderError('invalid_request', false, 'Il primo fotogramma non c’è più.');
+    }
+
     const found = faces.flatMap(({ characterId, input }) =>
       input === undefined ? [] : [{ characterId, input }],
     );
     return {
-      inputs: [...found.map(({ input }) => input), ...(set === undefined ? [] : [set])],
+      inputs: [
+        ...(base === undefined ? [] : [base]),
+        ...found.map(({ input }) => input),
+        ...(set === undefined ? [] : [set]),
+      ],
       characterIds: found.map(({ characterId }) => characterId),
     };
   }

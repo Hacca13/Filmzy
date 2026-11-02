@@ -20,7 +20,9 @@ export type { NewProject, ProjectChanges, ProjectStore } from './project-store.j
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
 export { createShotStore } from './shot-store.js';
+export { createTakeStore } from './take-store.js';
 export type { NewShotPlan, ShotStore, StoredShot, StoredShotPlan } from './shot-store.js';
+export type { NewTake, StoredTake, TakePatch, TakeStore } from './take-store.js';
 export { createSheetStore } from './sheet-store.js';
 export type { AssetRecord, SheetImagePatch, SheetStore } from './sheet-store.js';
 export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';

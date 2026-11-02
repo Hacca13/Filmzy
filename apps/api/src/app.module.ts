@@ -10,6 +10,7 @@ import { PreferencesModule } from './modules/preferences/preferences.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
 import { RolesModule } from './modules/roles/roles.module.js';
+import { ScreenplayModule } from './modules/screenplay/screenplay.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
 import { SpendModule } from './modules/spend/spend.module.js';
 import { TroupeModule } from './modules/troupe/troupe.module.js';
@@ -46,6 +47,7 @@ export class AppModule {
         PreferencesModule,
         ProjectsModule,
         RolesModule,
+        ScreenplayModule,
         SpendModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },

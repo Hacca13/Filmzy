@@ -6,7 +6,8 @@ import { Notice } from '../components/ui';
 import { formatDateTime } from '../lib/format';
 import { useResource } from '../lib/use-resource';
 import { describeError } from '../settings/messages';
-import { choiceLabel, formatDuration, phaseLabel } from './model';
+import { choiceLabel, formatDuration } from './model';
+import { StoryPanel } from './story/StoryPanel';
 import { ideaHref } from './routes';
 
 /**
@@ -71,13 +72,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
         </div>
       </section>
 
-      <section className="panel">
-        <h2>Prossimo passo: {phaseLabel(film.phase)}</h2>
-        <p className="hint">
-          Qui lo sceneggiatore scriverà la storia partendo dalla tua idea. Questo passo arriva con i
-          prossimi aggiornamenti di Filmzy.
-        </p>
-      </section>
+      <StoryPanel filmId={film.id} />
     </section>
   );
 }

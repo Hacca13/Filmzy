@@ -14,6 +14,8 @@ export { createPreferencesStore } from './preferences-store.js';
 export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
+export { createScreenplayStore } from './screenplay-store.js';
+export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';
 export type { ReceiptStore } from './receipt-store.js';
 export type { PreferencesStore } from './preferences-store.js';
 export { createJobQueue } from './queue.js';
@@ -26,6 +28,7 @@ export {
   jobs,
   meta,
   projects,
+  screenplays,
   settings,
   troupeDrafts,
   troupeReleases,
@@ -36,6 +39,7 @@ export type {
   InstructionVersionRow,
   JobRow,
   ProjectRow,
+  ScreenplayRow,
   SettingsRow,
   TroupeDraftRow,
   TroupeReleaseRow,

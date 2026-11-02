@@ -153,6 +153,20 @@ describe('i luoghi del film', () => {
     await untilDone(images);
   }, 20_000);
 
+  it('due richieste insieme (un doppio clic) aprono un solo tentativo', async () => {
+    const { base } = await filmWithDraft();
+    const { location } = await addFirst(base);
+    const images = `${base}/${location.id}/images`;
+
+    const replies = await Promise.all([
+      client.call('POST', images, {}),
+      client.call('POST', images, {}),
+    ]);
+
+    expect(replies.map((reply) => reply.status).sort()).toEqual([201, 409]);
+    expect((await untilDone(images)).attempts).toHaveLength(1);
+  }, 20_000);
+
   it('l’immagine scelta diventa il riferimento del luogo nella Bibbia; una che non è sua si rifiuta', async () => {
     const { base } = await filmWithDraft();
     const { location } = await addFirst(base);

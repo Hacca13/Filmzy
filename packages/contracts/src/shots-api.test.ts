@@ -20,6 +20,7 @@ const scene = {
   planned: true,
   stale: false,
   shots: [shot],
+  chosenStoryboards: {},
 };
 
 describe('scenePlanSchema', () => {
@@ -34,6 +35,20 @@ describe('scenePlanSchema', () => {
   it('rifiuta una scena senza numero valido e un’inquadratura che non è una scheda', () => {
     expect(scenePlanSchema.safeParse({ ...scene, sceneNumber: 0 }).success).toBe(false);
     expect(scenePlanSchema.safeParse({ ...scene, shots: [{ id: 'x' }] }).success).toBe(false);
+  });
+});
+
+describe('chosenStoryboards', () => {
+  it('dice per ogni inquadratura quale variante di storyboard è stata scelta', () => {
+    const parsed = scenePlanSchema.parse({ ...scene, chosenStoryboards: { 'shot-1': 'asset-9' } });
+
+    expect(parsed.chosenStoryboards).toEqual({ 'shot-1': 'asset-9' });
+    expect(
+      scenePlanSchema.safeParse({ ...scene, chosenStoryboards: { 'shot-1': '' } }).success,
+    ).toBe(false);
+    expect(scenePlanSchema.safeParse({ ...scene, chosenStoryboards: undefined }).success).toBe(
+      false,
+    );
   });
 });
 

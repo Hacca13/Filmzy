@@ -370,3 +370,32 @@ describe('il movimento di macchina', () => {
     }
   });
 });
+
+describe('la variante di storyboard scelta', () => {
+  it('sta nella scena della sua inquadratura, e solo lì', async () => {
+    const service = build();
+    const first = await service.plan(film.id, { sceneNumber: 1 });
+    await service.plan(film.id, { sceneNumber: 2 });
+    const shot = first.shots[0];
+    if (shot === undefined) throw new Error('doveva esserci un’inquadratura');
+
+    store.chooseStoryboard(shot.id, 'immagine-1');
+    const plans = await service.plans(film.id);
+
+    expect(plans.scenes[0]?.chosenStoryboards).toEqual({ [shot.id]: 'immagine-1' });
+    expect(plans.scenes[1]?.chosenStoryboards).toEqual({});
+  });
+
+  it('rifare il piano della scena la toglie con le inquadrature vecchie', async () => {
+    const service = build();
+    const first = await service.plan(film.id, { sceneNumber: 1 });
+    const shot = first.shots[0];
+    if (shot === undefined) throw new Error('doveva esserci un’inquadratura');
+    store.chooseStoryboard(shot.id, 'immagine-1');
+
+    const again = await service.plan(film.id, { sceneNumber: 1 });
+
+    expect(again.chosenStoryboards).toEqual({});
+    expect((await service.plans(film.id)).scenes[0]?.chosenStoryboards).toEqual({});
+  });
+});

@@ -21,7 +21,7 @@ import { withoutImages } from '../bible/without-images.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { citesMissing, hashScene, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
+import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE } from './tokens.js';
 
 /**
@@ -53,11 +53,12 @@ export class ShotsService {
     const config = await this.config();
     const known = this.bible.knownIds(projectId);
     const stored = new Map(this.store.plans(projectId).map((plan) => [plan.sceneNumber, plan]));
+    const chosen = this.store.chosenStoryboards(projectId);
 
     return {
       finalVersionId: final.id,
       scenes: final.screenplay.scenes.map((scene) =>
-        scenePlan(scene, stored.get(scene.number), known),
+        scenePlan(scene, stored.get(scene.number), known, chosen),
       ),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
@@ -100,7 +101,8 @@ export class ShotsService {
       shots,
     });
     this.projects.reach(projectId, 'shots');
-    return scenePlan(scene, saved, this.bible.knownIds(projectId));
+    // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante.
+    return scenePlan(scene, saved, this.bible.knownIds(projectId), {});
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
@@ -195,16 +197,17 @@ export class ShotsService {
 const activeMovements = (config: TroupeConfig): CameraMovement[] =>
   config.presets.cameraMovements.filter((movement) => movement.enabled);
 
-/** Il piano è vecchio se la scena è cambiata, o se cita un personaggio o un luogo che non c'è più. */
-const isStale = (scene: ScreenplayScene, plan: StoredShotPlan, known: KnownIds): boolean =>
-  plan.sceneHash !== hashScene(scene) || citesMissing(plan.shots, known);
-
-/** Una scena della stesura con il suo piano, se c'è. */
+/**
+ * Una scena della stesura con il suo piano, se c'è, e la variante di storyboard scelta per ogni sua
+ * inquadratura (`chosen` è quella di tutto il film: qui si tengono solo quelle del piano).
+ */
 function scenePlan(
   scene: ScreenplayScene,
   plan: StoredShotPlan | undefined,
   known: KnownIds,
+  chosen: Readonly<Record<string, string>>,
 ): ScenePlan {
+  const shots = plan?.shots ?? [];
   return {
     sceneNumber: scene.number,
     heading: scene.heading,
@@ -213,6 +216,12 @@ function scenePlan(
     planned: plan !== undefined,
     stale: plan !== undefined && isStale(scene, plan, known),
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
-    shots: plan?.shots ?? [],
+    shots,
+    chosenStoryboards: Object.fromEntries(
+      shots.flatMap((shot) => {
+        const assetId = chosen[shot.id];
+        return assetId === undefined ? [] : [[shot.id, assetId]];
+      }),
+    ),
   };
 }

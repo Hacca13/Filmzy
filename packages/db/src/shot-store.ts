@@ -1,8 +1,25 @@
-import { shotSpecSchema, type ShotSpec } from '@filmzy/contracts';
-import { and, asc, desc, eq, lt } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 
+import {
+  shotStoryboardSchema,
+  shotSpecSchema,
+  sheetImageStatusSchema,
+  storyboardAttemptSchema,
+  type ShotSpec,
+  type ShotStoryboard,
+} from '@filmzy/contracts';
+import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+
+import type { AttemptPatch } from './location-store.js';
 import type { FilmzyDb } from './open.js';
-import { shotPlans, shots, type ShotPlanRow, type ShotRow } from './schema.js';
+import {
+  shotPlans,
+  shots,
+  storyboardAttempts,
+  type ShotPlanRow,
+  type ShotRow,
+  type StoryboardAttemptRow,
+} from './schema.js';
 
 /** Il piano di una scena come si salva: da dove è nato, chi l'ha pensato e le inquadrature. */
 export interface NewShotPlan {
@@ -45,6 +62,15 @@ export interface ShotStore {
   get: (shotId: string) => StoredShot | undefined;
   /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più. */
   updateSpec: (shotId: string, spec: ShotSpec) => boolean;
+  /** Apre un nuovo tentativo di storyboard (in coda) e ne dà il numero. */
+  startStoryboard: (shotId: string) => number;
+  finishStoryboard: (shotId: string, attempt: number, patch: AttemptPatch) => void;
+  /** I tentativi di storyboard dal più recente e la variante scelta. */
+  storyboard: (shotId: string) => ShotStoryboard;
+  /** Sceglie la variante che resta come riferimento visivo dell'inquadratura, o la toglie con `undefined`. */
+  chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
+  /** La variante scelta di ogni inquadratura del film che ne ha una. */
+  chosenStoryboards: (projectId: string) => Record<string, string>;
 }
 
 export interface ShotStoreOptions {
@@ -52,6 +78,17 @@ export interface ShotStoreOptions {
 }
 
 const toSpec = (row: ShotRow): ShotSpec => shotSpecSchema.parse(JSON.parse(row.spec));
+
+function toAttempt(row: StoryboardAttemptRow) {
+  const assetIds: unknown = JSON.parse(row.assetIds);
+  return storyboardAttemptSchema.parse({
+    attempt: row.attempt,
+    status: sheetImageStatusSchema.parse(row.status),
+    createdAt: new Date(row.createdAt).toISOString(),
+    assetIds,
+    ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
+  });
+}
 
 function toPlan(row: ShotPlanRow, planShots: ShotRow[]): StoredShotPlan {
   return {
@@ -90,6 +127,16 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           eq(shots.projectId, plan.projectId),
           eq(shots.sceneNumber, plan.sceneNumber),
         );
+        // Le inquadrature di prima spariscono con i loro tentativi di storyboard: i file restano.
+        const removed = tx
+          .select({ id: shots.id })
+          .from(shots)
+          .where(scene)
+          .all()
+          .map((shot) => shot.id);
+        if (removed.length > 0) {
+          tx.delete(storyboardAttempts).where(inArray(storyboardAttempts.shotId, removed)).run();
+        }
         tx.delete(shots).where(scene).run();
         tx.delete(shotPlans)
           .where(
@@ -170,6 +217,75 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         .where(eq(shots.id, shotId))
         .run();
       return changes > 0;
+    },
+
+    startStoryboard(shotId) {
+      return db.transaction((tx) => {
+        const last = tx
+          .select({ attempt: storyboardAttempts.attempt })
+          .from(storyboardAttempts)
+          .where(eq(storyboardAttempts.shotId, shotId))
+          .orderBy(desc(storyboardAttempts.attempt))
+          .limit(1)
+          .get();
+        const attempt = (last?.attempt ?? 0) + 1;
+        const at = now().getTime();
+        tx.insert(storyboardAttempts)
+          .values({
+            id: randomUUID(),
+            shotId,
+            attempt,
+            status: 'queued',
+            assetIds: '[]',
+            createdAt: at,
+            updatedAt: at,
+          })
+          .run();
+        return attempt;
+      });
+    },
+
+    finishStoryboard(shotId, attempt, patch) {
+      db.update(storyboardAttempts)
+        .set({
+          status: patch.status,
+          assetIds: JSON.stringify(patch.assetIds ?? []),
+          receiptId: patch.receiptId ?? null,
+          errorCode: patch.errorCode ?? null,
+          updatedAt: now().getTime(),
+        })
+        .where(and(eq(storyboardAttempts.shotId, shotId), eq(storyboardAttempts.attempt, attempt)))
+        .run();
+    },
+
+    storyboard(shotId) {
+      const attempts = db
+        .select()
+        .from(storyboardAttempts)
+        .where(eq(storyboardAttempts.shotId, shotId))
+        .orderBy(desc(storyboardAttempts.attempt))
+        .all()
+        .map(toAttempt);
+      const chosen = db.select().from(shots).where(eq(shots.id, shotId)).get()?.chosenAssetId;
+      return shotStoryboardSchema.parse({
+        shotId,
+        attempts,
+        ...(chosen === null || chosen === undefined ? {} : { chosenAssetId: chosen }),
+      });
+    },
+
+    chooseStoryboard(shotId, assetId) {
+      db.update(shots)
+        .set({ chosenAssetId: assetId ?? null })
+        .where(eq(shots.id, shotId))
+        .run();
+    },
+
+    chosenStoryboards(projectId) {
+      const rows = db.select().from(shots).where(eq(shots.projectId, projectId)).all();
+      return Object.fromEntries(
+        rows.flatMap((row) => (row.chosenAssetId === null ? [] : [[row.id, row.chosenAssetId]])),
+      );
     },
   };
 }

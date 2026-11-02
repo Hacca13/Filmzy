@@ -14,7 +14,6 @@ import {
 } from '@filmzy/contracts';
 import { projectsDir, type CharacterStore, type JobQueue, type SheetStore } from '@filmzy/db';
 import {
-  enforceSpend,
   ProviderError,
   type ConfigSource,
   type InstructionsSource,
@@ -30,7 +29,12 @@ import { CHARACTER_STORE, SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
-import { registerAssets, renderImagePrompt, waitForMedia } from '../media/image-jobs.js';
+import {
+  chooseImageService,
+  registerAssets,
+  renderImagePrompt,
+  waitForMedia,
+} from '../media/image-jobs.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 
@@ -92,40 +96,24 @@ export class SheetService implements OnModuleInit {
     const { project, character } = this.target(projectId, characterId);
     const config = await this.config();
 
+    const request = await this.requestFor(project, character, config, 'front', 0);
+    const options = (await this.troupe.options(ROLE, request)).map((option) => wholeSheet(option));
+    const chosen = await chooseImageService({
+      role: ROLE,
+      options,
+      body,
+      config,
+      spend: this.spend,
+      projectId,
+    });
+
+    // Mentre una scheda lavora non se ne chiede un'altra: si pagherebbe due volte. Il controllo sta
+    // qui, dopo le attese e subito prima di aprire il tentativo, senza altre attese in mezzo: con un
+    // doppio clic la seconda richiesta lo trova già aperto.
     const current = this.sheets.get(characterId);
     if (current.attempts[0]?.images.some((image) => isOpen(image.status)) === true) {
       throw domainError(409, 'invalid_request', { details: { field: 'sheet' } });
     }
-
-    const request = await this.requestFor(project, character, config, 'front', 0);
-    const options = (await this.troupe.options(ROLE, request)).map((option) => wholeSheet(option));
-    const chosen =
-      body.modelId === undefined
-        ? (options.find((option) => option.isDefault) ?? options[0])
-        : options.find((option) => option.modelId === body.modelId);
-    // Il servizio scelto è un requisito: se non è adatto non si passa a un altro (D36).
-    if (chosen === undefined)
-      throw domainError(409, 'no_eligible_model', { details: { role: ROLE } });
-
-    const connectionId = config.models[chosen.modelId]?.connection;
-    if (connectionId === undefined) {
-      throw domainError(422, 'config_invalid', { details: { modelId: chosen.modelId } });
-    }
-    await enforceSpend(
-      this.spend,
-      {
-        purpose: 'product',
-        projectId,
-        ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
-      },
-      {
-        role: ROLE,
-        connectionId,
-        modelId: chosen.modelId,
-        estimatedCostUsd: chosen.estimatedCostUsd,
-      },
-    );
-
     const attempt = this.sheets.startAttempt(characterId);
     const payload: SheetJobPayload = {
       projectId,

@@ -9,6 +9,7 @@ import {
   type ShotSpec,
   type StoryBible,
 } from '@filmzy/contracts';
+import type { StoredShotPlan } from '@filmzy/db';
 
 import { domainError } from '../../http/domain-error.js';
 
@@ -39,6 +40,10 @@ export interface KnownIds {
   characters: ReadonlySet<string>;
   locations: ReadonlySet<string>;
 }
+
+/** Il piano è vecchio se la scena è cambiata, o se cita un personaggio o un luogo che non c'è più. */
+export const isStale = (scene: ScreenplayScene, plan: StoredShotPlan, known: KnownIds): boolean =>
+  plan.sceneHash !== hashScene(scene) || citesMissing(plan.shots, known);
 
 /**
  * Un piano cita un personaggio o un luogo che il film non ha più (l'utente li ha tolti dopo)?

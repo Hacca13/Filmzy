@@ -19,7 +19,6 @@ import {
   type SheetStore,
 } from '@filmzy/db';
 import {
-  enforceSpend,
   ProviderError,
   type ConfigSource,
   type InstructionsSource,
@@ -35,7 +34,13 @@ import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
-import { registerAssets, renderImagePrompt, waitForMedia } from '../media/image-jobs.js';
+import {
+  chooseImageService,
+  registerAssets,
+  renderImagePrompt,
+  variantsOf,
+  waitForMedia,
+} from '../media/image-jobs.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
@@ -138,43 +143,26 @@ export class LocationsService implements OnModuleInit {
     const { project, location } = this.target(projectId, locationId);
     const config = await this.config();
 
-    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte lo stesso luogo.
-    const latest = this.store.images(locationId).attempts[0];
-    if (latest?.status === 'queued' || latest?.status === 'running') {
-      throw domainError(409, 'invalid_request', { details: { field: 'images' } });
-    }
-
     const options = await this.troupe.options(
       ROLE,
       await this.requestFor(project, location, config, 0),
     );
-    const chosen =
-      body.modelId === undefined
-        ? (options.find((option) => option.isDefault) ?? options[0])
-        : options.find((option) => option.modelId === body.modelId);
-    // Il servizio scelto è un requisito: se non è adatto non si passa a un altro (D36).
-    if (chosen === undefined)
-      throw domainError(409, 'no_eligible_model', { details: { role: ROLE } });
+    const chosen = await chooseImageService({
+      role: ROLE,
+      options,
+      body,
+      config,
+      spend: this.spend,
+      projectId,
+    });
 
-    const connectionId = config.models[chosen.modelId]?.connection;
-    if (connectionId === undefined) {
-      throw domainError(422, 'config_invalid', { details: { modelId: chosen.modelId } });
+    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte lo stesso luogo.
+    // Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo, senza altre attese
+    // in mezzo: con un doppio clic la seconda richiesta lo trova già aperto.
+    const latest = this.store.images(locationId).attempts[0];
+    if (latest?.status === 'queued' || latest?.status === 'running') {
+      throw domainError(409, 'invalid_request', { details: { field: 'images' } });
     }
-    await enforceSpend(
-      this.spend,
-      {
-        purpose: 'product',
-        projectId,
-        ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
-      },
-      {
-        role: ROLE,
-        connectionId,
-        modelId: chosen.modelId,
-        estimatedCostUsd: chosen.estimatedCostUsd,
-      },
-    );
-
     const attempt = this.store.startAttempt(locationId);
     const payload: LocationJobPayload = {
       projectId,
@@ -277,8 +265,7 @@ export class LocationsService implements OnModuleInit {
       throw domainError(422, 'config_invalid', { details: { field: 'style' } });
     }
 
-    const configured = config.roles[ROLE]?.params?.variants;
-    const variants = typeof configured === 'number' ? configured : FALLBACK_VARIANTS;
+    const variants = variantsOf(config, ROLE, FALLBACK_VARIANTS);
     const loaded = await this.configSource.load();
     const prompt = await renderImagePrompt({
       instructions: this.instructions,

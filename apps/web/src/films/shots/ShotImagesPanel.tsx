@@ -16,10 +16,12 @@ export function ShotImagesPanel({
   filmId,
   shot,
   onChanged,
+  onClose,
 }: {
   filmId: string;
   shot: ShotSpec;
   onChanged: () => void;
+  onClose: () => void;
 }) {
   // «Imposta le immagini» offre le varianti già fatte: si rilegge quando ne nascono o si sceglie.
   const [refresh, setRefresh] = useState(0);
@@ -33,7 +35,12 @@ export function ShotImagesPanel({
 
   return (
     <div className="storyboard-panel">
-      <h4>Inquadratura {shot.order + 1} · storyboard, immagini e video</h4>
+      <div className="panel-head">
+        <h4>Inquadratura {shot.order + 1} · storyboard, immagini e video</h4>
+        <button type="button" className="icon-button" aria-label="Chiudi" onClick={onClose}>
+          ×
+        </button>
+      </div>
       <ShotStoryboardSection
         filmId={filmId}
         shotId={shot.id}

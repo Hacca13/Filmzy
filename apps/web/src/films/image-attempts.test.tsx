@@ -2,7 +2,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ImageAttemptsSection } from './ImageAttemptsSection';
-import { attemptsAreWorking, describeAttempt, type ImageAttempt } from './image-attempts';
+import {
+  attemptWho,
+  attemptsAreWorking,
+  describeAttempt,
+  type ImageAttempt,
+} from './image-attempts';
 
 const attempt = (
   status: ImageAttempt['status'],
@@ -47,6 +52,21 @@ describe('describeAttempt', () => {
     expect(describeAttempt(attempt('failed', { errorCode: 'codice_inventato' }), 'x')).toContain(
       'Puoi riprovare',
     );
+  });
+});
+
+describe('attemptWho', () => {
+  it('dice il servizio e il costo vero, come nell’intestazione del tentativo', () => {
+    const done = attempt('succeeded', { modelLabel: 'Seedream · Standard', costUsd: 0.27 });
+
+    expect(attemptWho(done)).toBe('Seedream · Standard · 0,27 $');
+  });
+
+  it('mentre lavora c’è solo il servizio scelto; senza niente, niente', () => {
+    expect(attemptWho(attempt('running', { modelLabel: 'Seedream · Standard' }))).toBe(
+      'Seedream · Standard',
+    );
+    expect(attemptWho(attempt('queued'))).toBe('');
   });
 });
 

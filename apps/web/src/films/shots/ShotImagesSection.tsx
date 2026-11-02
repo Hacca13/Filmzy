@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 
 import { fetchShotImages, setShotImages } from '../../api/shot-images';
 import { assetUrl } from '../../api/sheet';
-import { Notice } from '../../components/ui';
+import { Chip, Notice } from '../../components/ui';
 import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
@@ -81,19 +81,27 @@ export function ShotImagesSection({
               Prima crea lo storyboard: le immagini da usare sono le sue varianti.
             </p>
           ) : (
-            <div className="sheet-images wide">
+            <div className="use-grid">
               {uniqueCandidates(images.candidates).map((candidate, index) => {
                 const selectId = `uso-${shotId}-${candidate.assetId.slice(0, 12)}`;
+                const current = useOf(images.images, candidate.assetId);
                 return (
                   <figure key={candidate.assetId}>
-                    <img
-                      src={assetUrl(candidate.assetId)}
-                      alt={`Immagine ${String(index + 1)} dell'inquadratura`}
-                    />
+                    <div className="use-picture">
+                      <img
+                        src={assetUrl(candidate.assetId)}
+                        alt={`Immagine ${String(index + 1)} dell'inquadratura`}
+                      />
+                      {current === undefined ? null : (
+                        <span className="use-chip">
+                          <Chip tone="confirmed">{USE_LABELS[current]}</Chip>
+                        </span>
+                      )}
+                    </div>
                     <label htmlFor={selectId}>Come usarla</label>
                     <select
                       id={selectId}
-                      value={useOf(images.images, candidate.assetId) ?? NOT_USED}
+                      value={current ?? NOT_USED}
                       disabled={action.busy}
                       onChange={(event) => {
                         change(
@@ -116,7 +124,12 @@ export function ShotImagesSection({
             </div>
           )}
           {videoNotice(images.videoServices) === undefined ? null : (
-            <Notice tone="error">{videoNotice(images.videoServices)}</Notice>
+            <>
+              <Notice tone="error" title="Non compatibile">
+                {videoNotice(images.videoServices)}
+              </Notice>
+              <p className="hint">Nessuna ripresa generata · Nessuna spesa</p>
+            </>
           )}
         </>
       )}

@@ -5,7 +5,7 @@ import { ApiError } from '../../api/client';
 import { fetchCast } from '../../api/cast';
 import { fetchLocations } from '../../api/locations';
 import { changeShotMovement, estimateScenePlan, fetchShotPlans, planScene } from '../../api/shots';
-import { Notice } from '../../components/ui';
+import { Chip, Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
 import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
@@ -15,7 +15,7 @@ import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
 import { ShotCard } from './ShotCard';
 import { ShotImagesPanel } from './ShotImagesPanel';
-import { sceneStatus, type Names } from './model';
+import { sceneChip, type Names } from './model';
 
 const isNotFound = (error: unknown) =>
   error instanceof ApiError && error.serverCode === 'not_found';
@@ -141,17 +141,26 @@ function SceneSection({
   const estimateUsd = useSceneEstimate(filmId, scene);
   const verb = scene.planned ? 'Rifai le inquadrature' : 'Pensa le inquadrature';
   const working = written.running && showOutcome;
+  const chip = sceneChip(scene);
   // Se il piano è rifatto l'inquadratura aperta sparisce, e con lei il suo storyboard.
   const storyboardShot = scene.shots.find((shot) => shot.id === storyboardShotId);
 
   return (
     <section className="scene-shots">
-      <h3>
-        Scena {scene.sceneNumber} · {scene.heading}
-      </h3>
-      <p className="hint">{sceneStatus(scene)}</p>
+      <div className="scene-head">
+        <h3>
+          Scena {scene.sceneNumber} · {scene.heading}
+        </h3>
+        <Chip tone={chip.tone}>{chip.label}</Chip>
+      </div>
+      {scene.planned ? null : (
+        <p className="hint">
+          La scena è pronta. L&apos;aiuto regista deve ancora pensare come girarla.
+        </p>
+      )}
+      {working ? <Chip tone="info">L&apos;aiuto regista sta pensando</Chip> : null}
       {scene.stale ? (
-        <Notice tone="info">
+        <Notice tone="info" title="Informazione">
           Dopo aver pensato le inquadrature è cambiato qualcosa: la scena, oppure un personaggio o
           un luogo che citano. Rifalle per tenerle allineate.
         </Notice>
@@ -188,6 +197,9 @@ function SceneSection({
           filmId={filmId}
           shot={storyboardShot}
           onChanged={reload}
+          onClose={() => {
+            setStoryboardShotId(undefined);
+          }}
         />
       )}
       {scene.notes === undefined ? null : <p className="hint">Note: {scene.notes}</p>}

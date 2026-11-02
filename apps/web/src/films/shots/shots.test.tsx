@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ShotCard } from './ShotCard';
-import { continuityLine, humanize, sceneStatus, type Names } from './model';
+import { continuityLine, humanize, sceneChip, sceneStatus, type Names } from './model';
 
 const names: Names = {
   characters: [
@@ -75,6 +75,20 @@ describe('sceneStatus', () => {
     expect(sceneStatus(scene({ stale: true }))).toBe('Da rifare: è cambiato qualcosa');
     expect(sceneStatus(scene())).toBe('1 inquadratura');
     expect(sceneStatus(scene({ shots: [shot, shot, shot] }))).toBe('3 inquadrature');
+  });
+});
+
+describe('sceneChip', () => {
+  it('è confermato con le inquadrature, da controllare se la scena è da pensare o da rifare', () => {
+    expect(sceneChip(scene())).toEqual({ label: '1 inquadratura', tone: 'confirmed' });
+    expect(sceneChip(scene({ planned: false, shots: [] }))).toEqual({
+      label: 'Da pensare',
+      tone: 'warning',
+    });
+    expect(sceneChip(scene({ stale: true }))).toEqual({
+      label: 'Da rifare: è cambiato qualcosa',
+      tone: 'warning',
+    });
   });
 });
 

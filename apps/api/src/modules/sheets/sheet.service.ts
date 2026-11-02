@@ -96,11 +96,6 @@ export class SheetService implements OnModuleInit {
     const { project, character } = this.target(projectId, characterId);
     const config = await this.config();
 
-    const current = this.sheets.get(characterId);
-    if (current.attempts[0]?.images.some((image) => isOpen(image.status)) === true) {
-      throw domainError(409, 'invalid_request', { details: { field: 'sheet' } });
-    }
-
     const request = await this.requestFor(project, character, config, 'front', 0);
     const options = (await this.troupe.options(ROLE, request)).map((option) => wholeSheet(option));
     const chosen = await chooseImageService({
@@ -112,6 +107,13 @@ export class SheetService implements OnModuleInit {
       projectId,
     });
 
+    // Mentre una scheda lavora non se ne chiede un'altra: si pagherebbe due volte. Il controllo sta
+    // qui, dopo le attese e subito prima di aprire il tentativo, senza altre attese in mezzo: con un
+    // doppio clic la seconda richiesta lo trova già aperto.
+    const current = this.sheets.get(characterId);
+    if (current.attempts[0]?.images.some((image) => isOpen(image.status)) === true) {
+      throw domainError(409, 'invalid_request', { details: { field: 'sheet' } });
+    }
     const attempt = this.sheets.startAttempt(characterId);
     const payload: SheetJobPayload = {
       projectId,

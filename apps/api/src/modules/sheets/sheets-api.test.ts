@@ -123,6 +123,19 @@ describe('la scheda di un personaggio', () => {
     await untilDone(base);
   }, 20_000);
 
+  it('due richieste insieme (un doppio clic) aprono un solo tentativo', async () => {
+    const { base } = await newCharacter();
+
+    const replies = await Promise.all([
+      client.call('POST', base, {}),
+      client.call('POST', base, {}),
+    ]);
+
+    expect(replies.map((reply) => reply.status).sort()).toEqual([201, 409]);
+    const done = await untilDone(base);
+    expect(done.attempts).toHaveLength(1);
+  }, 20_000);
+
   it('si blocca il volto su un tentativo pronto: il personaggio ha tre immagini di riferimento', async () => {
     const { film, character, base } = await newCharacter();
     await client.call('POST', base, {});

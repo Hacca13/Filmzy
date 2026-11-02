@@ -143,12 +143,6 @@ export class LocationsService implements OnModuleInit {
     const { project, location } = this.target(projectId, locationId);
     const config = await this.config();
 
-    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte lo stesso luogo.
-    const latest = this.store.images(locationId).attempts[0];
-    if (latest?.status === 'queued' || latest?.status === 'running') {
-      throw domainError(409, 'invalid_request', { details: { field: 'images' } });
-    }
-
     const options = await this.troupe.options(
       ROLE,
       await this.requestFor(project, location, config, 0),
@@ -162,6 +156,13 @@ export class LocationsService implements OnModuleInit {
       projectId,
     });
 
+    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte lo stesso luogo.
+    // Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo, senza altre attese
+    // in mezzo: con un doppio clic la seconda richiesta lo trova già aperto.
+    const latest = this.store.images(locationId).attempts[0];
+    if (latest?.status === 'queued' || latest?.status === 'running') {
+      throw domainError(409, 'invalid_request', { details: { field: 'images' } });
+    }
     const attempt = this.store.startAttempt(locationId);
     const payload: LocationJobPayload = {
       projectId,

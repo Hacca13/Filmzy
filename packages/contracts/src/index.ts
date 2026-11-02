@@ -54,6 +54,8 @@ export {
 } from './project.js';
 export type { Project, ProjectDuration, ProjectPhase, ProjectSummary } from './project.js';
 export * from './projects-api.js';
+export { moderationRejectionSchema } from './moderation.js';
+export type { ModerationRejection } from './moderation.js';
 export {
   colorSchema,
   moodReferenceSchema,

@@ -4,10 +4,9 @@ import { Body, Controller, Get, Inject, Module, Put } from '@nestjs/common';
 
 import { parseBody } from '../../http/parse-body.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
+import { PREFERENCES_STORE } from './tokens.js';
 
-const PREFERENCES_STORE = Symbol('PREFERENCES_STORE');
-
-/** Le preferenze dell'app: audio dei take (D43) e controllo degli aggiornamenti (D44). */
+/** Le preferenze dell'app: audio dei take (D43), aggiornamenti (D44) e prudenza del moderatore (D54). */
 @Controller('preferences')
 class PreferencesController {
   constructor(@Inject(PREFERENCES_STORE) private readonly store: PreferencesStore) {}
@@ -34,5 +33,6 @@ class PreferencesController {
       inject: [OPENED_DATABASE],
     },
   ],
+  exports: [PREFERENCES_STORE],
 })
 export class PreferencesModule {}

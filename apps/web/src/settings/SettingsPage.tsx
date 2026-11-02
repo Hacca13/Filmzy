@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AdvancedPage } from './advanced/AdvancedPage';
 import { ConnectionsPage } from './connections/ConnectionsPage';
 import { GenerationPage } from './GenerationPage';
+import { PrudencePage } from './PrudencePage';
 import { RolesPage } from './roles/RolesPage';
 import { SpendPage } from './spend/SpendPage';
 import { InstructionsPage } from './instructions/InstructionsPage';
@@ -20,6 +21,7 @@ const SECTIONS: Section[] = [
   { id: 'chi-fa-cosa', label: 'Chi fa cosa', page: () => <RolesPage /> },
   { id: 'spese', label: 'Spese e tetti', page: () => <SpendPage /> },
   { id: 'generazione', label: 'Generazione', page: () => <GenerationPage /> },
+  { id: 'prudenza', label: 'Prudenza', page: () => <PrudencePage /> },
   { id: 'aggiornamenti', label: 'Aggiornamenti', page: () => <UpdatesPage /> },
   { id: 'istruzioni', label: 'Istruzioni', page: () => <InstructionsPage /> },
   { id: 'avanzate', label: 'Avanzate', page: () => <AdvancedPage /> },

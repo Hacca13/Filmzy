@@ -597,3 +597,19 @@ a.button {
   align-items: center;
   text-decoration: none;
 }
+
+/* L'avvertenza prima di spegnere una prudenza (T3.3) */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--row);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.confirm p {
+  margin: 0;
+}

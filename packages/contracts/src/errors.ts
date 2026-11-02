@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { moderationRejectionSchema } from './moderation.js';
 import { spendBreachSchema } from './spend.js';
 
 /**
@@ -46,6 +47,8 @@ export const domainErrorDetailsSchema = z.object({
   retryAfterS: z.number().positive().optional(),
   /** Per `spend_cap_reached`: il limite superato e di quanto (D30). */
   spend: spendBreachSchema.optional(),
+  /** Per `content_rejected` del moderatore: il motivo e come riformulare il testo (T3.3). */
+  moderation: moderationRejectionSchema.optional(),
 });
 
 /**

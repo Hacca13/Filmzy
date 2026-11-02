@@ -9,8 +9,10 @@ interface Props {
   names: Names;
   busy: boolean;
   onMovement: (movementId: string) => void;
-  /** La variante di storyboard scelta: è il riferimento visivo della card. */
+  /** La variante di storyboard scelta: è il riferimento visivo della card, finché non c'è un video. */
   storyboardAssetId?: string | undefined;
+  /** La clip del take riuscito più recente (T4.3): se c'è, la card fa vedere quella. */
+  clipAssetId?: string | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
   /** Senza, la card non offre lo storyboard: il piano è da rifare e il server lo rifiuterebbe. */
@@ -30,6 +32,7 @@ export function ShotCard({
   busy,
   onMovement,
   storyboardAssetId,
+  clipAssetId,
   storyboardOpen,
   canStoryboard,
   onStoryboard,
@@ -43,7 +46,17 @@ export function ShotCard({
 
   return (
     <li className="shot-card">
-      {storyboardAssetId === undefined ? null : (
+      {clipAssetId === undefined ? null : (
+        <video
+          className="shot-frame"
+          controls
+          muted
+          preload="metadata"
+          src={assetUrl(clipAssetId)}
+          aria-label={`Video dell'inquadratura ${String(shot.order + 1)}`}
+        />
+      )}
+      {clipAssetId !== undefined || storyboardAssetId === undefined ? null : (
         <img
           className="shot-frame"
           src={assetUrl(storyboardAssetId)}

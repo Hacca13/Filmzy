@@ -12,7 +12,11 @@ import type { TroupeConfig } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { cinematographerInputFor, storyboardReferences } from './storyboard-input.js';
+import {
+  cinematographerInputFor,
+  storyboardReferences,
+  storyboardTarget,
+} from './storyboard-input.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer);
 const bible: StoryBible = shotPlannerInputSchema.parse(ROLE_INPUT_EXAMPLES.shot_planner).bible;
@@ -40,7 +44,7 @@ const build = (
     bible: overrides.bible ?? bible,
     config: overrides.config ?? config,
     family: 'image_generic',
-    mode: overrides.mode ?? 'storyboard',
+    target: storyboardTarget(overrides.mode ?? 'storyboard'),
   });
 
 function failure(call: () => unknown): { status: number; field: unknown } {

@@ -13,8 +13,9 @@ import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { TROUPE } from '../troupe/tokens.js';
+import { shotOf } from './shot-access.js';
 import { imagesFromChoices } from './shot-images.js';
-import { identityStandIns, standInImage, storyboardReferences } from './storyboard-input.js';
+import { videoStandInRequest } from './video-inputs.js';
 import { SHOT_STORE } from './tokens.js';
 
 /**
@@ -83,34 +84,15 @@ export class ShotImagesService {
 
   /**
    * Quanti servizi video attivati accetterebbero le immagini impostate (nessuna chiamata a
-   * pagamento: è la scelta dell'elenco). Se l'utente ha fissato il primo o l'ultimo fotogramma,
-   * personaggi e luogo stanno già dentro l'immagine; altrimenti il video riceve il volto bloccato e il
-   * set come riferimenti, insieme all'ispirazione.
+   * pagamento: è la scelta dell'elenco). Le immagini che il video riceve le dice `videoImages`.
    */
   private async videoServices(spec: ShotSpec, bible: StoryBible): Promise<number> {
-    const chosen = spec.images.map((image) => standInImage(image.use));
-    const framed = spec.images.some((image) => image.use !== 'reference');
-    const wanted = framed ? undefined : storyboardReferences(spec, bible);
-    const identity = wanted === undefined ? [] : identityStandIns(wanted);
-
-    const options = await this.troupe.options('camera_operator', {
-      role: 'camera_operator',
-      prompt: spec.intent.action,
-      inputs: [...chosen, ...identity],
-      characterIds: wanted?.characters.map((entry) => entry.characterId) ?? [],
-      durationS: spec.intent.durationS,
-      params: {},
-      idempotencyKey: `${spec.id}:video-check`,
-    });
+    const options = await this.troupe.options('camera_operator', videoStandInRequest(spec, bible));
     return options.length;
   }
 
   private target(projectId: string, shotId: string): { stored: StoredShot } {
     this.projects.get(projectId);
-    const stored = this.store.get(shotId);
-    if (stored?.projectId !== projectId) {
-      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
-    }
-    return { stored };
+    return { stored: shotOf(this.store, projectId, shotId) };
   }
 }

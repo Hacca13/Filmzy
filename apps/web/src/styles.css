@@ -948,6 +948,15 @@ a.button {
   border-radius: 8px;
 }
 
+.take-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
 .shot-number {
   font-size: 13px;
   font-weight: 600;

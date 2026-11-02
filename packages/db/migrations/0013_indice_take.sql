@@ -1,0 +1,1 @@
+CREATE INDEX `takes_per_inquadratura` ON `takes` (`shot_id`,`created_at`);

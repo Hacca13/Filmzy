@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { MediaInput } from '../adapters/types.js';
 import type { TroupeConfig } from '../config/load-files.js';
 import { loadSeedConfig, modelOf } from '../config/seed.fixtures.js';
+import { inputModeOf } from './common.js';
 import { replacePlaceholders, translator } from './index.js';
 import type { TranslateInput } from './types.js';
 
@@ -139,6 +140,48 @@ describe('primo e ultimo fotogramma (D20)', () => {
 
     const issues = translator('gemini_omni').check(input, model);
     expect(issues.map((issue) => issue.field)).toContain('capabilities.input_modes');
+  });
+});
+
+describe('le combinazioni di immagini che il catalogo non dichiara (D20)', () => {
+  const kling = () => modelOf(seed, 'kling-o3-standard');
+  const withInputs = (inputs: MediaInput[]): TranslateInput => ({
+    ...shot(),
+    modelId: 'kling-o3-standard',
+    inputs,
+    characterIds: [],
+  });
+  const issuesFor = (inputs: MediaInput[]) =>
+    translator('kling')
+      .check(withInputs(inputs), kling())
+      .map((issue) => issue.field);
+
+  it('solo l’ultimo fotogramma, senza il primo, non è «solo riferimenti»: nessun servizio lo accetta', () => {
+    const lastOnly: MediaInput[] = [{ use: 'last_frame', file: reference('ultimo.png').file }];
+
+    expect(inputModeOf(lastOnly)).toBe('last_frame');
+    expect(issuesFor(lastOnly)).toContain('capabilities.input_modes');
+  });
+
+  it('ispirazione insieme a primo e ultimo fotogramma non si riduce a «primo e ultimo»: si dice', () => {
+    const all: MediaInput[] = [
+      { use: 'first_frame', file: reference('primo.png').file },
+      { use: 'last_frame', file: reference('ultimo.png').file },
+      reference('esempio.png'),
+    ];
+
+    expect(inputModeOf(all)).toBe('references+first_frame+last_frame');
+    expect(issuesFor(all)).toContain('capabilities.input_modes');
+  });
+
+  it('le combinazioni dichiarate restano com’erano', () => {
+    const first = { use: 'first_frame' as const, file: reference('primo.png').file };
+    const last = { use: 'last_frame' as const, file: reference('ultimo.png').file };
+
+    expect(inputModeOf([reference('a.png')])).toBe('references');
+    expect(inputModeOf([first])).toBe('first_frame');
+    expect(inputModeOf([first, reference('a.png')])).toBe('references+first_frame');
+    expect(inputModeOf([first, last])).toBe('first_frame+last_frame');
   });
 });
 

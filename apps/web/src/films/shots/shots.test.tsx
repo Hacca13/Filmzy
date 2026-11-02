@@ -57,6 +57,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   stale: false,
   shots: [shot],
   chosenStoryboards: {},
+  latestTakes: {},
   ...patch,
 });
 
@@ -159,6 +160,15 @@ describe('ShotCard', () => {
     expect(html).toContain('alt="Storyboard dell&#x27;inquadratura 1"');
     expect(html).toContain('Cambia lo storyboard');
     expect(html).toContain('aria-pressed="true"');
+  });
+
+  it('con un video la card fa vedere la clip al posto dello storyboard', () => {
+    const html = render(shot, false, { storyboardAssetId: 'img-1', clipAssetId: 'clip-1' });
+
+    expect(html).toContain('<video');
+    expect(html).toContain('src="/api/assets/clip-1"');
+    expect(html).toContain('aria-label="Video dell&#x27;inquadratura 1"');
+    expect(html).not.toContain('<img');
   });
 
   it('se il piano è da rifare lo storyboard non si offre, ma la variante già scelta si vede', () => {

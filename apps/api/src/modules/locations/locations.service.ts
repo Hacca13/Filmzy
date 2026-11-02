@@ -35,7 +35,7 @@ import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
-  chooseImageService,
+  chooseMediaService,
   registerAssets,
   renderImagePrompt,
   variantsOf,
@@ -147,7 +147,7 @@ export class LocationsService implements OnModuleInit {
       ROLE,
       await this.requestFor(project, location, config, 0),
     );
-    const chosen = await chooseImageService({
+    const chosen = await chooseMediaService({
       role: ROLE,
       options,
       body,

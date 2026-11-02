@@ -17,6 +17,7 @@ import {
   shotPlans,
   shots,
   storyboardAttempts,
+  takes,
   type ShotPlanRow,
   type ShotRow,
   type StoryboardAttemptRow,
@@ -140,7 +141,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           eq(shots.projectId, plan.projectId),
           eq(shots.sceneNumber, plan.sceneNumber),
         );
-        // Le inquadrature di prima spariscono con i loro tentativi di storyboard: i file restano.
+        // Le inquadrature di prima spariscono con i loro tentativi di storyboard e i loro take: i file restano.
         const removed = tx
           .select({ id: shots.id })
           .from(shots)
@@ -149,6 +150,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           .map((shot) => shot.id);
         if (removed.length > 0) {
           tx.delete(storyboardAttempts).where(inArray(storyboardAttempts.shotId, removed)).run();
+          tx.delete(takes).where(inArray(takes.shotId, removed)).run();
         }
         tx.delete(shots).where(scene).run();
         tx.delete(shotPlans)

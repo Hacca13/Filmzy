@@ -172,6 +172,7 @@ function SceneSection({
                 });
               }}
               storyboardAssetId={scene.chosenStoryboards[shot.id]}
+              clipAssetId={scene.latestTakes[shot.id]}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}
               onStoryboard={() => {

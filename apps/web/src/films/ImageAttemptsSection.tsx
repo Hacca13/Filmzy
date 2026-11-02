@@ -1,16 +1,11 @@
-import type { ModelOption, SheetOptions, StartSheetBody } from '@filmzy/contracts';
-import { useEffect, useRef, useState } from 'react';
+import type { SheetOptions, StartSheetBody } from '@filmzy/contracts';
 
 import { assetUrl } from '../api/sheet';
-import { ChangeService } from '../components/ChangeService';
-import { generateLabel, selectedOption } from '../components/change-service';
 import { Notice } from '../components/ui';
-import { useResource } from '../lib/use-resource';
-import { describeError } from '../settings/messages';
-import { SpendConfirm } from '../settings/spend/SpendConfirm';
-import { useGuardedRun } from '../settings/spend/use-guarded-run';
 import { useAction } from '../settings/use-action';
+import { GenerateBar, useGeneration } from './generation';
 import { attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
+import { useOnIncrease } from './use-on-increase';
 import { useWatched } from './use-watched';
 
 interface Props<T extends ImageSet> {
@@ -66,70 +61,27 @@ export function ImageAttemptsSection<T extends ImageSet>({
     working,
   } = useWatched(load, attemptsAreWorking);
 
-  // Un tentativo che finisce porta immagini nuove: lo si dice a chi le offre altrove, ma non alla
-  // prima lettura (quelle c'erano già).
-  const succeeded = images?.attempts.filter((item) => item.status === 'succeeded').length;
-  const seen = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (succeeded === undefined) return;
-    if (seen.current !== undefined && succeeded > seen.current) onSettled?.();
-    seen.current = succeeded;
-  }, [succeeded, onSettled]);
+  // Un tentativo che finisce porta immagini nuove: lo si dice a chi le offre altrove.
+  useOnIncrease(images?.attempts.filter((item) => item.status === 'succeeded').length, onSettled);
 
-  const options = useResource(loadOptions);
-  const [modelId, setModelId] = useState<string>();
+  const generation = useGeneration<T>({ loadOptions, start, onStarted: setImages });
   const action = useAction();
-  const created = useGuardedRun<T>(setImages);
-
-  const choices: readonly ModelOption[] | undefined =
-    options.state.status === 'ready' ? options.state.data.options : undefined;
-  const chosen = choices === undefined ? undefined : selectedOption(choices, modelId);
-  const busy = created.running || created.raising || action.busy;
+  const busy = generation.busy || action.busy;
 
   return (
     <section className="sheet" aria-label={title}>
       <h5>{title}</h5>
       <p className="hint">{hint}</p>
 
-      <div className="actions">
-        <button
-          type="button"
-          className="button"
-          data-kind="primary"
-          disabled={busy || working || chosen === undefined}
-          onClick={() => {
-            created.run((spendConfirmed) =>
-              start({ ...(modelId === undefined ? {} : { modelId }), spendConfirmed }),
-            );
-          }}
-        >
-          {created.running
-            ? 'Sto preparando…'
-            : generateLabel(chosen).replace('Genera', createVerb)}
-        </button>
-        <ChangeService
-          options={choices}
-          selectedId={chosen?.modelId}
-          loading={options.state.status === 'loading'}
-          onSelect={setModelId}
-        />
-      </div>
-
-      {options.state.status === 'error' ? (
-        <Notice tone="error">{describeError(options.state.error)}</Notice>
-      ) : null}
-      {loadProblem === undefined ? null : <Notice tone="error">{loadProblem}</Notice>}
-      {created.problem === undefined ? null : <Notice tone="error">{created.problem}</Notice>}
-      {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
-      {created.breach === undefined ? null : (
-        <SpendConfirm
-          breach={created.breach}
-          busy={busy}
-          onProceed={created.proceed}
-          onRaise={created.raiseAndRetry}
-          onCancel={created.cancel}
-        />
-      )}
+      <GenerateBar
+        generation={generation}
+        createVerb={createVerb}
+        disabled={working}
+        otherBusy={action.busy}
+      >
+        {loadProblem === undefined ? null : <Notice tone="error">{loadProblem}</Notice>}
+        {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
+      </GenerateBar>
 
       {images === undefined ? null : (
         <ul className="attempts">

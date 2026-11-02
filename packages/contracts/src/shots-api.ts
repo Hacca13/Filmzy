@@ -35,6 +35,8 @@ export const scenePlanSchema = z.object({
   shots: z.array(shotSpecSchema),
   /** La variante di storyboard scelta per ogni inquadratura che ne ha una: il riferimento visivo della card (T4.1). */
   chosenStoryboards: z.record(shotIdSchema, assetIdSchema),
+  /** La clip del take riuscito più recente di ogni inquadratura (T4.3): è ciò che la card fa vedere. */
+  latestTakes: z.record(shotIdSchema, assetIdSchema),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

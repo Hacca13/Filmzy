@@ -54,6 +54,7 @@ export type {
   ResolveInstructionsOptions,
   ResolvedInstructions,
 } from './instructions/resolve.js';
+export { diffConfigs } from './config/diff.js';
 export { hasErrors, messageOf } from './config/issues.js';
 export type { ConfigIssue } from './config/issues.js';
 export {

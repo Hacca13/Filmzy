@@ -12,6 +12,8 @@ import { troupeConfigSchema } from './config/release.js';
 /** Una release in breve: abbastanza per dire «versione attiva» senza portarsi dietro tutto. */
 export const releaseSummarySchema = z.object({
   id: z.string().min(1),
+  /** Il numero di pubblicazione: «Versione 7». */
+  number: z.number().int().positive().optional(),
   hash: z.string().min(1),
   note: z.string().min(1).optional(),
   author: z.string().min(1).optional(),

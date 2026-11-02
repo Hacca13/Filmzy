@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatUsd, formatValue } from './format';
+import { formatDateTime, formatUsd, formatValue } from './format';
 
 describe('formatUsd', () => {
   it('le frazioni di centesimo hanno quattro decimali, con la virgola', () => {
@@ -22,5 +22,14 @@ describe('formatValue', () => {
   it("il testo resta com'è, il resto si scrive rientrato", () => {
     expect(formatValue('ciao')).toBe('ciao');
     expect(formatValue({ a: 1 })).toBe('{\n  "a": 1\n}');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('data e ora in italiano', () => {
+    const text = formatDateTime('2026-10-27T10:05:00.000Z');
+
+    expect(text).toContain('ottobre 2026');
+    expect(text).toMatch(/\d{1,2}:\d{2}/);
   });
 });

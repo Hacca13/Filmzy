@@ -143,9 +143,16 @@ export function createTroupeStore(db: FilmzyDb, options: TroupeStoreOptions = {}
         activatedAt: at,
       };
 
-      db.insert(troupeReleases).values(row).run();
+      // Il numero lo dà il database (`seq`, cresce da sé): è quello che l'utente legge come
+      // «Versione 7».
+      const [inserted] = db
+        .insert(troupeReleases)
+        .values(row)
+        .returning({ seq: troupeReleases.seq })
+        .all();
       return {
         id: row.id,
+        ...(inserted === undefined ? {} : { number: inserted.seq }),
         config: input.config,
         hash: input.hash,
         ...(input.note === undefined ? {} : { note: input.note }),
@@ -271,6 +278,7 @@ function toRelease(row: TroupeReleaseRow): TroupeRelease | undefined {
 
   return {
     id: row.id,
+    number: row.seq,
     config: config.data,
     hash: row.hash,
     ...(row.note === null ? {} : { note: row.note }),

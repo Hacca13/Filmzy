@@ -217,3 +217,16 @@ describe('le versioni delle istruzioni (§4.4)', () => {
     ]);
   });
 });
+
+describe('numero di pubblicazione (T2.6)', () => {
+  it('ogni release ha il suo numero, che cresce da 1, e un ripristino ne prende uno nuovo', () => {
+    const prima = store.publish({ config: config(2), hash: 'uno' });
+    const seconda = store.publish({ config: config(3), hash: 'due' });
+    const ripristino = store.publish({ config: config(2), hash: 'uno', note: 'ripristino' });
+
+    expect([prima.number, seconda.number, ripristino.number]).toEqual([1, 2, 3]);
+    expect(store.listReleases().map((release) => release.number)).toEqual([3, 2, 1]);
+    expect(store.getRelease(prima.id)?.number).toBe(1);
+    expect(store.activeRelease().release?.number).toBe(3);
+  });
+});

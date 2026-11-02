@@ -15,9 +15,12 @@ import {
   saveDraft,
 } from '../../api/troupe-config';
 import { IssueList, Notice, Panel } from '../../components/ui';
+import { formatDateTime } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
+import { HistoryPanel } from './HistoryPanel';
 import { KeyStatus } from './KeyStatus';
+import { PublishPanel } from './PublishPanel';
 import { SectionPanel } from './SectionPanel';
 import { TestPanel } from './TestPanel';
 import { orphanIssues, SECTIONS } from './sections';
@@ -65,17 +68,12 @@ const CONFIRMATIONS: Record<Confirmation, string> = {
   reset: 'La bozza diventa quella che arriva col programma, e perdi le modifiche. Vuoi farlo?',
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('it-IT', { dateStyle: 'long', timeStyle: 'short' });
-}
-
 function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
   const [config, setConfig] = useState(view.config);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string>();
   const [confirming, setConfirming] = useState<Confirmation>();
   const [publishing, setPublishing] = useState(false);
-  const [note, setNote] = useState('');
   const [outcome, setOutcome] = useState<PublishResponse>();
   // Sale a ogni bozza che arriva dal server: la prova rifà la stima sulla bozza nuova.
   const [draftVersion, setDraftVersion] = useState(0);
@@ -91,9 +89,13 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
     setProblem(describeError(error));
   };
 
-  const show = (next: DraftView) => {
+  /**
+   * `keepLocalEdits`: dopo un ripristino la bozza del server può essere cambiata, ma quello che si
+   * sta scrivendo e non è ancora salvato non si butta via.
+   */
+  const show = (next: DraftView, keepLocalEdits = false) => {
     onView(next);
-    setConfig(next.config);
+    if (!keepLocalEdits) setConfig(next.config);
     setDraftVersion((value) => value + 1);
     // Le connessioni possono essere cambiate: lo stato delle chiavi si rilegge.
     fetchSecrets().then(onSecrets, fail);
@@ -111,7 +113,7 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
       });
   };
 
-  const publish = () => {
+  const publish = (note: string) => {
     setBusy(true);
     setProblem(undefined);
     publishDraft(note)
@@ -119,8 +121,9 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
         setOutcome(result);
         if (result.release === undefined) return undefined;
         setPublishing(false);
-        setNote('');
-        return fetchDraft().then(show);
+        return fetchDraft().then((next) => {
+          show(next);
+        });
       })
       .catch(fail)
       .finally(() => {
@@ -136,7 +139,7 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
         <p className="hint">
           {view.activeRelease === undefined
             ? 'Non c’è ancora nessuna configurazione pubblicata.'
-            : `Attiva dal ${formatDate(view.activeRelease.activatedAt ?? view.activeRelease.createdAt)}${view.activeRelease.note === undefined ? '' : ` · ${view.activeRelease.note}`}`}
+            : `${view.activeRelease.number === undefined ? 'Versione attiva' : `Versione ${String(view.activeRelease.number)}`} · dal ${formatDateTime(view.activeRelease.activatedAt ?? view.activeRelease.createdAt)}${view.activeRelease.note === undefined ? '' : ` · ${view.activeRelease.note}`}`}
         </p>
         <p className="hint">
           Non cambia finché non pubblichi la bozza qui sotto. Il programma la usa subito, senza
@@ -227,37 +230,13 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
       )}
 
       {publishing ? (
-        <Panel title="Pubblica la bozza">
-          <label htmlFor="publish-note">Cosa hai cambiato?</label>
-          <input
-            id="publish-note"
-            type="text"
-            value={note}
-            onChange={(event) => {
-              setNote(event.target.value);
-            }}
-          />
-          <div className="actions">
-            <button
-              type="button"
-              className="button"
-              data-kind="primary"
-              disabled={busy || note.trim() === ''}
-              onClick={publish}
-            >
-              Pubblica adesso
-            </button>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setPublishing(false);
-              }}
-            >
-              Annulla
-            </button>
-          </div>
-        </Panel>
+        <PublishPanel
+          busy={busy}
+          onPublish={publish}
+          onCancel={() => {
+            setPublishing(false);
+          }}
+        />
       ) : null}
 
       {outcome === undefined ? null : outcome.release === undefined ? (
@@ -291,6 +270,21 @@ function Editor({ view, onView, secrets, onSecrets }: EditorProps) {
             : {})}
         />
       ))}
+
+      <HistoryPanel
+        refreshKey={draftVersion}
+        onRestored={() => {
+          setBusy(true);
+          setOutcome(undefined);
+          fetchDraft()
+            .then((next) => {
+              show(next, dirty);
+            }, fail)
+            .finally(() => {
+              setBusy(false);
+            });
+        }}
+      />
     </>
   );
 }

@@ -1,10 +1,12 @@
-import type {
-  CreateProjectBody,
-  Project,
-  ProjectOptions,
-  ProjectsList,
-  TroupePresetsData,
-  UpdateProjectBody,
+import {
+  PROJECT_PHASES,
+  type CreateProjectBody,
+  type Project,
+  type ProjectOptions,
+  type ProjectPhase,
+  type ProjectsList,
+  type TroupePresetsData,
+  type UpdateProjectBody,
 } from '@filmzy/contracts';
 import type { ProjectStore } from '@filmzy/db';
 import type { ConfigSource } from '@filmzy/troupe';
@@ -68,6 +70,17 @@ export class ProjectsService {
     const project = this.store.get(id);
     if (project === undefined) throw domainError(404, 'not_found', { details: { field: 'id' } });
     return project;
+  }
+
+  /**
+   * Porta il film almeno a questa fase, mai indietro: lo usano i compiti che la fanno (il casting
+   * porta a `cast`). Tornare a una fase precedente è una scelta dell'utente, non un effetto.
+   */
+  reach(id: string, phase: ProjectPhase): void {
+    const current = this.get(id);
+    if (PROJECT_PHASES.indexOf(phase) > PROJECT_PHASES.indexOf(current.phase)) {
+      this.store.update(id, { phase });
+    }
   }
 
   async update(id: string, body: UpdateProjectBody): Promise<Project> {

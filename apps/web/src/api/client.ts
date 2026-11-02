@@ -119,6 +119,9 @@ async function requestJson<T>(
     throw await toHttpError(response);
   }
 
+  // «204 Nessun contenuto» (per esempio dopo aver tolto qualcosa): non c'è un corpo da leggere.
+  if (response.status === 204) return parseOrFail(parser, undefined);
+
   // La lettura del corpo può fallire per la rete (connessione chiusa a metà) o perché il testo non
   // è JSON: sono due problemi diversi e qui si tengono distinti.
   let payload: unknown;
@@ -130,6 +133,10 @@ async function requestJson<T>(
     });
   }
 
+  return parseOrFail(parser, payload);
+}
+
+function parseOrFail<T>(parser: Parser<T>, payload: unknown): T {
   try {
     return parser.parse(payload);
   } catch (cause) {

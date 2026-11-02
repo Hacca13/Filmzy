@@ -698,3 +698,45 @@ a.button {
   font: inherit;
   resize: vertical;
 }
+
+/* «I personaggi»: le proposte del casting e il cast del film (T3.5) */
+.cast {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.characters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--row);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.character-card[data-kind='suggestion'] {
+  border-color: var(--accent);
+}
+
+.character-card h4,
+.character-card p {
+  margin: 0;
+}
+
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}

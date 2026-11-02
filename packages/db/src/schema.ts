@@ -216,3 +216,30 @@ export const screenplays = sqliteTable(
 );
 
 export type ScreenplayRow = typeof screenplays.$inferSelect;
+
+/**
+ * I personaggi del film (architettura §6): quelli che l'utente ha aggiunto dalle proposte del
+ * casting. `project_id` vuoto sarà il cast riutilizzabile fra film (più avanti). `profile` e
+ * `appearance` sono JSON; `proposal_id` collega il personaggio alla proposta della bozza da cui
+ * viene (D18). Le immagini della scheda arrivano con T3.6, in una tabella loro.
+ */
+export const characters = sqliteTable(
+  'characters',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id'),
+    name: text('name').notNull(),
+    tag: text('tag').notNull(),
+    role: text('role').notNull(),
+    description: text('description').notNull(),
+    profile: text('profile'),
+    appearance: text('appearance').notNull(),
+    voiceId: text('voice_id'),
+    proposalId: text('proposal_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('characters_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type CharacterRow = typeof characters.$inferSelect;

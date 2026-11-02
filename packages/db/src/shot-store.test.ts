@@ -133,3 +133,65 @@ describe('il piano delle inquadrature di una scena', () => {
     expect(saved).not.toHaveProperty('notes');
   });
 });
+
+describe('lo storyboard di un’inquadratura', () => {
+  it('ogni richiesta è un tentativo numerato da 1, in coda, e si legge dal più recente', () => {
+    store.replaceScene(plan(1, ['a1']));
+
+    expect(store.startStoryboard('a1')).toBe(1);
+    expect(store.startStoryboard('a1')).toBe(2);
+
+    const { attempts, chosenAssetId } = store.storyboard('a1');
+    expect(attempts.map((attempt) => [attempt.attempt, attempt.status])).toEqual([
+      [2, 'queued'],
+      [1, 'queued'],
+    ]);
+    expect(chosenAssetId).toBeUndefined();
+  });
+
+  it('un tentativo finito porta i suoi file, o il codice dell’errore se è fallito', () => {
+    store.replaceScene(plan(1, ['a1']));
+    store.startStoryboard('a1');
+    store.startStoryboard('a1');
+
+    store.finishStoryboard('a1', 1, { status: 'succeeded', assetIds: ['x', 'y', 'z'] });
+    store.finishStoryboard('a1', 2, { status: 'failed', errorCode: 'timeout' });
+
+    const { attempts } = store.storyboard('a1');
+    expect(attempts[1]).toMatchObject({ status: 'succeeded', assetIds: ['x', 'y', 'z'] });
+    expect(attempts[0]).toMatchObject({ status: 'failed', errorCode: 'timeout', assetIds: [] });
+  });
+
+  it('si sceglie una variante, si cambia scelta e si toglie; la scelta di ogni inquadratura del film si legge insieme', () => {
+    store.replaceScene(plan(1, ['a1', 'a2']));
+    store.replaceScene({ ...plan(1, ['b1']), projectId: 'film-2' });
+
+    store.chooseStoryboard('a1', 'x');
+    store.chooseStoryboard('b1', 'altro-film');
+    expect(store.storyboard('a1').chosenAssetId).toBe('x');
+    expect(store.chosenStoryboards('film-1')).toEqual({ a1: 'x' });
+
+    store.chooseStoryboard('a1', 'y');
+    store.chooseStoryboard('a2', 'z');
+    expect(store.chosenStoryboards('film-1')).toEqual({ a1: 'y', a2: 'z' });
+
+    store.chooseStoryboard('a1', undefined);
+    expect(store.storyboard('a1').chosenAssetId).toBeUndefined();
+    expect(store.chosenStoryboards('film-1')).toEqual({ a2: 'z' });
+  });
+
+  it('rifare la scena toglie le inquadrature di prima con i loro tentativi e la loro scelta', () => {
+    store.replaceScene(plan(1, ['a1']));
+    store.replaceScene(plan(2, ['b1']));
+    store.startStoryboard('a1');
+    store.startStoryboard('b1');
+    store.chooseStoryboard('a1', 'x');
+
+    store.replaceScene(plan(1, ['a2']));
+
+    expect(store.storyboard('a1').attempts).toEqual([]);
+    expect(store.chosenStoryboards('film-1')).toEqual({});
+    // L'altra scena non si tocca.
+    expect(store.storyboard('b1').attempts).toHaveLength(1);
+  });
+});

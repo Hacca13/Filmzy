@@ -57,6 +57,7 @@ export * from './projects-api.js';
 export * from './screenplay-api.js';
 export * from './review-api.js';
 export * from './shots-api.js';
+export * from './storyboard-api.js';
 export * from './cast-api.js';
 export * from './sheet-api.js';
 export * from './locations-api.js';

@@ -45,6 +45,7 @@ export {
   settings,
   shotPlans,
   shots,
+  storyboardAttempts,
   troupeDrafts,
   troupeReleases,
   USER_SETTINGS_ID,

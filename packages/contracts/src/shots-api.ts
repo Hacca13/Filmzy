@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { configKeySchema, idSchema } from './ids.js';
+import { assetIdSchema, configKeySchema, idSchema, shotIdSchema } from './ids.js';
 import { projectChoiceSchema } from './projects-api.js';
 import { shotSpecSchema } from './shot.js';
 import { estimateSchema } from './spend.js';
@@ -33,6 +33,8 @@ export const scenePlanSchema = z.object({
   /** Ciò che l'aiuto regista ha voluto spiegare (per esempio perché cambia la fotografia). */
   notes: z.string().min(1).optional(),
   shots: z.array(shotSpecSchema),
+  /** La variante di storyboard scelta per ogni inquadratura che ne ha una: il riferimento visivo della card (T4.1). */
+  chosenStoryboards: z.record(shotIdSchema, assetIdSchema),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

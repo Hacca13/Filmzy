@@ -376,8 +376,32 @@ export const shots = sqliteTable(
     sceneNumber: integer('scene_number').notNull(),
     position: integer('position').notNull(),
     spec: text('spec').notNull(),
+    /** La variante di storyboard scelta: il riferimento visivo della card (T4.1). */
+    chosenAssetId: text('chosen_asset_id'),
   },
   (table) => [index('shots_per_scena').on(table.projectId, table.sceneNumber, table.position)],
 );
 
 export type ShotRow = typeof shots.$inferSelect;
+
+/**
+ * I tentativi di storyboard di un'inquadratura (T4.1): come per i luoghi, ogni richiesta è una
+ * chiamata sola che dà più varianti, quindi lo stato è uno solo e i file stanno in `asset_ids` (JSON).
+ */
+export const storyboardAttempts = sqliteTable(
+  'storyboard_attempts',
+  {
+    id: text('id').primaryKey(),
+    shotId: text('shot_id').notNull(),
+    attempt: integer('attempt').notNull(),
+    status: text('status').notNull(),
+    assetIds: text('asset_ids').notNull(),
+    receiptId: text('receipt_id'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [uniqueIndex('storyboard_attempts_per_tentativo').on(table.shotId, table.attempt)],
+);
+
+export type StoryboardAttemptRow = typeof storyboardAttempts.$inferSelect;

@@ -103,8 +103,13 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
       } as unknown as LoadedConfig),
   };
   const screenplays = { latest: () => final } as unknown as ScreenplayService;
+  const current = options.bible ?? bible;
   const bibles = {
-    assemble: () => Promise.resolve(options.bible ?? bible),
+    assemble: () => Promise.resolve(current),
+    knownIds: () => ({
+      characters: new Set(current.characters.map((character) => character.id)),
+      locations: new Set(current.locations.map((location) => location.id)),
+    }),
   } as unknown as BibleService;
   const projects = {
     get: (id: string) => {
@@ -259,6 +264,43 @@ describe('le scene e le loro inquadrature', () => {
     ]);
     expect(plans.scenes[1]?.shots.length).toBeGreaterThan(0);
     expect(store.plan(film.id, 2)?.sceneHash).toBe(hashScene(sceneNumbered(2, 'Anna aspetta.')));
+  });
+
+  it('se il film perde un luogo che il piano cita, il piano si segna da rifare e le inquadrature restano', async () => {
+    await build().plan(film.id, { sceneNumber: 1 });
+
+    const afterRemoval = await build({ bible: { ...bible, locations: [] } }).plans(film.id);
+
+    expect(afterRemoval.scenes[0]).toMatchObject({ planned: true, stale: true });
+    expect(afterRemoval.scenes[0]?.shots.length).toBeGreaterThan(0);
+  });
+
+  it('un piano vecchio non fa da punto di partenza per la scena dopo', async () => {
+    const service = build();
+    await service.plan(film.id, { sceneNumber: 1 });
+    const [first, second] = final.screenplay.scenes;
+    if (first === undefined || second === undefined) throw new Error('servono due scene');
+    // La scena 1 viene riscritta: il suo piano è vecchio e la sua uscita non vale più.
+    final = {
+      ...final,
+      screenplay: { ...final.screenplay, scenes: [{ ...first, summary: 'Anna parte.' }, second] },
+    };
+
+    await service.plan(film.id, { sceneNumber: 2 });
+
+    expect(runs[1]?.input.previousExit).toBeNull();
+  });
+
+  it('il luogo della scena che arriva all’aiuto regista esiste sempre: se la stesura non ne scrive uno, è il primo del film', async () => {
+    const [first, second] = final.screenplay.scenes;
+    if (first === undefined || second === undefined) throw new Error('servono due scene');
+    const { locationId: ignored, ...withoutPlace } = first;
+    expect(ignored).toBeDefined();
+    final = { ...final, screenplay: { ...final.screenplay, scenes: [withoutPlace, second] } };
+
+    await build().plan(film.id, { sceneNumber: 1 });
+
+    expect(runs[0]?.input.scene.locationId).toBe(locationId);
   });
 
   it('la stima usa gli stessi ingressi e non chiama nessuno', async () => {

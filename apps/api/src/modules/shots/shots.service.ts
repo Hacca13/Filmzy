@@ -17,17 +17,19 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
+import { withoutImages } from '../bible/without-images.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { hashScene, sceneIdOf, settleShots, withoutImages } from './plan-shots.js';
+import { citesMissing, hashScene, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE } from './tokens.js';
 
 /**
  * Le inquadrature (T3.9, architettura §3.1, §5.2): l'aiuto regista divide una scena della
  * sceneggiatura finale in inquadrature, una scena alla volta. Il piano di una scena si **rifà** a
  * richiesta e sostituisce quello di prima; se la scena cambia dopo (la stesura è corretta o
- * riscritta) il piano si segna da rifare, senza toccarlo.
+ * riscritta) o il film perde un personaggio o un luogo che il piano cita, il piano si segna da
+ * rifare, senza toccarlo.
  *
  * Pensare le inquadrature costa: la stima si vede prima e passa dai limiti di spesa come ogni
  * chiamata (`spendConfirmed`). Il movimento di macchina si cambia a mano, scegliendolo dalla lista
@@ -49,11 +51,14 @@ export class ShotsService {
     this.projects.get(projectId);
     const final = this.screenplays.latest(projectId, 'final');
     const config = await this.config();
+    const known = this.bible.knownIds(projectId);
     const stored = new Map(this.store.plans(projectId).map((plan) => [plan.sceneNumber, plan]));
 
     return {
       finalVersionId: final.id,
-      scenes: final.screenplay.scenes.map((scene) => scenePlan(scene, stored.get(scene.number))),
+      scenes: final.screenplay.scenes.map((scene) =>
+        scenePlan(scene, stored.get(scene.number), known),
+      ),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
         label,
@@ -70,7 +75,7 @@ export class ShotsService {
 
   /** «Pensa le inquadrature»: sostituisce il piano della scena, se c'era. */
   async plan(projectId: string, body: PlanSceneBody): Promise<ScenePlan> {
-    const { input, final, scene, config } = await this.inputFor(projectId, body.sceneNumber);
+    const { input, final, scene, bible, config } = await this.inputFor(projectId, body.sceneNumber);
 
     const { data, receipt } = await this.troupe.run('shot_planner', input, {
       purpose: 'product',
@@ -82,7 +87,7 @@ export class ShotsService {
       proposed: data.shots,
       sceneId: input.scene.id,
       scene,
-      bible: await this.bible.assemble(projectId),
+      bible,
       movementIds: activeMovements(config).map((movement) => movement.id),
     });
     const saved = this.store.replaceScene({
@@ -95,33 +100,39 @@ export class ShotsService {
       shots,
     });
     this.projects.reach(projectId, 'shots');
-    return scenePlan(scene, saved);
+    return scenePlan(scene, saved, this.bible.knownIds(projectId));
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
   async changeMovement(projectId: string, shotId: string, body: ChangeShotBody): Promise<ShotSpec> {
     this.projects.get(projectId);
-    const stored = this.store.get(shotId);
-    if (stored?.projectId !== projectId) {
-      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
-    }
     const config = await this.config();
     if (!activeMovements(config).some((movement) => movement.id === body.cameraMovement)) {
       throw domainError(400, 'invalid_request', { details: { field: 'cameraMovement' } });
     }
 
+    // Si legge e si scrive di seguito, senza attese in mezzo: se nel frattempo il piano della scena
+    // è stato rifatto, l'inquadratura non c'è più e lo si dice invece di far finta di salvare.
+    const stored = this.store.get(shotId);
+    if (stored?.projectId !== projectId) {
+      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
+    }
     const spec: ShotSpec = {
       ...stored.spec,
       intent: { ...stored.spec.intent, cameraMovement: body.cameraMovement },
     };
-    this.store.updateSpec(shotId, spec);
+    if (!this.store.updateSpec(shotId, spec)) {
+      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
+    }
     return spec;
   }
 
   /**
    * Cosa si dice all'aiuto regista per una scena: la scena, la Bibbia (senza immagini), i movimenti
    * attivi e come finisce la scena pianificata prima, se c'è, perché l'entrata della prima
-   * inquadratura combaci (architettura §8).
+   * inquadratura combaci (architettura §8). Restituisce anche la Bibbia **intera**, da cui il codice
+   * prende i riferimenti dopo la chiamata: la si legge una volta sola, così il modello e il
+   * controllo vedono lo stesso film.
    */
   private async inputFor(projectId: string, sceneNumber: number) {
     const project = this.projects.get(projectId);
@@ -133,29 +144,45 @@ export class ShotsService {
     const config = await this.config();
     const bible = await this.bible.assemble(projectId);
     // Senza luoghi le schede non si possono scrivere: ogni inquadratura ne ha uno.
-    if (bible.locations.length === 0) {
+    const firstLocation = bible.locations[0];
+    if (firstLocation === undefined) {
       throw domainError(409, 'invalid_request', { details: { field: 'locations' } });
     }
+    // Il luogo della scena è sempre uno che esiste: quello scritto nella stesura, o il primo del
+    // film (lo stesso ripiego che userà `settleShots`). Così il modello non vede mai un id vuoto.
+    const sceneLocation = bible.locations.some((location) => location.id === scene.locationId)
+      ? scene.locationId
+      : firstLocation.id;
 
     const input: ShotPlannerInput = {
-      scene: { ...scene, id: sceneIdOf(scene.number) },
+      scene: { ...scene, id: sceneIdOf(scene.number), locationId: sceneLocation },
       bible: withoutImages(bible),
       shotDurationS: SHOT_DURATION_RANGE_S,
-      previousExit: this.exitBefore(projectId, scene.number),
+      previousExit: this.exitBefore(projectId, scene.number, final, this.bible.knownIds(projectId)),
       cameraMovements: activeMovements(config),
       language: project.language,
       moodboard: null,
     };
-    return { input, final, scene, config };
+    return { input, final, scene, bible, config };
   }
 
-  /** Come finisce l'ultima inquadratura della scena pianificata più vicina prima di questa. */
-  private exitBefore(projectId: string, sceneNumber: number) {
-    const before = this.store
-      .plans(projectId)
-      .filter((plan) => plan.sceneNumber < sceneNumber)
-      .at(-1);
-    return before?.shots.at(-1)?.continuity.exit ?? null;
+  /**
+   * Come finisce l'ultima inquadratura della scena pensata più vicina prima di questa. Un piano
+   * vecchio (la scena è cambiata, o cita ciò che il film non ha più) non vale: se ne parte da zero.
+   */
+  private exitBefore(
+    projectId: string,
+    sceneNumber: number,
+    final: ScreenplayVersion,
+    known: KnownIds,
+  ) {
+    const before = this.store.planBefore(projectId, sceneNumber);
+    const beforeScene = final.screenplay.scenes.find(
+      (scene) => scene.number === before?.sceneNumber,
+    );
+    if (before === undefined || beforeScene === undefined) return null;
+    if (isStale(beforeScene, before, known)) return null;
+    return before.shots.at(-1)?.continuity.exit ?? null;
   }
 
   private async config(): Promise<TroupeConfig> {
@@ -168,15 +195,23 @@ export class ShotsService {
 const activeMovements = (config: TroupeConfig): CameraMovement[] =>
   config.presets.cameraMovements.filter((movement) => movement.enabled);
 
-/** Una scena della stesura con il suo piano, se c'è; `stale` se la scena è cambiata dopo. */
-function scenePlan(scene: ScreenplayScene, plan: StoredShotPlan | undefined): ScenePlan {
+/** Il piano è vecchio se la scena è cambiata, o se cita un personaggio o un luogo che non c'è più. */
+const isStale = (scene: ScreenplayScene, plan: StoredShotPlan, known: KnownIds): boolean =>
+  plan.sceneHash !== hashScene(scene) || citesMissing(plan.shots, known);
+
+/** Una scena della stesura con il suo piano, se c'è. */
+function scenePlan(
+  scene: ScreenplayScene,
+  plan: StoredShotPlan | undefined,
+  known: KnownIds,
+): ScenePlan {
   return {
     sceneNumber: scene.number,
     heading: scene.heading,
     summary: scene.summary,
     durationS: scene.durationS,
     planned: plan !== undefined,
-    stale: plan !== undefined && plan.sceneHash !== hashScene(scene),
+    stale: plan !== undefined && isStale(scene, plan, known),
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots: plan?.shots ?? [],
   };

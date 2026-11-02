@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ShotCard } from './ShotCard';
-import { continuityLine, framingLabel, humanize, sceneStatus, type Names } from './model';
+import { continuityLine, humanize, sceneStatus, type Names } from './model';
 
 const names: Names = {
   characters: [
@@ -59,10 +59,8 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
 });
 
 describe('i nomi', () => {
-  it('un id si legge come un nome: i piani più comuni hanno il loro, gli altri si adattano', () => {
-    expect(framingLabel('close_up')).toBe('Primo piano');
-    expect(framingLabel('wide')).toBe('Campo lungo');
-    expect(framingLabel('dutch_angle')).toBe('Dutch angle');
+  it('un id si legge come un nome: senza trattini bassi e con la maiuscola', () => {
+    expect(humanize('close_up')).toBe('Close up');
     expect(humanize('push-in')).toBe('Push in');
     expect(humanize('')).toBe('');
   });
@@ -71,7 +69,7 @@ describe('i nomi', () => {
 describe('sceneStatus', () => {
   it('dice se la scena è da pensare, da rifare o quante inquadrature ha', () => {
     expect(sceneStatus(scene({ planned: false, shots: [] }))).toBe('Da pensare');
-    expect(sceneStatus(scene({ stale: true }))).toBe('Da rifare: la scena è cambiata');
+    expect(sceneStatus(scene({ stale: true }))).toBe('Da rifare: è cambiato qualcosa');
     expect(sceneStatus(scene())).toBe('1 inquadratura');
     expect(sceneStatus(scene({ shots: [shot, shot, shot] }))).toBe('3 inquadrature');
   });
@@ -103,12 +101,12 @@ describe('ShotCard', () => {
       />,
     );
 
-  it('mostra cosa succede, il piano in italiano, la durata, la luce e come entra ed esce', () => {
+  it('mostra cosa succede, il piano, la durata, la luce e come entra ed esce', () => {
     const html = render();
 
     expect(html).toContain('Inquadratura 1');
     expect(html).toContain('Anna guarda l’orologio della stazione');
-    expect(html).toContain('Primo piano');
+    expect(html).toContain('Close up');
     expect(html).toContain('5 s');
     expect(html).toContain('Luce: luce calda del tramonto');
     expect(html).toContain('Entra');

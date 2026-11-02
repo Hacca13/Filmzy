@@ -18,34 +18,16 @@ export interface Names {
   locations: readonly Named[];
 }
 
-/** I piani più comuni, con il nome che si usa sul set; per gli altri si adatta l'id. */
-const FRAMING_LABELS: Record<string, string> = {
-  extreme_wide: 'Campo lunghissimo',
-  wide: 'Campo lungo',
-  long: 'Campo lungo',
-  full: 'Figura intera',
-  medium: 'Piano medio',
-  medium_close_up: 'Mezzo primo piano',
-  close_up: 'Primo piano',
-  extreme_close_up: 'Primissimo piano',
-  over_the_shoulder: 'Sopra la spalla',
-  two_shot: 'Due personaggi',
-  insert: 'Dettaglio',
-};
-
 /** «close_up» → «Close up»: per gli id che non conosciamo, una forma leggibile. */
 export function humanize(id: string): string {
   const words = id.replace(/[_-]+/g, ' ').trim();
   return words === '' ? id : words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-export const framingLabel = (framing: string): string =>
-  FRAMING_LABELS[framing] ?? humanize(framing);
-
 /** Lo stato di una scena in due parole: da pensare, da rifare, o quante inquadrature ha. */
 export function sceneStatus(scene: ScenePlan): string {
   if (!scene.planned) return 'Da pensare';
-  if (scene.stale) return 'Da rifare: la scena è cambiata';
+  if (scene.stale) return 'Da rifare: è cambiato qualcosa';
   return scene.shots.length === 1 ? '1 inquadratura' : `${String(scene.shots.length)} inquadrature`;
 }
 

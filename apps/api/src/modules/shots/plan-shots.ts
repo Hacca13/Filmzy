@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
+  SHOT_DURATION_RANGE_S,
   SHOT_SPEC_SCHEMA_VERSION,
   type ContinuityState,
   type ProposedShot,
@@ -33,17 +34,35 @@ export function hashScene(scene: ScreenplayScene): string {
   return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
 }
 
-/**
- * La Bibbia senza immagini: ai servizi di testo non servono, e i file sono sul computer
- * dell'utente.
- */
-export function withoutImages(bible: StoryBible): StoryBible {
-  return {
-    ...bible,
-    characters: bible.characters.map((character) => ({ ...character, sheet: [] })),
-    locations: bible.locations.map((location) => ({ ...location, references: [] })),
-  };
+/** Gli id che il film ha adesso, per capire se un piano già pensato cita ancora ciò che esiste. */
+export interface KnownIds {
+  characters: ReadonlySet<string>;
+  locations: ReadonlySet<string>;
 }
+
+/**
+ * Un piano cita un personaggio o un luogo che il film non ha più (l'utente li ha tolti dopo)?
+ * Allora le sue inquadrature non reggono e vanno rifatte, come se la scena fosse cambiata.
+ */
+export function citesMissing(shots: readonly ShotSpec[], known: KnownIds): boolean {
+  const states = shots.flatMap((shot) => [shot.continuity.entry, shot.continuity.exit]);
+  return (
+    shots.some(
+      (shot) =>
+        !known.locations.has(shot.location.locationId) ||
+        shot.characters.some((character) => !known.characters.has(character.characterId)),
+    ) ||
+    states.some(
+      (state) =>
+        !known.locations.has(state.locationId) ||
+        state.present.some((id) => !known.characters.has(id)),
+    )
+  );
+}
+
+/** Porta una durata dentro quella che un'inquadratura può avere (i modelli video non girano il resto). */
+const withinShotDuration = (durationS: number): number =>
+  Math.min(SHOT_DURATION_RANGE_S.max, Math.max(SHOT_DURATION_RANGE_S.min, durationS));
 
 export interface SettleArgs {
   /** Le inquadrature come le ha pensate l'aiuto regista. */
@@ -61,10 +80,11 @@ export interface SettleArgs {
  * il codice aggiunge ciò che il modello non scrive (id, versione dello schema, `images` vuoto, i
  * riferimenti dei personaggi e del luogo) e rende la scheda coerente con il film.
  *
- * Un modello può sbagliare un id. Non si butta un piano pagato per questo: un personaggio che non
- * esiste si toglie, un luogo che non esiste diventa quello della scena (o, se la scena non lo cita,
- * il primo del film), un movimento che non è nella lista diventa il primo («resta fermo»). L'ordine
- * lo decide la posizione nell'elenco.
+ * Un modello può sbagliare. Non si butta un piano pagato per questo: un personaggio che non esiste
+ * si toglie (e uno citato due volte resta una volta), un luogo che non esiste diventa quello della
+ * scena (o, se la scena non lo cita, il primo del film), un movimento che non è nella lista diventa
+ * il primo, una durata fuori dai limiti torna dentro. L'ordine è quello dato dal modello con
+ * `order` (la catena di entrate e uscite è costruita su quello), rinumerato da zero.
  */
 export function settleShots(args: SettleArgs): ShotSpec[] {
   const { proposed, sceneId, scene, bible, movementIds } = args;
@@ -103,8 +123,11 @@ export function settleShots(args: SettleArgs): ShotSpec[] {
     props: given.props,
   });
 
-  return proposed.map((shot, order): ShotSpec => {
+  // `sort` è stabile: a parità di `order` resta l'ordine dell'elenco.
+  const inOrder = [...proposed].sort((a, b) => a.order - b.order);
+  return inOrder.map((shot, order): ShotSpec => {
     const locationId = place(shot.location.locationId);
+    const seen = new Set<string>();
     return {
       schema: SHOT_SPEC_SCHEMA_VERSION,
       id: randomUUID(),
@@ -115,12 +138,13 @@ export function settleShots(args: SettleArgs): ShotSpec[] {
         cameraMovement: movementIds.includes(shot.intent.cameraMovement)
           ? shot.intent.cameraMovement
           : fallbackMovement,
+        durationS: withinShotDuration(shot.intent.durationS),
       },
       characters: shot.characters.flatMap(({ characterId, costume }) => {
         const character = characters.get(characterId);
-        return character === undefined
-          ? []
-          : [{ characterId, costume, references: character.sheet }];
+        if (character === undefined || seen.has(characterId)) return [];
+        seen.add(characterId);
+        return [{ characterId, costume, references: character.sheet }];
       }),
       location: { locationId, references: locations.get(locationId)?.references ?? [] },
       images: [],

@@ -1,6 +1,7 @@
 import {
   ROLE_INPUT_EXAMPLES,
   ROLE_OUTPUT_EXAMPLES,
+  SHOT_DURATION_RANGE_S,
   SHOT_SPEC_SCHEMA_VERSION,
   shotPlannerInputSchema,
   shotPlannerOutputSchema,
@@ -12,7 +13,7 @@ import {
 import { HttpException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
-import { hashScene, sceneIdOf, settleShots, withoutImages } from './plan-shots.js';
+import { citesMissing, hashScene, sceneIdOf, settleShots } from './plan-shots.js';
 
 const exampleBible = shotPlannerInputSchema.parse(ROLE_INPUT_EXAMPLES.shot_planner).bible;
 const [baseCharacter] = exampleBible.characters;
@@ -107,16 +108,6 @@ describe('hashScene', () => {
     expect(hashScene(scene)).not.toBe(hashScene({ ...scene, summary: 'Anna parte.' }));
     expect(hashScene(scene)).not.toBe(hashScene({ ...scene, characterIds: ['anna', 'marco'] }));
     expect(hashScene(scene)).not.toBe(hashScene({ ...scene, locationId: 'stazione' }));
-  });
-});
-
-describe('withoutImages', () => {
-  it('toglie le immagini di personaggi e luoghi e lascia il resto', () => {
-    const text = withoutImages(bible);
-
-    expect(text.characters.map((c) => c.sheet)).toEqual([[], []]);
-    expect(text.locations.map((l) => l.references)).toEqual([[], []]);
-    expect(text.characters.map((c) => c.name)).toEqual(['Anna', 'Marco']);
   });
 });
 
@@ -224,5 +215,67 @@ describe('settleShots', () => {
         }),
       ),
     ).toBe('invalid_request');
+  });
+});
+
+describe('settleShots: ordine, duplicati e durate', () => {
+  it('l’ordine è quello dato dal modello con order, rinumerato da zero', () => {
+    const base = proposed();
+    const shots = settle([
+      { ...base, order: 2, intent: { ...base.intent, action: 'terza' } },
+      { ...base, order: 0, intent: { ...base.intent, action: 'prima' } },
+      { ...base, order: 1, intent: { ...base.intent, action: 'seconda' } },
+    ]);
+
+    expect(shots.map((s) => [s.order, s.intent.action])).toEqual([
+      [0, 'prima'],
+      [1, 'seconda'],
+      [2, 'terza'],
+    ]);
+  });
+
+  it('un personaggio citato due volte nella stessa inquadratura resta una volta', () => {
+    const [shot] = settle([
+      proposed({
+        characters: [
+          { characterId: 'anna', costume: 'giacca' },
+          { characterId: 'anna', costume: 'cappotto' },
+        ],
+      }),
+    ]);
+
+    expect(shot?.characters).toHaveLength(1);
+    expect(shot?.characters[0]?.costume).toBe('giacca');
+  });
+
+  it('una durata fuori dai limiti torna dentro, una valida resta com’è', () => {
+    const base = proposed();
+    const [long, short, fine] = settle([
+      { ...base, intent: { ...base.intent, durationS: 20 } },
+      { ...base, intent: { ...base.intent, durationS: 0.4 } },
+      { ...base, intent: { ...base.intent, durationS: 5 } },
+    ]);
+
+    expect(long?.intent.durationS).toBe(SHOT_DURATION_RANGE_S.max);
+    expect(short?.intent.durationS).toBe(SHOT_DURATION_RANGE_S.min);
+    expect(fine?.intent.durationS).toBe(5);
+  });
+});
+
+describe('citesMissing', () => {
+  const [shot] = settle([proposed()]);
+  const known = {
+    characters: new Set(['anna', 'marco']),
+    locations: new Set(['piazza', 'stazione']),
+  };
+
+  it('un piano che cita solo ciò che il film ha non è vecchio', () => {
+    expect(citesMissing(shot ? [shot] : [], known)).toBe(false);
+  });
+
+  it('un personaggio o un luogo tolto dal film rende vecchio il piano', () => {
+    const shots = shot ? [shot] : [];
+    expect(citesMissing(shots, { ...known, characters: new Set(['marco']) })).toBe(true);
+    expect(citesMissing(shots, { ...known, locations: new Set(['stazione']) })).toBe(true);
   });
 });

@@ -148,8 +148,8 @@ function SceneSection({
       <p className="hint">{sceneStatus(scene)}</p>
       {scene.stale ? (
         <Notice tone="info">
-          La scena è cambiata dopo che le inquadrature furono pensate: rifalle per tenerle
-          allineate.
+          Dopo aver pensato le inquadrature è cambiato qualcosa: la scena, oppure un personaggio o
+          un luogo che citano. Rifalle per tenerle allineate.
         </Notice>
       ) : null}
       {scene.shots.length === 0 ? null : (
@@ -160,7 +160,7 @@ function SceneSection({
               shot={shot}
               movements={movements}
               names={names}
-              busy={action.busy}
+              busy={action.busy || written.running}
               onMovement={(movementId) => {
                 action.run(async () => {
                   await changeShotMovement(filmId, shot.id, { cameraMovement: movementId });

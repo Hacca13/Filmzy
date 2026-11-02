@@ -1,6 +1,6 @@
 import type { ProjectChoice, ShotSpec } from '@filmzy/contracts';
 
-import { continuityLine, framingLabel, humanize, type Names } from './model';
+import { continuityLine, humanize, type Names } from './model';
 
 interface Props {
   shot: ShotSpec;
@@ -28,7 +28,7 @@ export function ShotCard({ shot, movements, names, busy, onMovement }: Props) {
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>
       <p className="hint">
-        {framingLabel(shot.intent.framing)} · {Math.round(shot.intent.durationS)} s ·{' '}
+        {humanize(shot.intent.framing)} · {Math.round(shot.intent.durationS)} s ·{' '}
         {shot.intent.emotion}
       </p>
       <p className="hint">Luce: {shot.intent.lighting}</p>

@@ -101,6 +101,25 @@ describe('il piano delle inquadrature di una scena', () => {
     expect(store.get('a2')?.spec.intent.cameraMovement).toBe(example.intent.cameraMovement);
   });
 
+  it('il piano della scena pensata più vicina prima di questa, saltando quelle non pensate', () => {
+    store.replaceScene(plan(1, ['a1']));
+    store.replaceScene(plan(3, ['c1', 'c2']));
+    store.replaceScene({ ...plan(2, ['x1']), projectId: 'film-2' });
+
+    expect(store.planBefore('film-1', 5)?.sceneNumber).toBe(3);
+    expect(store.planBefore('film-1', 3)?.sceneNumber).toBe(1);
+    expect(store.planBefore('film-1', 1)).toBeUndefined();
+    expect(store.planBefore('film-3', 9)).toBeUndefined();
+  });
+
+  it('cambiare la scheda di un’inquadratura che non c’è più lo dice, invece di far finta', () => {
+    store.replaceScene(plan(1, ['a1']));
+    store.replaceScene(plan(1, ['a2']));
+
+    expect(store.updateSpec('a1', shot('a1', 1))).toBe(false);
+    expect(store.updateSpec('a2', shot('a2', 1))).toBe(true);
+  });
+
   it('un piano senza scontrino né note si rilegge senza quei campi', () => {
     const saved = store.replaceScene({
       projectId: 'film-1',

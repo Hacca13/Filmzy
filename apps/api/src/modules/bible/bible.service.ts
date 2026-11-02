@@ -5,6 +5,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { CHARACTER_STORE, SHEET_STORE } from '../cast/tokens.js';
+import { characterWithSheet } from '../cast/with-sheet.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE } from '../troupe/tokens.js';
@@ -56,12 +57,23 @@ export class BibleService {
       },
       style,
       cinematography,
-      characters: this.characters.list(projectId).map((character) => ({
-        ...character,
-        sheet: this.sheets.lockedAssetIds(character.id).map((assetId) => ({ assetId })),
-      })),
+      characters: this.characters
+        .list(projectId)
+        .map((character) => characterWithSheet(character, this.sheets)),
       locations: this.locations.list(projectId),
       limits: { maxCharacters: config.limits.max_characters },
+    };
+  }
+
+  /**
+   * Gli id dei personaggi e dei luoghi che il film ha adesso, senza il resto della Bibbia (e senza
+   * la configurazione): basta per sapere se qualcosa di già pensato cita ancora ciò che esiste.
+   */
+  knownIds(projectId: string): { characters: Set<string>; locations: Set<string> } {
+    this.projects.get(projectId);
+    return {
+      characters: new Set(this.characters.list(projectId).map((character) => character.id)),
+      locations: new Set(this.locations.list(projectId).map((location) => location.id)),
     };
   }
 

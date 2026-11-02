@@ -1,5 +1,5 @@
 import { shotSpecSchema, type ShotSpec } from '@filmzy/contracts';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, lt } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { shotPlans, shots, type ShotPlanRow, type ShotRow } from './schema.js';
@@ -40,9 +40,11 @@ export interface ShotStore {
   /** I piani del film, per numero di scena. */
   plans: (projectId: string) => StoredShotPlan[];
   plan: (projectId: string, sceneNumber: number) => StoredShotPlan | undefined;
+  /** Il piano della scena pensata più vicina **prima** di questa, se c'è (per l'uscita da cui si riparte). */
+  planBefore: (projectId: string, sceneNumber: number) => StoredShotPlan | undefined;
   get: (shotId: string) => StoredShot | undefined;
-  /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina). */
-  updateSpec: (shotId: string, spec: ShotSpec) => void;
+  /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più. */
+  updateSpec: (shotId: string, spec: ShotSpec) => boolean;
 }
 
 export interface ShotStoreOptions {
@@ -143,6 +145,17 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
       return row === undefined ? undefined : toPlan(row, shotRows(projectId, sceneNumber));
     },
 
+    planBefore(projectId, sceneNumber) {
+      const row = db
+        .select()
+        .from(shotPlans)
+        .where(and(eq(shotPlans.projectId, projectId), lt(shotPlans.sceneNumber, sceneNumber)))
+        .orderBy(desc(shotPlans.sceneNumber))
+        .limit(1)
+        .get();
+      return row === undefined ? undefined : toPlan(row, shotRows(projectId, row.sceneNumber));
+    },
+
     get(shotId) {
       const row = db.select().from(shots).where(eq(shots.id, shotId)).get();
       return row === undefined
@@ -151,10 +164,12 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
     },
 
     updateSpec(shotId, spec) {
-      db.update(shots)
+      const { changes } = db
+        .update(shots)
         .set({ spec: JSON.stringify(spec) })
         .where(eq(shots.id, shotId))
         .run();
+      return changes > 0;
     },
   };
 }

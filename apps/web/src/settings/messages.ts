@@ -54,6 +54,10 @@ export function describeError(error: unknown): string {
     if (error.serverCode === 'content_rejected' && moderation !== undefined) {
       return describeModeration(moderation);
     }
+    // Le risposte al riepilogo non valgono più: il cast o i luoghi sono cambiati dopo l'ultimo controllo.
+    if (error.serverCode === 'invalid_request' && error.details?.field === 'answers') {
+      return 'Le differenze fra la bozza e le tue scelte sono cambiate. Ho aggiornato il riepilogo: controlla le risposte e riprova.';
+    }
     const known = error.serverCode === undefined ? undefined : BY_SERVER_CODE[error.serverCode];
     if (known !== undefined) return known;
   }

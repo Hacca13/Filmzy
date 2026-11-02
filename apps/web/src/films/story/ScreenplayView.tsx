@@ -1,6 +1,7 @@
 import type { Screenplay, ScreenplayVersionSummary } from '@filmzy/contracts';
 
-import { namesOf, sceneMeta, totalDuration, versionLabel, versionNote } from './model';
+import { SceneList } from './SceneList';
+import { totalDuration, versionLabel, versionNote } from './model';
 
 /** La bozza come si legge: titolo, trama in una riga, scene riassunte, personaggi e luoghi proposti. */
 export function ScreenplayView({ screenplay }: { screenplay: Screenplay }) {
@@ -11,19 +12,7 @@ export function ScreenplayView({ screenplay }: { screenplay: Screenplay }) {
       <p className="hint">
         {screenplay.scenes.length} scene · circa {totalDuration(screenplay)}
       </p>
-      <ol className="scenes">
-        {screenplay.scenes.map((scene) => {
-          const people = namesOf(scene.characterIds, screenplay.characters);
-          return (
-            <li key={scene.number} className="scene">
-              <strong>{scene.heading}</strong>
-              <span className="hint">{sceneMeta(scene)}</span>
-              <p>{scene.summary}</p>
-              {people.length === 0 ? null : <p className="hint">Con {people.join(', ')}</p>}
-            </li>
-          );
-        })}
-      </ol>
+      <SceneList scenes={screenplay.scenes} people={screenplay.characters} />
       {screenplay.characters.length === 0 ? null : (
         <section>
           <h4>Personaggi proposti</h4>
@@ -58,13 +47,22 @@ interface PickerProps {
   /** La versione che si sta leggendo. */
   selectedId: string;
   onSelect: (versionId: string) => void;
+  /** Cosa dire di ogni versione; di solito com'è nata una bozza. */
+  noteOf?: (version: ScreenplayVersionSummary) => string;
+  label?: string;
 }
 
-/** Le versioni della bozza, dalla più recente: ognuna si rilegge com'era. */
-export function VersionPicker({ versions, selectedId, onSelect }: PickerProps) {
+/** Le versioni, dalla più recente: ognuna si rilegge com'era. */
+export function VersionPicker({
+  versions,
+  selectedId,
+  onSelect,
+  noteOf = versionNote,
+  label = 'Versioni della storia',
+}: PickerProps) {
   if (versions.length < 2) return null;
   return (
-    <nav className="versions" aria-label="Versioni della storia">
+    <nav className="versions" aria-label={label}>
       {versions.map((version, index) => (
         <button
           key={version.id}
@@ -77,7 +75,7 @@ export function VersionPicker({ versions, selectedId, onSelect }: PickerProps) {
           }}
         >
           <strong>{versionLabel(version, index === 0)}</strong>
-          <span className="hint">{versionNote(version)}</span>
+          <span className="hint">{noteOf(version)}</span>
         </button>
       ))}
     </nav>

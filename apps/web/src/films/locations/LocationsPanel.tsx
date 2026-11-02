@@ -34,7 +34,7 @@ function LocationsView({ filmId, data, reload }: ViewProps) {
   const action = useAction();
 
   return (
-    <section className="panel cast">
+    <section className="panel cast" id="i-luoghi">
       <h2>I luoghi</h2>
       <p className="hint">
         Dove si svolge la storia. Aggiungi i luoghi che la bozza propone, poi crea le immagini del

@@ -79,3 +79,16 @@ describe('describeError', () => {
     );
   });
 });
+
+describe('il riepilogo cambiato nel frattempo (T3.8)', () => {
+  it('se il server rifiuta le risposte, la frase dice che le differenze sono cambiate', () => {
+    const stale = new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field: 'answers' },
+    });
+
+    expect(describeError(stale)).toContain('sono cambiate');
+    expect(describeError(stale)).not.toBe(describeError(httpError('invalid_request')));
+  });
+});

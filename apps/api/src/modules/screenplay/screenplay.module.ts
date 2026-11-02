@@ -78,6 +78,6 @@ class ScreenplayController {
       inject: [OPENED_DATABASE],
     },
   ],
-  exports: [SCREENPLAY_STORE],
+  exports: [SCREENPLAY_STORE, ScreenplayService],
 })
 export class ScreenplayModule {}

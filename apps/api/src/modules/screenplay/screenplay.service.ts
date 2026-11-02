@@ -2,6 +2,7 @@ import type {
   ReviseBody,
   ScreenplayEstimate,
   ScreenplayEstimateBody,
+  ScreenplayStage,
   ScreenplayVersion,
   ScreenplayVersions,
   WriteDraftBody,
@@ -111,30 +112,38 @@ export class ScreenplayService {
     });
   }
 
-  /** L'ultima versione della bozza. */
-  latest(projectId: string): ScreenplayVersion {
+  /** L'ultima versione della bozza o della stesura ufficiale. */
+  latest(projectId: string, stage: ScreenplayStage = 'draft'): ScreenplayVersion {
     this.projects.get(projectId);
-    return this.latestOrFail(projectId);
+    return this.latestOrFail(projectId, stage);
   }
 
-  versions(projectId: string): ScreenplayVersions {
+  versions(projectId: string, stage: ScreenplayStage = 'draft'): ScreenplayVersions {
     this.projects.get(projectId);
-    return { versions: this.store.list(projectId, 'draft') };
+    return { versions: this.store.list(projectId, stage) };
   }
 
-  /** Una versione di quel film: l'id di un altro film non vale. */
-  version(projectId: string, versionId: string): ScreenplayVersion {
+  /** Una versione di quel film e di quella tappa: l'id di un altro film o dell'altra tappa non vale. */
+  version(
+    projectId: string,
+    versionId: string,
+    stage: ScreenplayStage = 'draft',
+  ): ScreenplayVersion {
     this.projects.get(projectId);
     const version = this.store.get(versionId);
-    if (version?.projectId !== projectId || version.stage !== 'draft') {
+    if (version?.projectId !== projectId || version.stage !== stage) {
       throw domainError(404, 'not_found', { details: { field: 'version' } });
     }
     return version;
   }
 
-  private latestOrFail(projectId: string): ScreenplayVersion {
-    const latest = this.store.latest(projectId, 'draft');
-    if (latest === undefined) throw domainError(404, 'not_found', { details: { field: 'draft' } });
+  private latestOrFail(projectId: string, stage: ScreenplayStage = 'draft'): ScreenplayVersion {
+    const latest = this.store.latest(projectId, stage);
+    if (latest === undefined) {
+      throw domainError(404, 'not_found', {
+        details: { field: stage === 'draft' ? 'draft' : 'final' },
+      });
+    }
     return latest;
   }
 

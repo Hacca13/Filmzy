@@ -16,8 +16,6 @@ import { projectsDir, type CharacterStore, type JobQueue, type SheetStore } from
 import {
   enforceSpend,
   ProviderError,
-  renderSections,
-  resolveInstructions,
   type ConfigSource,
   type InstructionsSource,
   type MediaRunner,
@@ -32,6 +30,7 @@ import { CHARACTER_STORE, SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
+import { registerAssets, renderImagePrompt, waitForMedia } from '../media/image-jobs.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 
@@ -42,12 +41,6 @@ type MediaRequest = Parameters<MediaRunner['submit']>[1];
 
 /** Il tipo di lavoro in coda che fa le tre immagini di una scheda. */
 export const SHEET_JOB_KIND = 'character_sheet';
-
-/** Ogni quanto si chiede al servizio a che punto è un'immagine (ms). Poche decine di secondi di lavoro: basta. */
-const POLL_INTERVAL_MS = 500;
-
-/** Quante volte si chiede prima di rinunciare: oltre dieci minuti un'immagine non è più in lavorazione. */
-const MAX_POLLS = 1200;
 
 /**
  * Le schede dei personaggi (T3.6, D18): tre immagini su fondo neutro (fronte, profilo, tre quarti)
@@ -230,34 +223,25 @@ export class SheetService implements OnModuleInit {
       ...(payload.spendConfirmed === true ? { spendConfirmed: true } : {}),
     });
 
-    for (let poll = 0; poll < MAX_POLLS; poll += 1) {
-      const collected = await media.collect(job.receiptId);
-      if (collected.state === 'failed') {
-        throw (
-          collected.error ??
-          new ProviderError('provider_unavailable', true, 'Il servizio non ha prodotto l’immagine.')
-        );
-      }
-      const asset = collected.assets?.[0];
-      if (collected.state === 'succeeded' && asset !== undefined) {
-        this.sheets.registerAsset({
-          id: asset.assetId,
-          path: path.relative(this.dataDir, asset.path).replaceAll('\\', '/'),
-          contentType: asset.contentType,
-          bytes: asset.bytes,
-          projectId: project.id,
-          generationId: collected.receipt.id,
-        });
-        this.sheets.update(characterId, attempt, angle, {
-          status: 'succeeded',
-          assetId: asset.assetId,
-          receiptId: collected.receipt.id,
-        });
-        return;
-      }
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    const { assets, receipt } = await waitForMedia(media, job.receiptId);
+    const asset = assets[0];
+    if (asset === undefined) {
+      throw new ProviderError(
+        'invalid_output',
+        false,
+        'Il servizio non ha restituito nessuna immagine.',
+      );
     }
-    throw new ProviderError('timeout', true, 'L’immagine non è arrivata in tempo.');
+    registerAssets(
+      this.sheets,
+      { dataDir: this.dataDir, projectId: project.id, generationId: receipt.id },
+      [asset],
+    );
+    this.sheets.update(characterId, attempt, angle, {
+      status: 'succeeded',
+      assetId: asset.assetId,
+      receiptId: receipt.id,
+    });
   }
 
   /**
@@ -278,21 +262,13 @@ export class SheetService implements OnModuleInit {
     }
 
     const loaded = await this.configSource.load();
-    const resolved = await resolveInstructions(this.instructions, {
-      fallbackId: ROLE,
-      ...optional('releaseRef', config.roles[ROLE]?.instructions),
-      ...optional('userRef', loaded.settings?.roleSettings[ROLE]?.instructions),
+    const prompt = await renderImagePrompt({
+      instructions: this.instructions,
+      role: ROLE,
+      releaseRef: config.roles[ROLE]?.instructions,
+      userRef: loaded.settings?.roleSettings[ROLE]?.instructions,
+      input: { character, style, angle, moodboard: null },
     });
-    const rendered = await renderSections(resolved.sections, {
-      character,
-      style,
-      angle,
-      moodboard: null,
-    });
-    const prompt = rendered.prompt ?? '';
-    if (prompt === '') {
-      throw domainError(422, 'config_invalid', { details: { role: ROLE } });
-    }
 
     return {
       role: ROLE,
@@ -323,9 +299,4 @@ const isOpen = (status: string): boolean => status === 'queued' || status === 'r
 /** `troupe.options` stima **una** immagine: la scheda ne vuole tre, e l'utente deve vedere il totale. */
 function wholeSheet(option: ModelOption): ModelOption {
   return { ...option, estimatedCostUsd: option.estimatedCostUsd * SHEET_ANGLES.length };
-}
-
-/** Un campo che c'è solo se ha un valore: `exactOptionalPropertyTypes` non vuole `undefined`. */
-function optional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
-  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
 }

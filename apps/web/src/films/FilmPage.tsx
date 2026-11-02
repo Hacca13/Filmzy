@@ -8,6 +8,7 @@ import { useResource } from '../lib/use-resource';
 import { describeError } from '../settings/messages';
 import { choiceLabel, formatDuration } from './model';
 import { CastPanel } from './cast/CastPanel';
+import { LocationsPanel } from './locations/LocationsPanel';
 import { StoryPanel } from './story/StoryPanel';
 import { ideaHref } from './routes';
 
@@ -75,6 +76,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
 
       <StoryPanel filmId={film.id} />
       <CastPanel filmId={film.id} />
+      <LocationsPanel filmId={film.id} />
     </section>
   );
 }

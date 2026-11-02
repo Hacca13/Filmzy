@@ -57,6 +57,7 @@ export * from './projects-api.js';
 export * from './screenplay-api.js';
 export * from './cast-api.js';
 export * from './sheet-api.js';
+export * from './locations-api.js';
 export { moderationRejectionSchema } from './moderation.js';
 export type { ModerationRejection } from './moderation.js';
 export {

@@ -8,6 +8,7 @@ import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InstructionsModule } from './modules/instructions/instructions.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
+import { LocationsModule } from './modules/locations/locations.module.js';
 import { PreferencesModule } from './modules/preferences/preferences.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
@@ -60,6 +61,7 @@ export class AppModule {
         ),
         HealthModule,
         JobsModule,
+        LocationsModule,
       ],
     };
   }

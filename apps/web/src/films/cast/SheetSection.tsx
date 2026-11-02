@@ -1,5 +1,5 @@
 import type { CharacterSheet, ModelOption } from '@filmzy/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   assetUrl,
@@ -17,6 +17,7 @@ import { describeError } from '../../settings/messages';
 import { SpendConfirm } from '../../settings/spend/SpendConfirm';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
+import { useWatched } from '../use-watched';
 import {
   angleLabel,
   attemptIsComplete,
@@ -25,9 +26,6 @@ import {
   sheetIsWorking,
 } from './sheet-model';
 
-/** Ogni quanto si guarda a che punto sono le immagini finché lavorano (ms). */
-const WATCH_INTERVAL_MS = 1500;
-
 /**
  * La scheda di un personaggio (T3.6): le tre immagini su fondo neutro (fronte, profilo, tre quarti)
  * per ogni tentativo. L'utente sceglie il servizio e vede la stima prima (D36, D30), chiede altri
@@ -35,8 +33,17 @@ const WATCH_INTERVAL_MS = 1500;
  * del personaggio per tutto il film.
  */
 export function SheetSection({ filmId, characterId }: { filmId: string; characterId: string }) {
-  const [sheet, setSheet] = useState<CharacterSheet>();
-  const [loadProblem, setLoadProblem] = useState<string>();
+  const loadSheet = useCallback(
+    (signal: AbortSignal) => fetchSheet(filmId, characterId, signal),
+    [filmId, characterId],
+  );
+  // Si legge la scheda all'apertura e, finché qualcosa lavora, ogni poco (useWatched).
+  const {
+    value: sheet,
+    setValue: setSheet,
+    problem: loadProblem,
+    working,
+  } = useWatched(loadSheet, sheetIsWorking);
 
   const loadOptions = useCallback(
     (signal: AbortSignal) => fetchSheetOptions(filmId, characterId, signal),
@@ -47,33 +54,6 @@ export function SheetSection({ filmId, characterId }: { filmId: string; characte
   const action = useAction();
 
   const created = useGuardedRun<CharacterSheet>(setSheet);
-
-  // Si legge la scheda all'apertura e, finché qualcosa lavora, ogni poco: l'utente vede le immagini
-  // comparire senza dover fare niente.
-  const working = sheet === undefined || sheetIsWorking(sheet);
-  useEffect(() => {
-    if (!working) return undefined;
-    const controller = new AbortController();
-    const look = () => {
-      fetchSheet(filmId, characterId, controller.signal).then(
-        (next) => {
-          if (!controller.signal.aborted) {
-            setSheet(next);
-            setLoadProblem(undefined);
-          }
-        },
-        (error: unknown) => {
-          if (!controller.signal.aborted) setLoadProblem(describeError(error));
-        },
-      );
-    };
-    look();
-    const timer = setInterval(look, WATCH_INTERVAL_MS);
-    return () => {
-      controller.abort();
-      clearInterval(timer);
-    };
-  }, [filmId, characterId, working]);
 
   const choices: readonly ModelOption[] | undefined =
     options.state.status === 'ready' ? options.state.data.options : undefined;

@@ -11,7 +11,7 @@ import type {
   ShotSpec,
 } from '@filmzy/contracts';
 import { SHOT_DURATION_RANGE_S } from '@filmzy/contracts';
-import type { ShotStore, StoredShotPlan } from '@filmzy/db';
+import type { ShotStore, StoredShotPlan, TakeStore } from '@filmzy/db';
 import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -22,7 +22,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
-import { SHOT_STORE } from './tokens.js';
+import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
 /**
  * Le inquadrature (T3.9, architettura §3.1, §5.2): l'aiuto regista divide una scena della
@@ -44,6 +44,7 @@ export class ShotsService {
     private readonly screenplays: ScreenplayService,
     private readonly bible: BibleService,
     private readonly projects: ProjectsService,
+    @Inject(TAKE_STORE) private readonly takes: TakeStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -53,12 +54,15 @@ export class ShotsService {
     const config = await this.config();
     const known = this.bible.knownIds(projectId);
     const stored = new Map(this.store.plans(projectId).map((plan) => [plan.sceneNumber, plan]));
-    const chosen = this.store.chosenStoryboards(projectId);
+    const extras = {
+      chosen: this.store.chosenStoryboards(projectId),
+      clips: this.takes.latestClips(projectId),
+    };
 
     return {
       finalVersionId: final.id,
       scenes: final.screenplay.scenes.map((scene) =>
-        scenePlan(scene, stored.get(scene.number), known, chosen),
+        scenePlan(scene, stored.get(scene.number), known, extras),
       ),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
@@ -101,8 +105,8 @@ export class ShotsService {
       shots,
     });
     this.projects.reach(projectId, 'shots');
-    // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante.
-    return scenePlan(scene, saved, this.bible.knownIds(projectId), {});
+    // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante né un take.
+    return scenePlan(scene, saved, this.bible.knownIds(projectId), { chosen: {}, clips: {} });
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
@@ -197,15 +201,30 @@ export class ShotsService {
 const activeMovements = (config: TroupeConfig): CameraMovement[] =>
   config.presets.cameraMovements.filter((movement) => movement.enabled);
 
-/**
- * Una scena della stesura con il suo piano, se c'è, e la variante di storyboard scelta per ogni sua
- * inquadratura (`chosen` è quella di tutto il film: qui si tengono solo quelle del piano).
- */
+/** Ciò che sta fuori dal piano ma la card mostra: la variante di storyboard scelta e la clip più recente, di tutto il film. */
+interface PerShot {
+  chosen: Readonly<Record<string, string>>;
+  clips: Readonly<Record<string, string>>;
+}
+
+/** Di un elenco per inquadratura (di tutto il film) si tengono solo quelle della scena. */
+const forShots = (
+  shots: readonly ShotSpec[],
+  all: Readonly<Record<string, string>>,
+): Record<string, string> =>
+  Object.fromEntries(
+    shots.flatMap((shot) => {
+      const assetId = all[shot.id];
+      return assetId === undefined ? [] : [[shot.id, assetId]];
+    }),
+  );
+
+/** Una scena della stesura con il suo piano, se c'è, e ciò che la card mostra di ogni sua inquadratura. */
 function scenePlan(
   scene: ScreenplayScene,
   plan: StoredShotPlan | undefined,
   known: KnownIds,
-  chosen: Readonly<Record<string, string>>,
+  extras: PerShot,
 ): ScenePlan {
   const shots = plan?.shots ?? [];
   return {
@@ -217,11 +236,7 @@ function scenePlan(
     stale: plan !== undefined && isStale(scene, plan, known),
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots,
-    chosenStoryboards: Object.fromEntries(
-      shots.flatMap((shot) => {
-        const assetId = chosen[shot.id];
-        return assetId === undefined ? [] : [[shot.id, assetId]];
-      }),
-    ),
+    chosenStoryboards: forShots(shots, extras.chosen),
+    latestTakes: forShots(shots, extras.clips),
   };
 }

@@ -35,22 +35,24 @@ import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
-  chooseImageService,
+  chooseMediaService,
   registerAssets,
   variantsOf,
   waitForMedia,
 } from '../media/image-jobs.js';
-import { referenceInput } from '../media/references.js';
+import { readIdentity, referenceInput } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
-import { isStale } from './plan-shots.js';
+import { assertPlanCurrent, shotOf } from './shot-access.js';
 import { imageAssetId, withLastFrame } from './shot-images.js';
 import {
   cinematographerInputFor,
+  familyOf,
   identityStandIns,
   standInImage,
   storyboardReferences,
+  storyboardTarget,
 } from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
 
@@ -140,12 +142,18 @@ export class StoryboardService implements OnModuleInit {
     body: StartSheetBody,
   ): Promise<ShotStoryboard> {
     const { stored } = this.target(projectId, shotId);
-    this.assertPlanCurrent(projectId, stored);
+    assertPlanCurrent({
+      store: this.store,
+      screenplays: this.screenplays,
+      known: this.bible.knownIds(projectId),
+      projectId,
+      stored,
+    });
     assertCanDraw(stored.spec, mode);
 
     const config = await this.config();
     const bible = await this.bible.assemble(projectId);
-    const chosen = await chooseImageService({
+    const chosen = await chooseMediaService({
       role: ROLE,
       options: await this.priced(stored.spec, bible, config, mode),
       body,
@@ -253,7 +261,7 @@ export class StoryboardService implements OnModuleInit {
       this.store.finishStoryboard(shotId, mode, attempt, { status: 'running' });
       const config = await this.config();
       const bible = await this.bible.assemble(projectId);
-      const family = this.familyOf(config, payload.modelId);
+      const family = familyOf(config, payload.modelId);
       const context = {
         purpose: 'product',
         projectId,
@@ -266,7 +274,13 @@ export class StoryboardService implements OnModuleInit {
       const references = await this.readReferences(stored.spec, bible, mode);
       const written = await this.troupe.run(
         'cinematographer',
-        cinematographerInputFor({ spec: stored.spec, bible, config, family, mode }),
+        cinematographerInputFor({
+          spec: stored.spec,
+          bible,
+          config,
+          family,
+          target: storyboardTarget(mode),
+        }),
         context,
       );
       const media = this.mediaFor(path.join(projectsDir(this.dataDir), projectId, 'immagini'));
@@ -331,8 +345,8 @@ export class StoryboardService implements OnModuleInit {
         spec,
         bible,
         config,
-        family: this.familyOf(config, reference.modelId),
-        mode,
+        family: familyOf(config, reference.modelId),
+        target: storyboardTarget(mode),
       }),
     );
     return options.map((option) => ({
@@ -396,69 +410,25 @@ export class StoryboardService implements OnModuleInit {
   ): Promise<ReadReferences> {
     const wanted = storyboardReferences(spec, bible);
     const firstFrame = mode === 'end_frame' ? imageAssetId(spec, 'first_frame') : undefined;
-    const [base, faces, set] = await Promise.all([
+    const [base, identity] = await Promise.all([
       firstFrame === undefined
         ? undefined
         : referenceInput(this.files, this.dataDir, firstFrame, 'base_image'),
-      Promise.all(
-        wanted.characters.map(async ({ characterId, assetId }) => ({
-          characterId,
-          input: await referenceInput(this.files, this.dataDir, assetId),
-        })),
-      ),
-      wanted.locationAssetId === undefined
-        ? undefined
-        : referenceInput(this.files, this.dataDir, wanted.locationAssetId),
+      readIdentity(this.files, this.dataDir, wanted),
     ]);
 
     if (mode === 'end_frame' && base === undefined) {
       throw new ProviderError('invalid_request', false, 'Il primo fotogramma non c’è più.');
     }
-
-    const found = faces.flatMap(({ characterId, input }) =>
-      input === undefined ? [] : [{ characterId, input }],
-    );
     return {
-      inputs: [
-        ...(base === undefined ? [] : [base]),
-        ...found.map(({ input }) => input),
-        ...(set === undefined ? [] : [set]),
-      ],
-      characterIds: found.map(({ characterId }) => characterId),
+      inputs: [...(base === undefined ? [] : [base]), ...identity.inputs],
+      characterIds: identity.characterIds,
     };
-  }
-
-  /** La famiglia del servizio: il direttore della fotografia scrive il prompt nella sua sintassi. */
-  private familyOf(config: TroupeConfig, modelId: string): string {
-    const family = config.models[modelId]?.family;
-    if (family === undefined) {
-      throw domainError(422, 'config_invalid', { details: { modelId } });
-    }
-    return family;
-  }
-
-  /** Un piano vecchio (scena cambiata, personaggio o luogo tolto) non si disegna: si rifà prima. */
-  private assertPlanCurrent(projectId: string, stored: StoredShot): void {
-    const plan = this.store.plan(projectId, stored.sceneNumber);
-    const scene = this.screenplays
-      .latest(projectId, 'final')
-      .screenplay.scenes.find((candidate) => candidate.number === stored.sceneNumber);
-    if (
-      plan === undefined ||
-      scene === undefined ||
-      isStale(scene, plan, this.bible.knownIds(projectId))
-    ) {
-      throw domainError(409, 'invalid_request', { details: { field: 'plan' } });
-    }
   }
 
   private target(projectId: string, shotId: string): { stored: StoredShot } {
     this.projects.get(projectId);
-    const stored = this.store.get(shotId);
-    if (stored?.projectId !== projectId) {
-      throw domainError(404, 'not_found', { details: { field: 'shotId' } });
-    }
-    return { stored };
+    return { stored: shotOf(this.store, projectId, shotId) };
   }
 
   private async config(): Promise<TroupeConfig> {

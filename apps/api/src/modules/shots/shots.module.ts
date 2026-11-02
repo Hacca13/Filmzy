@@ -12,8 +12,15 @@ import {
   type ShotPlans,
   type ShotSpec,
   type ShotStoryboard,
+  type ShotTakes,
 } from '@filmzy/contracts';
-import { createShotStore, type OpenedDatabase, type ShotStore } from '@filmzy/db';
+import {
+  createShotStore,
+  createTakeStore,
+  type OpenedDatabase,
+  type ShotStore,
+  type TakeStore,
+} from '@filmzy/db';
 import { Body, Controller, Get, Module, Param, Patch, Post, Put, UseFilters } from '@nestjs/common';
 
 import { parseBody } from '../../http/parse-body.js';
@@ -27,7 +34,8 @@ import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { ShotImagesService } from './shot-images.service.js';
 import { ShotsService } from './shots.service.js';
 import { StoryboardService } from './storyboard.service.js';
-import { SHOT_STORE } from './tokens.js';
+import { TakesService } from './takes.service.js';
+import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
 /**
  * Le rotte delle inquadrature (T3.9) e del loro storyboard (T4.1). Nessuna logica: decide il
@@ -41,6 +49,7 @@ class ShotsController {
     private readonly shots: ShotsService,
     private readonly storyboards: StoryboardService,
     private readonly shotImages: ShotImagesService,
+    private readonly takes: TakesService,
   ) {}
 
   @Get()
@@ -158,6 +167,29 @@ class ShotsController {
     );
   }
 
+  @Get(':shotId/takes')
+  takeList(@Param('projectId') projectId: string, @Param('shotId') shotId: string): ShotTakes {
+    return this.takes.list(projectId, shotId);
+  }
+
+  @Get(':shotId/takes/options')
+  takeOptions(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+  ): Promise<SheetOptions> {
+    return this.takes.options(projectId, shotId);
+  }
+
+  /** «Genera»: mette in coda un take video. Costa: il filtro traduce gli errori della troupe. */
+  @Post(':shotId/takes')
+  startTake(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): Promise<ShotTakes> {
+    return this.takes.start(projectId, shotId, parseBody(startSheetBodySchema, body ?? {}));
+  }
+
   @Get(':shotId/images')
   images(
     @Param('projectId') projectId: string,
@@ -183,6 +215,12 @@ class ShotsController {
     ShotsService,
     StoryboardService,
     ShotImagesService,
+    TakesService,
+    {
+      provide: TAKE_STORE,
+      useFactory: (opened: OpenedDatabase): TakeStore => createTakeStore(opened.db),
+      inject: [OPENED_DATABASE],
+    },
     {
       provide: SHOT_STORE,
       useFactory: (opened: OpenedDatabase): ShotStore => createShotStore(opened.db),

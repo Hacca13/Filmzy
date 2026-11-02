@@ -30,7 +30,7 @@ import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
-  chooseImageService,
+  chooseMediaService,
   registerAssets,
   renderImagePrompt,
   waitForMedia,
@@ -98,7 +98,7 @@ export class SheetService implements OnModuleInit {
 
     const request = await this.requestFor(project, character, config, 'front', 0);
     const options = (await this.troupe.options(ROLE, request)).map((option) => wholeSheet(option));
-    const chosen = await chooseImageService({
+    const chosen = await chooseMediaService({
       role: ROLE,
       options,
       body,

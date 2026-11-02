@@ -82,7 +82,7 @@ export interface ChooseServiceArgs {
  * servizio scelto è un requisito: se non è adatto non si passa a un altro (D36). Si controllano
  * anche i limiti di spesa, **prima** di mettere il lavoro in coda (D30).
  */
-export async function chooseImageService(args: ChooseServiceArgs): Promise<ModelOption> {
+export async function chooseMediaService(args: ChooseServiceArgs): Promise<ModelOption> {
   const { role, options, body, config, projectId } = args;
   const chosen =
     body.modelId === undefined
@@ -111,13 +111,26 @@ export interface WaitedMedia {
   receipt: GenerationReceipt;
 }
 
+/** Quanto aspettare un lavoro: gli intervalli e il numero di volte che si chiede, prima di rinunciare. */
+export interface WaitOptions {
+  intervalMs: number;
+  maxPolls: number;
+}
+
+/** Un video ci mette minuti, non secondi: si chiede più di rado e si aspetta più a lungo (circa 20 minuti). */
+export const VIDEO_WAIT: WaitOptions = { intervalMs: 3000, maxPolls: 400 };
+
 /**
  * Aspetta che il servizio abbia finito e restituisce i file già copiati nella cartella del film. Se
  * il lavoro fallisce lancia l'errore del servizio (col suo codice); se non finisce in tempo, un
- * `timeout` da riprovare.
+ * `timeout` da riprovare. Per un'immagine bastano i valori di partenza.
  */
-export async function waitForMedia(media: MediaRunner, receiptId: string): Promise<WaitedMedia> {
-  for (let poll = 0; poll < MAX_POLLS; poll += 1) {
+export async function waitForMedia(
+  media: MediaRunner,
+  receiptId: string,
+  wait: WaitOptions = { intervalMs: POLL_INTERVAL_MS, maxPolls: MAX_POLLS },
+): Promise<WaitedMedia> {
+  for (let poll = 0; poll < wait.maxPolls; poll += 1) {
     const collected = await media.collect(receiptId);
     if (collected.state === 'failed') {
       throw (
@@ -128,7 +141,7 @@ export async function waitForMedia(media: MediaRunner, receiptId: string): Promi
     if (collected.state === 'succeeded' && collected.assets !== undefined) {
       return { assets: collected.assets, receipt: collected.receipt };
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    await new Promise((resolve) => setTimeout(resolve, wait.intervalMs));
   }
   throw new ProviderError('timeout', true, 'Il file non è arrivato in tempo.');
 }

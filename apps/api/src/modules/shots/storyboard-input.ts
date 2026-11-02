@@ -1,6 +1,7 @@
 import {
   STORYBOARD_PROMPT_MAX_CHARS,
   type CinematographerInput,
+  type PromptTarget,
   type ShotSpec,
   type StoryBible,
   type StoryboardMode,
@@ -8,6 +9,7 @@ import {
 import type { MediaInput, TroupeConfig } from '@filmzy/troupe';
 
 import { domainError } from '../../http/domain-error.js';
+import type { IdentityReferences } from '../media/references.js';
 
 /**
  * Cosa si dice al direttore della fotografia perché scriva il prompt dell'immagine di
@@ -16,6 +18,8 @@ import { domainError } from '../../http/domain-error.js';
  *
  * Per l'ultimo fotogramma (`end_frame`, T4.2) il prompt dice solo cosa cambia rispetto al primo, che
  * viene modificato (D20): la destinazione è `end` e gli ingressi dati sono il primo e l'ultimo.
+ *
+ * Lo stesso vale per un video (T4.3): cambia solo la destinazione (`target`).
  *
  * Il direttore non riceve i riferimenti visivi (architettura §4.7): li aggiunge il traduttore, e per
  * questo qui le immagini si tolgono dalla scheda e dal luogo. Un piano che cita un personaggio o un
@@ -26,9 +30,10 @@ export function cinematographerInputFor(args: {
   bible: StoryBible;
   config: TroupeConfig;
   family: string;
-  mode: StoryboardMode;
+  /** Cosa si disegna: la destinazione senza la famiglia, che sta nel servizio scelto. */
+  target: Omit<PromptTarget, 'family'>;
 }): CinematographerInput {
-  const { spec, bible, config, family, mode } = args;
+  const { spec, bible, config, family, target } = args;
 
   const location = bible.locations.find((candidate) => candidate.id === spec.location.locationId);
   if (location === undefined) {
@@ -63,23 +68,33 @@ export function cinematographerInputFor(args: {
     style: bible.style,
     cinematography: { camera, lighting, lens, grade, ...override },
     movement,
-    target: {
-      family,
-      kind: 'image',
-      maxPromptChars: STORYBOARD_PROMPT_MAX_CHARS,
-      frame: mode === 'end_frame' ? 'end' : 'start',
-      inputs: mode === 'end_frame' ? ['first_frame', 'last_frame'] : ['references'],
-    },
+    target: { family, ...target },
   };
 }
 
-/** Le immagini che entrano nella richiesta, ancora come id: i file si leggono dopo. */
-export interface StoryboardReferences {
-  /** Il volto bloccato di ogni personaggio dell'inquadratura che ne ha uno, nell'ordine della scheda. */
-  characters: { characterId: string; assetId: string }[];
-  /** L'immagine del set scelta per il luogo, se c'è. */
-  locationAssetId?: string;
+/** La famiglia del servizio: il direttore della fotografia scrive il prompt nella sua sintassi. */
+export function familyOf(config: TroupeConfig, modelId: string): string {
+  const family = config.models[modelId]?.family;
+  if (family === undefined) {
+    throw domainError(422, 'config_invalid', { details: { modelId } });
+  }
+  return family;
 }
+
+/** La destinazione di un'immagine dello storyboard: un fotogramma fisso, o l'ultimo che modifica il primo (D20). */
+export const storyboardTarget = (mode: StoryboardMode): Omit<PromptTarget, 'family'> => ({
+  kind: 'image',
+  maxPromptChars: STORYBOARD_PROMPT_MAX_CHARS,
+  frame: mode === 'end_frame' ? 'end' : 'start',
+  inputs: mode === 'end_frame' ? ['first_frame', 'last_frame'] : ['references'],
+});
+
+/**
+ * Le immagini che mantengono l'identità, ancora come id: i file si leggono dopo. Per ogni personaggio
+ * dell'inquadratura che ne ha uno, il volto bloccato (nell'ordine della scheda); e l'immagine del set
+ * scelta per il luogo, se c'è.
+ */
+export type StoryboardReferences = IdentityReferences;
 
 /**
  * Un'immagine finta per scegliere i servizi e stimare il prezzo: conta quante immagini ci sono e a

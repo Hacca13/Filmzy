@@ -12,7 +12,7 @@ import {
   type ShotPlannerInput,
   type StoryBible,
 } from '@filmzy/contracts';
-import { createShotStore, openFilmzyDatabase, type ShotStore } from '@filmzy/db';
+import { createShotStore, openFilmzyDatabase, type ShotStore, type TakeStore } from '@filmzy/db';
 import type { ConfigSource, LoadedConfig, Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { mkdtemp } from 'node:fs/promises';
@@ -74,6 +74,7 @@ let store: ShotStore;
 let runs: { input: ShotPlannerInput; ctx: GenerationContext }[];
 let estimates: ShotPlannerInput[];
 let reached: string[];
+let clips: Record<string, string>;
 
 function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {}) {
   const troupe = {
@@ -120,7 +121,8 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
       reached.push(phase);
     },
   } as unknown as ProjectsService;
-  return new ShotsService(store, troupe, configSource, screenplays, bibles, projects);
+  const takes = { latestClips: () => clips } as unknown as TakeStore;
+  return new ShotsService(store, troupe, configSource, screenplays, bibles, projects, takes);
 }
 
 async function failure(call: () => Promise<unknown>): Promise<{ status: number; code: string }> {
@@ -144,6 +146,7 @@ beforeEach(async () => {
   runs = [];
   estimates = [];
   reached = [];
+  clips = {};
   final = {
     id: 'stesura-1',
     projectId: film.id,
@@ -397,5 +400,27 @@ describe('la variante di storyboard scelta', () => {
 
     expect(again.chosenStoryboards).toEqual({});
     expect((await service.plans(film.id)).scenes[0]?.chosenStoryboards).toEqual({});
+  });
+});
+
+describe('la clip più recente', () => {
+  it('sta nella scena della sua inquadratura, e solo lì', async () => {
+    const service = build();
+    const first = await service.plan(film.id, { sceneNumber: 1 });
+    await service.plan(film.id, { sceneNumber: 2 });
+    const shot = first.shots[0];
+    if (shot === undefined) throw new Error('doveva esserci un’inquadratura');
+    clips = { [shot.id]: 'clip-1', altra: 'clip-di-altri' };
+
+    const plans = await service.plans(film.id);
+
+    expect(plans.scenes[0]?.latestTakes).toEqual({ [shot.id]: 'clip-1' });
+    expect(plans.scenes[1]?.latestTakes).toEqual({});
+  });
+
+  it('un piano appena rifatto non ha ancora nessun take', async () => {
+    const again = await build().plan(film.id, { sceneNumber: 1 });
+
+    expect(again.latestTakes).toEqual({});
   });
 });

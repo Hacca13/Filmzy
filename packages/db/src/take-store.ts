@@ -24,6 +24,9 @@ export interface TakePatch {
   receiptId?: string;
   costUsd?: number;
   errorCode?: string;
+  /** Il servizio che ha lavorato davvero, preso dallo scontrino (D36). Senza, resta quello scelto. */
+  modelId?: string;
+  modelLabel?: string;
 }
 
 /** Un take con l'inquadratura a cui appartiene. */
@@ -98,6 +101,8 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
           receiptId: patch.receiptId ?? null,
           costUsd: patch.costUsd ?? null,
           errorCode: patch.errorCode ?? null,
+          ...(patch.modelId === undefined ? {} : { modelId: patch.modelId }),
+          ...(patch.modelLabel === undefined ? {} : { modelLabel: patch.modelLabel }),
           updatedAt: now().getTime(),
         })
         .where(eq(takes.id, takeId))

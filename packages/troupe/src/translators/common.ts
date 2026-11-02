@@ -32,7 +32,13 @@ export function inputModeOf(inputs: readonly MediaInput[]): string {
   const hasFirst = uses.has('first_frame');
   const hasLast = uses.has('last_frame');
 
-  if (hasFirst && hasLast) return 'first_frame+last_frame';
+  // Una combinazione che il catalogo non dichiara (solo l'ultimo fotogramma, o ispirazione insieme a
+  // primo e ultimo) non si riduce a un'altra: nessun servizio la accetta e si dice (D20), invece di
+  // perdere un'immagine in silenzio.
+  if (hasLast && !hasFirst) return 'last_frame';
+  if (hasFirst && hasLast) {
+    return hasReferences ? 'references+first_frame+last_frame' : 'first_frame+last_frame';
+  }
   if (hasFirst && hasReferences) return 'references+first_frame';
   if (hasFirst) return 'first_frame';
   return 'references';

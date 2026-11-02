@@ -1,0 +1,138 @@
+import {
+  SHOT_SPEC_SCHEMA_VERSION,
+  type ContinuityState,
+  type ScenePlan,
+  type ShotSpec,
+} from '@filmzy/contracts';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+
+import { ShotCard } from './ShotCard';
+import { continuityLine, framingLabel, humanize, sceneStatus, type Names } from './model';
+
+const names: Names = {
+  characters: [
+    { id: 'c-anna', name: 'Anna' },
+    { id: 'c-marco', name: 'Marco' },
+  ],
+  locations: [{ id: 'l-piazza', name: 'La piazza' }],
+};
+
+const entry: ContinuityState = {
+  locationId: 'l-piazza',
+  timeOfDay: 'sera',
+  present: ['c-anna', 'c-marco'],
+  costumes: {},
+  props: [],
+};
+
+const shot: ShotSpec = {
+  schema: SHOT_SPEC_SCHEMA_VERSION,
+  id: 's-1',
+  sceneId: 'scene-1',
+  order: 0,
+  intent: {
+    action: 'Anna guarda l’orologio della stazione',
+    emotion: 'ansiosa',
+    framing: 'close_up',
+    cameraMovement: 'push_in',
+    lighting: 'luce calda del tramonto',
+    durationS: 5.4,
+  },
+  characters: [{ characterId: 'c-anna', costume: 'giacca', references: [] }],
+  location: { locationId: 'l-piazza', references: [] },
+  images: [],
+  dialogue: [],
+  cinematography: 'inherit',
+  continuity: { entry, exit: { ...entry, present: ['c-anna'] } },
+};
+
+const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
+  sceneNumber: 1,
+  heading: 'EST. PIAZZA - SERA',
+  summary: 'Anna aspetta.',
+  durationS: 20,
+  planned: true,
+  stale: false,
+  shots: [shot],
+  ...patch,
+});
+
+describe('i nomi', () => {
+  it('un id si legge come un nome: i piani più comuni hanno il loro, gli altri si adattano', () => {
+    expect(framingLabel('close_up')).toBe('Primo piano');
+    expect(framingLabel('wide')).toBe('Campo lungo');
+    expect(framingLabel('dutch_angle')).toBe('Dutch angle');
+    expect(humanize('push-in')).toBe('Push in');
+    expect(humanize('')).toBe('');
+  });
+});
+
+describe('sceneStatus', () => {
+  it('dice se la scena è da pensare, da rifare o quante inquadrature ha', () => {
+    expect(sceneStatus(scene({ planned: false, shots: [] }))).toBe('Da pensare');
+    expect(sceneStatus(scene({ stale: true }))).toBe('Da rifare: la scena è cambiata');
+    expect(sceneStatus(scene())).toBe('1 inquadratura');
+    expect(sceneStatus(scene({ shots: [shot, shot, shot] }))).toBe('3 inquadrature');
+  });
+});
+
+describe('continuityLine', () => {
+  it('dice dove, quando e chi, con i nomi del film', () => {
+    expect(continuityLine(entry, names)).toBe('La piazza · sera · con Anna, Marco');
+  });
+
+  it('salta ciò che non si riconosce o non c’è', () => {
+    expect(continuityLine({ ...entry, locationId: 'altrove', present: [] }, names)).toBe('sera');
+  });
+});
+
+describe('ShotCard', () => {
+  const movements = [
+    { id: 'static', label: 'Resta fermo' },
+    { id: 'push_in', label: 'Avvicinati' },
+  ];
+  const render = (given: ShotSpec = shot, busy = false) =>
+    renderToStaticMarkup(
+      <ShotCard
+        shot={given}
+        movements={movements}
+        names={names}
+        busy={busy}
+        onMovement={() => undefined}
+      />,
+    );
+
+  it('mostra cosa succede, il piano in italiano, la durata, la luce e come entra ed esce', () => {
+    const html = render();
+
+    expect(html).toContain('Inquadratura 1');
+    expect(html).toContain('Anna guarda l’orologio della stazione');
+    expect(html).toContain('Primo piano');
+    expect(html).toContain('5 s');
+    expect(html).toContain('Luce: luce calda del tramonto');
+    expect(html).toContain('Entra');
+    expect(html).toContain('La piazza · sera · con Anna, Marco');
+    expect(html).toContain('Esce');
+    expect(html).toContain('La piazza · sera · con Anna');
+  });
+
+  it('il movimento si sceglie dalla lista, con quello attuale selezionato', () => {
+    const html = render();
+
+    expect(html).toContain('Resta fermo');
+    expect(html).toContain('Avvicinati');
+    expect(html).toMatch(/<option value="push_in" selected/);
+  });
+
+  it('un movimento che non è più tra gli attivi resta visibile, senza cambiare da solo', () => {
+    const html = render({ ...shot, intent: { ...shot.intent, cameraMovement: 'volo_acrobatico' } });
+
+    expect(html).toContain('Volo acrobatico');
+    expect(html).toMatch(/<option value="volo_acrobatico" selected/);
+  });
+
+  it('mentre si salva il menu è bloccato', () => {
+    expect(render(shot, true)).toMatch(/<select[^>]*disabled/);
+  });
+});

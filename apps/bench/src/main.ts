@@ -114,12 +114,21 @@ async function commandRun(
 }
 
 /** Prima di spendere si chiede, sempre: una matrice sbagliata costa quanto un mese di spesa. */
-async function askConfirmation(estimateUsd: number): Promise<boolean> {
+const askConfirmation = (estimateUsd: number): Promise<boolean> =>
+  askYesNo(
+    `La prova costerà circa ${estimateUsd.toFixed(2)} $ con i fornitori veri. Procedo? [s/N] `,
+  );
+
+/** Anche una valutazione costa, con i fornitori veri: una chiamata per esempio. */
+const askEvalConfirmation = (estimateUsd: number, calls: number): Promise<boolean> =>
+  askYesNo(
+    `La valutazione fa ${String(calls)} chiamate e costerà circa ${estimateUsd.toFixed(2)} $ con i fornitori veri. Procedo? [s/N] `,
+  );
+
+async function askYesNo(question: string): Promise<boolean> {
   const readline = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const answer = await readline.question(
-      `La prova costerà circa ${estimateUsd.toFixed(2)} $ con i fornitori veri. Procedo? [s/N] `,
-    );
+    const answer = await readline.question(question);
     return /^(s|si|sì)$/i.test(answer.trim());
   } finally {
     readline.close();
@@ -179,6 +188,8 @@ async function commandEval(
     evalsDir: path.resolve('config/evals'),
     // Il rapporto si salva (esempi, risposte, scontrini) per confrontare servizi e istruzioni.
     outputDir: reportDir,
+    // Col fornitore finto non si chiede niente: non costa. Con i fornitori veri sì, sempre.
+    ...(environment === 'offline' ? {} : { confirm: askEvalConfirmation }),
     ...(environment === undefined ? {} : { environment }),
     ...(modelId === undefined ? {} : { modelId }),
   });
@@ -196,6 +207,10 @@ async function commandEval(
   console.log(
     `\n${environment === 'offline' ? 'Costo simulato (niente di speso)' : 'Spesa'}: ${result.totalCostUsd.toFixed(4)} $`,
   );
-  console.log(`Rapporto salvato in ${reportDir}`);
+  console.log(
+    result.reportFile === undefined
+      ? `Rapporto non salvato: ${result.reportProblem ?? 'non richiesto'}`
+      : `Rapporto salvato in ${result.reportFile}`,
+  );
   return passati === result.cases.length ? 0 : 1;
 }

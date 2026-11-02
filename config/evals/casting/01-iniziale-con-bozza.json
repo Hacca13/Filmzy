@@ -120,7 +120,7 @@
     ],
     "disjoint": [
       {
-        "values": "suggestions[*].name",
+        "values": "suggestions[action=new].name",
         "from": "cast[*].name"
       }
     ]

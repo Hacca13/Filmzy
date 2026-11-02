@@ -3,9 +3,9 @@
   "input": {
     "scene": {
       "number": 2,
-      "heading": "La piazza, sera",
+      "heading": "La piazza, notte",
       "locationId": "piazza",
-      "timeOfDay": "sera",
+      "timeOfDay": "notte",
       "characterIds": [
         "anna"
       ],
@@ -78,14 +78,16 @@
     },
     "previousExit": {
       "locationId": "piazza",
-      "timeOfDay": "sera",
+      "timeOfDay": "notte",
       "present": [
         "anna"
       ],
       "costumes": {
-        "anna": "giacca di jeans chiara"
+        "anna": "impermeabile giallo"
       },
-      "props": []
+      "props": [
+        "lettera"
+      ]
     },
     "cameraMovements": [
       {
@@ -176,7 +178,9 @@
       }
     ],
     "equals": {
-      "shots[*].continuity.entry.locationId": "piazza"
+      "shots[0].continuity.entry.locationId": "piazza",
+      "shots[0].continuity.entry.timeOfDay": "notte",
+      "shots[0].continuity.entry.costumes.anna": "impermeabile giallo"
     }
   }
 }

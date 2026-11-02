@@ -93,4 +93,19 @@ describe('imageAssetId e withLastFrame', () => {
     // La scheda di prima non cambia.
     expect(imageAssetId(first, 'last_frame')).toBe('b');
   });
+
+  it('l’immagine scelta come ultimo fotogramma perde gli altri ruoli che aveva', () => {
+    const first: ShotSpec = {
+      ...spec,
+      images: [
+        { use: 'first_frame', from: 'generate', assetId: 'a' },
+        { use: 'reference', from: 'generate', assetId: 'c' },
+      ],
+    };
+
+    expect(withLastFrame(first, 'c').images).toEqual([
+      { use: 'first_frame', from: 'generate', assetId: 'a' },
+      { use: 'last_frame', from: 'generate', assetId: 'c' },
+    ]);
+  });
 });

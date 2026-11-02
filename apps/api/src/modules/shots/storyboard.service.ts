@@ -46,7 +46,12 @@ import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { isStale } from './plan-shots.js';
 import { imageAssetId, withLastFrame } from './shot-images.js';
-import { cinematographerInputFor, storyboardReferences } from './storyboard-input.js';
+import {
+  cinematographerInputFor,
+  identityStandIns,
+  standInImage,
+  storyboardReferences,
+} from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
 
 const ROLE = 'storyboard_artist';
@@ -256,12 +261,14 @@ export class StoryboardService implements OnModuleInit {
         ...(payload.spendConfirmed === true ? { spendConfirmed: true } : {}),
       } as const;
 
+      // Prima i file (costano niente), poi il testo (costa): se manca il primo fotogramma non si
+      // paga una chiamata che non porta a nessuna immagine.
+      const references = await this.readReferences(stored.spec, bible, mode);
       const written = await this.troupe.run(
         'cinematographer',
         cinematographerInputFor({ spec: stored.spec, bible, config, family, mode }),
         context,
       );
-      const references = await this.readReferences(stored.spec, bible, mode);
       const media = this.mediaFor(path.join(projectsDir(this.dataDir), projectId, 'immagini'));
       const job = await media.submit(
         ROLE,
@@ -367,15 +374,10 @@ export class StoryboardService implements OnModuleInit {
     mode: StoryboardMode,
   ): ReadReferences {
     const wanted = storyboardReferences(spec, bible);
-    const standIn = (use: 'reference' | 'base_image'): MediaInput => ({
-      use,
-      file: { fileName: 'riferimento.png', contentType: 'image/png', bytes: new Uint8Array() },
-    });
-    const count = wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1);
     return {
       inputs: [
-        ...(mode === 'end_frame' ? [standIn('base_image')] : []),
-        ...Array.from({ length: count }, () => standIn('reference')),
+        ...(mode === 'end_frame' ? [standInImage('base_image')] : []),
+        ...identityStandIns(wanted),
       ],
       characterIds: wanted.characters.map((entry) => entry.characterId),
     };

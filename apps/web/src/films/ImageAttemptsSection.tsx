@@ -72,7 +72,7 @@ export function ImageAttemptsSection<T extends ImageSet>({
   const seen = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (succeeded === undefined) return;
-    if (seen.current !== undefined && seen.current !== succeeded) onSettled?.();
+    if (seen.current !== undefined && succeeded > seen.current) onSettled?.();
     seen.current = succeeded;
   }, [succeeded, onSettled]);
 

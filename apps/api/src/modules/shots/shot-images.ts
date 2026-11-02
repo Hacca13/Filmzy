@@ -48,12 +48,15 @@ export function imagesFromChoices(
   return choices.map(generated);
 }
 
-/** La scheda con un nuovo ultimo fotogramma al posto di quello di prima. */
+/**
+ * La scheda con un nuovo ultimo fotogramma al posto di quello di prima. L'immagine scelta perde gli
+ * altri ruoli che aveva: la stessa immagine non sta in due ruoli (come per `imagesFromChoices`).
+ */
 export function withLastFrame(spec: ShotSpec, assetId: string): ShotSpec {
   return {
     ...spec,
     images: [
-      ...spec.images.filter((image) => image.use !== 'last_frame'),
+      ...spec.images.filter((image) => image.use !== 'last_frame' && image.assetId !== assetId),
       generated({ use: 'last_frame', assetId }),
     ],
   };

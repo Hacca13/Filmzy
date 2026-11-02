@@ -633,6 +633,8 @@ describe('l’ultimo fotogramma', () => {
       status: 'failed',
       errorCode: 'invalid_request',
     });
+    // Nemmeno il testo si paga: i file si leggono prima.
+    expect(written).toEqual([]);
     expect(submitted).toEqual([]);
   });
 
@@ -657,6 +659,26 @@ describe('l’ultimo fotogramma', () => {
     expect(
       await failure(() => Promise.resolve(service.choose(film.id, 'shot-1', 'end_frame', 'x'))),
     ).toEqual({ status: 409, code: 'invalid_request' });
+  });
+
+  it('un’immagine scelta come ultimo fotogramma lascia gli altri ruoli che aveva', async () => {
+    withFirstFrame();
+    const service = build();
+    await service.start(film.id, 'shot-1', 'end_frame', {});
+    await runQueued();
+    const stored = store.get('shot-1');
+    if (stored === undefined) throw new Error('l’inquadratura doveva esserci');
+    store.updateSpec('shot-1', {
+      ...stored.spec,
+      images: [...stored.spec.images, { use: 'reference', from: 'generate', assetId: 'img-2' }],
+    });
+
+    service.choose(film.id, 'shot-1', 'end_frame', 'img-2');
+
+    expect(store.get('shot-1')?.spec.images).toEqual([
+      { use: 'first_frame', from: 'generate', assetId: 'asset-1' },
+      { use: 'last_frame', from: 'generate', assetId: 'img-2' },
+    ]);
   });
 
   it('se l’ultimo fotogramma impostato non viene da questi tentativi, non si segna come scelto', async () => {

@@ -5,7 +5,7 @@ import {
   type StoryBible,
   type StoryboardMode,
 } from '@filmzy/contracts';
-import type { TroupeConfig } from '@filmzy/troupe';
+import type { MediaInput, TroupeConfig } from '@filmzy/troupe';
 
 import { domainError } from '../../http/domain-error.js';
 
@@ -80,6 +80,22 @@ export interface StoryboardReferences {
   /** L'immagine del set scelta per il luogo, se c'è. */
   locationAssetId?: string;
 }
+
+/**
+ * Un'immagine finta per scegliere i servizi e stimare il prezzo: conta quante immagini ci sono e a
+ * cosa servono, non cosa contengono, quindi non si legge nessun file.
+ */
+export const standInImage = (use: MediaInput['use']): MediaInput => ({
+  use,
+  file: { fileName: 'immagine.png', contentType: 'image/png', bytes: new Uint8Array() },
+});
+
+/** Un riferimento finto per ogni volto e per il set: le immagini che un servizio riceve per mantenere l'identità. */
+export const identityStandIns = (wanted: StoryboardReferences): MediaInput[] =>
+  Array.from(
+    { length: wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1) },
+    () => standInImage('reference'),
+  );
 
 /**
  * Dal film com'è **adesso** (non da com'era quando l'inquadratura è stata pensata: il volto o il

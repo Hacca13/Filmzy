@@ -180,10 +180,10 @@ describe('l’ultimo fotogramma', () => {
 
     expect(shotStoryboardSchema.parse(chosen.body).chosenAssetId).toBe(lastFrame);
     const images = await readImages(path);
-    expect(images.images).toEqual([
-      { use: 'first_frame', from: 'generate', assetId },
-      { use: 'last_frame', from: 'generate', assetId: lastFrame },
-    ]);
+    // Il fornitore finto dà sempre lo stesso file: l'immagine scelta come ultimo fotogramma lascia
+    // il ruolo di primo (la stessa immagine non sta in due ruoli).
+    expect(lastFrame).toBe(assetId);
+    expect(images.images).toEqual([{ use: 'last_frame', from: 'generate', assetId: lastFrame }]);
     // Le varianti dell'ultimo fotogramma si possono scegliere come immagini dell'inquadratura.
     expect(images.candidates.map((candidate) => candidate.mode).sort()).toEqual([
       'end_frame',

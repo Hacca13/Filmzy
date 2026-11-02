@@ -1,13 +1,12 @@
 import {
   type ImageCandidate,
   type SetShotImagesBody,
-  type ShotImage,
   type ShotImages,
   type ShotSpec,
   type StoryBible,
 } from '@filmzy/contracts';
 import type { ShotStore, StoredShot } from '@filmzy/db';
-import type { MediaInput, Troupe } from '@filmzy/troupe';
+import type { Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
@@ -15,7 +14,7 @@ import { BibleService } from '../bible/bible.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { TROUPE } from '../troupe/tokens.js';
 import { imagesFromChoices } from './shot-images.js';
-import { storyboardReferences } from './storyboard-input.js';
+import { identityStandIns, standInImage, storyboardReferences } from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
 
 /**
@@ -89,10 +88,10 @@ export class ShotImagesService {
    * set come riferimenti, insieme all'ispirazione.
    */
   private async videoServices(spec: ShotSpec, bible: StoryBible): Promise<number> {
-    const chosen = spec.images.map((image) => standIn(image));
+    const chosen = spec.images.map((image) => standInImage(image.use));
     const framed = spec.images.some((image) => image.use !== 'reference');
     const wanted = framed ? undefined : storyboardReferences(spec, bible);
-    const identity = wanted === undefined ? [] : identityInputs(wanted);
+    const identity = wanted === undefined ? [] : identityStandIns(wanted);
 
     const options = await this.troupe.options('camera_operator', {
       role: 'camera_operator',
@@ -114,18 +113,4 @@ export class ShotImagesService {
     }
     return { stored };
   }
-}
-
-/** Per scegliere i servizi conta quali immagini ci sono e a cosa servono, non cosa contengono. */
-const standInFile = {
-  fileName: 'immagine.png',
-  contentType: 'image/png',
-  bytes: new Uint8Array(),
-};
-
-const standIn = (image: ShotImage): MediaInput => ({ use: image.use, file: standInFile });
-
-function identityInputs(wanted: ReturnType<typeof storyboardReferences>): MediaInput[] {
-  const count = wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1);
-  return Array.from({ length: count }, () => ({ use: 'reference' as const, file: standInFile }));
 }

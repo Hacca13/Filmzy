@@ -58,13 +58,22 @@ interface PickerProps {
   /** La versione che si sta leggendo. */
   selectedId: string;
   onSelect: (versionId: string) => void;
+  /** Cosa dire di ogni versione; di solito com'è nata una bozza. */
+  noteOf?: (version: ScreenplayVersionSummary) => string;
+  label?: string;
 }
 
-/** Le versioni della bozza, dalla più recente: ognuna si rilegge com'era. */
-export function VersionPicker({ versions, selectedId, onSelect }: PickerProps) {
+/** Le versioni, dalla più recente: ognuna si rilegge com'era. */
+export function VersionPicker({
+  versions,
+  selectedId,
+  onSelect,
+  noteOf = versionNote,
+  label = 'Versioni della storia',
+}: PickerProps) {
   if (versions.length < 2) return null;
   return (
-    <nav className="versions" aria-label="Versioni della storia">
+    <nav className="versions" aria-label={label}>
       {versions.map((version, index) => (
         <button
           key={version.id}
@@ -77,7 +86,7 @@ export function VersionPicker({ versions, selectedId, onSelect }: PickerProps) {
           }}
         >
           <strong>{versionLabel(version, index === 0)}</strong>
-          <span className="hint">{versionNote(version)}</span>
+          <span className="hint">{noteOf(version)}</span>
         </button>
       ))}
     </nav>

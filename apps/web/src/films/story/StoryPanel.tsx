@@ -12,8 +12,8 @@ import { Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
-import { SpendConfirm } from '../../settings/spend/SpendConfirm';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
+import { WriteOutcome, type Written } from '../WriteOutcome';
 import { ReviseBox } from './ReviseBox';
 import { ScreenplayView, VersionPicker } from './ScreenplayView';
 
@@ -63,26 +63,6 @@ export function StoryPanel({ filmId }: { filmId: string }) {
   );
 }
 
-type Written = ReturnType<typeof useGuardedRun<ScreenplayVersion>>;
-
-/** Il limite di spesa e l'errore di una scrittura, uguali per la bozza e per le modifiche. */
-function WriteOutcome({ written }: { written: Written }) {
-  return (
-    <>
-      {written.problem === undefined ? null : <Notice tone="error">{written.problem}</Notice>}
-      {written.breach === undefined ? null : (
-        <SpendConfirm
-          breach={written.breach}
-          busy={written.running || written.raising}
-          onProceed={written.proceed}
-          onRaise={written.raiseAndRetry}
-          onCancel={written.cancel}
-        />
-      )}
-    </>
-  );
-}
-
 /**
  * Quanto costerebbe, letto quando la schermata si apre (D30). `lastVersionId` fa rileggere la stima
  * a ogni versione nuova: la bozza su cui lavora una modifica è cambiata.
@@ -101,7 +81,7 @@ function useEstimate(
   return state.status === 'ready' ? state.data.estimate.estimatedCostUsd : undefined;
 }
 
-function FirstDraft({ filmId, written }: { filmId: string; written: Written }) {
+function FirstDraft({ filmId, written }: { filmId: string; written: Written<ScreenplayVersion> }) {
   const estimateUsd = useEstimate(filmId, 'draft');
 
   return (
@@ -138,7 +118,7 @@ interface StoryProps {
   newest: ScreenplayVersionSummary;
   selectedId: string;
   onSelect: (versionId: string | undefined) => void;
-  written: Written;
+  written: Written<ScreenplayVersion>;
 }
 
 function Story({ filmId, versions, newest, selectedId, onSelect, written }: StoryProps) {

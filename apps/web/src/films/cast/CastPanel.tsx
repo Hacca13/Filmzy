@@ -92,7 +92,7 @@ function CastView({ filmId, cast, reload }: ViewProps) {
   const busy = received.running || received.raising || action.busy;
 
   return (
-    <section className="panel cast">
+    <section className="panel cast" id="il-cast">
       <h2>I personaggi</h2>
       <p className="hint">
         Puoi avere al massimo {cast.maxCharacters} personaggi principali. Il casting li propone

@@ -14,7 +14,7 @@ import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
 import { ShotCard } from './ShotCard';
-import { ShotStoryboardSection } from './ShotStoryboardSection';
+import { ShotImagesPanel } from './ShotImagesPanel';
 import { sceneStatus, type Names } from './model';
 
 const isNotFound = (error: unknown) =>
@@ -182,15 +182,12 @@ function SceneSection({
         </ol>
       )}
       {storyboardShot === undefined ? null : (
-        <div className="storyboard-panel">
-          <h4>Storyboard · inquadratura {storyboardShot.order + 1}</h4>
-          <ShotStoryboardSection
-            key={storyboardShot.id}
-            filmId={filmId}
-            shotId={storyboardShot.id}
-            onChosen={reload}
-          />
-        </div>
+        <ShotImagesPanel
+          key={storyboardShot.id}
+          filmId={filmId}
+          shot={storyboardShot}
+          onChanged={reload}
+        />
       )}
       {scene.notes === undefined ? null : <p className="hint">Note: {scene.notes}</p>}
       <div className="actions">

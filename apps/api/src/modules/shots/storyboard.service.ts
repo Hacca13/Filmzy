@@ -33,7 +33,12 @@ import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
-import { chooseImageService, registerAssets, waitForMedia } from '../media/image-jobs.js';
+import {
+  chooseImageService,
+  registerAssets,
+  variantsOf,
+  waitForMedia,
+} from '../media/image-jobs.js';
 import { referenceInput } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
@@ -107,12 +112,6 @@ export class StoryboardService implements OnModuleInit {
     const { stored } = this.target(projectId, shotId);
     this.assertPlanCurrent(projectId, stored);
 
-    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte la stessa inquadratura.
-    const latest = this.store.storyboard(shotId).attempts[0];
-    if (latest?.status === 'queued' || latest?.status === 'running') {
-      throw domainError(409, 'invalid_request', { details: { field: 'storyboard' } });
-    }
-
     const config = await this.config();
     const bible = await this.bible.assemble(projectId);
     const chosen = await chooseImageService({
@@ -124,6 +123,13 @@ export class StoryboardService implements OnModuleInit {
       projectId,
     });
 
+    // Mentre un tentativo lavora non se ne chiede un altro: si pagherebbe due volte la stessa
+    // inquadratura. Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo, senza
+    // altre attese in mezzo: con un doppio clic la seconda richiesta lo trova già aperto.
+    const latest = this.store.storyboard(shotId).attempts[0];
+    if (latest?.status === 'queued' || latest?.status === 'running') {
+      throw domainError(409, 'invalid_request', { details: { field: 'storyboard' } });
+    }
     const attempt = this.store.startStoryboard(shotId);
     const payload: StoryboardJobPayload = {
       projectId,
@@ -178,6 +184,13 @@ export class StoryboardService implements OnModuleInit {
       );
       return;
     }
+
+    // Un lavoro ripetuto (per esempio dopo un riavvio) su un tentativo già chiuso non rifà niente:
+    // non si paga due volte (regola 10) e non si cancellano le varianti già pronte.
+    const current = this.store
+      .storyboard(shotId)
+      .attempts.find((candidate) => candidate.attempt === attempt);
+    if (current?.status === 'succeeded' || current?.status === 'failed') return;
 
     try {
       this.store.finishStoryboard(shotId, attempt, { status: 'running' });
@@ -236,15 +249,21 @@ export class StoryboardService implements OnModuleInit {
     bible: StoryBible,
     config: TroupeConfig,
   ): Promise<ModelOption[]> {
-    const references = await this.readReferences(spec, bible);
     const options = await this.troupe.options(
       ROLE,
-      this.requestFor(config, spec, references, { prompt: spec.intent.action }, 0),
+      this.requestFor(
+        config,
+        spec,
+        this.pricingReferences(spec, bible),
+        { prompt: spec.intent.action },
+        0,
+      ),
     );
     const reference = options.find((option) => option.isDefault) ?? options[0];
     if (reference === undefined) return [];
 
-    // Il testo da scrivere è lungo uguale per ogni servizio: una stima sola, sulla famiglia di uno.
+    // Il testo da scrivere ha quasi la stessa lunghezza per ogni servizio (cambia solo qualche riga di
+    // istruzioni per famiglia): una stima sola, sul servizio predefinito, e un'indicazione per gli altri.
     const writing = await this.troupe.estimate(
       'cinematographer',
       cinematographerInputFor({
@@ -268,8 +287,7 @@ export class StoryboardService implements OnModuleInit {
     visual: { prompt: string; negativePrompt?: string | undefined },
     attempt: number,
   ): MediaRequest {
-    const configured = config.roles[ROLE]?.params?.variants;
-    const variants = typeof configured === 'number' ? configured : FALLBACK_VARIANTS;
+    const variants = variantsOf(config, ROLE, FALLBACK_VARIANTS);
 
     return {
       role: ROLE,
@@ -279,6 +297,24 @@ export class StoryboardService implements OnModuleInit {
       characterIds: references.characterIds,
       params: { variants },
       idempotencyKey: `${spec.id}:storyboard:${String(attempt)}`,
+    };
+  }
+
+  /**
+   * I riferimenti per capire quali servizi vanno bene e quanto costano: conta quanti sono e a chi
+   * appartengono, non cosa contengono. Non si legge nessun file (le immagini si leggono una volta
+   * sola, quando il lavoro disegna).
+   */
+  private pricingReferences(spec: ShotSpec, bible: StoryBible): ReadReferences {
+    const wanted = storyboardReferences(spec, bible);
+    const count = wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1);
+    const standIn: MediaInput = {
+      use: 'reference',
+      file: { fileName: 'riferimento.png', contentType: 'image/png', bytes: new Uint8Array() },
+    };
+    return {
+      inputs: Array.from({ length: count }, () => standIn),
+      characterIds: wanted.characters.map((entry) => entry.characterId),
     };
   }
 

@@ -290,6 +290,16 @@ describe('i servizi e il prezzo', () => {
       ['servizio-b', 0.4 + WRITING_COST_USD],
     ]);
   });
+
+  it('per i prezzi non si leggono i file dei riferimenti: contano solo quanti sono', async () => {
+    const references = path.join(dataDir, 'progetti', film.id, 'riferimenti');
+    await rm(path.join(references, 'asset-1.png'));
+    await rm(path.join(references, 'asset-4.png'));
+
+    const { options: priced } = await build().options(film.id, 'shot-1');
+
+    expect(priced).toHaveLength(2);
+  });
 });
 
 describe('chiedere lo storyboard', () => {
@@ -330,6 +340,19 @@ describe('chiedere lo storyboard', () => {
       code: 'invalid_request',
     });
     expect(enqueued).toHaveLength(1);
+  });
+
+  it('due richieste ravvicinate (un doppio clic) aprono un solo tentativo e pagano una volta', async () => {
+    const service = build();
+
+    const replies = await Promise.allSettled([
+      service.start(film.id, 'shot-1', {}),
+      service.start(film.id, 'shot-1', {}),
+    ]);
+
+    expect(replies.map((reply) => reply.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(enqueued).toHaveLength(1);
+    expect(store.storyboard('shot-1').attempts).toHaveLength(1);
   });
 
   it('un limite di spesa ferma prima di mettere in coda, e la conferma dell’utente lo supera', async () => {
@@ -454,6 +477,19 @@ describe('il lavoro in coda', () => {
     expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
       status: 'failed',
       errorCode: 'invalid_output',
+    });
+  });
+
+  it('un lavoro ripetuto su un tentativo già chiuso non spende di nuovo e non cancella le varianti', async () => {
+    await build().start(film.id, 'shot-1', {});
+    await runQueued();
+    await runQueued();
+
+    expect(written).toHaveLength(1);
+    expect(submitted).toHaveLength(1);
+    expect(store.storyboard('shot-1').attempts[0]).toMatchObject({
+      status: 'succeeded',
+      assetIds: ['img-1', 'img-2', 'img-3'],
     });
   });
 

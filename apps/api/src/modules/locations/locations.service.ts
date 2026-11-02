@@ -38,6 +38,7 @@ import {
   chooseImageService,
   registerAssets,
   renderImagePrompt,
+  variantsOf,
   waitForMedia,
 } from '../media/image-jobs.js';
 import { ProjectsService } from '../projects/projects.service.js';
@@ -263,8 +264,7 @@ export class LocationsService implements OnModuleInit {
       throw domainError(422, 'config_invalid', { details: { field: 'style' } });
     }
 
-    const configured = config.roles[ROLE]?.params?.variants;
-    const variants = typeof configured === 'number' ? configured : FALLBACK_VARIANTS;
+    const variants = variantsOf(config, ROLE, FALLBACK_VARIANTS);
     const loaded = await this.configSource.load();
     const prompt = await renderImagePrompt({
       instructions: this.instructions,

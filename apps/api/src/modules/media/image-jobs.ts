@@ -54,6 +54,18 @@ export async function renderImagePrompt(args: PromptArgs): Promise<string> {
   return prompt;
 }
 
+/**
+ * Quante varianti chiede il ruolo: il numero scritto nella sua configurazione se è un intero
+ * positivo, altrimenti `fallback`. Un valore strano (zero, negativo, con la virgola) non arriva al
+ * servizio: la stima e la spesa seguirebbero un numero che nessuno ha scelto.
+ */
+export function variantsOf(config: TroupeConfig, role: string, fallback: number): number {
+  const configured = config.roles[role]?.params?.variants;
+  return typeof configured === 'number' && Number.isInteger(configured) && configured > 0
+    ? configured
+    : fallback;
+}
+
 export interface ChooseServiceArgs {
   role: string;
   /** I servizi adatti alla richiesta, con la stima di tutto il lavoro. */

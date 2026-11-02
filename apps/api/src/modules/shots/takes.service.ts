@@ -5,6 +5,7 @@ import {
   type ModelOption,
   type SheetOptions,
   type ShotSpec,
+  type ShotTake,
   type ShotTakes,
   type StartSheetBody,
   type StoryBible,
@@ -50,6 +51,13 @@ import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { videoImages, videoStandInRequest, videoTarget, type VideoImages } from './video-inputs.js';
 
 const ROLE = 'camera_operator';
+
+/**
+ * Dopo quanto un take ancora «in coda» o «in lavorazione» non lavora più: l'attesa del video dura al
+ * più venti minuti, quindi un take più vecchio è rimasto a metà (il lavoro si è perso). Senza chiuderlo
+ * resterebbe bloccato per sempre e non se ne potrebbe chiedere un altro.
+ */
+export const STALE_TAKE_MS = 45 * 60 * 1000;
 
 /** Il tipo di lavoro in coda che gira un take video. */
 export const TAKE_JOB_KIND = 'take_generate';
@@ -97,7 +105,19 @@ export class TakesService implements OnModuleInit {
 
   list(projectId: string, shotId: string): ShotTakes {
     this.target(projectId, shotId);
-    return { shotId, takes: this.takes.list(shotId) };
+    return { shotId, takes: this.currentTakes(shotId) };
+  }
+
+  /** I take dell'inquadratura, dopo aver chiuso come falliti quelli rimasti a metà da troppo tempo. */
+  private currentTakes(shotId: string): ShotTake[] {
+    const now = Date.now();
+    for (const take of this.takes.list(shotId)) {
+      const open = take.status === 'queued' || take.status === 'running';
+      if (open && now - Date.parse(take.createdAt) > STALE_TAKE_MS) {
+        this.takes.finish(take.id, { status: 'failed', errorCode: 'timeout' });
+      }
+    }
+    return this.takes.list(shotId);
   }
 
   /** I servizi tra cui scegliere, con la stima di tutto il take (testo e video). */
@@ -134,7 +154,9 @@ export class TakesService implements OnModuleInit {
     // insieme (un doppio clic) lo pagherebbero due volte. Il controllo sta qui, dopo le attese e
     // subito prima di aprire il take, senza altre attese in mezzo.
     if (
-      this.takes.list(shotId).some((take) => take.status === 'queued' || take.status === 'running')
+      this.currentTakes(shotId).some(
+        (take) => take.status === 'queued' || take.status === 'running',
+      )
     ) {
       throw domainError(409, 'invalid_request', { details: { field: 'takes' } });
     }

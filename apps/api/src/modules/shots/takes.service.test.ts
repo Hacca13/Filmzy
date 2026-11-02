@@ -41,7 +41,7 @@ import type { JobRunner } from '../jobs/job-runner.service.js';
 import type { ProjectsService } from '../projects/projects.service.js';
 import type { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { hashScene } from './plan-shots.js';
-import { TAKE_JOB_KIND, TakesService } from './takes.service.js';
+import { STALE_TAKE_MS, TAKE_JOB_KIND, TakesService } from './takes.service.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer);
 const bible: StoryBible = shotPlannerInputSchema.parse(ROLE_INPUT_EXAMPLES.shot_planner).bible;
@@ -91,6 +91,7 @@ const options = [
 const WRITING_COST_USD = 0.03;
 
 let dataDir: string;
+let openedDb: Awaited<ReturnType<typeof openFilmzyDatabase>>['db'];
 let store: ShotStore;
 let takes: TakeStore;
 let handlers: Map<string, (job: { payload: unknown }) => Promise<void>>;
@@ -284,6 +285,7 @@ beforeEach(async () => {
   const opened = await openFilmzyDatabase({ dataDir, appVersion: '0.0.0-test' });
   store = createShotStore(opened.db);
   takes = createTakeStore(opened.db);
+  openedDb = opened.db;
   store.replaceScene({
     projectId: film.id,
     sceneNumber: 1,
@@ -597,6 +599,33 @@ describe('il lavoro in coda', () => {
 
     expect(written).toEqual([]);
     expect(submitted).toEqual([]);
+  });
+});
+
+describe('un take rimasto a metà', () => {
+  it('dopo troppo tempo si chiude come fallito, e se ne può chiedere un altro', async () => {
+    const stuck = createTakeStore(openedDb, {
+      now: () => new Date(Date.now() - STALE_TAKE_MS - 60_000),
+    }).start('shot-1', { modelId: 'video-a', modelLabel: 'Video A' });
+    const service = build();
+
+    const shown = service.list(film.id, 'shot-1').takes;
+
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toMatchObject({ id: stuck.id, status: 'failed', errorCode: 'timeout' });
+    const started = await service.start(film.id, 'shot-1', {});
+    expect(started.takes.map((take) => take.status)).toEqual(['queued', 'failed']);
+  });
+
+  it('un take recente che lavora ancora non si tocca, e blocca un secondo take', async () => {
+    const service = build();
+    await service.start(film.id, 'shot-1', {});
+
+    expect(service.list(film.id, 'shot-1').takes[0]?.status).toBe('queued');
+    expect(await failure(() => service.start(film.id, 'shot-1', {}))).toEqual({
+      status: 409,
+      code: 'invalid_request',
+    });
   });
 });
 

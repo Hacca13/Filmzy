@@ -415,18 +415,23 @@ export type StoryboardAttemptRow = typeof storyboardAttempts.$inferSelect;
  * Porta il servizio con il suo nome amichevole (lo scontrino lo dice, ma la card non deve leggerlo da
  * lì), lo scontrino del video e il costo reale preso da lì quando il take è riuscito.
  */
-export const takes = sqliteTable('takes', {
-  id: text('id').primaryKey(),
-  shotId: text('shot_id').notNull(),
-  status: text('status').notNull(),
-  modelId: text('model_id').notNull(),
-  modelLabel: text('model_label').notNull(),
-  assetId: text('asset_id'),
-  receiptId: text('receipt_id'),
-  costUsd: real('cost_usd'),
-  errorCode: text('error_code'),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
-});
+export const takes = sqliteTable(
+  'takes',
+  {
+    id: text('id').primaryKey(),
+    shotId: text('shot_id').notNull(),
+    status: text('status').notNull(),
+    modelId: text('model_id').notNull(),
+    modelLabel: text('model_label').notNull(),
+    assetId: text('asset_id'),
+    receiptId: text('receipt_id'),
+    costUsd: real('cost_usd'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  // I take si leggono per inquadratura, a ogni apertura del piano e a ogni controllo della pagina.
+  (table) => [index('takes_per_inquadratura').on(table.shotId, table.createdAt)],
+);
 
 export type TakeRow = typeof takes.$inferSelect;

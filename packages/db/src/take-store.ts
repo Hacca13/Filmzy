@@ -6,7 +6,7 @@ import {
   type SheetImageStatus,
   type ShotTake,
 } from '@filmzy/contracts';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { shots, takes, type TakeRow } from './schema.js';
@@ -137,19 +137,20 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
       const rows = db
         .select()
         .from(takes)
-        .where(inArray(takes.shotId, shotIds))
+        .where(
+          and(
+            inArray(takes.shotId, shotIds),
+            eq(takes.status, 'succeeded'),
+            isNotNull(takes.assetId),
+          ),
+        )
         .orderBy(desc(takes.createdAt), desc(takes.id))
         .all();
       // Dal più recente: la prima clip incontrata per un'inquadratura è la sua più recente.
       const latest: Record<string, string> = {};
       for (const row of rows) {
-        if (
-          row.status === 'succeeded' &&
-          row.assetId !== null &&
-          latest[row.shotId] === undefined
-        ) {
+        if (row.assetId !== null && latest[row.shotId] === undefined)
           latest[row.shotId] = row.assetId;
-        }
       }
       return latest;
     },

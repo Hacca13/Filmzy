@@ -92,6 +92,13 @@
       "when": 1793642457550,
       "tag": "0012_takes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1793643536623,
+      "tag": "0013_indice_take",
+      "breakpoints": true
     }
   ]
 }

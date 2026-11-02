@@ -121,3 +121,18 @@ describe('lo storyboard (T4.1)', () => {
     expect(describeError(refused('storyboard'))).toContain('già in lavorazione');
   });
 });
+
+describe('le immagini dell’inquadratura (T4.2)', () => {
+  const refused = (field: string) =>
+    new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field },
+    });
+
+  it('ogni rifiuto dice cosa fare, senza parole tecniche', () => {
+    expect(describeError(refused('firstFrame'))).toContain('primo fotogramma');
+    expect(describeError(refused('images'))).toContain('un solo primo e un solo ultimo');
+    expect(describeError(refused('assetId'))).toContain('non è tra quelle');
+  });
+});

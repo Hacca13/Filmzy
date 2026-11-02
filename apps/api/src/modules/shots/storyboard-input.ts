@@ -3,8 +3,9 @@ import {
   type CinematographerInput,
   type ShotSpec,
   type StoryBible,
+  type StoryboardMode,
 } from '@filmzy/contracts';
-import type { TroupeConfig } from '@filmzy/troupe';
+import type { MediaInput, TroupeConfig } from '@filmzy/troupe';
 
 import { domainError } from '../../http/domain-error.js';
 
@@ -12,6 +13,9 @@ import { domainError } from '../../http/domain-error.js';
  * Cosa si dice al direttore della fotografia perché scriva il prompt dell'immagine di
  * un'inquadratura (T4.1). Il prompt è per una **famiglia** di servizi (la sintassi dei personaggi e
  * i limiti cambiano), perciò `family` è quella del servizio che l'utente ha scelto.
+ *
+ * Per l'ultimo fotogramma (`end_frame`, T4.2) il prompt dice solo cosa cambia rispetto al primo, che
+ * viene modificato (D20): la destinazione è `end` e gli ingressi dati sono il primo e l'ultimo.
  *
  * Il direttore non riceve i riferimenti visivi (architettura §4.7): li aggiunge il traduttore, e per
  * questo qui le immagini si tolgono dalla scheda e dal luogo. Un piano che cita un personaggio o un
@@ -22,8 +26,9 @@ export function cinematographerInputFor(args: {
   bible: StoryBible;
   config: TroupeConfig;
   family: string;
+  mode: StoryboardMode;
 }): CinematographerInput {
-  const { spec, bible, config, family } = args;
+  const { spec, bible, config, family, mode } = args;
 
   const location = bible.locations.find((candidate) => candidate.id === spec.location.locationId);
   if (location === undefined) {
@@ -62,8 +67,8 @@ export function cinematographerInputFor(args: {
       family,
       kind: 'image',
       maxPromptChars: STORYBOARD_PROMPT_MAX_CHARS,
-      frame: 'start',
-      inputs: ['references'],
+      frame: mode === 'end_frame' ? 'end' : 'start',
+      inputs: mode === 'end_frame' ? ['first_frame', 'last_frame'] : ['references'],
     },
   };
 }
@@ -75,6 +80,22 @@ export interface StoryboardReferences {
   /** L'immagine del set scelta per il luogo, se c'è. */
   locationAssetId?: string;
 }
+
+/**
+ * Un'immagine finta per scegliere i servizi e stimare il prezzo: conta quante immagini ci sono e a
+ * cosa servono, non cosa contengono, quindi non si legge nessun file.
+ */
+export const standInImage = (use: MediaInput['use']): MediaInput => ({
+  use,
+  file: { fileName: 'immagine.png', contentType: 'image/png', bytes: new Uint8Array() },
+});
+
+/** Un riferimento finto per ogni volto e per il set: le immagini che un servizio riceve per mantenere l'identità. */
+export const identityStandIns = (wanted: StoryboardReferences): MediaInput[] =>
+  Array.from(
+    { length: wanted.characters.length + (wanted.locationAssetId === undefined ? 0 : 1) },
+    () => standInImage('reference'),
+  );
 
 /**
  * Dal film com'è **adesso** (non da com'era quando l'inquadratura è stata pensata: il volto o il

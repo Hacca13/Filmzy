@@ -29,6 +29,7 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 | 03 | [`storico/03-solo-desktop-modale-e-landing.md`](storico/03-solo-desktop-modale-e-landing.md) | via la versione mobile, aggiornamento in una modale sulla home con «Ricordamelo più tardi», landing page | 22/10/2026 | fatto; la landing è messa da parte dal prompt 04; corretto dal prompt 05 |
 | 04 | [`storico/04-schermata-di-caricamento.md`](storico/04-schermata-di-caricamento.md) | via la landing page; al suo posto una schermata di caricamento all'avvio | 22/10/2026 | fatto; corretto dal prompt 05 |
 | 05 | [`storico/05-correzioni-del-mockup.md`](storico/05-correzioni-del-mockup.md) | le correzioni dopo la lettura via MCP: parole, intestazione e passi uguali ovunque, finestra di aggiornamento, avvio, «Le scene», suono, impostazioni, consigli di UX, tavola «Componenti», ordine delle tavole | 22/10/2026 | fatto; il codice delle 42 schermate è in `riferimenti/02-film-e-app/` |
+| 06 | [`storico/06-inquadrature-storyboard-e-immagini.md`](storico/06-inquadrature-storyboard-e-immagini.md) | tre schermate nuove: «Le inquadrature» (striscia di card per scena), il pannello con «Storyboard», «Imposta le immagini» e «Ultimo fotogramma», e i loro stati; più i testi a 11 px portati a 13 px | 02/11/2026 | in lavorazione: quando l'agente di Figma ha finito, si riscarica il codice delle schermate in `riferimenti/` |
 
 ## Chi fa il design
 

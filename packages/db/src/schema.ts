@@ -393,6 +393,8 @@ export const storyboardAttempts = sqliteTable(
   {
     id: text('id').primaryKey(),
     shotId: text('shot_id').notNull(),
+    /** `storyboard` o `end_frame` (T4.2): ogni modo ha i suoi tentativi, numerati a parte. */
+    mode: text('mode').notNull().default('storyboard'),
     attempt: integer('attempt').notNull(),
     status: text('status').notNull(),
     assetIds: text('asset_ids').notNull(),
@@ -401,7 +403,9 @@ export const storyboardAttempts = sqliteTable(
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
-  (table) => [uniqueIndex('storyboard_attempts_per_tentativo').on(table.shotId, table.attempt)],
+  (table) => [
+    uniqueIndex('storyboard_attempts_per_tentativo').on(table.shotId, table.mode, table.attempt),
+  ],
 );
 
 export type StoryboardAttemptRow = typeof storyboardAttempts.$inferSelect;

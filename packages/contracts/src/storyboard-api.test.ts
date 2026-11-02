@@ -5,6 +5,7 @@ import {
   chooseStoryboardBodySchema,
   shotStoryboardSchema,
   storyboardJobPayloadSchema,
+  storyboardModeSchema,
 } from './storyboard-api.js';
 
 const attempt = {
@@ -46,7 +47,7 @@ describe('storyboardJobPayloadSchema', () => {
   it('serve il film, l’inquadratura, il numero del tentativo e il servizio scelto', () => {
     const payload = { projectId: 'p', shotId: 's-1', attempt: 2, modelId: 'nano-banana-2' };
 
-    expect(storyboardJobPayloadSchema.parse(payload)).toEqual(payload);
+    expect(storyboardJobPayloadSchema.parse(payload)).toEqual({ ...payload, mode: 'storyboard' });
     expect(storyboardJobPayloadSchema.safeParse({ ...payload, attempt: 0 }).success).toBe(false);
     expect(
       storyboardJobPayloadSchema.safeParse({ ...payload, modelId: 'Nome Con Spazi' }).success,
@@ -65,5 +66,20 @@ describe('chooseStoryboardBodySchema', () => {
     expect(chooseStoryboardBodySchema.parse({ assetId: 'b' })).toEqual({ assetId: 'b' });
     expect(chooseStoryboardBodySchema.safeParse({}).success).toBe(false);
     expect(chooseStoryboardBodySchema.safeParse({ assetId: 'b', altro: 1 }).success).toBe(false);
+  });
+});
+
+describe('storyboardModeSchema', () => {
+  it('conosce lo storyboard e l’ultimo fotogramma; un lavoro vecchio senza modo è lo storyboard', () => {
+    expect(storyboardModeSchema.parse('end_frame')).toBe('end_frame');
+    expect(storyboardModeSchema.safeParse('video').success).toBe(false);
+    expect(
+      storyboardJobPayloadSchema.parse({
+        projectId: 'p',
+        shotId: 's-1',
+        attempt: 1,
+        modelId: 'nano-banana-2',
+      }).mode,
+    ).toBe('storyboard');
   });
 });

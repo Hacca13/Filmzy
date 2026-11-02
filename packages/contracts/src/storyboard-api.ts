@@ -17,6 +17,15 @@ import { assetIdSchema, modelIdSchema, shotIdSchema } from './ids.js';
  */
 export const STORYBOARD_PROMPT_MAX_CHARS = 900;
 
+/**
+ * Cosa si disegna: le varianti dell'inquadratura (`storyboard`) oppure il suo ultimo fotogramma
+ * (`end_frame`, T4.2), che modifica il primo (D20). Sono lo stesso lavoro con lo stesso ruolo, e ogni
+ * modo ha i suoi tentativi, numerati a parte.
+ */
+export const storyboardModeSchema = z.enum(['storyboard', 'end_frame']);
+
+export type StoryboardMode = z.infer<typeof storyboardModeSchema>;
+
 /** Un tentativo di storyboard: le varianti nate dalla stessa richiesta, con un solo stato. */
 export const storyboardAttemptSchema = locationAttemptSchema;
 
@@ -36,6 +45,8 @@ export const storyboardJobPayloadSchema = z.object({
   projectId: z.string().min(1),
   shotId: shotIdSchema,
   attempt: z.number().int().positive(),
+  /** Senza, è lo storyboard: i lavori messi in coda prima di T4.2 non lo dicono. */
+  mode: storyboardModeSchema.default('storyboard'),
   modelId: modelIdSchema,
   spendConfirmed: z.boolean().optional(),
 });

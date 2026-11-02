@@ -54,6 +54,11 @@ const BY_INVALID_FIELD: Record<string, string> = {
   // Lo storyboard (T4.1): il piano è cambiato dopo, oppure un tentativo sta ancora lavorando.
   plan: 'Dopo aver pensato le inquadrature è cambiato qualcosa. Rifalle, poi crea lo storyboard.',
   storyboard: 'Lo storyboard di questa inquadratura è già in lavorazione. Aspetta che finisca.',
+  // Le immagini dell'inquadratura (T4.2).
+  images:
+    'Questa combinazione di immagini non va: un solo primo e un solo ultimo fotogramma, e poche immagini di ispirazione.',
+  assetId: 'Questa immagine non è tra quelle di questa inquadratura. Aggiorna la pagina e riprova.',
+  firstFrame: "Imposta prima il primo fotogramma: l'ultimo si ricava da quello.",
 };
 
 export function describeError(error: unknown): string {

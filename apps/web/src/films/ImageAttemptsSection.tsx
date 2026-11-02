@@ -1,5 +1,5 @@
 import type { ModelOption, SheetOptions, StartSheetBody } from '@filmzy/contracts';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { assetUrl } from '../api/sheet';
 import { ChangeService } from '../components/ChangeService';
@@ -30,8 +30,12 @@ interface Props<T extends ImageSet> {
   loadOptions: (signal: AbortSignal) => Promise<SheetOptions>;
   start: (body: StartSheetBody) => Promise<T>;
   choose: (assetId: string) => Promise<T>;
+  /** Cosa si scrive sotto l'immagine scelta. */
+  chosenText?: string;
   /** Dopo una scelta riuscita: chi mostra anche il riferimento altrove lo rilegge. */
   onChosen?: () => void;
+  /** Quando un tentativo finisce con delle immagini nuove: chi le offre altrove le rilegge. */
+  onSettled?: () => void;
 }
 
 /**
@@ -51,7 +55,9 @@ export function ImageAttemptsSection<T extends ImageSet>({
   loadOptions,
   start,
   choose,
+  chosenText = 'Scelta come riferimento',
   onChosen,
+  onSettled,
 }: Props<T>) {
   const {
     value: images,
@@ -59,6 +65,16 @@ export function ImageAttemptsSection<T extends ImageSet>({
     problem: loadProblem,
     working,
   } = useWatched(load, attemptsAreWorking);
+
+  // Un tentativo che finisce porta immagini nuove: lo si dice a chi le offre altrove, ma non alla
+  // prima lettura (quelle c'erano già).
+  const succeeded = images?.attempts.filter((item) => item.status === 'succeeded').length;
+  const seen = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (succeeded === undefined) return;
+    if (seen.current !== undefined && succeeded > seen.current) onSettled?.();
+    seen.current = succeeded;
+  }, [succeeded, onSettled]);
 
   const options = useResource(loadOptions);
   const [modelId, setModelId] = useState<string>();
@@ -133,7 +149,7 @@ export function ImageAttemptsSection<T extends ImageSet>({
                         alt={`${imageLabel}, immagine ${String(index + 1)}`}
                       />
                       {assetId === images.chosenAssetId ? (
-                        <figcaption className="hint">Scelta come riferimento</figcaption>
+                        <figcaption className="hint">{chosenText}</figcaption>
                       ) : (
                         <button
                           type="button"

@@ -6,6 +6,7 @@ import {
   shotSpecSchema,
   type ShotSpec,
   type StoryBible,
+  type StoryboardMode,
 } from '@filmzy/contracts';
 import type { TroupeConfig } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
@@ -26,12 +27,20 @@ const spec: ShotSpec = shotSpecSchema.parse({
 
 const config = { presets: { cameraMovements: [example.movement] } } as unknown as TroupeConfig;
 
-const build = (overrides: { spec?: ShotSpec; bible?: StoryBible; config?: TroupeConfig } = {}) =>
+const build = (
+  overrides: {
+    spec?: ShotSpec;
+    bible?: StoryBible;
+    config?: TroupeConfig;
+    mode?: StoryboardMode;
+  } = {},
+) =>
   cinematographerInputFor({
     spec: overrides.spec ?? spec,
     bible: overrides.bible ?? bible,
     config: overrides.config ?? config,
     family: 'image_generic',
+    mode: overrides.mode ?? 'storyboard',
   });
 
 function failure(call: () => unknown): { status: number; field: unknown } {
@@ -63,6 +72,16 @@ describe('cinematographerInputFor', () => {
       { id: 'anna', name: 'Anna', costume: 'giacca di jeans chiara' },
     ]);
     expect(input.movement.id).toBe(spec.intent.cameraMovement);
+  });
+
+  it('per l’ultimo fotogramma la destinazione è la fine, con il primo e l’ultimo come ingressi', () => {
+    expect(build({ mode: 'end_frame' }).target).toEqual({
+      family: 'image_generic',
+      kind: 'image',
+      maxPromptChars: STORYBOARD_PROMPT_MAX_CHARS,
+      frame: 'end',
+      inputs: ['first_frame', 'last_frame'],
+    });
   });
 
   it('non porta gli id delle immagini: i riferimenti li aggiunge il traduttore', () => {

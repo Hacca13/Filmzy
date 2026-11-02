@@ -3,10 +3,12 @@ import {
   chooseStoryboardBodySchema,
   planSceneBodySchema,
   planSceneEstimateBodySchema,
+  setShotImagesBodySchema,
   startSheetBodySchema,
   type PlanSceneEstimate,
   type ScenePlan,
   type SheetOptions,
+  type ShotImages,
   type ShotPlans,
   type ShotSpec,
   type ShotStoryboard,
@@ -22,6 +24,7 @@ import { OPENED_DATABASE } from '../database/database.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
+import { ShotImagesService } from './shot-images.service.js';
 import { ShotsService } from './shots.service.js';
 import { StoryboardService } from './storyboard.service.js';
 import { SHOT_STORE } from './tokens.js';
@@ -37,6 +40,7 @@ class ShotsController {
   constructor(
     private readonly shots: ShotsService,
     private readonly storyboards: StoryboardService,
+    private readonly shotImages: ShotImagesService,
   ) {}
 
   @Get()
@@ -72,7 +76,7 @@ class ShotsController {
     @Param('projectId') projectId: string,
     @Param('shotId') shotId: string,
   ): ShotStoryboard {
-    return this.storyboards.storyboard(projectId, shotId);
+    return this.storyboards.storyboard(projectId, shotId, 'storyboard');
   }
 
   @Get(':shotId/storyboard/options')
@@ -80,7 +84,7 @@ class ShotsController {
     @Param('projectId') projectId: string,
     @Param('shotId') shotId: string,
   ): Promise<SheetOptions> {
-    return this.storyboards.options(projectId, shotId);
+    return this.storyboards.options(projectId, shotId, 'storyboard');
   }
 
   @Post(':shotId/storyboard')
@@ -89,7 +93,12 @@ class ShotsController {
     @Param('shotId') shotId: string,
     @Body() body: unknown,
   ): Promise<ShotStoryboard> {
-    return this.storyboards.start(projectId, shotId, parseBody(startSheetBodySchema, body ?? {}));
+    return this.storyboards.start(
+      projectId,
+      shotId,
+      'storyboard',
+      parseBody(startSheetBodySchema, body ?? {}),
+    );
   }
 
   @Put(':shotId/storyboard/choice')
@@ -101,8 +110,69 @@ class ShotsController {
     return this.storyboards.choose(
       projectId,
       shotId,
+      'storyboard',
       parseBody(chooseStoryboardBodySchema, body).assetId,
     );
+  }
+
+  // L'ultimo fotogramma (T4.2) è lo stesso lavoro dello storyboard, in un altro modo.
+  @Get(':shotId/end-frame')
+  endFrame(@Param('projectId') projectId: string, @Param('shotId') shotId: string): ShotStoryboard {
+    return this.storyboards.storyboard(projectId, shotId, 'end_frame');
+  }
+
+  @Get(':shotId/end-frame/options')
+  endFrameOptions(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+  ): Promise<SheetOptions> {
+    return this.storyboards.options(projectId, shotId, 'end_frame');
+  }
+
+  @Post(':shotId/end-frame')
+  startEndFrame(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): Promise<ShotStoryboard> {
+    return this.storyboards.start(
+      projectId,
+      shotId,
+      'end_frame',
+      parseBody(startSheetBodySchema, body ?? {}),
+    );
+  }
+
+  /** «Scegli questa»: la variante diventa l'ultimo fotogramma impostato. */
+  @Put(':shotId/end-frame/choice')
+  chooseEndFrame(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): ShotStoryboard {
+    return this.storyboards.choose(
+      projectId,
+      shotId,
+      'end_frame',
+      parseBody(chooseStoryboardBodySchema, body).assetId,
+    );
+  }
+
+  @Get(':shotId/images')
+  images(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+  ): Promise<ShotImages> {
+    return this.shotImages.get(projectId, shotId);
+  }
+
+  @Put(':shotId/images')
+  setImages(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): Promise<ShotImages> {
+    return this.shotImages.set(projectId, shotId, parseBody(setShotImagesBodySchema, body));
   }
 }
 
@@ -112,6 +182,7 @@ class ShotsController {
   providers: [
     ShotsService,
     StoryboardService,
+    ShotImagesService,
     {
       provide: SHOT_STORE,
       useFactory: (opened: OpenedDatabase): ShotStore => createShotStore(opened.db),

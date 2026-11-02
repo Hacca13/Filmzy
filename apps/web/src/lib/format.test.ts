@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDateTime, formatEstimate, formatUsd, formatValue } from './format';
+import { formatCount, formatDateTime, formatEstimate, formatUsd, formatValue } from './format';
 
 describe('formatUsd', () => {
   it('le frazioni di centesimo hanno quattro decimali, con la virgola', () => {
@@ -31,6 +31,14 @@ describe('formatEstimate', () => {
     expect(formatEstimate(1.2)).toBe('1,20 $');
     expect(formatEstimate(0.004)).toBe('0,0040 $');
     expect(formatEstimate(0)).toBe('0,00 $');
+  });
+});
+
+describe('formatCount', () => {
+  it('mette il punto delle migliaia anche a quattro cifre', () => {
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(248)).toBe('248');
+    expect(formatCount(2000)).toBe('2.000');
   });
 });
 

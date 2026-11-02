@@ -42,8 +42,18 @@ export {
 export type { ModelGroup, ModelKind } from './model-kind.js';
 
 export * from './config/index.js';
-export { PROJECT_PHASES, projectPhaseSchema, projectSummarySchema } from './project.js';
-export type { ProjectPhase, ProjectSummary } from './project.js';
+export {
+  IDEA_MAX_LENGTH,
+  PROJECT_DURATIONS_S,
+  PROJECT_PHASES,
+  projectDurationSchema,
+  projectPhaseSchema,
+  projectSchema,
+  projectSummarySchema,
+  TITLE_MAX_LENGTH,
+} from './project.js';
+export type { Project, ProjectDuration, ProjectPhase, ProjectSummary } from './project.js';
+export * from './projects-api.js';
 export {
   colorSchema,
   moodReferenceSchema,

@@ -52,7 +52,7 @@ export interface GetJsonOptions {
   fetchImpl?: typeof fetch;
 }
 
-export type SendMethod = 'POST' | 'PUT' | 'DELETE';
+export type SendMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** Costruisce l'errore per una risposta non riuscita, leggendo codice e dettagli se ci sono. */
 async function toHttpError(response: Response): Promise<ApiError> {

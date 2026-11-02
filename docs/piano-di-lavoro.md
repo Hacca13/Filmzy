@@ -149,6 +149,7 @@ Fatto il 27/10 (D52): la spesa si somma dagli scontrini (per fornitore e per fil
 
 **T3.2 Progetto.** Wizard "La tua idea": idea, genere, tono, stile, fotografia e durata, tutto dai preset. Il progetto ricorda la sua fase (§3.1).
 _Fatto quando:_ si crea un film in meno di un minuto senza leggere un termine tecnico.
+Fatto il 28/10 (D53): tabella `projects` e rotte `/api/projects`; le scelte (genere, tono, stile, fotografia) vengono dai preset attivi, con le voci già scelte, così per partire basta scrivere l'idea; durate da 30 s a 3 min; titolo facoltativo (lo propone il programma). Il film parte dalla fase «La storia» e la ricorda; l'idea si rivede in qualsiasi fase senza spostarla. In app: «I tuoi film» nella home, wizard «La tua idea» e pagina del film. **Non fatto:** cancellare o copiare un film, i filtri dell'elenco, il salvataggio automatico dell'idea (il moderatore è T3.3).
 
 **T3.3 Moderatore.** Controllo dei testi dell'utente prima di ogni spesa (impostazione prudente), comprese le richieste di modifica allo sceneggiatore.
 _Fatto quando:_ il nome di una persona famosa o una richiesta vietata vengono fermati con un messaggio semplice e un suggerimento.

@@ -1,6 +1,10 @@
 import { useState } from 'react';
 
 import { ServerStatus } from './components/ServerStatus';
+import { FilmPage } from './films/FilmPage';
+import { FilmsHome } from './films/FilmsHome';
+import { IdeaWizard } from './films/IdeaWizard';
+import { parseFilmRoute, type FilmRoute } from './films/routes';
 import { useHashPath } from './lib/route';
 import { SettingsPage } from './settings/SettingsPage';
 import { FirstRunGate } from './welcome/FirstRunGate';
@@ -24,13 +28,26 @@ function Home() {
           setChecks(checks + 1);
         }}
       />
+      <FilmsHome />
+    </main>
+  );
+}
+
+function FilmScreen({ route }: { route: FilmRoute }) {
+  return (
+    <main className="app">
+      {route.page === 'new' ? <IdeaWizard /> : null}
+      {route.page === 'idea' ? <IdeaWizard filmId={route.id} /> : null}
+      {route.page === 'film' ? <FilmPage filmId={route.id} /> : null}
     </main>
   );
 }
 
 export function App() {
   const path = useHashPath();
+  const filmRoute = parseFilmRoute(path);
 
+  if (filmRoute !== undefined) return <FilmScreen route={filmRoute} />;
   if (path.startsWith('/impostazioni')) return <SettingsPage path={path} />;
   if (path === '/benvenuto') {
     return (

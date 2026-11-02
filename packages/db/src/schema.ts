@@ -165,3 +165,28 @@ export const generations = sqliteTable(
 );
 
 export type GenerationRow = typeof generations.$inferSelect;
+
+/**
+ * I film (architettura §3.1, §6): l'idea scelta nel wizard e la fase a cui sono arrivati. Stile e
+ * fotografia sono gli id dei preset; la durata è quella scelta, in secondi. Date in millisecondi.
+ */
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    idea: text('idea').notNull(),
+    genre: text('genre').notNull(),
+    tone: text('tone').notNull(),
+    style: text('style').notNull(),
+    cinematography: text('cinematography').notNull(),
+    language: text('language').notNull(),
+    durationS: integer('duration_s').notNull(),
+    phase: text('phase').notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('projects_per_modifica').on(table.updatedAt)],
+);
+
+export type ProjectRow = typeof projects.$inferSelect;

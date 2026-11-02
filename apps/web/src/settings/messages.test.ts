@@ -104,3 +104,20 @@ describe('i film senza luoghi (T3.9)', () => {
     expect(describeError(noLocations)).toContain('almeno un luogo');
   });
 });
+
+describe('lo storyboard (T4.1)', () => {
+  const refused = (field: string) =>
+    new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field },
+    });
+
+  it('se il piano è cambiato la frase dice di rifare le inquadrature', () => {
+    expect(describeError(refused('plan'))).toContain('Rifalle');
+  });
+
+  it('se un tentativo sta ancora lavorando la frase dice di aspettare', () => {
+    expect(describeError(refused('storyboard'))).toContain('già in lavorazione');
+  });
+});

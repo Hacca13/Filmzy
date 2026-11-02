@@ -4,6 +4,7 @@ import {
   type ScenePlan,
   type ShotSpec,
 } from '@filmzy/contracts';
+import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -91,7 +92,11 @@ describe('ShotCard', () => {
     { id: 'static', label: 'Resta fermo' },
     { id: 'push_in', label: 'Avvicinati' },
   ];
-  const render = (given: ShotSpec = shot, busy = false) =>
+  const render = (
+    given: ShotSpec = shot,
+    busy = false,
+    storyboard: Partial<ComponentProps<typeof ShotCard>> = {},
+  ) =>
     renderToStaticMarkup(
       <ShotCard
         shot={given}
@@ -99,6 +104,10 @@ describe('ShotCard', () => {
         names={names}
         busy={busy}
         onMovement={() => undefined}
+        storyboardOpen={false}
+        canStoryboard
+        onStoryboard={() => undefined}
+        {...storyboard}
       />,
     );
 
@@ -133,5 +142,29 @@ describe('ShotCard', () => {
 
   it('mentre si salva il menu è bloccato', () => {
     expect(render(shot, true)).toMatch(/<select[^>]*disabled/);
+  });
+
+  it('senza storyboard scelto non c’è nessuna immagine, e si offre «Storyboard»', () => {
+    const html = render();
+
+    expect(html).not.toContain('<img');
+    expect(html).toContain('>Storyboard<');
+    expect(html).toContain('aria-pressed="false"');
+  });
+
+  it('la variante scelta è il riferimento visivo della card, e si può cambiare', () => {
+    const html = render(shot, false, { storyboardAssetId: 'img-1', storyboardOpen: true });
+
+    expect(html).toContain('src="/api/assets/img-1"');
+    expect(html).toContain('alt="Storyboard dell&#x27;inquadratura 1"');
+    expect(html).toContain('Cambia lo storyboard');
+    expect(html).toContain('aria-pressed="true"');
+  });
+
+  it('se il piano è da rifare lo storyboard non si offre, ma la variante già scelta si vede', () => {
+    const html = render(shot, false, { canStoryboard: false, storyboardAssetId: 'img-1' });
+
+    expect(html).not.toContain('<button');
+    expect(html).toContain('src="/api/assets/img-1"');
   });
 });

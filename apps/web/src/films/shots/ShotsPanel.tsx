@@ -14,6 +14,7 @@ import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
 import { ShotCard } from './ShotCard';
+import { ShotStoryboardSection } from './ShotStoryboardSection';
 import { sceneStatus, type Names } from './model';
 
 const isNotFound = (error: unknown) =>
@@ -136,9 +137,12 @@ function SceneSection({
   reload,
 }: SceneProps) {
   const action = useAction();
+  const [storyboardShotId, setStoryboardShotId] = useState<string>();
   const estimateUsd = useSceneEstimate(filmId, scene);
   const verb = scene.planned ? 'Rifai le inquadrature' : 'Pensa le inquadrature';
   const working = written.running && showOutcome;
+  // Se il piano è rifatto l'inquadratura aperta sparisce, e con lei il suo storyboard.
+  const storyboardShot = scene.shots.find((shot) => shot.id === storyboardShotId);
 
   return (
     <section className="scene-shots">
@@ -167,9 +171,26 @@ function SceneSection({
                   reload();
                 });
               }}
+              storyboardAssetId={scene.chosenStoryboards[shot.id]}
+              storyboardOpen={shot.id === storyboardShotId}
+              canStoryboard={!scene.stale}
+              onStoryboard={() => {
+                setStoryboardShotId(shot.id === storyboardShotId ? undefined : shot.id);
+              }}
             />
           ))}
         </ol>
+      )}
+      {storyboardShot === undefined ? null : (
+        <div className="storyboard-panel">
+          <h4>Storyboard · inquadratura {storyboardShot.order + 1}</h4>
+          <ShotStoryboardSection
+            key={storyboardShot.id}
+            filmId={filmId}
+            shotId={storyboardShot.id}
+            onChosen={reload}
+          />
+        </div>
       )}
       {scene.notes === undefined ? null : <p className="hint">Note: {scene.notes}</p>}
       <div className="actions">

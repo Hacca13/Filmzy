@@ -51,6 +51,9 @@ const BY_INVALID_FIELD: Record<string, string> = {
   answers:
     'Le differenze fra la bozza e le tue scelte sono cambiate. Ho aggiornato il riepilogo: controlla le risposte e riprova.',
   locations: 'Aggiungi almeno un luogo al film prima di pensare le inquadrature.',
+  // Lo storyboard (T4.1): il piano è cambiato dopo, oppure un tentativo sta ancora lavorando.
+  plan: 'Dopo aver pensato le inquadrature è cambiato qualcosa. Rifalle, poi crea lo storyboard.',
+  storyboard: 'Lo storyboard di questa inquadratura è già in lavorazione. Aspetta che finisca.',
 };
 
 export function describeError(error: unknown): string {

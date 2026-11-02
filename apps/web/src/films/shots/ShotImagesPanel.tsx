@@ -3,12 +3,13 @@ import { useCallback, useState } from 'react';
 
 import { ShotImagesSection } from './ShotImagesSection';
 import { ShotStoryboardSection } from './ShotStoryboardSection';
+import { ShotVideoSection } from './ShotVideoSection';
 import { hasFirstFrame } from './images-model';
 
 /**
- * Il lavoro sulle immagini di un'inquadratura, aperto sotto la striscia (T4.1, T4.2): prima lo
- * storyboard, poi «Imposta le immagini» (primo e ultimo fotogramma, ispirazione) e, se c'è il primo
- * fotogramma, l'ultimo fotogramma da generare. `onChanged` fa rileggere il piano perché la card
+ * Il lavoro su un'inquadratura, aperto sotto la striscia (T4.1, T4.2, T4.3): prima lo storyboard,
+ * poi «Imposta le immagini» (primo e ultimo fotogramma, ispirazione), se c'è il primo fotogramma
+ * l'ultimo fotogramma da generare, e in fondo il video. `onChanged` fa rileggere il piano perché la card
  * mostri ciò che è cambiato.
  */
 export function ShotImagesPanel({
@@ -32,7 +33,7 @@ export function ShotImagesPanel({
 
   return (
     <div className="storyboard-panel">
-      <h4>Inquadratura {shot.order + 1} · storyboard e immagini</h4>
+      <h4>Inquadratura {shot.order + 1} · storyboard, immagini e video</h4>
       <ShotStoryboardSection
         filmId={filmId}
         shotId={shot.id}
@@ -55,6 +56,7 @@ export function ShotImagesPanel({
           onSettled={refreshImages}
         />
       ) : null}
+      <ShotVideoSection filmId={filmId} shotId={shot.id} onSettled={onChanged} />
     </div>
   );
 }

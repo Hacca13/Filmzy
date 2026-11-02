@@ -136,3 +136,15 @@ describe('le immagini dell’inquadratura (T4.2)', () => {
     expect(describeError(refused('assetId'))).toContain('non è tra quelle');
   });
 });
+
+describe('il video (T4.3)', () => {
+  it('se un take sta ancora lavorando la frase dice di aspettare', () => {
+    const refused = new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field: 'takes' },
+    });
+
+    expect(describeError(refused)).toContain('già in lavorazione');
+  });
+});

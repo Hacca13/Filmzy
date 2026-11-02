@@ -26,7 +26,12 @@ describe('shotTakeSchema', () => {
   });
 
   it('un take in coda o fallito non ha la clip né il costo, e il fallito dice perché', () => {
-    const { assetId: _asset, costUsd: _cost, ...bare } = take;
+    const bare = {
+      id: take.id,
+      modelId: take.modelId,
+      modelLabel: take.modelLabel,
+      createdAt: take.createdAt,
+    };
 
     expect(shotTakeSchema.parse({ ...bare, status: 'queued' }).assetId).toBeUndefined();
     expect(

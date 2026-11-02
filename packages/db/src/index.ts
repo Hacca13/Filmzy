@@ -19,6 +19,8 @@ export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
+export { createShotStore } from './shot-store.js';
+export type { NewShotPlan, ShotStore, StoredShot, StoredShotPlan } from './shot-store.js';
 export { createSheetStore } from './sheet-store.js';
 export type { AssetRecord, SheetImagePatch, SheetStore } from './sheet-store.js';
 export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';
@@ -41,6 +43,8 @@ export {
   projects,
   screenplays,
   settings,
+  shotPlans,
+  shots,
   troupeDrafts,
   troupeReleases,
   USER_SETTINGS_ID,

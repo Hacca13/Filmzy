@@ -1,5 +1,13 @@
 import type { InstructionOrigin, JobStatus } from '@filmzy/contracts';
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 /**
  * Le tabelle del database locale (architettura §6). Arrivano un pezzo per volta, insieme al task
@@ -333,3 +341,43 @@ export const locationAttempts = sqliteTable(
 );
 
 export type LocationAttemptRow = typeof locationAttempts.$inferSelect;
+
+/**
+ * Il piano delle inquadrature di una scena (T3.9): una riga per scena di un film. Dice da quale
+ * versione della stesura e da quale testo della scena (`scene_hash`) è nato, così si vede quando la
+ * scena cambia dopo; `generation_id` è lo scontrino dell'aiuto regista e `notes` ciò che ha
+ * spiegato. Rifare la scena sostituisce il piano.
+ */
+export const shotPlans = sqliteTable(
+  'shot_plans',
+  {
+    projectId: text('project_id').notNull(),
+    sceneNumber: integer('scene_number').notNull(),
+    sceneHash: text('scene_hash').notNull(),
+    screenplayId: text('screenplay_id').notNull(),
+    generationId: text('generation_id'),
+    notes: text('notes'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.sceneNumber] })],
+);
+
+export type ShotPlanRow = typeof shotPlans.$inferSelect;
+
+/**
+ * Le inquadrature di una scena (T3.9, architettura §6): `spec` è la scheda inquadratura (ShotSpec)
+ * in JSON, validata con Zod quando si legge; `position` è l'ordine nella scena.
+ */
+export const shots = sqliteTable(
+  'shots',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    sceneNumber: integer('scene_number').notNull(),
+    position: integer('position').notNull(),
+    spec: text('spec').notNull(),
+  },
+  (table) => [index('shots_per_scena').on(table.projectId, table.sceneNumber, table.position)],
+);
+
+export type ShotRow = typeof shots.$inferSelect;

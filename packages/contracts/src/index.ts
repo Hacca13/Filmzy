@@ -55,6 +55,7 @@ export {
 export type { Project, ProjectDuration, ProjectPhase, ProjectSummary } from './project.js';
 export * from './projects-api.js';
 export * from './screenplay-api.js';
+export * from './review-api.js';
 export * from './cast-api.js';
 export * from './sheet-api.js';
 export * from './locations-api.js';

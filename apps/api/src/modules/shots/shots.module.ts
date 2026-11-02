@@ -1,33 +1,43 @@
 import {
   changeShotBodySchema,
+  chooseStoryboardBodySchema,
   planSceneBodySchema,
   planSceneEstimateBodySchema,
+  startSheetBodySchema,
   type PlanSceneEstimate,
   type ScenePlan,
+  type SheetOptions,
   type ShotPlans,
   type ShotSpec,
+  type ShotStoryboard,
 } from '@filmzy/contracts';
 import { createShotStore, type OpenedDatabase, type ShotStore } from '@filmzy/db';
-import { Body, Controller, Get, Module, Param, Patch, Post, UseFilters } from '@nestjs/common';
+import { Body, Controller, Get, Module, Param, Patch, Post, Put, UseFilters } from '@nestjs/common';
 
 import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { BibleModule } from '../bible/bible.module.js';
+import { CastModule } from '../cast/cast.module.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
+import { JobsModule } from '../jobs/jobs.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { ShotsService } from './shots.service.js';
+import { StoryboardService } from './storyboard.service.js';
 import { SHOT_STORE } from './tokens.js';
 
 /**
- * Le rotte delle inquadrature (T3.9). Nessuna logica: decide il servizio. Pensare le inquadrature
- * chiama un servizio a pagamento: il filtro traduce gli errori della troupe (limite di spesa,
- * chiave mancante…) in errori col loro codice.
+ * Le rotte delle inquadrature (T3.9) e del loro storyboard (T4.1). Nessuna logica: decide il
+ * servizio. Pensare le inquadrature e disegnarle chiamano servizi a pagamento: il filtro traduce
+ * gli errori della troupe (limite di spesa, chiave mancante…) in errori col loro codice.
  */
 @Controller('projects/:projectId/shots')
 @UseFilters(ProviderErrorFilter)
 class ShotsController {
-  constructor(private readonly shots: ShotsService) {}
+  constructor(
+    private readonly shots: ShotsService,
+    private readonly storyboards: StoryboardService,
+  ) {}
 
   @Get()
   plans(@Param('projectId') projectId: string): Promise<ShotPlans> {
@@ -56,13 +66,52 @@ class ShotsController {
   ): Promise<ShotSpec> {
     return this.shots.changeMovement(projectId, shotId, parseBody(changeShotBodySchema, body));
   }
+
+  @Get(':shotId/storyboard')
+  storyboard(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+  ): ShotStoryboard {
+    return this.storyboards.storyboard(projectId, shotId);
+  }
+
+  @Get(':shotId/storyboard/options')
+  storyboardOptions(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+  ): Promise<SheetOptions> {
+    return this.storyboards.options(projectId, shotId);
+  }
+
+  @Post(':shotId/storyboard')
+  startStoryboard(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): Promise<ShotStoryboard> {
+    return this.storyboards.start(projectId, shotId, parseBody(startSheetBodySchema, body ?? {}));
+  }
+
+  @Put(':shotId/storyboard/choice')
+  chooseStoryboard(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): ShotStoryboard {
+    return this.storyboards.choose(
+      projectId,
+      shotId,
+      parseBody(chooseStoryboardBodySchema, body).assetId,
+    );
+  }
 }
 
 @Module({
-  imports: [ProjectsModule, ScreenplayModule, BibleModule],
+  imports: [ProjectsModule, ScreenplayModule, BibleModule, CastModule, JobsModule],
   controllers: [ShotsController],
   providers: [
     ShotsService,
+    StoryboardService,
     {
       provide: SHOT_STORE,
       useFactory: (opened: OpenedDatabase): ShotStore => createShotStore(opened.db),

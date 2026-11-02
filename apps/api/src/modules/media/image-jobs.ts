@@ -1,14 +1,17 @@
 import path from 'node:path';
 
-import type { GenerationReceipt } from '@filmzy/contracts';
+import type { GenerationReceipt, ModelOption, StartSheetBody } from '@filmzy/contracts';
 import type { SheetStore } from '@filmzy/db';
 import {
+  enforceSpend,
   ProviderError,
   renderSections,
   resolveInstructions,
   type InstructionsSource,
   type MediaRunner,
+  type SpendGuard,
   type StoredAsset,
+  type TroupeConfig,
 } from '@filmzy/troupe';
 
 import { domainError } from '../../http/domain-error.js';
@@ -49,6 +52,46 @@ export async function renderImagePrompt(args: PromptArgs): Promise<string> {
   const prompt = rendered.prompt ?? '';
   if (prompt === '') throw domainError(422, 'config_invalid', { details: { role: args.role } });
   return prompt;
+}
+
+export interface ChooseServiceArgs {
+  role: string;
+  /** I servizi adatti alla richiesta, con la stima di tutto il lavoro. */
+  options: readonly ModelOption[];
+  /** Il servizio scelto dall'utente, se diverso dal predefinito, e la conferma del limite di spesa. */
+  body: StartSheetBody;
+  config: TroupeConfig;
+  spend: SpendGuard;
+  projectId: string;
+}
+
+/**
+ * Il servizio che farà il lavoro: quello scelto dall'utente o, se non ha scelto, il predefinito. Il
+ * servizio scelto è un requisito: se non è adatto non si passa a un altro (D36). Si controllano
+ * anche i limiti di spesa, **prima** di mettere il lavoro in coda (D30).
+ */
+export async function chooseImageService(args: ChooseServiceArgs): Promise<ModelOption> {
+  const { role, options, body, config, projectId } = args;
+  const chosen =
+    body.modelId === undefined
+      ? (options.find((option) => option.isDefault) ?? options[0])
+      : options.find((option) => option.modelId === body.modelId);
+  if (chosen === undefined) throw domainError(409, 'no_eligible_model', { details: { role } });
+
+  const connectionId = config.models[chosen.modelId]?.connection;
+  if (connectionId === undefined) {
+    throw domainError(422, 'config_invalid', { details: { modelId: chosen.modelId } });
+  }
+  await enforceSpend(
+    args.spend,
+    {
+      purpose: 'product',
+      projectId,
+      ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
+    },
+    { role, connectionId, modelId: chosen.modelId, estimatedCostUsd: chosen.estimatedCostUsd },
+  );
+  return chosen;
 }
 
 export interface WaitedMedia {

@@ -7,6 +7,7 @@ import {
   storyboardAttemptSchema,
   type ShotSpec,
   type ShotStoryboard,
+  type StoryboardMode,
 } from '@filmzy/contracts';
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
 
@@ -62,11 +63,19 @@ export interface ShotStore {
   get: (shotId: string) => StoredShot | undefined;
   /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più. */
   updateSpec: (shotId: string, spec: ShotSpec) => boolean;
-  /** Apre un nuovo tentativo di storyboard (in coda) e ne dà il numero. */
-  startStoryboard: (shotId: string) => number;
-  finishStoryboard: (shotId: string, attempt: number, patch: AttemptPatch) => void;
-  /** I tentativi di storyboard dal più recente e la variante scelta. */
-  storyboard: (shotId: string) => ShotStoryboard;
+  /** Apre un nuovo tentativo (in coda) dello storyboard o dell'ultimo fotogramma e ne dà il numero. */
+  startStoryboard: (shotId: string, mode: StoryboardMode) => number;
+  finishStoryboard: (
+    shotId: string,
+    mode: StoryboardMode,
+    attempt: number,
+    patch: AttemptPatch,
+  ) => void;
+  /**
+   * I tentativi di un modo dal più recente. La variante scelta (`chosenAssetId`) c'è solo per lo
+   * storyboard: quella dell'ultimo fotogramma è l'immagine impostata nella scheda (`images`).
+   */
+  storyboard: (shotId: string, mode: StoryboardMode) => ShotStoryboard;
   /** Sceglie la variante che resta come riferimento visivo dell'inquadratura, o la toglie con `undefined`. */
   chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
   /** La variante scelta di ogni inquadratura del film che ne ha una. */
@@ -76,6 +85,10 @@ export interface ShotStore {
 export interface ShotStoreOptions {
   now?: () => Date;
 }
+
+/** I tentativi di un'inquadratura per un modo (storyboard o ultimo fotogramma). */
+const inMode = (shotId: string, mode: StoryboardMode) =>
+  and(eq(storyboardAttempts.shotId, shotId), eq(storyboardAttempts.mode, mode));
 
 const toSpec = (row: ShotRow): ShotSpec => shotSpecSchema.parse(JSON.parse(row.spec));
 
@@ -219,12 +232,12 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
       return changes > 0;
     },
 
-    startStoryboard(shotId) {
+    startStoryboard(shotId, mode) {
       return db.transaction((tx) => {
         const last = tx
           .select({ attempt: storyboardAttempts.attempt })
           .from(storyboardAttempts)
-          .where(eq(storyboardAttempts.shotId, shotId))
+          .where(inMode(shotId, mode))
           .orderBy(desc(storyboardAttempts.attempt))
           .limit(1)
           .get();
@@ -234,6 +247,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           .values({
             id: randomUUID(),
             shotId,
+            mode,
             attempt,
             status: 'queued',
             assetIds: '[]',
@@ -245,7 +259,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
       });
     },
 
-    finishStoryboard(shotId, attempt, patch) {
+    finishStoryboard(shotId, mode, attempt, patch) {
       db.update(storyboardAttempts)
         .set({
           status: patch.status,
@@ -254,19 +268,22 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           errorCode: patch.errorCode ?? null,
           updatedAt: now().getTime(),
         })
-        .where(and(eq(storyboardAttempts.shotId, shotId), eq(storyboardAttempts.attempt, attempt)))
+        .where(and(inMode(shotId, mode), eq(storyboardAttempts.attempt, attempt)))
         .run();
     },
 
-    storyboard(shotId) {
+    storyboard(shotId, mode) {
       const attempts = db
         .select()
         .from(storyboardAttempts)
-        .where(eq(storyboardAttempts.shotId, shotId))
+        .where(inMode(shotId, mode))
         .orderBy(desc(storyboardAttempts.attempt))
         .all()
         .map(toAttempt);
-      const chosen = db.select().from(shots).where(eq(shots.id, shotId)).get()?.chosenAssetId;
+      const chosen =
+        mode === 'storyboard'
+          ? db.select().from(shots).where(eq(shots.id, shotId)).get()?.chosenAssetId
+          : undefined;
       return shotStoryboardSchema.parse({
         shotId,
         attempts,

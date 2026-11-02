@@ -34,9 +34,15 @@ async function listen() {
     const decoder = new TextDecoder();
     let buffer = '';
     for (;;) {
-      const chunk = await reader.read().catch(() => ({ done: true, value: undefined }));
+      let chunk: Awaited<ReturnType<typeof reader.read>>;
+      try {
+        chunk = await reader.read();
+      } catch {
+        // Il test ha chiuso il flusso: è il modo di smettere di ascoltare.
+        return;
+      }
       if (chunk.done) return;
-      buffer += decoder.decode(chunk.value, { stream: true });
+      buffer += decoder.decode(chunk.value as Uint8Array, { stream: true });
       for (let split = buffer.indexOf('\n\n'); split >= 0; split = buffer.indexOf('\n\n')) {
         const block = buffer.slice(0, split);
         buffer = buffer.slice(split + 2);

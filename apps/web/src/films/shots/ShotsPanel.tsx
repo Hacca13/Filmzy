@@ -13,9 +13,13 @@ import { describeError } from '../../settings/messages';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
+import { useLiveJobs } from '../use-live-jobs';
 import { ShotCard } from './ShotCard';
 import { ShotImagesPanel } from './ShotImagesPanel';
 import { sceneChip, type Names } from './model';
+
+/** I lavori che cambiano ciò che la striscia mostra. */
+const LIVE_KINDS = ['take_generate', 'storyboard_images'];
 
 const isNotFound = (error: unknown) =>
   error instanceof ApiError && error.serverCode === 'not_found';
@@ -31,6 +35,9 @@ export function ShotsPanel({ filmId }: { filmId: string }) {
   const plans = useResource(load);
   // Mentre si ricarica resta il piano di prima: la striscia non si smonta.
   const data = useLastReady(plans.state);
+  // Quando un video o uno storyboard di questo film cambia stato (T4.4) la striscia si aggiorna da sola:
+  // la card passa da «in lavorazione» a «pronto» anche con il riquadro dell'inquadratura chiuso.
+  useLiveJobs({ kinds: LIVE_KINDS, projectId: filmId }, plans.reload);
 
   return (
     <section className="panel shots" id="le-inquadrature">
@@ -182,6 +189,7 @@ function SceneSection({
               }}
               storyboardAssetId={scene.chosenStoryboards[shot.id]}
               clipAssetId={scene.latestTakes[shot.id]}
+              working={scene.working[shot.id]}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}
               onStoryboard={() => {

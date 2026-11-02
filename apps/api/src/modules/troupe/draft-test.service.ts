@@ -45,9 +45,12 @@ export class DraftTestService {
     return { estimate: await this.troupe.estimate(role, example), example };
   }
 
-  async run(roleId: string): Promise<DraftTestResult> {
+  async run(roleId: string, spendConfirmed = false): Promise<DraftTestResult> {
     const { role, example } = this.testable(roleId);
-    const { data, receipt } = await this.troupe.run(role, example, { purpose: 'draft_test' });
+    const { data, receipt } = await this.troupe.run(role, example, {
+      purpose: 'draft_test',
+      ...(spendConfirmed ? { spendConfirmed } : {}),
+    });
     return { example, output: data, receipt };
   }
 

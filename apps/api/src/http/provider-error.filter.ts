@@ -31,13 +31,14 @@ const STATUS: Partial<Record<DomainErrorCode, number>> = {
 export class ProviderErrorFilter implements ExceptionFilter<ProviderError> {
   catch(error: ProviderError, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
-    const { role, modelId, connectionId, field, retryAfterS } = error.details;
+    const { role, modelId, connectionId, field, retryAfterS, spend } = error.details;
     const details = {
       ...(role === undefined ? {} : { role }),
       ...(modelId === undefined ? {} : { modelId }),
       ...(connectionId === undefined ? {} : { connectionId }),
       ...(field === undefined ? {} : { field }),
       ...(retryAfterS === undefined ? {} : { retryAfterS }),
+      ...(spend === undefined ? {} : { spend }),
     };
 
     // Il messaggio di un ProviderError non entra nella risposta: i testi per l'utente stanno

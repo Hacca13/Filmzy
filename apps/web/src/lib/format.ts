@@ -3,7 +3,20 @@
  * frazioni di centesimo, quindi servono fino a quattro decimali; sopra il dollaro bastano due.
  */
 export function formatUsd(amount: number): string {
-  const decimals = amount >= 1 ? 2 : 4;
+  const decimals = amount >= 1 || amount === 0 ? 2 : 4;
+  return `${amount.toLocaleString('it-IT', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} $`;
+}
+
+/**
+ * Una stima in dollari, come la si legge su un pulsante: da dieci centesimi in su bastano due
+ * decimali («0,42 $»), sotto servono quattro per non scrivere «0,00 $». I prezzi di listino, che
+ * vogliono la precisione, usano `formatUsd`.
+ */
+export function formatEstimate(amount: number): string {
+  const decimals = amount >= 0.1 || amount === 0 ? 2 : 4;
   return `${amount.toLocaleString('it-IT', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,

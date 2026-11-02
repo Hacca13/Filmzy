@@ -18,6 +18,12 @@ export function estimateTest(roleId: string, signal?: AbortSignal) {
   });
 }
 
-export function runTest(roleId: string) {
-  return sendJson('POST', `/troupe/test/${roleId}/run`, draftTestResultSchema);
+/** `spendConfirmed`: l'utente ha visto che la prova supera un limite di spesa e prosegue (D30). */
+export function runTest(roleId: string, options: { spendConfirmed?: boolean } = {}) {
+  return sendJson(
+    'POST',
+    `/troupe/test/${roleId}/run`,
+    draftTestResultSchema,
+    options.spendConfirmed === true ? { spendConfirmed: true } : undefined,
+  );
 }

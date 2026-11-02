@@ -19,6 +19,11 @@ export const generationContextSchema = z.object({
   shotId: shotIdSchema.optional(),
   purpose: generationPurposeSchema,
   modelId: modelIdSchema.optional(),
+  /**
+   * L'utente ha visto che la generazione supera un limite di spesa e ha scelto di proseguire (D30):
+   * i limiti sono impostazioni, non muri. Vale per questa richiesta sola.
+   */
+  spendConfirmed: z.boolean().optional(),
 });
 
 export type GenerationContext = z.infer<typeof generationContextSchema>;

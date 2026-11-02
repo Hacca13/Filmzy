@@ -66,3 +66,27 @@ describe('ProviderErrorFilter', () => {
     expect(respond(new ProviderError('database_too_new', false, 'x')).status).toBe(500);
   });
 });
+
+describe('ProviderErrorFilter: limiti di spesa', () => {
+  it('un limite superato è 409 e porta quale, di quanto e quanto costerebbe', () => {
+    const spend = {
+      limit: 'monthly_cap',
+      limitUsd: 20,
+      spentUsd: 19.5,
+      estimatedUsd: 1.2,
+    } as const;
+
+    const reply = respond(
+      new ProviderError('spend_cap_reached', false, 'tetto', { connectionId: 'fal', spend }),
+    );
+
+    expect(reply).toEqual({
+      status: 409,
+      body: {
+        code: 'spend_cap_reached',
+        retryable: false,
+        details: { connectionId: 'fal', spend },
+      },
+    });
+  });
+});

@@ -58,6 +58,9 @@ export class ConnectionsService {
         ...(current.spendCaps.filmBudgetUsd === undefined
           ? {}
           : { filmBudgetUsd: current.spendCaps.filmBudgetUsd }),
+        ...(current.spendCaps.confirmAboveUsd === undefined
+          ? {}
+          : { confirmAboveUsd: current.spendCaps.confirmAboveUsd }),
       },
     };
   }
@@ -155,15 +158,27 @@ export class ConnectionsService {
     return this.overview();
   }
 
-  /** Il limite di spesa per film (D30): facoltativo, `null` lo toglie. Si scrive, ma non si applica ancora (T3.1). */
-  async setFilmBudget(usd: number | null): Promise<ConnectionsOverview> {
+  /** Il limite di spesa per film (D30): facoltativo, `null` lo toglie. */
+  setFilmBudget(usd: number | null): Promise<ConnectionsOverview> {
+    return this.setLimit('filmBudgetUsd', usd);
+  }
+
+  /** «Chiedi conferma sopra questa cifra» (D30): facoltativo, `null` lo toglie. */
+  setConfirmAbove(usd: number | null): Promise<ConnectionsOverview> {
+    return this.setLimit('confirmAboveUsd', usd);
+  }
+
+  private async setLimit(
+    name: 'filmBudgetUsd' | 'confirmAboveUsd',
+    usd: number | null,
+  ): Promise<ConnectionsOverview> {
     const { config } = await this.effective();
 
     this.userSettings.update(config, (settings) => {
       const rest = Object.fromEntries(
-        Object.entries(settings.spendCaps).filter(([name]) => name !== 'filmBudgetUsd'),
+        Object.entries(settings.spendCaps).filter(([other]) => other !== name),
       );
-      return { ...settings, spendCaps: usd === null ? rest : { ...rest, filmBudgetUsd: usd } };
+      return { ...settings, spendCaps: usd === null ? rest : { ...rest, [name]: usd } };
     });
     return this.overview();
   }

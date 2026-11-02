@@ -25,6 +25,14 @@ export const draftTestEstimateSchema = z.object({
 
 export type DraftTestEstimate = z.infer<typeof draftTestEstimateSchema>;
 
+/**
+ * Il corpo di `POST /troupe/test/:roleId/run`: `spendConfirmed` vuol dire che l'utente ha visto che
+ * la prova supera un limite di spesa e ha scelto di proseguire (D30).
+ */
+export const draftTestRunBodySchema = z.object({ spendConfirmed: z.boolean().optional() });
+
+export type DraftTestRunBody = z.infer<typeof draftTestRunBodySchema>;
+
 /** `POST /troupe/test/:roleId/run`: l'esempio, il risultato e lo scontrino `draft_test`. */
 export const draftTestResultSchema = z.object({
   example: z.unknown(),

@@ -22,7 +22,9 @@ export type MediaErrorCode =
   /** Il momento chiesto non è un tempo valido (negativo, non un numero). */
   | 'invalid_time'
   /** Il momento chiesto è oltre la fine del video: non c'è nessun fotogramma. */
-  | 'no_frame';
+  | 'no_frame'
+  /** ffmpeg ci ha messo troppo e si è fermato: un disco lento o un file enorme, si può riprovare. */
+  | 'timeout';
 
 export class MediaError extends Error {
   constructor(
@@ -53,12 +55,16 @@ interface Run {
 }
 
 /** Lancia ffmpeg con questi argomenti; un errore del sistema (non parte, troppo lento) diventa `MediaError`. */
-function run(args: readonly string[], env: NodeJS.ProcessEnv): Promise<Run & { code: number }> {
+function run(
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+  timeoutMs = TIMEOUT_MS,
+): Promise<Run & { code: number }> {
   return new Promise((resolve, reject) => {
     execFile(
       ffmpegPath(env),
       [...args],
-      { timeout: TIMEOUT_MS, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
+      { timeout: timeoutMs, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
       (error: ExecFileException | null, stdout: string, stderr: string) => {
         if (error === null) {
           resolve({ stdout, stderr, code: 0 });
@@ -67,6 +73,15 @@ function run(args: readonly string[], env: NodeJS.ProcessEnv): Promise<Run & { c
         if (error.code === 'ENOENT' || error.code === 'EACCES') {
           reject(
             new MediaError('ffmpeg_missing', 'Il programma ffmpeg non si trova o non parte.', {
+              cause: error,
+            }),
+          );
+          return;
+        }
+        // Fermato perché troppo lento: non è un video rovinato, e riprovare può bastare.
+        if (error.killed === true) {
+          reject(
+            new MediaError('timeout', 'ffmpeg ci ha messo troppo e si è fermato.', {
               cause: error,
             }),
           );
@@ -84,18 +99,20 @@ const tail = (text: string): string => text.trim().split('\n').slice(-3).join(' 
 
 /**
  * La durata di un video, in secondi. ffmpeg la scrive leggendo il file (`Duration: 00:00:05.04`),
- * anche se poi si ferma perché non gli è stato chiesto altro.
+ * anche se poi si ferma perché non gli è stato chiesto altro. Alcuni formati non la dicono
+ * (`Duration: N/A`): il video si legge lo stesso, e la durata è `undefined`.
  */
 export async function videoDurationS(
   input: string,
   env: NodeJS.ProcessEnv = process.env,
-): Promise<number> {
+): Promise<number | undefined> {
   const { stderr } = await run(['-hide_banner', '-i', input], env);
-  const found = /Duration:\s*(\d+):(\d{2}):(\d{2}(?:\.\d+)?)/.exec(stderr);
+  const found = /Duration:\s*(?:(\d+):(\d{2}):(\d{2}(?:\.\d+)?)|N\/A)/.exec(stderr);
   if (found === null) {
     throw new MediaError('ffmpeg_failed', `Non riesco a leggere la durata: ${tail(stderr)}`);
   }
   const [, hours, minutes, seconds] = found;
+  if (hours === undefined || minutes === undefined || seconds === undefined) return undefined;
   return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
 }
 
@@ -107,6 +124,8 @@ export interface ExtractFrameOptions {
   /** Dove si scrive l'immagine (PNG). Se c'era già, si sostituisce. */
   output: string;
   env?: NodeJS.ProcessEnv;
+  /** Quanto aspettare ffmpeg (ms): di norma bastano pochi secondi. */
+  timeoutMs?: number;
 }
 
 /**
@@ -115,7 +134,7 @@ export interface ExtractFrameOptions {
  * ci sia davvero (`no_frame`), invece di fidarsi dell'uscita.
  */
 export async function extractFrame(options: ExtractFrameOptions): Promise<void> {
-  const { input, atS, output, env = process.env } = options;
+  const { input, atS, output, env = process.env, timeoutMs } = options;
   if (!Number.isFinite(atS) || atS < 0) {
     throw new MediaError('invalid_time', 'Il momento del fotogramma non è valido.');
   }
@@ -136,6 +155,7 @@ export async function extractFrame(options: ExtractFrameOptions): Promise<void> 
       output,
     ],
     env,
+    timeoutMs,
   );
   if (code !== 0) {
     throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);

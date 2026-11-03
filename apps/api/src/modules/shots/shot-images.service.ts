@@ -92,7 +92,7 @@ export class ShotImagesService {
     takeId: string,
     atS: number,
   ): Promise<ShotImages> {
-    const { stored } = this.target(projectId, shotId);
+    this.target(projectId, shotId);
     const found = this.takes.get(takeId);
     const clip = found?.take.assetId;
     if (found?.shotId !== shotId || found.take.status !== 'succeeded' || clip === undefined) {
@@ -105,6 +105,10 @@ export class ShotImagesService {
 
     const moment = await this.momentIn(video.file, atS);
     const frame = await this.saveFrame(projectId, video.file, moment);
+
+    // ffmpeg ha richiesto del tempo: la scheda si rilegge adesso, così non si perde una modifica
+    // fatta nel frattempo (e se il piano è stato rifatto non resta un fotogramma senza inquadratura).
+    const { stored } = this.target(projectId, shotId);
     // Lo stesso momento due volte dà lo stesso file: tra le immagini scelte compare una volta sola.
     const saved =
       this.takes.frames(shotId).find((old) => old.takeId === takeId && old.assetId === frame.id) ??
@@ -126,10 +130,16 @@ export class ShotImagesService {
     return this.view(projectId, shotId, spec);
   }
 
-  /** Il momento chiesto, portato dentro il video: oltre la fine non c'è niente da prendere. */
+  /**
+   * Il momento chiesto, portato dentro il video: oltre la fine non c'è niente da prendere. Chi mette
+   * in pausa sull'ultimo istante manda un tempo che può superare di un soffio la durata che ffmpeg
+   * legge (la scrive al centesimo): quel poco si porta alla fine, non si rifiuta. Se il video non dice
+   * la durata si prova lo stesso, e se non c'è nessun fotogramma lo dice ffmpeg (`no_frame`).
+   */
   private async momentIn(video: string, atS: number): Promise<number> {
     const duration = await mediaStep(() => videoDurationS(video));
-    if (atS > duration) {
+    if (duration === undefined) return atS;
+    if (atS > duration + DURATION_TOLERANCE_S) {
       throw domainError(409, 'invalid_request', { details: { field: 'atS' } });
     }
     // L'ultimo istante a volte non ha un fotogramma intero: si resta un soffio prima.
@@ -152,13 +162,22 @@ export class ShotImagesService {
       const target = path.join(dir, `${id}.png`);
       await rename(temporary, target);
 
-      this.files.registerAsset({
-        id,
-        path: path.relative(this.dataDir, target).replaceAll('\\', '/'),
-        contentType: 'image/png',
-        bytes: bytes.length,
-        projectId,
-      });
+      // Un file già registrato (lo stesso momento di prima) non si tocca, nemmeno se il resto va storto.
+      if (this.files.getAsset(id) === undefined) {
+        try {
+          this.files.registerAsset({
+            id,
+            path: path.relative(this.dataDir, target).replaceAll('\\', '/'),
+            contentType: 'image/png',
+            bytes: bytes.length,
+            projectId,
+          });
+        } catch (error) {
+          // Senza il suo record il file non serve a nessuno: non resta sul disco.
+          await rm(target, { force: true });
+          throw error;
+        }
+      }
       return { id };
     } finally {
       // Se qualcosa è andato storto a metà il file provvisorio non resta: dopo `rename` non c'è più.
@@ -216,8 +235,14 @@ export class ShotImagesService {
   }
 }
 
-/** Quanto si resta prima della fine del video quando si chiede proprio l'ultimo istante (s). */
-const LAST_MOMENT_MARGIN_S = 0.05;
+/**
+ * Quanto si resta prima della fine del video quando si chiede proprio l'ultimo istante (s): più di un
+ * fotogramma anche a 10 al secondo, perché l'ultimo fotogramma intero comincia prima della durata.
+ */
+const LAST_MOMENT_MARGIN_S = 0.15;
+
+/** Di quanto un momento può superare la durata di ffmpeg senza essere «oltre la fine» (s): il lettore e ffmpeg arrotondano diversamente. */
+const DURATION_TOLERANCE_S = 0.5;
 
 /**
  * Un passo di ffmpeg: se non riesce l'errore diventa un errore del dominio (`media_failed`) con un
@@ -230,7 +255,8 @@ async function mediaStep<T>(step: () => Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof MediaError) {
       throw domainError(error.code === 'ffmpeg_missing' ? 503 : 422, 'media_failed', {
-        retryable: false,
+        // Un video rovinato resta tale; un ffmpeg troppo lento, invece, può riuscire la volta dopo.
+        retryable: error.code === 'timeout',
       });
     }
     throw error;

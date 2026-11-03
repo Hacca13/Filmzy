@@ -76,6 +76,36 @@ describe('videoDurationS', () => {
   });
 });
 
+describe('un video che non dice la sua durata', () => {
+  it('si legge lo stesso: la durata non c’è, e un fotogramma si prende comunque', async () => {
+    const raw = path.join(dir, 'senza-durata.m4v');
+    await run(
+      ffmpegPath(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'testsrc=duration=2:size=160x90:rate=10',
+        '-c:v',
+        'mpeg4',
+        '-f',
+        'm4v',
+        raw,
+      ],
+      { windowsHide: true },
+    );
+    const output = path.join(dir, 'senza-durata.png');
+
+    expect(await videoDurationS(raw)).toBeUndefined();
+    await extractFrame({ input: raw, atS: 0.5, output });
+
+    expect([...(await readFile(output)).subarray(0, 4)]).toEqual(PNG_SIGNATURE);
+  });
+});
+
 describe('extractFrame', () => {
   it('salva il fotogramma al momento chiesto come immagine PNG', async () => {
     const output = path.join(dir, 'uno.png');
@@ -112,6 +142,14 @@ describe('extractFrame', () => {
 
     expect(error.code).toBe('no_frame');
     await expect(readFile(output)).rejects.toThrow();
+  });
+
+  it('se ffmpeg ci mette troppo si ferma e lo dice: non è un video rovinato', async () => {
+    const error = await failure(() =>
+      extractFrame({ input: video, atS: 1, output: path.join(dir, 'lento.png'), timeoutMs: 1 }),
+    );
+
+    expect(error.code).toBe('timeout');
   });
 
   it('un tempo che non è un tempo si rifiuta prima di lanciare ffmpeg', async () => {

@@ -204,6 +204,19 @@ describe('«Usa questo fotogramma come punto di partenza»', () => {
     ]);
   }, 30_000);
 
+  it('mettere in pausa sull’ultimo istante vale anche se il lettore supera di un soffio la durata', async () => {
+    const { client } = real;
+    const { path, take } = await withTake(client);
+
+    for (const atS of [VIDEO_DURATION_S, VIDEO_DURATION_S + 0.2]) {
+      const reply = await client.call('POST', `${path}/takes/${take.id}/frame`, { atS });
+      expect(reply.status, String(atS)).toBe(201);
+      expect(
+        shotImagesSchema.parse(reply.body).images.find((image) => image.use === 'first_frame')?.atS,
+      ).toBeLessThanOrEqual(VIDEO_DURATION_S);
+    }
+  }, 30_000);
+
   it('un momento oltre la fine del video si rifiuta, e un tempo impossibile non arriva a ffmpeg', async () => {
     const { client } = real;
     const { path, take } = await withTake(client);

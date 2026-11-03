@@ -13,12 +13,13 @@ import {
   createTakeStore,
   createUploadStore,
   openFilmzyDatabase,
+  type MoodboardStore,
   type SheetStore,
   type ShotStore,
   type TakeStore,
   type UploadStore,
 } from '@filmzy/db';
-import type { Troupe } from '@filmzy/troupe';
+import type { ConfigSource, Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -50,7 +51,7 @@ let dataDir: string;
 let checks: VideoCheck[];
 let accepted: number;
 
-function build() {
+function build(options: { moodboardOn?: boolean; moodboardAssets?: string[] } = {}) {
   const troupe = {
     options: (role: string, request: { inputs: { use: string }[]; characterIds: string[] }) => {
       checks.push({
@@ -68,7 +69,39 @@ function build() {
     },
   } as unknown as ProjectsService;
   const bibles = { assemble: () => Promise.resolve(bible) } as unknown as BibleService;
-  return new ShotImagesService(store, takes, uploads, files, dataDir, troupe, projects, bibles);
+  const moodboards = {
+    get: () => ({
+      projectId: film.id,
+      film: {
+        palette: [],
+        notes: '',
+        references: (options.moodboardAssets ?? []).map((assetId) => ({
+          assetId,
+          origin: 'generated',
+          analysisOnly: false,
+          description: 'a reference',
+          moodTags: [],
+          palette: [],
+        })),
+      },
+      scenes: [],
+    }),
+  } as unknown as MoodboardStore;
+  return new ShotImagesService(
+    store,
+    takes,
+    uploads,
+    moodboards,
+    {
+      load: () =>
+        Promise.resolve({ config: { features: { moodboard: options.moodboardOn ?? true } } }),
+    } as unknown as ConfigSource,
+    files,
+    dataDir,
+    troupe,
+    projects,
+    bibles,
+  );
 }
 
 /** Un tentativo riuscito di uno storyboard con queste immagini: sono quelle tra cui scegliere. */
@@ -184,6 +217,29 @@ describe('impostare le immagini', () => {
       { assetId: 'b', mode: 'storyboard', attempt: 1 },
       { assetId: 'c', mode: 'end_frame', attempt: 1 },
     ]);
+  });
+
+  it('«Dal moodboard» offre le immagini del moodboard, e solo con la funzione accesa; una già presente vale con la prima origine', async () => {
+    withVariants('a');
+
+    const on = await build({ moodboardAssets: ['a', 'm'] }).get(film.id, 'shot-1');
+    const off = await build({ moodboardAssets: ['a', 'm'], moodboardOn: false }).get(
+      film.id,
+      'shot-1',
+    );
+
+    expect(on.candidates).toEqual([
+      { assetId: 'a', mode: 'storyboard', attempt: 1 },
+      { assetId: 'a', mode: 'moodboard' },
+      { assetId: 'm', mode: 'moodboard' },
+    ]);
+    expect(off.candidates).toEqual([{ assetId: 'a', mode: 'storyboard', attempt: 1 }]);
+
+    // 'a' sta in due elenchi: scegliendola vale come immagine dello storyboard.
+    const set = await build({ moodboardAssets: ['a', 'm'] }).set(film.id, 'shot-1', {
+      images: [{ use: 'reference', assetId: 'a' }],
+    });
+    expect(set.images).toEqual([{ use: 'reference', from: 'generate', assetId: 'a' }]);
   });
 
   it('una scelta sbagliata non cambia niente di ciò che c’era', async () => {

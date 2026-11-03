@@ -23,6 +23,23 @@ roles:
     output_strategy: auto
     retries: { invalid_output: 1, technical_error: 2 }
 
+  moodboard_designer:
+    label: Moodboard
+    kind: llm
+    model: claude-sonnet
+    params: { max_tokens: 3000 }
+    instructions: moodboard_designer@1
+    output_strategy: auto
+    retries: { invalid_output: 2, technical_error: 3 }
+
+  moodboard_artist:
+    label: Immagini del moodboard
+    kind: image
+    model: nano-banana-2
+    params: { resolution: "1K", aspect_ratio: "16:9", variants: 1 }
+    instructions: moodboard_artist@1          # template del prompt immagine, senza LLM
+    retries: { technical_error: 2 }
+
   casting:
     label: Direttore del casting
     kind: llm

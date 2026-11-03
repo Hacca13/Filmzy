@@ -105,7 +105,8 @@
         "first_frame",
         "last_frame"
       ]
-    }
+    },
+    "moodboard": null
   },
   "expect": {
     "maxChars": 900,

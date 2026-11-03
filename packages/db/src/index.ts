@@ -15,8 +15,16 @@ export { createCharacterStore } from './character-store.js';
 export type { CharacterChanges, CharacterStore, NewCharacter } from './character-store.js';
 export { createLocationStore } from './location-store.js';
 export { createUploadStore } from './upload-store.js';
+export { createMoodboardStore } from './moodboard-store.js';
 export type { AttemptPatch, LocationStore, NewLocation } from './location-store.js';
 export type { NewUpload, UploadPlace, UploadStore } from './upload-store.js';
+export type {
+  MoodboardChanges,
+  MoodboardStore,
+  MoodboardText,
+  RunPatch,
+  StoredReference,
+} from './moodboard-store.js';
 export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';

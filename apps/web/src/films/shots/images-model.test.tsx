@@ -115,6 +115,7 @@ describe('candidateCaption (T4.6)', () => {
     );
     expect(candidateCaption({ assetId: 'b', mode: 'storyboard', attempt: 1 })).toBeUndefined();
     expect(candidateCaption({ assetId: 'u', mode: 'upload' })).toBe('Caricata da te');
+    expect(candidateCaption({ assetId: 'm', mode: 'moodboard' })).toBe('Dal moodboard');
     expect(candidateCaption({ assetId: 'c', mode: 'take_frame' })).toBeUndefined();
   });
 });

@@ -90,6 +90,88 @@ describe('resolveInstructions sul seme', () => {
     expect(resolved.variant).toBeUndefined();
   });
 
+  describe('il moodboard nelle istruzioni (T4.10, D37)', () => {
+    const brief = {
+      palette: [{ hex: '#c2813a', name: 'Ambra' }, { hex: '#2b3a55' }],
+      notes: 'Luce calda e bassa, ritmo lento.',
+      referenceDescriptions: ['a quiet station at dusk'],
+      scene: { palette: [], notes: 'Qui è notte fonda.' },
+    };
+
+    const renderCinematographer = async (moodboard: unknown) => {
+      const resolved = await resolveInstructions(seedSource, {
+        fallbackId: 'cinematographer',
+        releaseRef: 'cinematographer@1',
+        family: 'image_generic',
+      });
+      const input = { ...(ROLE_INPUT_EXAMPLES.cinematographer as object), moodboard };
+      return renderSections(resolved.sections, input);
+    };
+
+    it('il direttore della fotografia riceve colori e consigli del film e della scena', async () => {
+      const rendered = await renderCinematographer(brief);
+
+      expect(rendered.system).toContain('#c2813a, #2b3a55');
+      expect(rendered.system).toContain('Luce calda e bassa, ritmo lento.');
+      expect(rendered.system).toContain('Per questa scena: Qui è notte fonda.');
+    });
+
+    it('senza moodboard il prompt è quello di prima: niente di nuovo, niente righe vuote in più', async () => {
+      const without = await renderCinematographer(null);
+      const withBrief = await renderCinematographer(brief);
+
+      expect(without.system).not.toContain('moodboard');
+      expect(without.system).not.toContain('Atmosfera del film');
+      expect(withBrief.system?.length).toBeGreaterThan(without.system?.length ?? 0);
+    });
+
+    it('un moodboard di soli consigli, o di sola palette, non rompe niente', async () => {
+      const onlyNotes = await renderCinematographer({
+        palette: [],
+        notes: 'Solo parole.',
+        referenceDescriptions: [],
+        scene: null,
+      });
+      const onlyPalette = await renderCinematographer({
+        palette: [{ hex: '#111111' }],
+        notes: '',
+        referenceDescriptions: [],
+        scene: null,
+      });
+
+      expect(onlyNotes.system).toContain('Solo parole.');
+      expect(onlyNotes.system).not.toContain('colori #');
+      expect(onlyPalette.system).toContain('colori #111111');
+    });
+
+    it('l’aiuto regista, lo scenografo e il character designer lo leggono', async () => {
+      const planner = await resolveInstructions(seedSource, {
+        fallbackId: 'shot_planner',
+        releaseRef: 'shot_planner@1',
+      });
+      const plannerInput = {
+        ...(ROLE_INPUT_EXAMPLES.shot_planner as object),
+        moodboard: brief,
+      };
+      expect((await renderSections(planner.sections, plannerInput)).user).toContain(
+        "Atmosfera voluta dall'utente (moodboard): Luce calda e bassa, ritmo lento.",
+      );
+
+      for (const role of ['set_designer', 'character_designer'] as const) {
+        const resolved = await resolveInstructions(seedSource, {
+          fallbackId: role,
+          releaseRef: `${role}@1`,
+        });
+        const input = { ...(ROLE_INPUT_EXAMPLES[role] as object), moodboard: brief };
+        const withBrief = await renderSections(resolved.sections, input);
+        const without = await renderSections(resolved.sections, { ...input, moodboard: null });
+
+        expect(withBrief.prompt, role).toContain('Colour palette: #c2813a, #2b3a55.');
+        expect(without.prompt, role).not.toContain('Colour palette');
+      }
+    });
+  });
+
   it("dice quando la versione non c'è", async () => {
     await expect(
       resolveInstructions(seedSource, { fallbackId: 'moderator', releaseRef: 'moderator@7' }),

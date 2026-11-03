@@ -1,7 +1,14 @@
 import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { LOCATION_CHANGED_REASON, locationChangeFlags, oldestWork } from './continuity.js';
+import {
+  LOCATION_CHANGED_REASON,
+  MOODBOARD_CHANGED_REASON,
+  locationChangeFlags,
+  mergeFlags,
+  moodboardChangeFlags,
+  oldestWork,
+} from './continuity.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
 const shotIn = (id: string, locationId: string): ShotSpec => ({
@@ -83,5 +90,58 @@ describe('oldestWork: rifare solo una parte non toglie il giallo', () => {
         workedAt: oldestWork({ s1: 3000 }, { s1: 2000 }),
       }),
     ).toEqual({});
+  });
+});
+
+describe('R9: il moodboard cambiato avvisa i take girati prima, in modo leggero (D37)', () => {
+  const shots = [shotIn('s1', 'piazza'), shotIn('s2', 'piazza')];
+
+  it("un take girato prima del cambiamento riceve l'avviso; uno senza take o rifatto dopo no", () => {
+    const flags = moodboardChangeFlags({
+      shots,
+      changes: { film: 1000, scenes: {} },
+      takeAt: { s1: 500 },
+    });
+
+    expect(Object.keys(flags)).toEqual(['s1']);
+    expect(flags['s1']).toEqual([{ code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule' }]);
+    expect(
+      moodboardChangeFlags({ shots, changes: { film: 1000, scenes: {} }, takeAt: { s1: 1500 } }),
+    ).toEqual({});
+  });
+
+  it("conta il cambiamento più recente fra quello del film e quello della scena dell'inquadratura", () => {
+    const scene = (shots[0] as ShotSpec).sceneId;
+    const takeAt = { s1: 1000, s2: 1000 };
+
+    // Il film è cambiato prima dei take, ma la scena dopo: avvisa.
+    expect(
+      Object.keys(
+        moodboardChangeFlags({ shots, changes: { film: 100, scenes: { [scene]: 2000 } }, takeAt }),
+      ),
+    ).toEqual(['s1', 's2']);
+    // Una scena diversa non conta.
+    expect(
+      moodboardChangeFlags({ shots, changes: { scenes: { 'scene-99': 5000 } }, takeAt }),
+    ).toEqual({});
+  });
+
+  it("senza cambiamenti non c'è nessun avviso", () => {
+    expect(moodboardChangeFlags({ shots, changes: { scenes: {} }, takeAt: { s1: 1 } })).toEqual({});
+  });
+
+  it('è un avviso leggero e dice cosa fare', () => {
+    expect(MOODBOARD_CHANGED_REASON).toContain('rigiralo');
+  });
+});
+
+describe('mergeFlags', () => {
+  const r6 = { code: 'R6', reason: 'x', origin: 'rule' as const };
+  const r9 = { code: 'R9', reason: 'y', origin: 'rule' as const };
+
+  it("ogni inquadratura ha i gialli di tutte le regole, nell'ordine dato", () => {
+    expect(mergeFlags({ s1: [r6], s2: [r6] }, { s1: [r9] })).toEqual({ s1: [r6, r9], s2: [r6] });
+    expect(mergeFlags({}, {})).toEqual({});
+    expect(mergeFlags()).toEqual({});
   });
 });

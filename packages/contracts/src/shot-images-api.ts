@@ -37,7 +37,7 @@ export type SetShotImagesBody = z.infer<typeof setShotImagesBodySchema>;
  */
 export const imageCandidateSchema = z.object({
   assetId: assetIdSchema,
-  mode: z.enum([...storyboardModeSchema.options, 'take_frame', 'upload']),
+  mode: z.enum([...storyboardModeSchema.options, 'take_frame', 'upload', 'moodboard']),
   attempt: z.number().int().positive().optional(),
   takeId: takeIdSchema.optional(),
   atS: z.number().nonnegative().optional(),

@@ -38,6 +38,7 @@ import { ShotsService } from './shots.service.js';
 import { StoryboardService } from './storyboard.service.js';
 import { TakesService } from './takes.service.js';
 import { LocationsModule } from '../locations/locations.module.js';
+import { MoodboardStoreModule } from '../moodboard/moodboard-store.module.js';
 import { UploadStoreModule } from '../uploads/upload-store.module.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
@@ -246,6 +247,7 @@ class ShotsController {
     CastModule,
     JobsModule,
     LocationsModule,
+    MoodboardStoreModule,
     UploadStoreModule,
   ],
   controllers: [ShotsController],

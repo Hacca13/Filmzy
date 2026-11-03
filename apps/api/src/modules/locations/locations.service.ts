@@ -14,6 +14,7 @@ import {
 import {
   projectsDir,
   type LocationStore,
+  type MoodboardStore,
   type ScreenplayStore,
   type SheetStore,
   type UploadStore,
@@ -41,6 +42,8 @@ import {
   variantsOf,
   waitForMedia,
 } from '../media/image-jobs.js';
+import { moodboardBriefFor } from '../moodboard/brief.js';
+import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
@@ -72,6 +75,7 @@ export class LocationsService implements OnModuleInit {
 
   constructor(
     @Inject(LOCATION_STORE) private readonly store: LocationStore,
+    @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     @Inject(UPLOAD_STORE) private readonly uploads: UploadStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(SCREENPLAY_STORE) private readonly screenplays: ScreenplayStore,
@@ -286,7 +290,13 @@ export class LocationsService implements OnModuleInit {
       role: ROLE,
       releaseRef: config.roles[ROLE]?.instructions,
       userRef: loaded.settings?.roleSettings[ROLE]?.instructions,
-      input: { location, style, moodboard: null },
+      // La palette del moodboard del film, se l'utente ne ha uno (T4.10).
+      input: {
+        location,
+        style,
+        moodboard:
+          moodboardBriefFor({ config, store: this.moodboards, projectId: project.id }) ?? null,
+      },
     });
 
     return {

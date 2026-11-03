@@ -3,9 +3,10 @@ import {
   shotPlannerInputSchema,
   type Character,
   type Location,
+  type Moodboard,
   type Project,
 } from '@filmzy/contracts';
-import type { CharacterStore, LocationStore, SheetStore } from '@filmzy/db';
+import type { CharacterStore, LocationStore, MoodboardStore, SheetStore } from '@filmzy/db';
 import type { ConfigSource, LoadedConfig } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
@@ -49,6 +50,9 @@ function build(
     styles?: unknown[];
     cinematography?: unknown[];
     locked?: Record<string, string[]>;
+    moodboard?: Moodboard;
+    /** La funzione `moodboard` del seme: accesa se non si dice altro. */
+    moodboardOn?: boolean;
   } = {},
 ) {
   const characters = { list: () => [anna, marco] } as unknown as CharacterStore;
@@ -65,6 +69,7 @@ function build(
             cinematography: options.cinematography ?? [example.cinematography],
           },
           limits: { max_characters: 2 },
+          features: { moodboard: options.moodboardOn ?? true },
         },
         origin: 'prova',
         releaseId: 'prova',
@@ -77,7 +82,15 @@ function build(
       return film;
     },
   } as unknown as ProjectsService;
-  return new BibleService(characters, sheets, locations, configSource, projects);
+  const moodboards = {
+    get: () =>
+      options.moodboard ?? {
+        projectId: film.id,
+        film: { palette: [], notes: '', references: [] },
+        scenes: [],
+      },
+  } as unknown as MoodboardStore;
+  return new BibleService(characters, sheets, locations, configSource, moodboards, projects);
 }
 
 async function codeOf(call: () => Promise<unknown>): Promise<string> {
@@ -140,6 +153,40 @@ describe('la Bibbia del film', () => {
     expect(await codeOf(() => build({ cinematography: [] }).assemble(film.id))).toBe(
       'config_invalid:cinematography',
     );
+  });
+
+  it('senza moodboard la Bibbia è quella di prima; con un moodboard porta solo il testo (T4.10)', async () => {
+    expect((await build().assemble(film.id)).moodboard).toBeUndefined();
+
+    const withMoodboard: Moodboard = {
+      projectId: film.id,
+      film: {
+        palette: [{ hex: '#c2813a' }],
+        notes: 'Luce calda, ombre lunghe.',
+        references: [
+          {
+            assetId: 'img-1',
+            origin: 'uploaded',
+            analysisOnly: true,
+            description: 'a quiet station at dusk',
+            moodTags: ['quiet'],
+            palette: [],
+          },
+        ],
+      },
+      scenes: [],
+    };
+    const bible = await build({ moodboard: withMoodboard }).assemble(film.id);
+
+    expect(bible.moodboard).toEqual({
+      palette: [{ hex: '#c2813a' }],
+      notes: 'Luce calda, ombre lunghe.',
+      referenceDescriptions: ['a quiet station at dusk'],
+      scene: null,
+    });
+    // Con la funzione spenta il film lavora come se il moodboard non ci fosse.
+    const off = await build({ moodboard: withMoodboard, moodboardOn: false }).assemble(film.id);
+    expect(off.moodboard).toBeUndefined();
   });
 
   it('un film che non esiste dà «non trovato»', async () => {

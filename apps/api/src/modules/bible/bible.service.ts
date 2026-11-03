@@ -1,5 +1,5 @@
 import type { StoryBible } from '@filmzy/contracts';
-import type { CharacterStore, LocationStore, SheetStore } from '@filmzy/db';
+import type { CharacterStore, LocationStore, MoodboardStore, SheetStore } from '@filmzy/db';
 import type { ConfigSource, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -7,6 +7,8 @@ import { domainError } from '../../http/domain-error.js';
 import { CHARACTER_STORE, SHEET_STORE } from '../cast/tokens.js';
 import { characterWithSheet } from '../cast/with-sheet.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
+import { moodboardBriefFor } from '../moodboard/brief.js';
+import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE } from '../troupe/tokens.js';
 
@@ -16,7 +18,7 @@ import { CONFIG_SOURCE } from '../troupe/tokens.js';
  * passano ai ruoli (T3.9 in poi), così nessuno la ricompone a modo suo.
  *
  * Un personaggio ha come scheda le tre immagini del volto **bloccato** (T3.6), un luogo l'immagine
- * del set scelta (T3.7). Il moodboard non c'è finché non arriva l'opzione (T4.10).
+ * del set scelta (T3.7). Il moodboard (T4.10) c'è solo se l'utente l'ha fatto, e porta solo testo.
  */
 @Injectable()
 export class BibleService {
@@ -25,10 +27,15 @@ export class BibleService {
     @Inject(SHEET_STORE) private readonly sheets: SheetStore,
     @Inject(LOCATION_STORE) private readonly locations: LocationStore,
     @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
+    @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     private readonly projects: ProjectsService,
   ) {}
 
-  async assemble(projectId: string): Promise<StoryBible> {
+  /**
+   * La Bibbia del film. Con `sceneId` il moodboard (T4.10) porta anche la parte di quella scena: la
+   * usano i compiti che lavorano su una scena o su un'inquadratura.
+   */
+  async assemble(projectId: string, sceneId?: string): Promise<StoryBible> {
     const project = this.projects.get(projectId);
     const config = await this.config();
 
@@ -44,6 +51,9 @@ export class BibleService {
     if (cinematography === undefined) {
       throw domainError(422, 'config_invalid', { details: { field: 'cinematography' } });
     }
+
+    // Il moodboard c'è solo se l'utente l'ha fatto (D37): senza, la Bibbia è quella di prima.
+    const brief = moodboardBriefFor({ config, store: this.moodboards, projectId, sceneId });
 
     return {
       project: {
@@ -61,6 +71,7 @@ export class BibleService {
         .list(projectId)
         .map((character) => characterWithSheet(character, this.sheets)),
       locations: this.locations.list(projectId),
+      ...(brief === undefined ? {} : { moodboard: brief }),
       limits: { maxCharacters: config.limits.max_characters },
     };
   }

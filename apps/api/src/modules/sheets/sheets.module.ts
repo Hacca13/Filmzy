@@ -20,6 +20,7 @@ import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { CastModule } from '../cast/cast.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
+import { MoodboardStoreModule } from '../moodboard/moodboard-store.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { SheetService } from './sheet.service.js';
 
@@ -77,7 +78,7 @@ class SheetController {
 }
 
 @Module({
-  imports: [CastModule, JobsModule, ProjectsModule],
+  imports: [CastModule, JobsModule, MoodboardStoreModule, ProjectsModule],
   controllers: [SheetController],
   providers: [SheetService],
 })

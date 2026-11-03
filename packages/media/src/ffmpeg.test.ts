@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -8,6 +8,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   MediaError,
+  dominantColors,
+  dominantFromRgb,
   extractFrame,
   ffmpegPath,
   markArea,
@@ -232,6 +234,122 @@ describe('markArea e maskHasPaint', () => {
     ).toBe('ffmpeg_failed');
     expect((await failure(() => maskHasPaint(text))).code).toBe('ffmpeg_failed');
     await expect(readFile(output)).rejects.toThrow();
+  });
+});
+
+async function makeImage(name: string, filter: string, source: string): Promise<string> {
+  const file = path.join(dir, name);
+  await run(
+    ffmpegPath(),
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      source,
+      ...(filter === '' ? [] : ['-vf', filter]),
+      '-frames:v',
+      '1',
+      '-y',
+      file,
+    ],
+    { windowsHide: true },
+  );
+  return file;
+}
+
+/** ffmpeg converte i colori con un piccolo arrotondamento (rosso puro esce #fd0000): si confronta con una tolleranza. */
+const near = (hex: string | undefined, expected: [number, number, number]): boolean => {
+  const value = Number.parseInt((hex ?? '#000000').slice(1), 16);
+  const actual = [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  return actual.every((channel, index) => Math.abs(channel - (expected[index] ?? 0)) <= 8);
+};
+
+describe('dominantFromRgb e dominantColors (D37)', () => {
+  const pixels = (...colors: [number, number, number, number][]) =>
+    Uint8Array.from(
+      colors.flatMap(([r, g, b, times]) => Array.from({ length: times }, () => [r, g, b]).flat()),
+    );
+
+  it('i colori più frequenti, dal più frequente', () => {
+    expect(dominantFromRgb(pixels([255, 0, 0, 10], [0, 0, 255, 30], [0, 255, 0, 20]), 3)).toEqual([
+      '#0000ff',
+      '#00ff00',
+      '#ff0000',
+    ]);
+  });
+
+  it('sfumature quasi uguali contano come un colore solo; il numero richiesto è un massimo', () => {
+    const shades = pixels(
+      [200, 30, 30, 20],
+      [205, 32, 28, 15],
+      [198, 28, 33, 10],
+      [10, 10, 220, 5],
+    );
+
+    expect(dominantFromRgb(shades, 5)).toHaveLength(2);
+    expect(dominantFromRgb(pixels([255, 0, 0, 10], [0, 0, 255, 10]), 1)).toHaveLength(1);
+    expect(dominantFromRgb(new Uint8Array(), 3)).toEqual([]);
+  });
+
+  it("da un'immagine vera: una tinta unita dà quel colore", async () => {
+    const red = await makeImage('rossa.png', '', 'color=c=red:s=64x64');
+
+    const [first] = await dominantColors({ input: red, count: 3 });
+
+    expect(near(first, [255, 0, 0])).toBe(true);
+  });
+
+  it("da un'immagine mezza rossa e mezza blu dà i due colori", async () => {
+    const split = await makeImage(
+      'mezza.png',
+      'drawbox=x=32:y=0:w=32:h=64:color=blue:t=fill',
+      'color=c=red:s=64x64',
+    );
+
+    const colors = await dominantColors({ input: split, count: 4 });
+
+    expect(colors).toHaveLength(2);
+    expect(colors.some((color) => near(color, [255, 0, 0]))).toBe(true);
+    expect(colors.some((color) => near(color, [0, 0, 255]))).toBe(true);
+  });
+
+  it('i punti trasparenti non contano: un PNG mezzo trasparente dà solo il colore che si vede', async () => {
+    // La metà sinistra è rossa ma trasparente, la destra è blu pieno: il rosso non si vede, quindi non conta.
+    const half = await makeImage(
+      'trasparente.png',
+      '',
+      "color=c=black:s=64x64,format=rgba,geq=r='if(lt(X,32),255,0)':g='0':b='if(lt(X,32),0,255)':a='if(lt(X,32),0,255)'",
+    );
+
+    const colors = await dominantColors({ input: half, count: 4 });
+
+    expect(colors).toHaveLength(1);
+    expect(near(colors[0], [0, 0, 255])).toBe(true);
+  });
+
+  it('con quattro byte a pixel, il trasparente si salta', () => {
+    const rgba = Uint8Array.from([255, 0, 0, 255, 0, 255, 0, 0, 0, 255, 0, 10, 255, 0, 0, 255]);
+
+    expect(dominantFromRgb(rgba, 4, 4)).toEqual(['#ff0000']);
+  });
+
+  it("un file che non è un'immagine, o un numero che non va, è un errore e non lascia file", async () => {
+    const text = path.join(dir, 'finta-colori.png');
+    await writeFile(text, 'non sono una foto');
+    const before = (await readdir(tmpdir())).filter((name) => name.startsWith('filmzy-colori-'));
+
+    expect((await failure(() => dominantColors({ input: text, count: 3 }))).code).toBe(
+      'ffmpeg_failed',
+    );
+    expect((await failure(() => dominantColors({ input: text, count: 0 }))).code).toBe(
+      'invalid_time',
+    );
+    expect((await readdir(tmpdir())).filter((name) => name.startsWith('filmzy-colori-'))).toEqual(
+      before,
+    );
   });
 });
 

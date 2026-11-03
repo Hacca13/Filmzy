@@ -17,6 +17,8 @@ export type Color = z.infer<typeof colorSchema>;
  * di un'inquadratura. `generationId` c'è solo per `origin: 'generated'`.
  */
 export const moodReferenceSchema = z.object({
+  /** Il riferimento nel moodboard (T4.10): serve a toglierlo. I ruoli non lo leggono. */
+  id: z.string().min(1).optional(),
   assetId: assetIdSchema,
   origin: z.enum(['generated', 'uploaded']),
   analysisOnly: z.boolean(),
@@ -57,11 +59,13 @@ export const moodboardBriefSchema = z.object({
   palette: z.array(colorSchema),
   notes: z.string(),
   referenceDescriptions: z.array(z.string().min(1)),
+  /** La parte della scena (T4.10); `null` se la scena non ne ha una sua: il testo delle istruzioni la legge sempre. */
   scene: z
     .object({
       palette: z.array(colorSchema),
       notes: z.string(),
     })
+    .nullable()
     .optional(),
 });
 

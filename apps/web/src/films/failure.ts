@@ -78,13 +78,48 @@ const BY_CODE: Record<string, Failure> = {
   provider_quota_exhausted: {
     reason: 'I fondi presso il fornitore sono finiti',
     advice: 'Ricarica il conto o cambia servizio',
-    actions: [{ kind: 'link', label: 'Apri il fornitore', href: CONNECTIONS }, changeService],
+    actions: [{ kind: 'link', label: 'Apri le connessioni', href: CONNECTIONS }, changeService],
     mayHaveCost: false,
   },
+  // «Riprova» passa dal controllo della spesa: se il limite è ancora superato chiede di proseguire o alzarlo.
   spend_cap_reached: {
     reason: 'Hai raggiunto il limite di spesa',
     advice: 'Alza il limite o prosegui',
-    actions: [{ kind: 'link', label: 'Alza il limite', href: SPEND }, changeService],
+    actions: [{ kind: 'link', label: 'Alza il limite', href: SPEND }, retry, changeService],
+    mayHaveCost: false,
+  },
+  // Riprovare o cambiare servizio non cambia niente: si dice cosa va sistemato e dove.
+  role_disabled: {
+    reason: 'Questo ruolo è spento',
+    advice: 'Accendilo in «Chi fa cosa»',
+    actions: [{ kind: 'link', label: 'Apri «Chi fa cosa»', href: '#/impostazioni/chi-fa-cosa' }],
+    mayHaveCost: false,
+  },
+  config_invalid: {
+    reason: 'C’è qualcosa che non va nella configurazione',
+    advice: 'Guarda i problemi segnati nelle impostazioni avanzate',
+    actions: [
+      { kind: 'link', label: 'Apri le impostazioni avanzate', href: '#/impostazioni/avanzate' },
+    ],
+    mayHaveCost: false,
+  },
+  secret_store_unavailable: {
+    reason: 'Le chiavi si salvano solo nel programma installato',
+    advice: 'Per ora mettile nel file .env, come spiegato nel README',
+    actions: [],
+    mayHaveCost: false,
+  },
+  // Per esempio un fotogramma impostato che non c'è più: un altro tentativo non lo rimette a posto.
+  invalid_request: {
+    reason: 'La richiesta non si può fare così',
+    advice: 'Controlla le immagini impostate: se una non c’è più, cambiala',
+    actions: [],
+    mayHaveCost: false,
+  },
+  not_found: {
+    reason: 'Non trovo più quello che serviva',
+    advice: 'Controlla le immagini impostate e rifai l’inquadratura se serve',
+    actions: [],
     mayHaveCost: false,
   },
   no_eligible_model: {
@@ -118,8 +153,6 @@ export function failureText(code: string | undefined): string {
   return `${failure.reason} · ${failure.advice}`;
 }
 
-/** Dopo un rifiuto non si offre nessuna scelta che lo aggiri. */
-export const FAILURE_TITLE = 'La generazione non è stata completata';
-
+/** Dove il servizio può aver già iniziato il lavoro: meglio guardare i costi nel suo pannello. */
 export const COST_NOTE =
   'Se il servizio ha già iniziato il lavoro, verifica eventuali costi nel suo pannello.';

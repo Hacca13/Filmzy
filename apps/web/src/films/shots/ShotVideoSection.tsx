@@ -75,6 +75,7 @@ export function ShotVideoSection({
                 />
               )}
               <p className="hint">{takeCaption(take)}</p>
+              {/* I take arrivano dal più recente: solo il primo offre cosa fare dopo un fallimento. */}
               {take.status === 'failed' && index === 0 ? (
                 <FailureActions
                   code={take.errorCode}

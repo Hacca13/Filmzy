@@ -73,7 +73,8 @@ export function ImageAttemptsSection<T extends ImageSet>({
   const action = useAction();
   const busy = generation.busy || action.busy;
   // Solo l'ultimo tentativo offre cosa fare dopo un fallimento: quelli di prima sono storia.
-  const latestAttempt = images?.attempts[0]?.attempt;
+  const latestAttempt =
+    images === undefined ? undefined : Math.max(0, ...images.attempts.map((item) => item.attempt));
 
   return (
     <section className="sheet" aria-label={title}>

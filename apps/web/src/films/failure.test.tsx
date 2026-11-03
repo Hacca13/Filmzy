@@ -46,8 +46,35 @@ describe('failureOf', () => {
 
     expect(labels('provider_auth_failed')).toEqual(['Sostituisci la chiave', 'change_service']);
     expect(labels('secret_missing')).toEqual(['Inserisci la chiave', 'change_service']);
-    expect(labels('provider_quota_exhausted')).toEqual(['Apri il fornitore', 'change_service']);
-    expect(labels('spend_cap_reached')).toEqual(['Alza il limite', 'change_service']);
+    expect(labels('provider_quota_exhausted')).toEqual(['Apri le connessioni', 'change_service']);
+    // Col limite di spesa si può anche proseguire: «Riprova» passa dal controllo della spesa.
+    expect(labels('spend_cap_reached')).toEqual(['Alza il limite', 'retry', 'change_service']);
+  });
+
+  it('ciò che riprovare o cambiare servizio non può sistemare dice cosa va sistemato, senza «Riprova»', () => {
+    for (const code of [
+      'role_disabled',
+      'config_invalid',
+      'secret_store_unavailable',
+      'invalid_request',
+      'not_found',
+    ]) {
+      const failure = failureOf(code);
+
+      expect(
+        failure.actions.map((action) => action.kind),
+        code,
+      ).not.toContain('retry');
+      expect(
+        failure.actions.map((action) => action.kind),
+        code,
+      ).not.toContain('change_service');
+      expect(failure.mayHaveCost, code).toBe(false);
+    }
+    expect(failureText('invalid_request')).toContain('immagini impostate');
+    expect(failureOf('role_disabled').actions).toEqual([
+      { kind: 'link', label: 'Apri «Chi fa cosa»', href: '#/impostazioni/chi-fa-cosa' },
+    ]);
   });
 
   it('un codice che non conosciamo si tratta da errore tecnico, mai con una schermata vuota', () => {
@@ -111,6 +138,10 @@ describe('FailureActions', () => {
 
   it('con il limite di spesa il collegamento porta a «Spese e tetti»', () => {
     expect(render('spend_cap_reached')).toContain('href="#/impostazioni/spese"');
+  });
+
+  it('«Riprova» porta la stima del servizio in uso, come ogni pulsante che spende', () => {
+    expect(render('timeout')).toContain('Riprova · circa 0,20 $');
   });
 
   it('mentre qualcosa lavora «Riprova» è spento: non si apre un secondo tentativo', () => {

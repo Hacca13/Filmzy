@@ -1,4 +1,5 @@
 import { ChangeService } from '../components/ChangeService';
+import { generateLabel } from '../components/change-service';
 import { COST_NOTE, failureOf } from './failure';
 import type { Generation } from './generation';
 
@@ -39,7 +40,7 @@ export function FailureActions<T>({
                     disabled={busy || generation.chosen === undefined}
                     onClick={generation.run}
                   >
-                    Riprova
+                    {generateLabel(generation.chosen).replace('Genera', 'Riprova')}
                   </button>
                 );
               case 'change_service':

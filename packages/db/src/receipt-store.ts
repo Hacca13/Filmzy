@@ -3,10 +3,24 @@ import {
   type GenerationPurpose,
   type GenerationReceipt,
 } from '@filmzy/contracts';
-import { desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { generations, type GenerationRow } from './schema.js';
+
+/**
+ * Quanto si è speso per un ruolo con un servizio (e un fornitore) in un film (T4.7). `projectId` è
+ * nullo per le chiamate che non sono di un film (le prove delle impostazioni). `calls` conta gli
+ * scontrini che hanno lavorato: una chiamata fallita non spende e non conta.
+ */
+export interface SpendRow {
+  projectId: string | null;
+  role: string;
+  modelId: string;
+  connectionId: string;
+  spentUsd: number;
+  calls: number;
+}
 
 /**
  * Gli scontrini nel database (architettura §4.11). Ha la forma che la troupe si aspetta da un
@@ -26,6 +40,11 @@ export interface ReceiptStore {
   spentOnProject: (projectId: string) => number;
   /** Quanto si è speso per ogni film. */
   spentByProject: () => Record<string, number>;
+  /**
+   * La spesa divisa per film, ruolo, servizio e fornitore (T4.7): da qui si ricavano le viste del pannello
+   * «Quanto ho speso». Si può restringere a un film e a un periodo (da `since` in poi).
+   */
+  spendRows: (filter?: { projectId?: string; since?: Date }) => SpendRow[];
 }
 
 /**
@@ -93,6 +112,32 @@ export function createReceiptStore(db: FilmzyDb): ReceiptStore {
       return Object.fromEntries(
         rows.flatMap((row) => (row.projectId === null ? [] : [[row.projectId, row.spent]])),
       );
+    },
+
+    spendRows({ projectId, since } = {}) {
+      const conditions = [
+        projectId === undefined ? undefined : eq(generations.projectId, projectId),
+        since === undefined ? undefined : gte(generations.createdAt, since.getTime()),
+      ].filter((condition) => condition !== undefined);
+
+      return db
+        .select({
+          projectId: generations.projectId,
+          role: generations.role,
+          modelId: generations.modelId,
+          connectionId: generations.connectionId,
+          spentUsd: sql<number>`SUM(${COST})`,
+          calls: sql<number>`SUM(CASE WHEN ${generations.status} = 'failed' THEN 0 ELSE 1 END)`,
+        })
+        .from(generations)
+        .where(and(...conditions))
+        .groupBy(
+          generations.projectId,
+          generations.role,
+          generations.modelId,
+          generations.connectionId,
+        )
+        .all();
     },
 
     list({ purpose, limit = 50 } = {}) {

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { NEW_FILM_HREF, filmHref, ideaHref, parseFilmRoute } from './routes';
+import { NEW_FILM_HREF, filmHref, ideaHref, parseFilmRoute, spendHref } from './routes';
 
 describe('parseFilmRoute', () => {
-  it('riconosce le tre schermate del film', () => {
+  it('riconosce le schermate del film', () => {
     expect(parseFilmRoute('/film/nuovo')).toEqual({ page: 'new' });
     expect(parseFilmRoute('/film/abc-123')).toEqual({ page: 'film', id: 'abc-123' });
     expect(parseFilmRoute('/film/abc-123/idea')).toEqual({ page: 'idea', id: 'abc-123' });
+    expect(parseFilmRoute('/film/abc-123/spese')).toEqual({ page: 'spend', id: 'abc-123' });
   });
 
   it('non scambia per un film quello che non lo è', () => {
@@ -28,6 +29,7 @@ describe('parseFilmRoute', () => {
     for (const id of ['abc-123', 'con spazio', 'a/b']) {
       expect(parseFilmRoute(filmHref(id).slice(1))).toEqual({ page: 'film', id });
       expect(parseFilmRoute(ideaHref(id).slice(1))).toEqual({ page: 'idea', id });
+      expect(parseFilmRoute(spendHref(id).slice(1))).toEqual({ page: 'spend', id });
     }
   });
 });

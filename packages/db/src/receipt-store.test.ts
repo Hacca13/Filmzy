@@ -2,7 +2,7 @@ import type { GenerationReceipt } from '@filmzy/contracts';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { openFilmzyDatabase, type OpenedDatabase } from './open.js';
-import { createReceiptStore, type ReceiptStore } from './receipt-store.js';
+import { createReceiptStore, type ReceiptStore, type SpendRow } from './receipt-store.js';
 import { generations } from './schema.js';
 import { tempDataDir } from './test.fixtures.js';
 
@@ -206,7 +206,113 @@ describe('spesa dagli scontrini (D30)', () => {
     expect(store.spentByProject()).toEqual({ 'film-1': 3, 'film-2': 4 });
   });
 
+  it('la spesa si divide per film, ruolo, servizio e fornitore, e una chiamata fallita non conta', async () => {
+    const at = (day: number) => `2026-10-${String(day).padStart(2, '0')}T10:00:00.000Z`;
+    await store.write(
+      receipt({
+        id: 'a',
+        projectId: 'film-1',
+        role: 'camera_operator',
+        modelId: 'kling',
+        actualCostUsd: 2,
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'b',
+        projectId: 'film-1',
+        role: 'camera_operator',
+        modelId: 'kling',
+        actualCostUsd: 1,
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'c',
+        projectId: 'film-1',
+        role: 'screenwriter',
+        modelId: 'claude',
+        connectionId: 'anthropic',
+        actualCostUsd: 0.5,
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'd',
+        projectId: 'film-1',
+        role: 'camera_operator',
+        modelId: 'kling',
+        status: 'failed',
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'e',
+        projectId: 'film-2',
+        role: 'camera_operator',
+        modelId: 'kling',
+        actualCostUsd: 4,
+        createdAt: at(2),
+      }),
+    );
+    await store.write(
+      receipt({ id: 'f', role: 'screenwriter', modelId: 'claude', actualCostUsd: 0.1 }),
+    );
+
+    const key = (row: SpendRow) => `${row.projectId ?? '-'}/${row.role}/${row.modelId}`;
+    const rows = Object.fromEntries(store.spendRows().map((row) => [key(row), row]));
+
+    expect(rows['film-1/camera_operator/kling']).toMatchObject({ spentUsd: 3, calls: 2 });
+    expect(rows['film-1/screenwriter/claude']).toMatchObject({
+      spentUsd: 0.5,
+      calls: 1,
+      connectionId: 'anthropic',
+    });
+    expect(rows['film-2/camera_operator/kling']).toMatchObject({ spentUsd: 4, calls: 1 });
+    expect(rows['-/screenwriter/claude']).toMatchObject({ projectId: null, spentUsd: 0.1 });
+    // Il totale dei gruppi è la spesa che si somma altrove: un conto solo.
+    const total = store
+      .spendRows({ projectId: 'film-1' })
+      .reduce((sum, row) => sum + row.spentUsd, 0);
+    expect(total).toBeCloseTo(store.spentOnProject('film-1'));
+  });
+
+  it('la spesa si restringe a un film o a un periodo', async () => {
+    await store.write(
+      receipt({
+        id: 'old',
+        projectId: 'film-1',
+        actualCostUsd: 5,
+        createdAt: '2026-09-15T10:00:00.000Z',
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'new',
+        projectId: 'film-1',
+        actualCostUsd: 2,
+        createdAt: '2026-10-15T10:00:00.000Z',
+      }),
+    );
+    await store.write(
+      receipt({
+        id: 'other',
+        projectId: 'film-2',
+        actualCostUsd: 7,
+        createdAt: '2026-10-16T10:00:00.000Z',
+      }),
+    );
+
+    const sum = (rows: SpendRow[]) => rows.reduce((total, row) => total + row.spentUsd, 0);
+
+    expect(sum(store.spendRows({ projectId: 'film-1' }))).toBe(7);
+    expect(sum(store.spendRows({ since: month }))).toBe(9);
+    expect(sum(store.spendRows({ projectId: 'film-1', since: month }))).toBe(2);
+    expect(store.spendRows({ projectId: 'non-c-e' })).toEqual([]);
+  });
+
   it('senza scontrini la spesa è zero, non un errore', () => {
+    expect(store.spendRows()).toEqual([]);
     expect(store.spentByConnectionSince(month)).toEqual({});
     expect(store.spentByProject()).toEqual({});
   });

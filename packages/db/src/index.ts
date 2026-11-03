@@ -26,7 +26,7 @@ export type { NewTake, StoredTake, TakePatch, TakeStore } from './take-store.js'
 export { createSheetStore } from './sheet-store.js';
 export type { AssetRecord, SheetImagePatch, SheetStore } from './sheet-store.js';
 export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';
-export type { ReceiptStore } from './receipt-store.js';
+export type { ReceiptStore, SpendRow } from './receipt-store.js';
 export type { PreferencesStore } from './preferences-store.js';
 export { createJobQueue } from './queue.js';
 export type { EnqueueInput, JobFailure, JobQueue, JobQueueOptions } from './queue.js';

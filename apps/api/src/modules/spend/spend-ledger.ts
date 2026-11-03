@@ -14,6 +14,9 @@ const WARNING_PERCENT = 80;
 /** Per non scambiare un arrotondamento dei decimali per un superamento. */
 const EPSILON = 1e-9;
 
+/** Ciò che il registro sa da solo: la spesa del mese per fornitore e i limiti. */
+export type LedgerOverview = Omit<SpendOverview, 'films' | 'filmsMonth' | 'filmsMonthUsd'>;
+
 export interface SpendLedgerOptions {
   receipts: ReceiptStore;
   configSource: ConfigSource;
@@ -82,8 +85,11 @@ export class SpendLedger implements SpendGuard {
     return undefined;
   }
 
-  /** Quanto speso nel mese per fornitore, con quanto manca al limite, più i limiti e i film. */
-  async overview(): Promise<SpendOverview | undefined> {
+  /**
+   * Quanto speso nel mese per fornitore, con quanto manca al limite, più i limiti. I film con i loro
+   * titoli li aggiunge `SpendReport`: qui non servono per controllare un limite.
+   */
+  async overview(): Promise<LedgerOverview | undefined> {
     const loaded = await this.options.configSource.load();
     if (loaded.config === undefined) return undefined;
     const { config, settings } = loaded;
@@ -120,14 +126,12 @@ export class SpendLedger implements SpendGuard {
       providers,
       ...(filmBudgetUsd === undefined ? {} : { filmBudgetUsd }),
       ...(confirmAboveUsd === undefined ? {} : { confirmAboveUsd }),
-      films: Object.entries(this.options.receipts.spentByProject())
-        .map(([projectId, spentUsd]) => ({ projectId, spentUsd }))
-        .sort((a, b) => b.spentUsd - a.spentUsd),
+      servicesMonth: providers.filter((provider) => provider.spentUsd > 0).length,
     };
   }
 
   /** L'inizio del mese **dell'utente** (fuso del suo computer): il mese di cui parla chi guarda la spesa. */
-  private monthStart(): Date {
+  monthStart(): Date {
     const now = this.now();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   }

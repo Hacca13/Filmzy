@@ -5,6 +5,7 @@ import { FilmPage } from './films/FilmPage';
 import { FilmsHome } from './films/FilmsHome';
 import { IdeaWizard } from './films/IdeaWizard';
 import { parseFilmRoute, type FilmRoute } from './films/routes';
+import { FilmSpendPage } from './films/spend/FilmSpendPage';
 import { useHashPath } from './lib/route';
 import { SettingsPage } from './settings/SettingsPage';
 import { FirstRunGate } from './welcome/FirstRunGate';
@@ -39,6 +40,7 @@ function FilmScreen({ route }: { route: FilmRoute }) {
       {route.page === 'new' ? <IdeaWizard /> : null}
       {route.page === 'idea' ? <IdeaWizard filmId={route.id} /> : null}
       {route.page === 'film' ? <FilmPage filmId={route.id} /> : null}
+      {route.page === 'spend' ? <FilmSpendPage filmId={route.id} /> : null}
     </main>
   );
 }

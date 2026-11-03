@@ -224,6 +224,7 @@ Fatto il 3/11 (D70): la schermata «Quanto ho speso» (`#/film/:id/spese`, con i
 
 **T4.8 Caricamento di luoghi e oggetti** (+2–3 giornate). Funzione `image_upload`: controllo facoltativo con un modello con visione, rifiuto delle immagini con persone con un messaggio semplice (impostazione prudente, D19).
 _Fatto quando:_ una foto di una stanza si carica; una foto con una persona viene rifiutata.
+Fatto il 3/11 (D71): il livello AI sa far guardare un'immagine a un servizio (nuovo ruolo «Analista di immagini», gruppo «Lettura immagini»); «Carica una foto del luogo» nelle immagini del luogo e «Carica una foto di un oggetto» in «Imposta le immagini»; con il controllo acceso (Impostazioni › Prudenza) la foto è guardata **prima** di essere salvata e, se ci sono persone, un marchio, un personaggio noto o un minore, si rifiuta con un messaggio semplice e non resta sul disco; se il controllo non risponde non passa. Le foto di un luogo si scelgono come riferimento, tutte compaiono tra le immagini delle inquadrature. Provato col server vero e un analista finto. Manca: togliere una foto, esempi fissi per `pnpm eval`, le istruzioni dell'analista da rivedere con l'autore.
 
 **T4.9 Ritocco col pennello** (+3–4 giornate). Funzione `retouch`: editor con maschera, `retoucher` (togli, sostituisci, cambia colore) con «Cambia servizio» (T3.1), regole R3 e R6, controllo del testo (D21).
 _Fatto quando:_ si toglie un oggetto da un'immagine del set e le inquadrature che la usano diventano gialle.

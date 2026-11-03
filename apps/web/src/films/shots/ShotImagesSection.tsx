@@ -8,6 +8,7 @@ import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
 import { useAction } from '../../settings/use-action';
+import { UploadControl } from '../uploads/UploadControl';
 import {
   USE_LABELS,
   candidateCaption,
@@ -68,6 +69,15 @@ export function ShotImagesSection({
         l&apos;immagine da cui parte il video, l&apos;ultimo quella in cui finisce,
         l&apos;ispirazione serve solo da esempio.
       </p>
+
+      <UploadControl
+        filmId={filmId}
+        target={{ kind: 'object' }}
+        label="Carica una foto di un oggetto"
+        onUploaded={() => {
+          resource.reload();
+        }}
+      />
 
       {resource.state.status === 'error' ? (
         <Notice tone="error">{describeError(resource.state.error)}</Notice>

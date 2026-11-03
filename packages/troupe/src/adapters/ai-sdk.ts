@@ -76,7 +76,7 @@ export function aiSdkLlmAdapter(options: AdapterOptions, model: ModelFactory): L
         const result = await generateText({
           model: model(req.providerModel, options),
           ...(req.system === undefined ? {} : { system: req.system }),
-          prompt: req.user,
+          ...promptOf(req),
           ...(temperature === undefined ? {} : { temperature }),
           ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
           // Output strutturato: lo schema è quello del ruolo, non un testo nel prompt (§4.9).
@@ -113,6 +113,29 @@ export function aiSdkLlmAdapter(options: AdapterOptions, model: ModelFactory): L
         throw toProviderError(error, req, options);
       }
     },
+  };
+}
+
+/**
+ * Il testo, e se ci sono le immagini nello stesso messaggio: i servizi che leggono le immagini le
+ * vogliono come parti del messaggio dell'utente, non come testo.
+ */
+function promptOf(req: LlmRequest) {
+  if (req.images === undefined || req.images.length === 0) return { prompt: req.user };
+  return {
+    messages: [
+      {
+        role: 'user' as const,
+        content: [
+          { type: 'text' as const, text: req.user },
+          ...req.images.map((image) => ({
+            type: 'image' as const,
+            image: image.data,
+            mediaType: image.mediaType,
+          })),
+        ],
+      },
+    ],
   };
 }
 

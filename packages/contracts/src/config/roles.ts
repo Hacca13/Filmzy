@@ -40,6 +40,11 @@ export const roleConfigFieldsSchema = z.strictObject({
   prompt_from: roleIdSchema.optional(),
   params: z.record(z.string().min(1), roleParamValueSchema).optional(),
   instructions: instructionsRefSchema.optional(),
+  /**
+   * Cosa deve saper fare il servizio, oltre a essere del tipo giusto: oggi solo leggere le immagini
+   * (`vision`). I ruoli di testo che lo dichiarano formano il gruppo «Lettura immagini» (D38).
+   */
+  requires: z.array(z.literal('vision')).optional(),
   output_strategy: z.literal('auto').optional(),
   retries: roleRetriesSchema.optional(),
   enabled: z.boolean().optional(),

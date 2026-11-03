@@ -14,6 +14,8 @@ export type ImageAttempt = LocationAttempt;
 export interface ImageSet {
   attempts: readonly ImageAttempt[];
   chosenAssetId?: string | undefined;
+  /** Le foto caricate dall'utente (T4.8): si scelgono come riferimento come le altre. */
+  uploadedAssetIds?: readonly string[] | undefined;
 }
 
 /** Qualche tentativo è ancora in coda o in lavorazione: serve continuare a guardare. */

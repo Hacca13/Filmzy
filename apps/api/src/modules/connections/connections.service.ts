@@ -1,5 +1,6 @@
 import {
   MODEL_GROUPS,
+  isVisionModel,
   modelGroupForKind,
   type ConnectionsOverview,
   type GroupState,
@@ -340,7 +341,7 @@ export class ConnectionsService {
       kind: model.kind,
       status: model.status,
       price: model.pricing,
-      vision: isVision(model),
+      vision: isVisionModel(model),
       enabled: settings.enabledModelIds.includes(modelId),
       usable: unusableReason === undefined,
       ...(unusableReason === undefined ? {} : { unusableReason }),
@@ -349,13 +350,9 @@ export class ConnectionsService {
   }
 }
 
-function isVision(model: ModelEntry): boolean {
-  return model.kind === 'llm' && model.capabilities.includes('vision');
-}
-
 /** I gruppi in cui compare un servizio: il suo tipo, e «Lettura immagini» se sa leggerle. */
 function groupsOf(model: ModelEntry): ModelGroup[] {
-  return isVision(model)
+  return isVisionModel(model)
     ? [modelGroupForKind(model.kind), 'vision']
     : [modelGroupForKind(model.kind)];
 }

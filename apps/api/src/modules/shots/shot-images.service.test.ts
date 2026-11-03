@@ -11,10 +11,12 @@ import {
   createShotStore,
   createSheetStore,
   createTakeStore,
+  createUploadStore,
   openFilmzyDatabase,
   type SheetStore,
   type ShotStore,
   type TakeStore,
+  type UploadStore,
 } from '@filmzy/db';
 import type { Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
@@ -42,6 +44,7 @@ interface VideoCheck {
 
 let store: ShotStore;
 let takes: TakeStore;
+let uploads: UploadStore;
 let files: SheetStore;
 let dataDir: string;
 let checks: VideoCheck[];
@@ -65,7 +68,7 @@ function build() {
     },
   } as unknown as ProjectsService;
   const bibles = { assemble: () => Promise.resolve(bible) } as unknown as BibleService;
-  return new ShotImagesService(store, takes, files, dataDir, troupe, projects, bibles);
+  return new ShotImagesService(store, takes, uploads, files, dataDir, troupe, projects, bibles);
 }
 
 /** Un tentativo riuscito di uno storyboard con queste immagini: sono quelle tra cui scegliere. */
@@ -91,6 +94,7 @@ beforeEach(async () => {
   const opened = await openFilmzyDatabase({ dataDir, appVersion: '0.0.0-test' });
   store = createShotStore(opened.db);
   takes = createTakeStore(opened.db);
+  uploads = createUploadStore(opened.db);
   files = createSheetStore(opened.db);
   store.replaceScene({
     projectId: film.id,

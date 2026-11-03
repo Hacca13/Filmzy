@@ -228,6 +228,7 @@ describe('impostazioni avanzate (T2.3)', () => {
         takeAudio: false,
         checkForUpdates: true,
         moderation: true,
+        imageCheck: true,
       });
     });
 
@@ -236,12 +237,14 @@ describe('impostazioni avanzate (T2.3)', () => {
         takeAudio: true,
         checkForUpdates: false,
         moderation: false,
+        imageCheck: false,
       });
 
       expect((await client.call('GET', '/preferences')).body).toEqual({
         takeAudio: true,
         checkForUpdates: false,
         moderation: false,
+        imageCheck: false,
       });
     });
 

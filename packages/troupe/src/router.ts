@@ -1,5 +1,5 @@
 import type { Connection, ModelEntry, ModelOption, UserSettings } from '@filmzy/contracts';
-import { modelGroupForKind } from '@filmzy/contracts';
+import { modelGroupForRole } from '@filmzy/contracts';
 
 import type { TroupeConfig } from './config/load-files.js';
 import { mediaCostUsd } from './cost.js';
@@ -178,7 +178,7 @@ function defaultModelId(input: RouteInput): string | undefined {
 
   const perRole = input.settings.roleSettings[input.roleId as never] as
     { modelId?: string } | undefined;
-  return perRole?.modelId ?? input.settings.defaultModels[modelGroupForKind(role.kind)];
+  return perRole?.modelId ?? input.settings.defaultModels[modelGroupForRole(role)];
 }
 
 /**

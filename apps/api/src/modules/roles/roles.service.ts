@@ -1,5 +1,5 @@
 import {
-  modelGroupForKind,
+  modelGroupForRole,
   type RoleChangeResult,
   type RoleId,
   type RoleInstructions,
@@ -192,7 +192,7 @@ export class RolesService {
       roleId,
       label: role.label,
       kind: role.kind,
-      group: modelGroupForKind(role.kind),
+      group: modelGroupForRole(role),
       enabled: role.enabled !== false,
       ...(resolved === undefined
         ? {}

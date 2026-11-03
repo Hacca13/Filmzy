@@ -7,10 +7,12 @@ import {
   startLocationImages,
 } from '../../api/locations';
 import { ImageAttemptsSection } from '../ImageAttemptsSection';
+import { UploadControl } from '../uploads/UploadControl';
 
 /**
  * Le immagini del set di un luogo (T3.7, D19): senza persone, più per tentativo. L'utente
- * **sceglie** l'immagine che resta come riferimento del luogo nella Bibbia.
+ * **sceglie** l'immagine che resta come riferimento del luogo nella Bibbia. Può anche caricare una
+ * foto sua del luogo (T4.8, D19): passa dal controllo e si sceglie come le altre.
  */
 export function LocationImagesSection({
   filmId,
@@ -40,6 +42,14 @@ export function LocationImagesSection({
       loadOptions={loadOptions}
       start={(body) => startLocationImages(filmId, locationId, body)}
       choose={(assetId) => chooseLocationImage(filmId, locationId, assetId)}
+      extra={(refresh) => (
+        <UploadControl
+          filmId={filmId}
+          target={{ kind: 'location', locationId }}
+          label="Carica una foto del luogo"
+          onUploaded={refresh}
+        />
+      )}
     />
   );
 }

@@ -38,6 +38,21 @@ import {
   soundPlannerOutputSchema,
 } from './llm.js';
 
+describe('image_analyst: lo scopo della lettura (D19)', () => {
+  const input = { image: { assetId: 'asset-1' }, context: null, language: 'it' };
+
+  it("una foto caricata e un'immagine del moodboard sono due scopi", () => {
+    expect(imageAnalystInputSchema.parse({ ...input, purpose: 'upload' }).purpose).toBe('upload');
+    expect(imageAnalystInputSchema.parse({ ...input, purpose: 'moodboard' }).purpose).toBe(
+      'moodboard',
+    );
+  });
+
+  it('uno scopo inventato si rifiuta', () => {
+    expect(imageAnalystInputSchema.safeParse({ ...input, purpose: 'altro' }).success).toBe(false);
+  });
+});
+
 describe('moderator', () => {
   it('accetta un input e un verdetto negativo', () => {
     expect(

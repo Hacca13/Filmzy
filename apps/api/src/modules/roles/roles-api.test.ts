@@ -54,6 +54,18 @@ describe('chi fa cosa (T2.7)', () => {
     ]);
   });
 
+  it('l’analista di immagini sta in «Lettura immagini» e usa un servizio che le legge', async () => {
+    const analyst = await role('image_analyst');
+
+    expect(analyst).toMatchObject({
+      label: 'Analista di immagini',
+      kind: 'llm',
+      group: 'vision',
+      enabled: true,
+      inUse: { modelId: 'claude-haiku' },
+    });
+  });
+
   it('un ruolo con candidati dice quello che userebbe, e le alternative sono solo del suo tipo', async () => {
     const operator = await role('camera_operator');
 

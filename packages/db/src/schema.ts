@@ -302,6 +302,28 @@ export type CharacterSheetImageRow = typeof characterSheetImages.$inferSelect;
  * `prompt` è la descrizione in inglese scritta dallo sceneggiatore; `proposal_id` collega il luogo
  * alla proposta da cui viene (D18); `chosen_asset_id` è l'immagine scelta come riferimento (T3.7).
  */
+/**
+ * Le immagini caricate dall'utente (T4.8, D19): luoghi e oggetti del film. Il file sta tra gli `assets`
+ * (id = checksum); qui il film, cosa sono e cosa ha detto il controllo.
+ */
+export const uploads = sqliteTable(
+  'uploads',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    assetId: text('asset_id').notNull(),
+    kind: text('kind').notNull(),
+    locationId: text('location_id'),
+    name: text('name').notNull(),
+    checked: integer('checked', { mode: 'boolean' }).notNull(),
+    description: text('description'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('uploads_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type UploadRow = typeof uploads.$inferSelect;
+
 export const locations = sqliteTable(
   'locations',
   {

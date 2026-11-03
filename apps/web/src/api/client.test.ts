@@ -91,6 +91,24 @@ describe('sendJson', () => {
     );
   });
 
+  it('un file parte così com’è, col suo tipo, senza passare da JSON (le foto caricate)', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(() => Promise.resolve(Response.json({ status: 'ok' })));
+    const photo = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+
+    await sendJson('POST', '/projects/f/uploads?kind=object', healthResponseSchema, photo, {
+      fetchImpl: fetchSpy,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/projects/f/uploads?kind=object',
+      expect.objectContaining({
+        method: 'POST',
+        body: photo,
+        headers: { 'content-type': 'image/png' },
+      }),
+    );
+  });
+
   it('una risposta «204 Nessun contenuto» è valida se lo schema accetta il vuoto, e non si legge come JSON', async () => {
     const fetchSpy = vi.fn<typeof fetch>(() =>
       Promise.resolve(new Response(null, { status: 204 })),

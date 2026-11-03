@@ -1193,6 +1193,15 @@ a.button {
   margin: 0;
 }
 
+/* Caricamento delle foto (T4.8) */
+.upload-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 /* Quanto ho speso (T4.7) */
 .spend-totals {
   display: grid;

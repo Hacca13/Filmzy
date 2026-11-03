@@ -1,4 +1,4 @@
-import { API_PREFIX } from '@filmzy/contracts';
+import { API_PREFIX, UPLOAD_CONTENT_TYPES, UPLOAD_MAX_BYTES } from '@filmzy/contracts';
 import type { NestApplicationOptions } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -27,6 +27,9 @@ export async function createApp(
     bodyParser: false,
   });
   app.useBodyParser('json', { limit: '5mb' });
+  // Le foto caricate (T4.8) arrivano come file, non come JSON. Il limite del parser sta sopra quello del
+  // servizio, che risponde con un errore del dominio invece di quello grezzo del parser.
+  app.useBodyParser('raw', { type: [...UPLOAD_CONTENT_TYPES], limit: UPLOAD_MAX_BYTES * 2 });
 
   // Non dichiarare quale framework c'è dietro: un'informazione in meno per chi cerca falle.
   app.disable('x-powered-by');

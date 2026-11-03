@@ -76,6 +76,47 @@ describe("adapter di testo con l'AI SDK", () => {
     vi.restoreAllMocks();
   });
 
+  it("un'immagine arriva al servizio come parte del messaggio, accanto al testo", async () => {
+    const seen: unknown[] = [];
+    const adapter = aiSdkLlmAdapter(
+      options,
+      () =>
+        new MockLanguageModelV4({
+          doGenerate: (call) => {
+            seen.push(call.prompt);
+            return Promise.resolve({
+              content: [
+                { type: 'text' as const, text: JSON.stringify({ allowed: true, reason: 'ok' }) },
+              ],
+              finishReason: { unified: 'stop' as const, raw: undefined },
+              usage: {
+                inputTokens: {
+                  total: 1,
+                  noCache: undefined,
+                  cacheRead: undefined,
+                  cacheWrite: undefined,
+                },
+                outputTokens: { total: 1, text: 1, reasoning: undefined },
+                totalTokens: 2,
+              },
+              warnings: [],
+            });
+          },
+        }),
+    );
+
+    await adapter.generate({
+      ...request,
+      images: [{ mediaType: 'image/png', data: new Uint8Array([1, 2, 3]) }],
+    });
+
+    const user = (
+      seen[0] as { role: string; content: { type: string; mediaType?: string }[] }[]
+    ).find((message) => message.role === 'user');
+    expect(user?.content.map((part) => part.type)).toEqual(['text', 'file']);
+    expect(user?.content[1]?.mediaType).toBe('image/png');
+  });
+
   it('una risposta che non è nella forma richiesta diventa invalid_output', async () => {
     const adapter = aiSdkLlmAdapter(options, modelAnswering('non è JSON'));
 

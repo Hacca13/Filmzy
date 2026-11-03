@@ -49,10 +49,13 @@ export interface LocationStore {
   /** Apre un tentativo in coda; `modelLabel` è il servizio scelto, che l'intestazione mostra subito. */
   startAttempt: (locationId: string, modelLabel?: string) => number;
   finishAttempt: (locationId: string, attempt: number, patch: AttemptPatch) => void;
-  images: (locationId: string) => LocationImages;
+  images: (locationId: string) => LocationAttempts;
   /** Sceglie l'immagine di riferimento, o la toglie con `undefined`. */
   choose: (locationId: string, assetId: string | undefined) => void;
 }
+
+/** Le immagini di un luogo fatte da Filmzy: i tentativi e la scelta. Le foto caricate le aggiunge chi le conosce. */
+export type LocationAttempts = Omit<LocationImages, 'uploadedAssetIds'>;
 
 export interface LocationStoreOptions {
   now?: () => Date;
@@ -192,7 +195,7 @@ export function createLocationStore(
         .all()
         .map(toAttempt);
       const chosen = row(locationId)?.chosenAssetId ?? undefined;
-      return locationImagesSchema.parse({
+      return locationImagesSchema.omit({ uploadedAssetIds: true }).parse({
         locationId,
         attempts,
         ...(chosen === undefined ? {} : { chosenAssetId: chosen }),

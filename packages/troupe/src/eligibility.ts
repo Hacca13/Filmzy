@@ -1,4 +1,9 @@
-import type { Connection, ModelEntry, RoleConfigEntry } from '@filmzy/contracts';
+import {
+  isVisionModel,
+  type Connection,
+  type ModelEntry,
+  type RoleConfigEntry,
+} from '@filmzy/contracts';
 
 export interface ParamProblem {
   name: string;
@@ -72,6 +77,9 @@ export function ineligibilityReasons(input: EligibilityInput): string[] {
     reasons.push(`è di tipo ${model.kind} e il ruolo è di tipo ${role.kind}`);
   }
   if (model.status === 'retired') reasons.push('è ritirato');
+  if (role.requires?.includes('vision') === true && !isVisionModel(model)) {
+    reasons.push('non sa leggere le immagini');
+  }
   if (connection === undefined) {
     reasons.push(`la sua connessione "${model.connection}" non esiste`);
   } else if (!connection.enabled) {

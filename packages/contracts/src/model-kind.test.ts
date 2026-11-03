@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { MODEL_KINDS, modelGroupForKind, modelGroupSchema, modelKindSchema } from './model-kind.js';
+import {
+  MODEL_KINDS,
+  modelGroupForKind,
+  modelGroupForRole,
+  modelGroupSchema,
+  modelKindSchema,
+} from './model-kind.js';
 
 describe('modelKindSchema', () => {
   it.each(MODEL_KINDS)('accetta %j', (kind) => {
@@ -35,5 +41,22 @@ describe('modelGroupForKind', () => {
     ['voice', 'voice'],
   ] as const)('%s -> %s', (kind, group) => {
     expect(modelGroupForKind(kind)).toBe(group);
+  });
+});
+
+describe('modelGroupForRole (D38)', () => {
+  it('un ruolo di testo che chiede di leggere le immagini sta in «Lettura immagini»', () => {
+    expect(modelGroupForRole({ kind: 'llm', requires: ['vision'] })).toBe('vision');
+  });
+
+  it('senza `requires` vale il gruppo del tipo, come prima', () => {
+    expect(modelGroupForRole({ kind: 'llm' })).toBe('text');
+    expect(modelGroupForRole({ kind: 'llm', requires: [] })).toBe('text');
+    expect(modelGroupForRole({ kind: 'image' })).toBe('image');
+    expect(modelGroupForRole({ kind: 'sfx', requires: undefined })).toBe('audio');
+  });
+
+  it('`requires` non cambia il gruppo di un ruolo che non è di testo', () => {
+    expect(modelGroupForRole({ kind: 'image', requires: ['vision'] })).toBe('image');
   });
 });

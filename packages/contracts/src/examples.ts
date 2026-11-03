@@ -391,11 +391,11 @@ export const ROLE_OUTPUT_EXAMPLES: Record<string, unknown> = {
     ],
   },
   image_analyst: {
-    description: 'a warm lit town square at dusk, long shadows, two people walking away',
+    description: 'an empty town square at dusk, warm light, long shadows on the pavement',
     moodTags: ['warm', 'nostalgic', 'quiet'],
     lighting: 'golden hour, low sun, long shadows',
     composition: 'centered square, leading lines from the pavement',
-    containsPeople: true,
+    containsPeople: false,
     flags: [],
   },
 };

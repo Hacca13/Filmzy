@@ -114,6 +114,7 @@ describe('candidateCaption (T4.6)', () => {
       'Dal video · 1,5 s',
     );
     expect(candidateCaption({ assetId: 'b', mode: 'storyboard', attempt: 1 })).toBeUndefined();
+    expect(candidateCaption({ assetId: 'u', mode: 'upload' })).toBe('Caricata da te');
     expect(candidateCaption({ assetId: 'c', mode: 'take_frame' })).toBeUndefined();
   });
 });

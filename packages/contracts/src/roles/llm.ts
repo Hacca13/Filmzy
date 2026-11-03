@@ -288,7 +288,8 @@ export type MoodboardDesignerOutput = z.infer<typeof moodboardDesignerOutputSche
 /** `image_analyst`: descrizione, atmosfera e controllo di persone e marchi (D19, D38). */
 export const imageAnalystInputSchema = z.object({
   image: assetRefSchema,
-  purpose: z.literal('moodboard'),
+  /** A cosa serve la lettura: un'immagine del moodboard (D37) o una foto caricata dall'utente (D19). */
+  purpose: z.enum(['moodboard', 'upload']),
   context: z.string().min(1).nullable(),
   language: z.string().min(1),
 });

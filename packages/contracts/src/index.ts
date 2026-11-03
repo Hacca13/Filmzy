@@ -36,6 +36,7 @@ export {
   MODEL_GROUPS,
   MODEL_KINDS,
   modelGroupForKind,
+  modelGroupForRole,
   modelGroupSchema,
   modelKindSchema,
 } from './model-kind.js';
@@ -192,6 +193,7 @@ export * from './release-history-api.js';
 export * from './connections-api.js';
 export * from './roles-api.js';
 export * from './spend-api.js';
+export * from './uploads-api.js';
 export { domainEventSchema, jobChangedEventSchema } from './events.js';
 export type { DomainEvent, JobChangedEvent } from './events.js';
 export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';

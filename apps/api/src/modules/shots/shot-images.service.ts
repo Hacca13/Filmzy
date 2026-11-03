@@ -11,8 +11,9 @@ import {
   type ShotStore,
   type StoredShot,
   type TakeStore,
+  type UploadStore,
 } from '@filmzy/db';
-import { MediaError, extractFrame, videoDurationS } from '@filmzy/media';
+import { extractFrame, videoDurationS } from '@filmzy/media';
 import type { Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -24,12 +25,14 @@ import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
+import { mediaStep } from '../media/media-step.js';
 import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { TROUPE } from '../troupe/tokens.js';
 import { shotOf } from './shot-access.js';
 import { imagesFromChoices } from './shot-images.js';
 import { videoStandInRequest } from './video-inputs.js';
+import { UPLOAD_STORE } from '../uploads/tokens.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
 /**
@@ -48,6 +51,7 @@ export class ShotImagesService {
   constructor(
     @Inject(SHOT_STORE) private readonly store: ShotStore,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
+    @Inject(UPLOAD_STORE) private readonly uploads: UploadStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(DATA_DIR) private readonly dataDir: string,
     @Inject(TROUPE) private readonly troupe: Troupe,
@@ -64,7 +68,9 @@ export class ShotImagesService {
   async set(projectId: string, shotId: string, body: SetShotImagesBody): Promise<ShotImages> {
     const { stored } = this.target(projectId, shotId);
     const candidates = new Map(
-      this.candidates(shotId).map((candidate) => [candidate.assetId, candidate] as const),
+      this.candidates(projectId, shotId).map(
+        (candidate) => [candidate.assetId, candidate] as const,
+      ),
     );
     const spec: ShotSpec = {
       ...stored.spec,
@@ -190,23 +196,26 @@ export class ShotImagesService {
     return {
       shotId,
       images: spec.images,
-      candidates: this.candidates(shotId),
+      candidates: this.candidates(projectId, shotId),
       videoServices: await this.videoServices(spec, bible),
     };
   }
 
   /**
-   * Le varianti riuscite dello storyboard e dell'ultimo fotogramma, dalla più recente, e i fotogrammi
-   * presi dai take dell'inquadratura (T4.6).
+   * Le varianti riuscite dello storyboard e dell'ultimo fotogramma, dalla più recente, i fotogrammi
+   * presi dai take dell'inquadratura (T4.6) e le foto che l'utente ha caricato per il film (T4.8).
    */
-  private candidates(shotId: string): ImageCandidate[] {
+  private candidates(projectId: string, shotId: string): ImageCandidate[] {
     const frames: ImageCandidate[] = this.takes.frames(shotId).map((frame) => ({
       assetId: frame.assetId,
       mode: 'take_frame',
       takeId: frame.takeId,
       atS: frame.atS,
     }));
-    return [...this.drawn(shotId), ...frames];
+    const uploaded: ImageCandidate[] = this.uploads
+      .list(projectId)
+      .map((upload) => ({ assetId: upload.assetId, mode: 'upload' }));
+    return [...this.drawn(shotId), ...frames, ...uploaded];
   }
 
   private drawn(shotId: string): ImageCandidate[] {
@@ -243,22 +252,3 @@ const LAST_MOMENT_MARGIN_S = 0.15;
 
 /** Di quanto un momento può superare la durata di ffmpeg senza essere «oltre la fine» (s): il lettore e ffmpeg arrotondano diversamente. */
 const DURATION_TOLERANCE_S = 0.5;
-
-/**
- * Un passo di ffmpeg: se non riesce l'errore diventa un errore del dominio (`media_failed`) con un
- * messaggio semplice per l'interfaccia, e nei dettagli resta il motivo per chi guarda il registro. Il
- * testo di ffmpeg non arriva all'utente: potrebbe contenere percorsi.
- */
-async function mediaStep<T>(step: () => Promise<T>): Promise<T> {
-  try {
-    return await step();
-  } catch (error) {
-    if (error instanceof MediaError) {
-      throw domainError(error.code === 'ffmpeg_missing' ? 503 : 422, 'media_failed', {
-        // Un video rovinato resta tale; un ffmpeg troppo lento, invece, può riuscire la volta dopo.
-        retryable: error.code === 'timeout',
-      });
-    }
-    throw error;
-  }
-}

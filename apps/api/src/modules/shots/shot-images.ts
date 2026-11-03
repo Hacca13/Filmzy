@@ -18,8 +18,8 @@ export const imageAssetId = (spec: ShotSpec, use: ShotImage['use']): string | un
   spec.images.find((image) => image.use === use)?.assetId;
 
 /**
- * L'immagine come sta nella scheda: nata da una generazione, o presa da un take (con il take e il
- * momento, T4.6). Da dove viene lo dice il candidato, mai l'utente.
+ * L'immagine come sta nella scheda: nata da una generazione, caricata dall'utente (T4.8), o presa da
+ * un take (con il take e il momento, T4.6). Da dove viene lo dice il candidato, mai l'utente.
  */
 const fromCandidate = (choice: ShotImageChoice, candidate: ImageCandidate): ShotImage =>
   candidate.mode === 'take_frame'
@@ -30,7 +30,11 @@ const fromCandidate = (choice: ShotImageChoice, candidate: ImageCandidate): Shot
         ...(candidate.takeId === undefined ? {} : { takeId: candidate.takeId }),
         ...(candidate.atS === undefined ? {} : { atS: candidate.atS }),
       }
-    : { use: choice.use, from: 'generate', assetId: choice.assetId };
+    : {
+        use: choice.use,
+        from: candidate.mode === 'upload' ? 'upload' : 'generate',
+        assetId: choice.assetId,
+      };
 
 /**
  * Le scelte dell'utente diventano le immagini della scheda, ma solo se hanno senso: un'immagine tra

@@ -19,6 +19,7 @@ const attempt = (
 const images = (attempts: LocationAttempt[], chosenAssetId?: string): LocationImages => ({
   locationId: 'l-1',
   attempts,
+  uploadedAssetIds: [],
   ...(chosenAssetId === undefined ? {} : { chosenAssetId }),
 });
 

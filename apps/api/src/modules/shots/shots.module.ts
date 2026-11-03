@@ -37,6 +37,7 @@ import { ShotImagesService } from './shot-images.service.js';
 import { ShotsService } from './shots.service.js';
 import { StoryboardService } from './storyboard.service.js';
 import { TakesService } from './takes.service.js';
+import { UploadStoreModule } from '../uploads/upload-store.module.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
 /**
@@ -237,7 +238,14 @@ class ShotsController {
 }
 
 @Module({
-  imports: [ProjectsModule, ScreenplayModule, BibleModule, CastModule, JobsModule],
+  imports: [
+    ProjectsModule,
+    ScreenplayModule,
+    BibleModule,
+    CastModule,
+    JobsModule,
+    UploadStoreModule,
+  ],
   controllers: [ShotsController],
   providers: [
     ShotsService,

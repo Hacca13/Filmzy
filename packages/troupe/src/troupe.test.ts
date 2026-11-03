@@ -61,6 +61,58 @@ function troupeWith(fixturesDir?: string, change?: (config: TroupeConfig) => Tro
   return { troupe, receipts };
 }
 
+describe('un ruolo che legge le immagini (D19, D38)', () => {
+  const analystInput = {
+    image: { assetId: 'asset-1' },
+    purpose: 'upload',
+    context: null,
+    language: 'it',
+  } as never;
+  const photo = [{ mediaType: 'image/jpeg', data: new Uint8Array([1, 2, 3]) }];
+
+  it("risponde con la lettura dell'immagine e lascia uno scontrino", async () => {
+    const { troupe, receipts } = troupeWith();
+
+    const { data, receipt } = await troupe.run('image_analyst', analystInput, ctx, photo);
+
+    expect(data.containsPeople).toBe(false);
+    expect(receipt.status).toBe('succeeded');
+    expect(receipt.modelId).toBe('claude-haiku');
+    expect(receipts.all().at(-1)?.status).toBe('succeeded');
+  });
+
+  it('ogni immagine pesa nella stima: costa di più di una richiesta di solo testo', async () => {
+    const { troupe } = troupeWith();
+
+    const without = await troupe.estimate('image_analyst', analystInput);
+    const withTwo = await troupe.estimate('image_analyst', analystInput, 2);
+
+    expect(withTwo.estimatedCostUsd).toBeGreaterThan(without.estimatedCostUsd);
+    expect(without.modelId).toBe('claude-haiku');
+  });
+
+  it('se il servizio non sa leggere le immagini si ferma, senza passare a un altro', async () => {
+    const { troupe, receipts } = troupeWith(undefined, (config) => ({
+      ...config,
+      models: {
+        ...config.models,
+        'claude-haiku': {
+          ...config.models['claude-haiku'],
+          capabilities: ['structured_output'],
+        } as never,
+      },
+    }));
+
+    const failure = await troupe
+      .run('image_analyst', analystInput, ctx, photo)
+      .catch((e: unknown) => e);
+
+    expect(failure).toMatchObject({ code: 'no_eligible_model' });
+    expect((failure as Error).message).toContain('non sa leggere le immagini');
+    expect(receipts.all()).toEqual([]);
+  });
+});
+
 describe('run con il fornitore finto', () => {
   it('il direttore della fotografia risponde e lascia uno scontrino chiuso', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');

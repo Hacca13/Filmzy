@@ -52,8 +52,9 @@ export function uniqueCandidates(candidates: readonly ImageCandidate[]): ImageCa
   });
 }
 
-/** Da dove viene un'immagine, quando non è nata dallo storyboard: «Dal video · 1,5 s». */
+/** Da dove viene un'immagine, quando non è nata dallo storyboard: «Dal video · 1,5 s» o «Caricata da te». */
 export function candidateCaption(candidate: ImageCandidate): string | undefined {
+  if (candidate.mode === 'upload') return 'Caricata da te';
   return candidate.mode === 'take_frame' && candidate.atS !== undefined
     ? `Dal video · ${formatMoment(candidate.atS)}`
     : undefined;

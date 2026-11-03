@@ -16,6 +16,12 @@ export interface AdapterOptions {
   fetch?: typeof globalThis.fetch;
 }
 
+/** Un'immagine che il servizio deve guardare (ruoli con `requires: [vision]`, D19): i byte, non un indirizzo. */
+export interface LlmImage {
+  mediaType: string;
+  data: Uint8Array;
+}
+
 export interface LlmRequest {
   role: RoleId;
   modelId: string;
@@ -23,6 +29,8 @@ export interface LlmRequest {
   providerModel: string;
   system?: string;
   user: string;
+  /** Le immagini da guardare insieme al testo. */
+  images?: LlmImage[];
   params?: Record<string, string | number | boolean>;
   /** Lo schema della risposta del ruolo, per l'output strutturato e la validazione (§4.9). */
   outputSchema?: z.ZodType;

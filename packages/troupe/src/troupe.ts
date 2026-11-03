@@ -11,7 +11,7 @@ import {
 import type { z } from 'zod';
 
 import { llmAdapterFor } from './adapters/index.js';
-import type { LlmRequest, LlmResponse } from './adapters/types.js';
+import type { LlmImage, LlmRequest, LlmResponse } from './adapters/types.js';
 import type { ConfigSource } from './config/source.js';
 import type { SecretSources } from './config/secrets.js';
 import { configHash, hashRoleConfig } from './config/hash.js';
@@ -62,17 +62,27 @@ export interface TroupeOptions {
 }
 
 export interface Troupe {
+  /**
+   * `images` sono i file che il servizio deve guardare (ruoli con `requires: [vision]`): arrivano già
+   * letti dalla cartella del film, perché la troupe non conosce i percorsi (§3). Nell'input del ruolo
+   * c'è solo il loro riferimento.
+   */
   run<Role extends LlmRoleId>(
     role: Role,
     input: RoleInput<Role>,
     ctx: GenerationContext,
+    images?: readonly LlmImage[],
   ): Promise<RunResult<Role>>;
 
   /**
    * Quanto costerebbe `run` con questo input, prima di lanciarlo (architettura §4.1, D30): il
    * servizio che lavorerebbe e una stima **prudente**. Non chiama nessun fornitore.
    */
-  estimate<Role extends LlmRoleId>(role: Role, input: RoleInput<Role>): Promise<Estimate>;
+  estimate<Role extends LlmRoleId>(
+    role: Role,
+    input: RoleInput<Role>,
+    imageCount?: number,
+  ): Promise<Estimate>;
 
   /**
    * I servizi tra cui l'utente può scegliere per questa richiesta (architettura §4.1, §4.8, D36):
@@ -97,7 +107,7 @@ export function createTroupe(options: TroupeOptions): Troupe {
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 
   return {
-    async run(role, input, ctx) {
+    async run(role, input, ctx, images) {
       const started = now();
       const { inputSchema, outputSchema } = textRole(role);
 
@@ -118,7 +128,7 @@ export function createTroupe(options: TroupeOptions): Troupe {
         input,
       );
 
-      const estimatedCostUsd = estimateLlmCostUsd(resolved, prompt);
+      const estimatedCostUsd = estimateLlmCostUsd(resolved, prompt, images?.length ?? 0);
       await enforceSpend(options.spend, ctx, {
         role,
         connectionId: resolved.connectionId,
@@ -156,6 +166,7 @@ export function createTroupe(options: TroupeOptions): Troupe {
           providerModel: resolved.model.provider_model,
           system: prompt.system,
           user: prompt.user,
+          ...(images === undefined || images.length === 0 ? {} : { images: [...images] }),
           params: resolved.params,
           outputSchema,
         },
@@ -182,13 +193,13 @@ export function createTroupe(options: TroupeOptions): Troupe {
       return { data: attempt.data as RoleOutput<typeof role>, receipt: closed };
     },
 
-    async estimate(role, input) {
+    async estimate(role, input, imageCount = 0) {
       const { inputSchema } = textRole(role);
       const { resolved, prompt } = await prepareRun(options, role, inputSchema, input);
       return {
         modelId: resolved.modelId,
         modelLabel: resolved.model.label,
-        estimatedCostUsd: estimateLlmCostUsd(resolved, prompt),
+        estimatedCostUsd: estimateLlmCostUsd(resolved, prompt, imageCount),
       };
     },
 
@@ -287,6 +298,9 @@ async function prepareRun(
 /** Circa quattro caratteri per token: per una stima basta, e sbaglia per eccesso nelle lingue lunghe. */
 const CHARS_PER_TOKEN = 4;
 
+/** Quanti token conta un'immagine in ingresso, per eccesso: una foto grande ne costa circa mille e mezzo. */
+const IMAGE_INPUT_TOKENS = 1600;
+
 /** Se il ruolo non dice quanto può scrivere al massimo, si stima un'uscita media-lunga. */
 const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
 
@@ -294,11 +308,17 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 2000;
  * Una stima **prudente** del costo di una chiamata di testo (D30): ingresso dal testo che verrebbe
  * inviato, uscita pari al massimo che il ruolo concede. Lo scontrino dirà il costo vero.
  */
-function estimateLlmCostUsd(resolved: ResolvedRole, prompt: { system?: string; user: string }) {
+function estimateLlmCostUsd(
+  resolved: ResolvedRole,
+  prompt: { system?: string; user: string },
+  imageCount = 0,
+) {
   const maxTokens = resolved.params.max_tokens;
   return (
     llmCostUsd(resolved.model.pricing, {
-      inputTokens: Math.ceil(((prompt.system?.length ?? 0) + prompt.user.length) / CHARS_PER_TOKEN),
+      inputTokens:
+        Math.ceil(((prompt.system?.length ?? 0) + prompt.user.length) / CHARS_PER_TOKEN) +
+        imageCount * IMAGE_INPUT_TOKENS,
       outputTokens: typeof maxTokens === 'number' ? maxTokens : DEFAULT_MAX_OUTPUT_TOKENS,
     }) ?? 0
   );

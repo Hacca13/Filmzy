@@ -22,6 +22,7 @@ import { ShotsModule } from './modules/shots/shots.module.js';
 import { SpendModule } from './modules/spend/spend.module.js';
 import { TroupeModule } from './modules/troupe/troupe.module.js';
 import { UpdatesModule, type UpdateChecker } from './modules/updates/updates.module.js';
+import { UploadsModule } from './modules/uploads/uploads.module.js';
 
 /**
  * Quello che chi avvia il server può scegliere (il programma impacchettato in M6, i test adesso):
@@ -61,6 +62,7 @@ export class AppModule {
         SheetsModule,
         ShotsModule,
         SpendModule,
+        UploadsModule,
         UpdatesModule.forRoot(
           options.updateChecker === undefined ? {} : { checker: options.updateChecker },
         ),

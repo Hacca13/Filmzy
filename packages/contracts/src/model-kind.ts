@@ -19,9 +19,22 @@ export const modelGroupSchema = z.enum(MODEL_GROUPS);
 export type ModelGroup = z.infer<typeof modelGroupSchema>;
 
 /**
+ * Il gruppo di un ruolo (architettura §4.3, D38): un ruolo di testo che dichiara `requires: [vision]`
+ * sta in «Lettura immagini»; tutti gli altri nel gruppo del loro tipo.
+ */
+export function modelGroupForRole(role: {
+  kind: ModelKind;
+  requires?: readonly 'vision'[] | undefined;
+}): ModelGroup {
+  return role.kind === 'llm' && role.requires?.includes('vision') === true
+    ? 'vision'
+    : modelGroupForKind(role.kind);
+}
+
+/**
  * Il gruppo di un tipo di servizio (architettura §4.3): `music` e `sfx` stanno entrambi in
  * «Musica ed effetti». `vision` non ha un `ModelKind` corrispondente: un ruolo ci entra in base a
- * `requires: [vision]`, non al tipo del suo modello.
+ * `requires: [vision]` (vedi `modelGroupForRole`), non al tipo del suo modello.
  */
 export function modelGroupForKind(kind: ModelKind): ModelGroup {
   switch (kind) {

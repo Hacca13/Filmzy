@@ -117,6 +117,13 @@ export const videoCapabilitiesSchema = z.object({
 /** Capacità di musica, effetti e voci: non ancora dettagliate dall'architettura (§13). */
 export const audioCapabilitiesSchema = z.object({ commercial_use: z.boolean().optional() });
 
+/** Un servizio di testo che sa leggere le immagini (capacità `vision`, D19, D38). */
+export function isVisionModel(model: { kind: string; capabilities: unknown }): boolean {
+  return (
+    model.kind === 'llm' && Array.isArray(model.capabilities) && model.capabilities.includes('vision')
+  );
+}
+
 function modelEntryFields<Kind extends string, Capabilities extends z.ZodType>(
   kind: Kind,
   capabilities: Capabilities,

@@ -153,8 +153,10 @@ export class SpendReport {
       throw domainError(404, 'not_found', { details: { field: 'projectId' } });
     }
 
-    const loaded = await this.configSource.load();
+    // La configurazione si legge mentre il database risponde: sono due attese indipendenti.
+    const loading = this.configSource.load();
     const monthRows = this.receipts.spendRows({ projectId, since: this.ledger.monthStart() });
+    const loaded = await loading;
 
     return {
       projectId,

@@ -113,6 +113,13 @@
       "when": 1793698834268,
       "tag": "0015_scelta_take_e_fotogrammi",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1793704745235,
+      "tag": "0016_immagini_caricate",
+      "breakpoints": true
     }
   ]
 }

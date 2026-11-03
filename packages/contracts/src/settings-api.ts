@@ -95,6 +95,8 @@ export const appPreferencesSchema = z.object({
   takeAudio: z.boolean(),
   checkForUpdates: z.boolean(),
   moderation: z.boolean().default(true),
+  /** La prudenza sulle foto caricate (T4.8, D19): ogni foto si controlla prima di salvarla. Accesa all'inizio. */
+  imageCheck: z.boolean().default(true),
 });
 
 export type AppPreferences = z.infer<typeof appPreferencesSchema>;
@@ -103,6 +105,7 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   takeAudio: false,
   checkForUpdates: true,
   moderation: true,
+  imageCheck: true,
 };
 
 /** `POST /updates/check`: l'esito del controllo, a richiesta (D44). */

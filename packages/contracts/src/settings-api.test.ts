@@ -60,19 +60,21 @@ describe('secretsViewSchema', () => {
 });
 
 describe('appPreferencesSchema', () => {
-  it('i valori di partenza sono audio spento, controllo acceso e moderatore acceso (D43, D44, D54)', () => {
+  it('i valori di partenza sono audio spento, controllo acceso, moderatore e controllo delle foto accesi (D43, D44, D54, D19)', () => {
     expect(appPreferencesSchema.parse(DEFAULT_APP_PREFERENCES)).toEqual({
       takeAudio: false,
       checkForUpdates: true,
       moderation: true,
+      imageCheck: true,
     });
   });
 
-  it('le preferenze salvate prima del moderatore lo trovano acceso, non spento né rovinate', () => {
+  it('le preferenze salvate prima del moderatore e del controllo delle foto li trovano accesi, non spenti né rovinate', () => {
     expect(appPreferencesSchema.parse({ takeAudio: true, checkForUpdates: false })).toEqual({
       takeAudio: true,
       checkForUpdates: false,
       moderation: true,
+      imageCheck: true,
     });
   });
 

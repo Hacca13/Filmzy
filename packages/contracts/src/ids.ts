@@ -17,6 +17,7 @@ export const takeIdSchema = idSchema;
 export const assetIdSchema = idSchema;
 export const characterIdSchema = idSchema;
 export const locationIdSchema = idSchema;
+export const uploadIdSchema = idSchema;
 export const generationIdSchema = idSchema;
 export const modelIdSchema = configKeySchema;
 export const connectionIdSchema = configKeySchema;

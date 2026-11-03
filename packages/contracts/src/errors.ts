@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { moderationRejectionSchema } from './moderation.js';
 import { spendBreachSchema } from './spend.js';
+import { imageProblemSchema } from './uploads-api.js';
 
 /**
  * Codici di errore del dominio (architettura §4.10). Niente riserve automatiche: ogni errore dice
@@ -51,6 +52,8 @@ export const domainErrorDetailsSchema = z.object({
   spend: spendBreachSchema.optional(),
   /** Per `content_rejected` del moderatore: il motivo e come riformulare il testo (T3.3). */
   moderation: moderationRejectionSchema.optional(),
+  /** Per `image_rejected` di una foto caricata: cosa non va (T4.8). */
+  imageProblems: z.array(imageProblemSchema).optional(),
 });
 
 /**

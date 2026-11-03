@@ -29,6 +29,7 @@ import { JobsModule } from '../jobs/jobs.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { LocationsService } from './locations.service.js';
+import { UploadStoreModule } from '../uploads/upload-store.module.js';
 import { LOCATION_STORE } from './tokens.js';
 
 /**
@@ -97,7 +98,7 @@ class LocationsController {
 }
 
 @Module({
-  imports: [CastModule, JobsModule, ProjectsModule, ScreenplayModule],
+  imports: [CastModule, JobsModule, ProjectsModule, ScreenplayModule, UploadStoreModule],
   controllers: [LocationsController],
   providers: [
     LocationsService,

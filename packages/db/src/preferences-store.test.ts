@@ -20,17 +20,32 @@ beforeEach(async () => {
 
 describe("preferenze dell'app", () => {
   it('senza niente di salvato: audio spento, controllo e moderatore accesi', () => {
-    expect(store.get()).toEqual({ takeAudio: false, checkForUpdates: true, moderation: true });
+    expect(store.get()).toEqual({
+      takeAudio: false,
+      checkForUpdates: true,
+      moderation: true,
+      imageCheck: true,
+    });
   });
 
   it('quello che si salva si rilegge, e salvare di nuovo sostituisce', () => {
-    store.save({ takeAudio: true, checkForUpdates: true, moderation: true });
-    store.save({ takeAudio: true, checkForUpdates: false, moderation: false });
+    store.save({ takeAudio: true, checkForUpdates: true, moderation: true, imageCheck: true });
+    store.save({
+      takeAudio: true,
+      checkForUpdates: false,
+      moderation: false,
+      imageCheck: false,
+    });
 
-    expect(store.get()).toEqual({ takeAudio: true, checkForUpdates: false, moderation: false });
+    expect(store.get()).toEqual({
+      takeAudio: true,
+      checkForUpdates: false,
+      moderation: false,
+      imageCheck: false,
+    });
   });
 
-  it('le preferenze salvate prima del moderatore lo trovano acceso e tengono le altre scelte', () => {
+  it('le preferenze salvate prima del moderatore e del controllo delle foto li trovano accesi e tengono le altre scelte', () => {
     aperto.db
       .insert(settings)
       .values({
@@ -40,7 +55,12 @@ describe("preferenze dell'app", () => {
       })
       .run();
 
-    expect(store.get()).toEqual({ takeAudio: true, checkForUpdates: false, moderation: true });
+    expect(store.get()).toEqual({
+      takeAudio: true,
+      checkForUpdates: false,
+      moderation: true,
+      imageCheck: true,
+    });
   });
 
   it('una riga rovinata non rompe niente: si riparte dai valori di partenza', () => {
@@ -59,7 +79,7 @@ describe("preferenze dell'app", () => {
   });
 
   it('sta in una riga diversa da quella delle scelte della troupe', () => {
-    store.save({ takeAudio: true, checkForUpdates: true, moderation: true });
+    store.save({ takeAudio: true, checkForUpdates: true, moderation: true, imageCheck: true });
 
     const ids = aperto.db
       .select()

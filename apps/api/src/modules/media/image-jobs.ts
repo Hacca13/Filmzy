@@ -149,7 +149,7 @@ export async function waitForMedia(
 /** Registra i file di un lavoro: il percorso è relativo alla cartella dei dati, così si sposta. */
 export function registerAssets(
   store: Pick<SheetStore, 'registerAsset'>,
-  options: { dataDir: string; projectId: string; generationId: string },
+  options: { dataDir: string; projectId: string; generationId?: string },
   assets: readonly StoredAsset[],
 ): void {
   for (const asset of assets) {
@@ -159,7 +159,7 @@ export function registerAssets(
       contentType: asset.contentType,
       bytes: asset.bytes,
       projectId: options.projectId,
-      generationId: options.generationId,
+      ...(options.generationId === undefined ? {} : { generationId: options.generationId }),
     });
   }
 }

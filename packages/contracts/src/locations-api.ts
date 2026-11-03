@@ -45,6 +45,8 @@ export type LocationAttempt = z.infer<typeof locationAttemptSchema>;
 export const locationImagesSchema = z.object({
   locationId: locationIdSchema,
   attempts: z.array(locationAttemptSchema),
+  /** Le foto del luogo caricate dall'utente (T4.8): si possono scegliere come riferimento come le altre. */
+  uploadedAssetIds: z.array(assetIdSchema),
   chosenAssetId: assetIdSchema.optional(),
 });
 

@@ -11,7 +11,13 @@ import {
   type SheetOptions,
   type StartSheetBody,
 } from '@filmzy/contracts';
-import { projectsDir, type LocationStore, type ScreenplayStore, type SheetStore } from '@filmzy/db';
+import {
+  projectsDir,
+  type LocationStore,
+  type ScreenplayStore,
+  type SheetStore,
+  type UploadStore,
+} from '@filmzy/db';
 import {
   ProviderError,
   type ConfigSource,
@@ -38,6 +44,7 @@ import {
 import { ProjectsService } from '../projects/projects.service.js';
 import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
+import { UPLOAD_STORE } from '../uploads/tokens.js';
 import { LOCATION_STORE } from './tokens.js';
 
 const ROLE = 'set_designer';
@@ -65,6 +72,7 @@ export class LocationsService implements OnModuleInit {
 
   constructor(
     @Inject(LOCATION_STORE) private readonly store: LocationStore,
+    @Inject(UPLOAD_STORE) private readonly uploads: UploadStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(SCREENPLAY_STORE) private readonly screenplays: ScreenplayStore,
     @Inject(TROUPE) private readonly troupe: Troupe,
@@ -170,26 +178,36 @@ export class LocationsService implements OnModuleInit {
       projectId,
       idempotencyKey: `${LOCATION_JOB_KIND}:${locationId}:${String(attempt)}`,
     });
-    return this.store.images(locationId);
+    return this.imagesOf(locationId);
   }
 
   images(projectId: string, locationId: string): LocationImages {
     this.target(projectId, locationId);
-    return this.store.images(locationId);
+    return this.imagesOf(locationId);
   }
 
-  /** «Scegli questa»: l'immagine deve essere di un tentativo di quel luogo. */
+  /** I tentativi di Filmzy e le foto caricate dall'utente per quel luogo. */
+  private imagesOf(locationId: string): LocationImages {
+    return {
+      ...this.store.images(locationId),
+      uploadedAssetIds: this.uploads.assetIdsOfLocation(locationId),
+    };
+  }
+
+  /** «Scegli questa»: l'immagine deve essere di un tentativo di quel luogo, o una foto che l'utente ha caricato per lui. */
   choose(projectId: string, locationId: string, assetId: string): LocationImages {
     this.target(projectId, locationId);
-    const known = this.store
-      .images(locationId)
-      .attempts.some(
-        (attempt) => attempt.status === 'succeeded' && attempt.assetIds.includes(assetId),
-      );
+    const known =
+      this.uploads.assetIdsOfLocation(locationId).includes(assetId) ||
+      this.store
+        .images(locationId)
+        .attempts.some(
+          (attempt) => attempt.status === 'succeeded' && attempt.assetIds.includes(assetId),
+        );
     if (!known) throw domainError(409, 'invalid_request', { details: { field: 'assetId' } });
 
     this.store.choose(locationId, assetId);
-    return this.store.images(locationId);
+    return this.imagesOf(locationId);
   }
 
   /**

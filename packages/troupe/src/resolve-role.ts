@@ -1,5 +1,5 @@
 import {
-  modelGroupForKind,
+  modelGroupForRole,
   type Connection,
   type ModelEntry,
   type RoleConfigEntry,
@@ -102,7 +102,7 @@ function pickModel(input: PickModelInput): {
 } {
   const { config, roleId, role, roleSettings, settings } = input;
   const declared = role.model !== undefined ? [role.model] : (role.routing?.candidates ?? []);
-  const groupDefault = settings?.defaultModels[modelGroupForKind(role.kind)];
+  const groupDefault = settings?.defaultModels[modelGroupForRole(role)];
   const candidates =
     roleSettings?.modelId !== undefined
       ? [roleSettings.modelId]

@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import { roleConfigEntrySchema, rolesConfigFileSchema } from './roles.js';
 
+describe('requires', () => {
+  const base = { label: 'Analista', kind: 'llm', model: 'claude-haiku' } as const;
+
+  it('un ruolo può chiedere di leggere le immagini', () => {
+    expect(roleConfigEntrySchema.parse({ ...base, requires: ['vision'] }).requires).toEqual([
+      'vision',
+    ]);
+  });
+
+  it('una capacità che non esiste si rifiuta', () => {
+    expect(roleConfigEntrySchema.safeParse({ ...base, requires: ['audio'] }).success).toBe(false);
+  });
+});
+
 describe('roleConfigEntrySchema', () => {
   it('accetta un ruolo con model (moderator)', () => {
     const entry = {

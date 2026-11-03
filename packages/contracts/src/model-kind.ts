@@ -23,6 +23,15 @@ export type ModelGroup = z.infer<typeof modelGroupSchema>;
  * «Musica ed effetti». `vision` non ha un `ModelKind` corrispondente: un ruolo ci entra in base a
  * `requires: [vision]`, non al tipo del suo modello.
  */
+export function modelGroupForRole(role: {
+  kind: ModelKind;
+  requires?: readonly 'vision'[] | undefined;
+}): ModelGroup {
+  return role.kind === 'llm' && role.requires?.includes('vision') === true
+    ? 'vision'
+    : modelGroupForKind(role.kind);
+}
+
 export function modelGroupForKind(kind: ModelKind): ModelGroup {
   switch (kind) {
     case 'llm':

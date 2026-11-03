@@ -13,6 +13,16 @@ roles:
     output_strategy: auto
     retries: { invalid_output: 1, technical_error: 2 }
 
+  image_analyst:
+    label: Analista di immagini
+    kind: llm
+    model: claude-haiku                       # basta un servizio economico, ma che sappia leggere le immagini
+    requires: [vision]                        # entra nel gruppo «Lettura immagini» (D38)
+    params: { max_tokens: 800 }
+    instructions: image_analyst@1
+    output_strategy: auto
+    retries: { invalid_output: 1, technical_error: 2 }
+
   casting:
     label: Direttore del casting
     kind: llm

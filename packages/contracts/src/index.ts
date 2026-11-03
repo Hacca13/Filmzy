@@ -36,6 +36,7 @@ export {
   MODEL_GROUPS,
   MODEL_KINDS,
   modelGroupForKind,
+  modelGroupForRole,
   modelGroupSchema,
   modelKindSchema,
 } from './model-kind.js';

@@ -15,7 +15,7 @@ import {
   type UploadStore,
 } from '@filmzy/db';
 import { extractFrame, videoDurationS } from '@filmzy/media';
-import type { Troupe } from '@filmzy/troupe';
+import type { ConfigSource, Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { createHash, randomUUID } from 'node:crypto';
@@ -29,7 +29,7 @@ import { DATA_DIR } from '../database/database.module.js';
 import { mediaStep } from '../media/media-step.js';
 import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
-import { TROUPE } from '../troupe/tokens.js';
+import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { shotOf } from './shot-access.js';
 import { imagesFromChoices } from './shot-images.js';
 import { videoStandInRequest } from './video-inputs.js';
@@ -55,6 +55,7 @@ export class ShotImagesService {
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(UPLOAD_STORE) private readonly uploads: UploadStore,
     @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
+    @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(DATA_DIR) private readonly dataDir: string,
     @Inject(TROUPE) private readonly troupe: Troupe,
@@ -70,11 +71,11 @@ export class ShotImagesService {
   /** Sostituisce le immagini impostate (vuoto = decide l'aiuto regista) e dice se il video potrà partire. */
   async set(projectId: string, shotId: string, body: SetShotImagesBody): Promise<ShotImages> {
     const { stored } = this.target(projectId, shotId);
-    const candidates = new Map(
-      this.candidates(projectId, shotId, stored.spec.sceneId).map(
-        (candidate) => [candidate.assetId, candidate] as const,
-      ),
-    );
+    // Un'immagine che sta in più elenchi (per esempio nello storyboard e nel moodboard) vale con la prima origine.
+    const candidates = new Map<string, ImageCandidate>();
+    for (const candidate of await this.candidates(projectId, shotId, stored.spec.sceneId)) {
+      if (!candidates.has(candidate.assetId)) candidates.set(candidate.assetId, candidate);
+    }
     const spec: ShotSpec = {
       ...stored.spec,
       images: imagesFromChoices(body.images, candidates),
@@ -199,16 +200,21 @@ export class ShotImagesService {
     return {
       shotId,
       images: spec.images,
-      candidates: this.candidates(projectId, shotId, spec.sceneId),
+      candidates: await this.candidates(projectId, shotId, spec.sceneId),
       videoServices: await this.videoServices(spec, bible),
     };
   }
 
   /**
    * Le varianti riuscite dello storyboard e dell'ultimo fotogramma, dalla più recente, i fotogrammi
-   * presi dai take dell'inquadratura (T4.6) e le foto che l'utente ha caricato per il film (T4.8).
+   * presi dai take dell'inquadratura (T4.6), le foto che l'utente ha caricato per il film (T4.8) e le
+   * immagini del moodboard (T4.10).
    */
-  private candidates(projectId: string, shotId: string, sceneId: string): ImageCandidate[] {
+  private async candidates(
+    projectId: string,
+    shotId: string,
+    sceneId: string,
+  ): Promise<ImageCandidate[]> {
     const frames: ImageCandidate[] = this.takes.frames(shotId).map((frame) => ({
       assetId: frame.assetId,
       mode: 'take_frame',
@@ -222,7 +228,7 @@ export class ShotImagesService {
       ...this.drawn(shotId),
       ...frames,
       ...uploaded,
-      ...this.fromMoodboard(projectId, sceneId),
+      ...(await this.fromMoodboard(projectId, sceneId)),
     ];
   }
 
@@ -230,7 +236,9 @@ export class ShotImagesService {
    * Le immagini del moodboard del film e della scena (T4.10), per «Dal moodboard». Quelle «solo per
    * l'analisi» (con persone, D38) non si offrono: non vanno a un modello di generazione.
    */
-  private fromMoodboard(projectId: string, sceneId: string): ImageCandidate[] {
+  private async fromMoodboard(projectId: string, sceneId: string): Promise<ImageCandidate[]> {
+    const loaded = await this.configSource.load();
+    if (loaded.config?.features.moodboard !== true) return [];
     const board = this.moodboards.get(projectId);
     const scene = board.scenes.find((part) => part.sceneId === sceneId);
     return [...board.film.references, ...(scene?.references ?? [])]

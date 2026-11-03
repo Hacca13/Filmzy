@@ -35,7 +35,7 @@ import {
   renderImagePrompt,
   waitForMedia,
 } from '../media/image-jobs.js';
-import { moodboardBrief } from '../moodboard/brief.js';
+import { moodboardBriefFor } from '../moodboard/brief.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
@@ -261,7 +261,8 @@ export class SheetService implements OnModuleInit {
         character,
         style,
         angle,
-        moodboard: moodboardBrief(this.moodboards.get(project.id)) ?? null,
+        moodboard:
+          moodboardBriefFor({ config, store: this.moodboards, projectId: project.id }) ?? null,
       },
     });
 

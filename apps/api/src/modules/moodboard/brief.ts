@@ -1,4 +1,6 @@
 import type { Moodboard, MoodboardBrief, MoodboardPart } from '@filmzy/contracts';
+import type { MoodboardStore } from '@filmzy/db';
+import type { TroupeConfig } from '@filmzy/troupe';
 
 /**
  * La vista di solo testo del moodboard che leggono i ruoli (T4.10, architettura §5.7, D37): palette,
@@ -9,6 +11,20 @@ import type { Moodboard, MoodboardBrief, MoodboardPart } from '@filmzy/contracts
 
 const hasContent = (part: Pick<MoodboardPart, 'palette' | 'notes'>): boolean =>
   part.palette.length > 0 || part.notes.trim() !== '';
+
+/**
+ * Il moodboard che leggono i ruoli di un film, o `undefined` se la funzione `moodboard` è spenta (D37:
+ * spenta, il film lavora come se non ci fosse) o se il film non ne ha uno.
+ */
+export function moodboardBriefFor(args: {
+  config: TroupeConfig;
+  store: MoodboardStore;
+  projectId: string;
+  sceneId?: string;
+}): MoodboardBrief | undefined {
+  if (!args.config.features.moodboard) return undefined;
+  return moodboardBrief(args.store.get(args.projectId), args.sceneId);
+}
 
 export function moodboardBrief(moodboard: Moodboard, sceneId?: string): MoodboardBrief | undefined {
   const scene =

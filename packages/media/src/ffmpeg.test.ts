@@ -316,6 +316,26 @@ describe('dominantFromRgb e dominantColors (D37)', () => {
     expect(colors.some((color) => near(color, [0, 0, 255]))).toBe(true);
   });
 
+  it('i punti trasparenti non contano: un PNG mezzo trasparente dà solo il colore che si vede', async () => {
+    // La metà sinistra è rossa ma trasparente, la destra è blu pieno: il rosso non si vede, quindi non conta.
+    const half = await makeImage(
+      'trasparente.png',
+      '',
+      "color=c=black:s=64x64,format=rgba,geq=r='if(lt(X,32),255,0)':g='0':b='if(lt(X,32),0,255)':a='if(lt(X,32),0,255)'",
+    );
+
+    const colors = await dominantColors({ input: half, count: 4 });
+
+    expect(colors).toHaveLength(1);
+    expect(near(colors[0], [0, 0, 255])).toBe(true);
+  });
+
+  it('con quattro byte a pixel, il trasparente si salta', () => {
+    const rgba = Uint8Array.from([255, 0, 0, 255, 0, 255, 0, 0, 0, 255, 0, 10, 255, 0, 0, 255]);
+
+    expect(dominantFromRgb(rgba, 4, 4)).toEqual(['#ff0000']);
+  });
+
   it("un file che non è un'immagine, o un numero che non va, è un errore e non lascia file", async () => {
     const text = path.join(dir, 'finta-colori.png');
     await writeFile(text, 'non sono una foto');

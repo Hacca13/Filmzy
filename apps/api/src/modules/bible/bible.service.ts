@@ -7,7 +7,7 @@ import { domainError } from '../../http/domain-error.js';
 import { CHARACTER_STORE, SHEET_STORE } from '../cast/tokens.js';
 import { characterWithSheet } from '../cast/with-sheet.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
-import { moodboardBrief } from '../moodboard/brief.js';
+import { moodboardBriefFor } from '../moodboard/brief.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE } from '../troupe/tokens.js';
@@ -53,7 +53,7 @@ export class BibleService {
     }
 
     // Il moodboard c'è solo se l'utente l'ha fatto (D37): senza, la Bibbia è quella di prima.
-    const brief = moodboardBrief(this.moodboards.get(projectId), sceneId);
+    const brief = moodboardBriefFor({ config, store: this.moodboards, projectId, sceneId });
 
     return {
       project: {

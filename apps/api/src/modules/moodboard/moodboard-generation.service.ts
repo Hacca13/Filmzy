@@ -2,7 +2,6 @@ import path from 'node:path';
 
 import {
   moodboardJobPayloadSchema,
-  type Color,
   type GenerateMoodboardBody,
   type MoodboardDesignerInput,
   type MoodboardJobPayload,
@@ -16,7 +15,7 @@ import {
   type ScreenplayStore,
   type SheetStore,
 } from '@filmzy/db';
-import { MediaError, dominantColors } from '@filmzy/media';
+import { MediaError } from '@filmzy/media';
 import {
   ProviderError,
   type ConfigSource,
@@ -43,6 +42,7 @@ import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
+import { imageColors } from './image-colors.js';
 import { MoodboardService } from './moodboard.service.js';
 import { MOODBOARD_STORE } from './tokens.js';
 
@@ -55,14 +55,11 @@ export const MOODBOARD_JOB_KIND = 'moodboard_images';
 /** Quante immagini di riferimento si chiedono: abbastanza per vedere l'atmosfera, non per spendere inutilmente. */
 const REFERENCE_COUNT = 4;
 
-/** Quanti colori dominanti si calcolano di ogni immagine. */
-const COLORS_PER_IMAGE = 4;
+/** Per chiedere la stima basta una richiesta qualunque: il servizio non la legge, serve solo a sapere chi la accetta. */
+const ESTIMATE_PROMPT = 'x';
+const ESTIMATE_KEY = 'stima';
 
 type MediaRequest = Parameters<MediaRunner['submit']>[1];
-
-/** Il ruolo dato ai colori trovati dal codice: il primo regge l'immagine, gli altri la accompagnano. */
-const asPalette = (hexes: readonly string[]): Color[] =>
-  hexes.map((hex, index) => ({ hex, use: index === 0 ? 'dominante' : 'accento' }));
 
 /**
  * «Crea il moodboard» (T4.10, D37): il responsabile dell'atmosfera (\`moodboard_designer\`, un modello di
@@ -97,30 +94,18 @@ export class MoodboardGenerationService implements OnModuleInit {
 
   /** I servizi per le immagini, con la stima di **tutto** il lavoro: il testo e le immagini. */
   async options(projectId: string, sceneId: string | undefined): Promise<SheetOptions> {
-    const { project, config, input } = await this.prepare(projectId, sceneId);
-    const designer = await this.troupe.estimate(DESIGNER, input);
-    const images = await this.troupe.options(
-      ARTIST,
-      await this.artistRequest(project, config, 'x', 'stima'),
-    );
-    return {
-      options: images.map((option) => ({
-        ...option,
-        estimatedCostUsd: option.estimatedCostUsd * REFERENCE_COUNT + designer.estimatedCostUsd,
-      })),
-    };
+    const { options } = await this.priced(projectId, sceneId);
+    return { options };
   }
 
   async generate(projectId: string, body: GenerateMoodboardBody): Promise<MoodboardView> {
     await this.moodboard.assertEnabled();
-    const { config, input } = await this.prepare(projectId, body.sceneId);
-
     this.assertNoneRunning(projectId);
 
-    const options = await this.options(projectId, body.sceneId);
+    const { config, input, options } = await this.priced(projectId, body.sceneId);
     const chosen = await chooseMediaService({
       role: ARTIST,
-      options: options.options,
+      options,
       body: {
         ...(body.modelId === undefined ? {} : { modelId: body.modelId }),
         ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
@@ -182,14 +167,19 @@ export class MoodboardGenerationService implements OnModuleInit {
 
   /**
    * Il lavoro in coda: un'immagine per prompt, una dopo l'altra. Se una fallisce la richiesta si ferma
-   * col suo motivo (e le immagini già arrivate restano): un'altra richiesta la decide l'utente.
+   * col suo motivo (e le immagini già arrivate restano): un'altra richiesta la decide l'utente. Un
+   * lavoro ripreso dopo un riavvio riparte dall'ultima immagine arrivata, senza rifare né ripagare le
+   * altre (regola 10).
    */
-  private async makeImages(rawPayload: unknown): Promise<void> {
+  async makeImages(rawPayload: unknown): Promise<void> {
     const payload = moodboardJobPayloadSchema.parse(rawPayload);
     const { projectId, runId } = payload;
 
-    let images = 0;
-    let costUsd = 0;
+    const previous = this.store.getRun(runId);
+    if (previous?.status === 'succeeded') return;
+    const alreadyMade = previous?.images ?? 0;
+    let images = alreadyMade;
+    let costUsd = previous?.costUsd ?? 0;
     try {
       this.store.updateRun(runId, { status: 'running' });
       const project = this.projects.get(projectId);
@@ -197,6 +187,7 @@ export class MoodboardGenerationService implements OnModuleInit {
       const media = this.mediaFor(path.join(projectsDir(this.dataDir), projectId, 'immagini'));
 
       for (const [index, prompt] of payload.prompts.entries()) {
+        if (index < alreadyMade) continue;
         const request = await this.artistRequest(
           project,
           config,
@@ -249,22 +240,9 @@ export class MoodboardGenerationService implements OnModuleInit {
     }
   }
 
-  /**
-   * I colori dominanti, calcolati dal codice. Se l'immagine non si legge si va avanti senza colori:
-   * l'immagine è arrivata e pagata, e i colori si possono rifare.
-   */
-  private async colorsOf(assetId: string): Promise<Color[]> {
+  private async colorsOf(assetId: string) {
     const found = assetFile(this.files, this.dataDir, assetId);
-    if (found === undefined) return [];
-    try {
-      return asPalette(await dominantColors({ input: found.file, count: COLORS_PER_IMAGE }));
-    } catch (error) {
-      if (error instanceof MediaError) {
-        this.log.warn(`Colori dell'immagine non letti: ${error.code}.`);
-        return [];
-      }
-      throw error;
-    }
+    return found === undefined ? [] : imageColors(found.file, this.log);
   }
 
   /** Un lavoro alla volta per film: due richieste insieme farebbero le stesse immagini due volte. */
@@ -273,6 +251,22 @@ export class MoodboardGenerationService implements OnModuleInit {
     if (latest?.status === 'queued' || latest?.status === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'moodboard' } });
     }
+  }
+
+  /** Ciò che serve prima di chiamare un servizio, e i servizi con la stima di **tutto** il lavoro: il testo e le immagini. */
+  private async priced(projectId: string, sceneId: string | undefined) {
+    const prepared = await this.prepare(projectId, sceneId);
+    const { project, config, input } = prepared;
+    const designer = await this.troupe.estimate(DESIGNER, input);
+    const images = await this.troupe.options(
+      ARTIST,
+      await this.artistRequest(project, config, ESTIMATE_PROMPT, ESTIMATE_KEY),
+    );
+    const options = images.map((option) => ({
+      ...option,
+      estimatedCostUsd: option.estimatedCostUsd * REFERENCE_COUNT + designer.estimatedCostUsd,
+    }));
+    return { ...prepared, options };
   }
 
   /** Ciò che serve prima di chiamare un servizio: film, configurazione e ingresso del responsabile dell'atmosfera. */

@@ -43,7 +43,7 @@ export interface MoodboardChanges {
  */
 export interface MoodboardStore {
   get: (projectId: string) => Moodboard;
-  /** Sostituisce palette e consigli della parte; vuoti, tolgono la riga. `sceneId` assente = il film. */
+  /** Sostituisce palette e consigli della parte (anche vuoti: la riga resta, ricorda il cambiamento). `sceneId` assente = il film. */
   saveText: (projectId: string, sceneId: string | undefined, text: MoodboardText) => void;
   addReference: (
     projectId: string,
@@ -60,6 +60,8 @@ export interface MoodboardStore {
   updateRun: (runId: string, patch: RunPatch) => void;
   /** L'ultima richiesta del film. */
   latestRun: (projectId: string) => MoodboardRun | undefined;
+  /** Una richiesta, per riprendere un lavoro rimasto a metà dopo un riavvio. */
+  getRun: (runId: string) => MoodboardRun | undefined;
 }
 
 /** Cosa cambia di una richiesta mentre lavora e quando finisce. */
@@ -109,9 +111,6 @@ const toRun = (row: MoodboardRunRow): MoodboardRun =>
     createdAt: new Date(row.createdAt).toISOString(),
   });
 
-const isEmpty = (text: MoodboardText): boolean =>
-  text.palette.length === 0 && text.notes.trim() === '';
-
 export function createMoodboardStore(
   db: FilmzyDb,
   options: MoodboardStoreOptions = {},
@@ -154,9 +153,11 @@ export function createMoodboardStore(
         .where(eq(moodboardReferences.projectId, projectId))
         .all()
         .flatMap((row) => (row.sceneId === null ? [] : [row.sceneId]));
-      const sceneIds = [
-        ...new Set([...sceneRows.map((row) => row.sceneId), ...withReferences]),
-      ].sort();
+      // Una parte di scena svuotata resta in tabella (si ricorda quando è cambiata) ma non si mostra: vale quella del film.
+      const withText = sceneRows
+        .filter((row) => parsePalette(row.palette).length > 0 || row.notes !== '')
+        .map((row) => row.sceneId);
+      const sceneIds = [...new Set([...withText, ...withReferences])].sort();
 
       return {
         projectId,
@@ -175,13 +176,14 @@ export function createMoodboardStore(
 
     saveText(projectId, sceneId, text) {
       const at = now().getTime();
-      const values = { palette: JSON.stringify(text.palette), notes: text.notes, updatedAt: at };
+      const values = {
+        palette: JSON.stringify(text.palette),
+        notes: text.notes.trim(),
+        updatedAt: at,
+      };
 
+      // Anche una parte svuotata resta in tabella: palette e consigli sono cambiati, e le regole (R9) lo ricordano.
       if (sceneId === undefined) {
-        if (isEmpty(text)) {
-          db.delete(moodboards).where(eq(moodboards.projectId, projectId)).run();
-          return;
-        }
         db.insert(moodboards)
           .values({ projectId, ...values })
           .onConflictDoUpdate({ target: moodboards.projectId, set: values })
@@ -193,10 +195,6 @@ export function createMoodboardStore(
         eq(moodboardScenes.projectId, projectId),
         eq(moodboardScenes.sceneId, sceneId),
       );
-      if (isEmpty(text)) {
-        db.delete(moodboardScenes).where(where).run();
-        return;
-      }
       const existing = db.select().from(moodboardScenes).where(where).get();
       if (existing === undefined) {
         db.insert(moodboardScenes)
@@ -290,6 +288,11 @@ export function createMoodboardStore(
         })
         .where(eq(moodboardRuns.id, runId))
         .run();
+    },
+
+    getRun(runId) {
+      const row = db.select().from(moodboardRuns).where(eq(moodboardRuns.id, runId)).get();
+      return row === undefined ? undefined : toRun(row);
     },
 
     latestRun(projectId) {

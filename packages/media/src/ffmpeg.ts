@@ -260,6 +260,9 @@ export async function maskHasPaint(
 /** Il lato dell'immagine ridotta da cui si contano i colori: 32x32 basta e costa niente. */
 const COLOR_SAMPLE_SIDE = 32;
 
+/** Sotto questa opacità (0–255) un punto non conta per i colori: è quasi trasparente. */
+const MIN_VISIBLE_ALPHA = 32;
+
 /** Quanto devono distare due colori (nello spazio RGB) per contare come due colori diversi. */
 const MIN_COLOR_DISTANCE = 56;
 
@@ -269,9 +272,11 @@ const MIN_COLOR_DISTANCE = 56;
  * numerosi saltando quelli troppo simili a uno già scelto, perché una palette di sette sfumature dello
  * stesso blu non serve a nessuno. Tutto è esatto e non costa niente (D37).
  */
-export function dominantFromRgb(pixels: Uint8Array, count: number): string[] {
+export function dominantFromRgb(pixels: Uint8Array, count: number, stride: 3 | 4 = 3): string[] {
   const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
-  for (let offset = 0; offset + 2 < pixels.length; offset += 3) {
+  for (let offset = 0; offset + 2 < pixels.length; offset += stride) {
+    // Con il canale trasparente (4 byte a pixel) i punti trasparenti non contano: il loro colore non si vede.
+    if (stride === 4 && (pixels[offset + 3] ?? 255) < MIN_VISIBLE_ALPHA) continue;
     const r = pixels[offset] ?? 0;
     const g = pixels[offset + 1] ?? 0;
     const b = pixels[offset + 2] ?? 0;
@@ -332,7 +337,7 @@ export async function dominantColors(options: DominantColorsOptions): Promise<st
         '-i',
         input,
         '-vf',
-        `scale=${String(COLOR_SAMPLE_SIDE)}:${String(COLOR_SAMPLE_SIDE)}:flags=area,format=rgb24`,
+        `scale=${String(COLOR_SAMPLE_SIDE)}:${String(COLOR_SAMPLE_SIDE)}:flags=area,format=rgba`,
         '-frames:v',
         '1',
         '-f',
@@ -350,7 +355,7 @@ export async function dominantColors(options: DominantColorsOptions): Promise<st
     if (pixels === undefined || pixels.length === 0) {
       throw new MediaError('ffmpeg_failed', "Dall'immagine non si sono letti i colori.");
     }
-    return dominantFromRgb(pixels, count);
+    return dominantFromRgb(pixels, count, 4);
   } finally {
     await rm(raw, { force: true });
   }

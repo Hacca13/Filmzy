@@ -105,6 +105,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
           presets: {
             cameraMovements: options.movements ?? [movement('static'), movement('push_in')],
           },
+          features: { moodboard: true },
         },
         origin: 'prova',
         releaseId: 'prova',

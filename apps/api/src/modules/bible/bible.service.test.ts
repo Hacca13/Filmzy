@@ -51,6 +51,8 @@ function build(
     cinematography?: unknown[];
     locked?: Record<string, string[]>;
     moodboard?: Moodboard;
+    /** La funzione `moodboard` del seme: accesa se non si dice altro. */
+    moodboardOn?: boolean;
   } = {},
 ) {
   const characters = { list: () => [anna, marco] } as unknown as CharacterStore;
@@ -67,6 +69,7 @@ function build(
             cinematography: options.cinematography ?? [example.cinematography],
           },
           limits: { max_characters: 2 },
+          features: { moodboard: options.moodboardOn ?? true },
         },
         origin: 'prova',
         releaseId: 'prova',
@@ -181,6 +184,9 @@ describe('la Bibbia del film', () => {
       referenceDescriptions: ['a quiet station at dusk'],
       scene: null,
     });
+    // Con la funzione spenta il film lavora come se il moodboard non ci fosse.
+    const off = await build({ moodboard: withMoodboard, moodboardOn: false }).assemble(film.id);
+    expect(off.moodboard).toBeUndefined();
   });
 
   it('un film che non esiste dà «non trovato»', async () => {

@@ -42,7 +42,7 @@ import {
   variantsOf,
   waitForMedia,
 } from '../media/image-jobs.js';
-import { moodboardBrief } from '../moodboard/brief.js';
+import { moodboardBriefFor } from '../moodboard/brief.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
@@ -294,7 +294,8 @@ export class LocationsService implements OnModuleInit {
       input: {
         location,
         style,
-        moodboard: moodboardBrief(this.moodboards.get(project.id)) ?? null,
+        moodboard:
+          moodboardBriefFor({ config, store: this.moodboards, projectId: project.id }) ?? null,
       },
     });
 

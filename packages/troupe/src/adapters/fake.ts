@@ -49,9 +49,12 @@ const fixtureSchema = z.strictObject({
 
 type Fixture = z.infer<typeof fixtureSchema>;
 
-/** Un PNG 1×1 trasparente: un file immagine vero, che si apre davvero (ffmpeg lo legge), piccolo quanto basta. */
+/**
+ * Un PNG 1×1 color ambra, opaco: un file immagine vero, che si apre davvero (ffmpeg lo legge), piccolo
+ * quanto basta. Opaco perché i colori dominanti (T4.10) ignorano i punti trasparenti.
+ */
 const PLACEHOLDER_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGM41GgFAAOGAX4npuFeAAAAAElFTkSuQmCC',
   'base64',
 );
 

@@ -73,7 +73,9 @@ export class ShotsService {
       working: this.workingNow(projectId),
       locationChanges: this.locations.referenceChanges(projectId),
       workedAt: this.workedAt(projectId),
-      moodboardChanges: this.moodboards.changes(projectId),
+      moodboardChanges: config.features.moodboard
+        ? this.moodboards.changes(projectId)
+        : { scenes: {} },
       takeAt: this.takes.lastTakeAt(projectId),
     };
 

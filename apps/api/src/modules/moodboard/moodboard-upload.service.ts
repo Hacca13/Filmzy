@@ -2,9 +2,8 @@ import { createHash } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { Color, ImageAnalystOutput, MoodboardView } from '@filmzy/contracts';
+import type { ImageAnalystOutput, MoodboardView } from '@filmzy/contracts';
 import { projectsDir, type MoodboardStore, type SheetStore } from '@filmzy/db';
-import { MediaError, dominantColors } from '@filmzy/media';
 import { LocalAssetStore, type Troupe } from '@filmzy/troupe';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
@@ -18,11 +17,9 @@ import { TROUPE } from '../troupe/tokens.js';
 import { readImageBody } from '../uploads/image-body.js';
 import { imageProblems } from '../uploads/image-checks.js';
 import { imageForReading } from '../uploads/image-for-reading.js';
+import { imageColors } from './image-colors.js';
 import { MoodboardService } from './moodboard.service.js';
 import { MOODBOARD_STORE } from './tokens.js';
-
-/** Quanti colori dominanti si calcolano di ogni immagine. */
-const COLORS_PER_IMAGE = 4;
 
 /** Cosa si scrive di un'immagine caricata senza controllo: nessuno l'ha letta. */
 const UNREAD_DESCRIPTION = 'Immagine caricata dall’utente';
@@ -90,7 +87,7 @@ export class MoodboardUploadService {
         analysisOnly: verdict?.containsPeople === true,
         description: verdict === undefined ? UNREAD_DESCRIPTION : describe(verdict),
         moodTags: verdict?.moodTags ?? [],
-        palette: await this.colorsOf(stored.path),
+        palette: await imageColors(stored.path, this.log),
       });
     } catch (error) {
       // Senza il suo riferimento il file non serve a nessuno: non resta sul disco (se era già di altri, sì).
@@ -122,20 +119,6 @@ export class MoodboardUploadService {
       throw domainError(422, 'image_rejected', { details: { imageProblems: problems } });
     }
     return data;
-  }
-
-  /** I colori dominanti; se l'immagine non si legge si va avanti senza: i colori si possono rifare. */
-  private async colorsOf(file: string): Promise<Color[]> {
-    try {
-      const hexes = await dominantColors({ input: file, count: COLORS_PER_IMAGE });
-      return hexes.map((hex, index) => ({ hex, use: index === 0 ? 'dominante' : 'accento' }));
-    } catch (error) {
-      if (error instanceof MediaError) {
-        this.log.warn(`Colori dell'immagine non letti: ${error.code}.`);
-        return [];
-      }
-      throw error;
-    }
   }
 }
 

@@ -4,13 +4,15 @@ import {
   sheetOptionsSchema,
   type MoodboardView,
 } from '@filmzy/contracts';
-import type { ReceiptStore } from '@filmzy/db';
+import type { MoodboardStore, ReceiptStore } from '@filmzy/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startApp, startAppWithFixtures, type Client } from '../../test-support/app-client.js';
 import { filmWithShot } from '../../test-support/film-with-shot.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
+import { MoodboardGenerationService } from './moodboard-generation.service.js';
+import { MOODBOARD_STORE } from './tokens.js';
 
 /**
  * «Crea il moodboard» (T4.10, D37), col server vero e il fornitore finto (nessuna spesa vera): il
@@ -215,6 +217,67 @@ describe('creare il moodboard', () => {
     expect(noScene).toMatchObject({ status: 400, code: 'invalid_request' });
     expect(noScene.details?.field).toBe('sceneId');
   }, 60_000);
+});
+
+describe('un lavoro ripreso dopo un riavvio (regola 10)', () => {
+  /** Il lavoro com'è in coda, rimesso insieme da ciò che la richiesta ha lasciato. */
+  async function resumable() {
+    const { film } = await filmWithShot(normal.client);
+    await normal.client.call('POST', `/projects/${film.id}/moodboard/generate`, {});
+    const done = await untilDone(normal, film.id);
+    const { options } = sheetOptionsSchema.parse(
+      (await normal.client.call('GET', `/projects/${film.id}/moodboard/options`)).body,
+    );
+    const references = done.moodboard.film.references;
+    const payload = {
+      projectId: film.id,
+      runId: done.run?.id ?? '',
+      // Il prompt di ogni immagine è la sua descrizione.
+      prompts: references.map((reference) => reference.description),
+      modelId: options[0]?.modelId ?? '',
+    };
+    return {
+      film,
+      payload,
+      references,
+      done,
+      store: normal.app.get<MoodboardStore>(MOODBOARD_STORE),
+      service: normal.app.get(MoodboardGenerationService),
+    };
+  }
+
+  const artistReceipts = () =>
+    normal.receipts.list().filter((receipt) => receipt.role === 'moodboard_artist').length;
+
+  it('riparte dall’ultima immagine arrivata: le altre non si rifanno né si ripagano', async () => {
+    const { film, payload, references, done, store, service } = await resumable();
+    // Come dopo un riavvio a metà: la seconda immagine non c'era ancora arrivata.
+    store.removeReference(film.id, references[1]?.id ?? '');
+    store.updateRun(payload.runId, {
+      status: 'running',
+      images: 1,
+      costUsd: done.run?.costUsd ?? 0,
+    });
+    const before = artistReceipts();
+
+    await service.makeImages(payload);
+
+    const after = await read(normal, film.id);
+    expect(after.run).toMatchObject({ status: 'succeeded', images: 2 });
+    expect(after.moodboard.film.references).toHaveLength(2);
+    expect(after.moodboard.film.references[0]?.assetId).toBe(references[0]?.assetId);
+    expect(artistReceipts()).toBe(before + 1);
+  }, 90_000);
+
+  it('un lavoro già finito non fa niente', async () => {
+    const { film, payload, service } = await resumable();
+    const before = artistReceipts();
+
+    await service.makeImages(payload);
+
+    expect((await read(normal, film.id)).moodboard.film.references).toHaveLength(2);
+    expect(artistReceipts()).toBe(before);
+  }, 90_000);
 });
 
 describe('quando qualcosa non va', () => {

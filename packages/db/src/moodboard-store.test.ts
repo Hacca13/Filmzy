@@ -51,12 +51,34 @@ describe('il moodboard nel database (T4.10)', () => {
     expect(store.get('film-1').film).toMatchObject({ palette: [], notes: 'Solo parole.' });
   });
 
-  it("una parte vuota toglie la riga: palette e consigli tornano come all'inizio", () => {
+  it('una parte svuotata torna come all’inizio, ma si ricorda che è cambiata (R9)', () => {
     store.saveText('film-1', undefined, { palette: [amber], notes: 'x' });
+    later();
     store.saveText('film-1', undefined, { palette: [], notes: '   ' });
+    store.saveText('film-1', 'scene-1', { palette: [], notes: '' });
 
     expect(store.get('film-1').film).toEqual({ palette: [], notes: '', references: [] });
-    expect(store.changes('film-1')).toEqual({ scenes: {} });
+    expect(store.get('film-1').scenes).toEqual([]);
+    expect(store.changes('film-1')).toEqual({
+      film: clock.getTime(),
+      scenes: { 'scene-1': clock.getTime() },
+    });
+  });
+
+  it('una richiesta di immagini si rilegge per id, per riprenderla dopo un riavvio', () => {
+    const id = store.startRun('film-1', 'scene-1', 'Nano Banana');
+    store.updateRun(id, { status: 'running', images: 2, costUsd: 0.1 });
+
+    expect(store.getRun(id)).toMatchObject({
+      id,
+      sceneId: 'scene-1',
+      status: 'running',
+      images: 2,
+      costUsd: 0.1,
+      modelLabel: 'Nano Banana',
+    });
+    expect(store.getRun('non-c-e')).toBeUndefined();
+    expect(store.latestRun('film-1')?.id).toBe(id);
   });
 
   it('ogni scena ha la sua parte, e le scene sono elencate in ordine', () => {

@@ -33,7 +33,10 @@ export function ShotVideoSection({
     (signal: AbortSignal) => fetchTakeOptions(filmId, shotId, signal),
     [filmId, shotId],
   );
-  const watched = useWatched<ShotTakes>(load, takesAreWorking);
+  const watched = useWatched<ShotTakes>(load, takesAreWorking, {
+    kinds: ['take_generate'],
+    subjectId: shotId,
+  });
   const { value: takes, setValue: setTakes, problem: loadProblem, working } = watched;
   // Un take che finisce porta una clip nuova: la card la mostra, quindi il piano si rilegge.
   useOnIncrease(takes?.takes.filter((take) => take.status === 'succeeded').length, onSettled);

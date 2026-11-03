@@ -75,6 +75,7 @@ let runs: { input: ShotPlannerInput; ctx: GenerationContext }[];
 let estimates: ShotPlannerInput[];
 let reached: string[];
 let clips: Record<string, string>;
+let videoInProgress: string[];
 
 function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {}) {
   const troupe = {
@@ -121,7 +122,10 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
       reached.push(phase);
     },
   } as unknown as ProjectsService;
-  const takes = { latestClips: () => clips } as unknown as TakeStore;
+  const takes = {
+    latestClips: () => clips,
+    inProgress: () => videoInProgress,
+  } as unknown as TakeStore;
   return new ShotsService(store, troupe, configSource, screenplays, bibles, projects, takes);
 }
 
@@ -147,6 +151,7 @@ beforeEach(async () => {
   estimates = [];
   reached = [];
   clips = {};
+  videoInProgress = [];
   final = {
     id: 'stesura-1',
     projectId: film.id,
@@ -422,5 +427,32 @@ describe('la clip più recente', () => {
     const again = await build().plan(film.id, { sceneNumber: 1 });
 
     expect(again.latestTakes).toEqual({});
+  });
+});
+
+describe('cosa si sta facendo adesso', () => {
+  it('ogni inquadratura con un lavoro in corso lo dice, e il video vince sulle immagini (T4.4)', async () => {
+    const service = build();
+    const first = await service.plan(film.id, { sceneNumber: 1 });
+    const second = await service.plan(film.id, { sceneNumber: 2 });
+    const one = first.shots[0];
+    const two = second.shots[0];
+    if (one === undefined || two === undefined) throw new Error('servono due inquadrature');
+    // La prima disegna lo storyboard e gira già il video; la seconda disegna lo storyboard e l'ultimo fotogramma.
+    store.startStoryboard(one.id, 'storyboard');
+    store.startStoryboard(two.id, 'storyboard');
+    store.startStoryboard(two.id, 'end_frame');
+    videoInProgress = [one.id];
+
+    const plans = await service.plans(film.id);
+
+    expect(plans.scenes[0]?.working).toEqual({ [one.id]: 'video' });
+    expect(plans.scenes[1]?.working).toEqual({ [two.id]: 'end_frame' });
+  });
+
+  it('un piano appena rifatto non ha niente in corso', async () => {
+    const again = await build().plan(film.id, { sceneNumber: 1 });
+
+    expect(again.working).toEqual({});
   });
 });

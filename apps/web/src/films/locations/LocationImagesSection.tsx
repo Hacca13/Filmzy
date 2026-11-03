@@ -36,6 +36,7 @@ export function LocationImagesSection({
       workingText="Sto disegnando il set…"
       imageLabel="Set"
       load={load}
+      live={{ kinds: ['location_images'], subjectId: locationId }}
       loadOptions={loadOptions}
       start={(body) => startLocationImages(filmId, locationId, body)}
       choose={(assetId) => chooseLocationImage(filmId, locationId, assetId)}

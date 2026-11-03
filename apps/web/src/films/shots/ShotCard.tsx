@@ -1,7 +1,17 @@
-import type { ProjectChoice, ShotSpec } from '@filmzy/contracts';
+import type { ProjectChoice, ScenePlan, ShotSpec } from '@filmzy/contracts';
 
 import { assetUrl } from '../../api/sheet';
+import { Chip } from '../../components/ui';
 import { continuityLine, humanize, type Names } from './model';
+
+type ShotWork = ScenePlan['working'][string];
+
+/** Cosa dice la card mentre per l'inquadratura c'è un lavoro in coda o in corso. */
+const WORK_TEXT: Record<ShotWork, string> = {
+  storyboard: 'Sto disegnando lo storyboard…',
+  end_frame: "Sto disegnando l'ultimo fotogramma…",
+  video: 'Sto girando il video…',
+};
 
 interface Props {
   shot: ShotSpec;
@@ -13,6 +23,8 @@ interface Props {
   storyboardAssetId?: string | undefined;
   /** La clip del take riuscito più recente (T4.3): se c'è, la card fa vedere quella. */
   clipAssetId?: string | undefined;
+  /** Cosa si sta facendo adesso per questa inquadratura (T4.4): la card lo dice e, finito, mostra il risultato. */
+  working?: ShotWork | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
   /** Senza, la card non offre lo storyboard: il piano è da rifare e il server lo rifiuterebbe. */
@@ -33,6 +45,7 @@ export function ShotCard({
   onMovement,
   storyboardAssetId,
   clipAssetId,
+  working,
   storyboardOpen,
   canStoryboard,
   onStoryboard,
@@ -63,6 +76,7 @@ export function ShotCard({
           alt={`Storyboard dell'inquadratura ${String(shot.order + 1)}`}
         />
       )}
+      {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>
       <p className="hint">

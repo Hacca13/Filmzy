@@ -6,6 +6,9 @@ import { createShotStore, type ShotStore } from './shot-store.js';
 import { createTakeStore, type TakeStore } from './take-store.js';
 import { tempDataDir } from './test.fixtures.js';
 
+/** Un momento lontano: conta ogni lavoro, anche vecchio. */
+const LONG_AGO = new Date(0);
+
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
 const shot = (id: string): ShotSpec => ({ ...example, id });
 
@@ -126,6 +129,40 @@ describe('la clip più recente di ogni inquadratura', () => {
     expect(store.latestClips('film-1')).toEqual({});
     expect(store.latestClips('film-2')).toEqual({ b1: 'clip-di-altri' });
     expect(store.latestClips('non-c-e')).toEqual({});
+  });
+});
+
+describe('le inquadrature con un take in corso', () => {
+  it('sono quelle con un take in coda o in lavorazione, e solo del film', () => {
+    const waiting = store.start('a1', kling);
+    const running = store.start('a2', kling);
+    store.finish(running.id, { status: 'running' });
+    const done = store.start('a2', seedance);
+    store.finish(done.id, { status: 'succeeded', assetId: 'clip' });
+    const elsewhere = store.start('b1', kling);
+
+    expect(store.inProgress('film-1', LONG_AGO).sort()).toEqual(['a1', 'a2']);
+    expect(store.inProgress('film-2', LONG_AGO)).toEqual(['b1']);
+    expect(store.inProgress('non-c-e', LONG_AGO)).toEqual([]);
+
+    store.finish(waiting.id, { status: 'failed', errorCode: 'timeout' });
+    store.finish(running.id, { status: 'succeeded', assetId: 'clip-2' });
+    store.finish(elsewhere.id, { status: 'succeeded', assetId: 'clip-3' });
+    expect(store.inProgress('film-1', LONG_AGO)).toEqual([]);
+  });
+});
+
+describe('un take rimasto a metà', () => {
+  it('non conta più come «in corso» dopo il limite dato, perché il lavoro si è perso', () => {
+    const old = createTakeStore(opened.db, { now: () => new Date('2026-11-02T08:00:00.000Z') });
+    old.start('a1', kling);
+    const recent = store.start('a2', kling);
+
+    const since = new Date('2026-11-02T09:00:00.000Z');
+
+    expect(store.inProgress('film-1', since)).toEqual(['a2']);
+    expect(store.inProgress('film-1', LONG_AGO).sort()).toEqual(['a1', 'a2']);
+    expect(recent.status).toBe('queued');
   });
 });
 

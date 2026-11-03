@@ -206,6 +206,7 @@ Fatto il 2/11 (D65): «Genera» video con «Cambia servizio» e la stima (video 
 
 **T4.4 Aggiornamenti live.** SSE per lo stato delle card.
 _Fatto quando:_ la card passa da "in lavorazione" a "pronto" senza ricaricare la pagina.
+Fatto il 2/11 (D67): `GET /api/events` manda `job.changed` quando un lavoro parte, finisce, fallisce o ritenta; il piano dice cosa si sta facendo per ogni inquadratura (`ScenePlan.working`: storyboard, ultimo fotogramma o video) e la card lo scrive («Sto girando il video…») e, finito, mostra il risultato da sola, anche con il riquadro chiuso; schede dei luoghi, storyboard e video non controllano più ogni secondo e mezzo ma si aggiornano quando il server avvisa (controllo lento di sicurezza). Manca: eventi anche per le schede dei personaggi (T3.6), un indicatore «lavori in corso» nell'intestazione del film (nel disegno c'è, `2 lavori in corso`), il programma impacchettato (Electron).
 
 **T4.5 Rifiuti ed errori.** Messaggi semplici, nessun tentativo di aggirare i filtri.
 _Fatto quando:_ un rifiuto simulato non registra spesa e non prova altri modelli.

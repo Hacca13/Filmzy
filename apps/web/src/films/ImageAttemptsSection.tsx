@@ -5,6 +5,7 @@ import { Chip, Notice, ToneIcon } from '../components/ui';
 import { useAction } from '../settings/use-action';
 import { GenerateBar, useGeneration } from './generation';
 import { attemptWho, attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
+import type { LiveFilter } from './use-live-jobs';
 import { useOnIncrease } from './use-on-increase';
 import { useWatched } from './use-watched';
 
@@ -31,6 +32,8 @@ interface Props<T extends ImageSet> {
   onChosen?: () => void;
   /** Quando un tentativo finisce con delle immagini nuove: chi le offre altrove le rilegge. */
   onSettled?: () => void;
+  /** Che lavoro fa queste immagini e a cosa si riferisce (T4.4): il server avvisa quando cambia, senza controlli continui. */
+  live?: LiveFilter;
 }
 
 /**
@@ -53,13 +56,14 @@ export function ImageAttemptsSection<T extends ImageSet>({
   chosenText = 'Scelta come riferimento',
   onChosen,
   onSettled,
+  live,
 }: Props<T>) {
   const {
     value: images,
     setValue: setImages,
     problem: loadProblem,
     working,
-  } = useWatched(load, attemptsAreWorking);
+  } = useWatched(load, attemptsAreWorking, live);
 
   // Un tentativo che finisce porta immagini nuove: lo si dice a chi le offre altrove.
   useOnIncrease(images?.attempts.filter((item) => item.status === 'succeeded').length, onSettled);

@@ -476,6 +476,8 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 
 `generation.queued`, `generation.running`, `take.ready`, `take.failed`, `take.rejected`, `image.ready`, `image.failed` (immagini del set, ritocchi, fotogrammi chiave), `audio.ready`, `audio.failed`, `continuity.flagged`, `export.ready`. Partono dai lavori in coda e arrivano all'interfaccia via SSE.
 
+**Oggi (T4.4, D67)** c'è un evento solo, `job.changed` (`jobId`, `kind`, `status` — `queued`, `running`, `done`, `failed`, `cancelled` —, `projectId?`, `subjectId?`): l'esecutore della coda lo pubblica sul canale interno (`EventBus`) quando un lavoro è messo in coda, parte, finisce, fallisce o torna in coda per un nuovo tentativo, e `GET /api/events` (Server-Sent Events) lo manda a chi è collegato, con un segno di vita ogni 25 secondi. È una **notifica di cambiamento, non il dato**: dice che tipo di lavoro è e a cosa si riferisce (l'inquadratura, il luogo, il personaggio), mai il suo contenuto; l'interfaccia rilegge la risorsa che le interessa (`GET …/takes`, `GET …/storyboard`, il piano delle inquadrature). Una connessione sola per finestra; alla riconnessione l'interfaccia rilegge tutto, e un controllo lento ogni 15 secondi resta come rete di sicurezza. Gli eventi più specifici di sopra (`take.ready`…) restano da fare quando serviranno dati che la lettura non dà.
+
 ### 5.5 Tracce audio
 
 ```ts

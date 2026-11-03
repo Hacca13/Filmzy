@@ -1,9 +1,14 @@
 import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '@filmzy/contracts';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { eq } from 'drizzle-orm';
 import { openFilmzyDatabase, type OpenedDatabase } from './open.js';
+import { storyboardAttempts } from './schema.js';
 import { createShotStore, type NewShotPlan, type ShotStore } from './shot-store.js';
 import { tempDataDir } from './test.fixtures.js';
+
+/** Un momento lontano: conta ogni lavoro, anche vecchio. */
+const LONG_AGO = new Date(0);
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
 
@@ -200,6 +205,50 @@ describe('lo storyboard di un’inquadratura', () => {
     store.chooseStoryboard('a1', undefined);
     expect(store.storyboard('a1', 'storyboard').chosenAssetId).toBeUndefined();
     expect(store.chosenStoryboards('film-1')).toEqual({ a2: 'z' });
+  });
+
+  it('si sa cosa si sta disegnando adesso per ogni inquadratura, e l’ultimo fotogramma vince', () => {
+    store.replaceScene(plan(1, ['a1', 'a2', 'a3']));
+    store.replaceScene({ ...plan(1, ['b1']), projectId: 'film-2' });
+    store.startStoryboard('a1', 'storyboard');
+    store.startStoryboard('a2', 'storyboard');
+    store.startStoryboard('a2', 'end_frame');
+    store.startStoryboard('b1', 'storyboard');
+    const done = store.startStoryboard('a3', 'storyboard');
+    store.finishStoryboard('a3', 'storyboard', done, { status: 'succeeded', assetIds: ['x'] });
+
+    expect(store.drawing('film-1', LONG_AGO)).toEqual({ a1: 'storyboard', a2: 'end_frame' });
+    expect(store.drawing('film-2', LONG_AGO)).toEqual({ b1: 'storyboard' });
+    expect(store.drawing('non-c-e', LONG_AGO)).toEqual({});
+
+    store.finishStoryboard('a1', 'storyboard', 1, { status: 'running' });
+    expect(store.drawing('film-1', LONG_AGO).a1).toBe('storyboard');
+    store.finishStoryboard('a1', 'storyboard', 1, { status: 'failed', errorCode: 'timeout' });
+    expect(store.drawing('film-1', LONG_AGO)).toEqual({ a2: 'end_frame' });
+  });
+
+  it('un tentativo rimasto a metà da troppo tempo non conta come «in disegno»', () => {
+    store.replaceScene(plan(1, ['a1', 'a2']));
+    clock = new Date('2026-11-02T08:00:00.000Z');
+    store.startStoryboard('a1', 'storyboard');
+    clock = new Date('2026-11-02T10:00:00.000Z');
+    store.startStoryboard('a2', 'storyboard');
+
+    expect(store.drawing('film-1', new Date('2026-11-02T09:00:00.000Z'))).toEqual({
+      a2: 'storyboard',
+    });
+  });
+
+  it('una riga con un modo che non conosciamo si salta, e non rompe il piano', () => {
+    store.replaceScene(plan(1, ['a1']));
+    store.startStoryboard('a1', 'storyboard');
+    opened.db
+      .update(storyboardAttempts)
+      .set({ mode: 'futuro' })
+      .where(eq(storyboardAttempts.shotId, 'a1'))
+      .run();
+
+    expect(store.drawing('film-1', LONG_AGO)).toEqual({});
   });
 
   it('rifare la scena toglie le inquadrature di prima con i loro tentativi e la loro scelta', () => {

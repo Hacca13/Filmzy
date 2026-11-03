@@ -58,6 +58,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   shots: [shot],
   chosenStoryboards: {},
   latestTakes: {},
+  working: {},
   ...patch,
 });
 
@@ -183,6 +184,17 @@ describe('ShotCard', () => {
     expect(html).toContain('src="/api/assets/clip-1"');
     expect(html).toContain('aria-label="Video dell&#x27;inquadratura 1"');
     expect(html).not.toContain('<img');
+  });
+
+  it('mentre c’è un lavoro per l’inquadratura la card lo dice, e finito lo dice più (T4.4)', () => {
+    expect(render(shot, false, { working: 'video' })).toContain('Sto girando il video…');
+    expect(render(shot, false, { working: 'storyboard' })).toContain(
+      'Sto disegnando lo storyboard…',
+    );
+    expect(render(shot, false, { working: 'end_frame' })).toContain(
+      'Sto disegnando l&#x27;ultimo fotogramma…',
+    );
+    expect(render(shot, false, { working: undefined })).not.toContain('Sto ');
   });
 
   it('se il piano è da rifare lo storyboard non si offre, ma la variante già scelta si vede', () => {

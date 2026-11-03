@@ -16,7 +16,6 @@ import {
   createTakeStore,
   openFilmzyDatabase,
   type EnqueueInput,
-  type JobQueue,
   type SheetStore,
   type ShotStore,
   type TakeStore,
@@ -41,7 +40,8 @@ import type { JobRunner } from '../jobs/job-runner.service.js';
 import type { ProjectsService } from '../projects/projects.service.js';
 import type { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { hashScene } from './plan-shots.js';
-import { STALE_TAKE_MS, TAKE_JOB_KIND, TakesService } from './takes.service.js';
+import { TAKE_JOB_KIND, TakesService } from './takes.service.js';
+import { STALE_WORK_MS } from './work.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer);
 const bible: StoryBible = shotPlannerInputSchema.parse(ROLE_INPUT_EXAMPLES.shot_planner).bible;
@@ -189,17 +189,14 @@ function build() {
       } as unknown as LoadedConfig),
   };
   const spend: SpendGuard = { check: () => Promise.resolve(breach) };
-  const queue = {
-    enqueue: (input: EnqueueInput) => {
-      enqueued.push(input);
-      return {};
-    },
-  } as unknown as JobQueue;
   const runner = {
     register: (kind: string, handler: (job: { payload: unknown }) => Promise<void>) => {
       handlers.set(kind, handler);
     },
-    wake: () => undefined,
+    enqueue: (input: EnqueueInput) => {
+      enqueued.push(input);
+      return {};
+    },
   } as unknown as JobRunner;
   const projects = {
     get: (id: string) => {
@@ -225,7 +222,6 @@ function build() {
     spend,
     () => media,
     dataDir,
-    queue,
     runner,
     projects,
     bibles,
@@ -605,7 +601,7 @@ describe('il lavoro in coda', () => {
 describe('un take rimasto a metà', () => {
   it('dopo troppo tempo si chiude come fallito, e se ne può chiedere un altro', async () => {
     const stuck = createTakeStore(openedDb, {
-      now: () => new Date(Date.now() - STALE_TAKE_MS - 60_000),
+      now: () => new Date(Date.now() - STALE_WORK_MS - 60_000),
     }).start('shot-1', { modelId: 'video-a', modelLabel: 'Video A' });
     const service = build();
 

@@ -1,5 +1,5 @@
-import type { Job } from '@filmzy/contracts';
-import type { JobQueue } from '@filmzy/db';
+import type { Job, JobStatus } from '@filmzy/contracts';
+import type { EnqueueInput, JobQueue } from '@filmzy/db';
 import {
   Inject,
   Injectable,
@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 
 import { JOB_QUEUE } from '../database/database.module.js';
+import { EventBus } from '../events/event-bus.js';
 
 /**
  * L'esecutore della coda (architettura §7): chiede alla coda i prossimi lavori, li fa fare a chi
@@ -51,6 +52,7 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
   constructor(
     @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     @Optional() @Inject(JOB_RUNNER_OPTIONS) options: JobRunnerOptions = {},
+    @Optional() private readonly events?: EventBus,
   ) {
     this.concurrency = options.concurrency ?? 2;
     this.pollIntervalMs = options.pollIntervalMs ?? 1000;
@@ -86,6 +88,18 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     await this.drain();
   }
 
+  /**
+   * Mette un lavoro in coda, lo annuncia («in coda») e dà subito una guardata: è il modo in cui i
+   * moduli chiedono un lavoro. L'annuncio serve a chi mostra cosa si sta facendo (la card) anche
+   * quando il lavoro deve aspettare il suo turno (T4.4).
+   */
+  enqueue(input: EnqueueInput): Job {
+    const job = this.queue.enqueue(input);
+    this.announce(job, 'queued');
+    this.wake();
+    return job;
+  }
+
   /** Dà una guardata alla coda adesso: lo chiama chi mette un lavoro in coda. */
   wake(): void {
     if (this.stopping) return;
@@ -108,6 +122,22 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     }
   }
 
+  /**
+   * Dice all'interfaccia che il lavoro ha cambiato stato (T4.4): una notifica, non il dato, perché chi
+   * la riceve rilegge ciò che gli interessa. Di ciò che il lavoro porta si dice solo a cosa si riferisce.
+   */
+  private announce(job: Job, status: JobStatus): void {
+    const subjectId = subjectOf(job.payload);
+    this.events?.publish({
+      type: 'job.changed',
+      jobId: job.id,
+      kind: job.kind,
+      status,
+      ...(job.projectId === undefined ? {} : { projectId: job.projectId }),
+      ...(subjectId === undefined ? {} : { subjectId }),
+    });
+  }
+
   private async run(job: Job): Promise<void> {
     const handler = this.handlers.get(job.kind);
     if (handler === undefined) {
@@ -117,18 +147,22 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
         message: `Nessun modulo sa fare il lavoro "${job.kind}".`,
         retryable: false,
       });
+      this.announce(job, 'failed');
       return;
     }
 
+    this.announce(job, 'running');
     try {
       await handler(job);
       this.queue.complete(job.id);
+      this.announce(job, 'done');
     } catch (error) {
       const failure = failureOf(error);
       // Nel registro ci va il codice, non i dati del lavoro: potrebbero contenere il testo
       // dell'utente (§11).
       this.log.warn(`Lavoro "${job.kind}" (${job.id}) fallito: ${failure.code}.`);
-      this.queue.fail(job.id, failure);
+      // Con un nuovo tentativo il lavoro torna «in coda»; senza, è fallito.
+      this.announce(job, this.queue.fail(job.id, failure)?.status ?? 'failed');
     }
   }
 }
@@ -145,4 +179,17 @@ function failureOf(error: unknown): { code: string; message: string; retryable: 
     message: error instanceof Error ? error.message : String(error),
     retryable: RETRYABLE_CODES.has(code),
   };
+}
+
+/**
+ * A cosa si riferisce un lavoro, se lo dice: l'inquadratura, il luogo o il personaggio. Il dato del
+ * lavoro è sconosciuto alla coda (lo valida chi lo esegue): qui si guardano solo questi tre id.
+ */
+function subjectOf(payload: unknown): string | undefined {
+  if (typeof payload !== 'object' || payload === null) return undefined;
+  for (const key of ['shotId', 'locationId', 'characterId']) {
+    const value = (payload as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value !== '') return value;
+  }
+  return undefined;
 }

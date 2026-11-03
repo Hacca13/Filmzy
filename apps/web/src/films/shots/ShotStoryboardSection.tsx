@@ -78,6 +78,7 @@ export function ShotStoryboardSection({
       chosenText={words.chosenText}
       wide
       load={load}
+      live={{ kinds: ['storyboard_images'], subjectId: shotId }}
       loadOptions={loadOptions}
       start={(body) => startStoryboard(filmId, shotId, mode, body)}
       choose={(assetId) => chooseStoryboard(filmId, shotId, mode, assetId)}

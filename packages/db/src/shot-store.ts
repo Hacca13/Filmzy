@@ -3,13 +3,14 @@ import { randomUUID } from 'node:crypto';
 import {
   shotStoryboardSchema,
   shotSpecSchema,
+  storyboardModeSchema,
   sheetImageStatusSchema,
   storyboardAttemptSchema,
   type ShotSpec,
   type ShotStoryboard,
   type StoryboardMode,
 } from '@filmzy/contracts';
-import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 
 import type { AttemptPatch } from './location-store.js';
 import type { FilmzyDb } from './open.js';
@@ -81,6 +82,8 @@ export interface ShotStore {
   chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
   /** La variante scelta di ogni inquadratura del film che ne ha una. */
   chosenStoryboards: (projectId: string) => Record<string, string>;
+  /** Cosa si sta disegnando adesso (tentativo in coda o in lavorazione) per ogni inquadratura del film; l'ultimo fotogramma vince sullo storyboard. */
+  drawing: (projectId: string, since: Date) => Record<string, StoryboardMode>;
 }
 
 export interface ShotStoreOptions {
@@ -303,6 +306,38 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         .set({ chosenAssetId: assetId ?? null })
         .where(eq(shots.id, shotId))
         .run();
+    },
+
+    drawing(projectId, since) {
+      const shotIds = db
+        .select({ id: shots.id })
+        .from(shots)
+        .where(eq(shots.projectId, projectId))
+        .all()
+        .map((shot) => shot.id);
+      if (shotIds.length === 0) return {};
+
+      const rows = db
+        .select()
+        .from(storyboardAttempts)
+        .where(
+          and(
+            inArray(storyboardAttempts.shotId, shotIds),
+            inArray(storyboardAttempts.status, ['queued', 'running']),
+            gte(storyboardAttempts.createdAt, since.getTime()),
+          ),
+        )
+        .all();
+      const drawing: Record<string, StoryboardMode> = {};
+      for (const row of rows) {
+        // Un modo che non conosciamo si salta: è solo un'indicazione per la card, non deve rompere il piano.
+        const mode = storyboardModeSchema.safeParse(row.mode);
+        if (!mode.success) continue;
+        if (drawing[row.shotId] === undefined || mode.data === 'end_frame') {
+          drawing[row.shotId] = mode.data;
+        }
+      }
+      return drawing;
     },
 
     chosenStoryboards(projectId) {

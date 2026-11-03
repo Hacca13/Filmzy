@@ -11,13 +11,7 @@ import {
   type StoryboardJobPayload,
   type StoryboardMode,
 } from '@filmzy/contracts';
-import {
-  projectsDir,
-  type JobQueue,
-  type SheetStore,
-  type ShotStore,
-  type StoredShot,
-} from '@filmzy/db';
+import { projectsDir, type SheetStore, type ShotStore, type StoredShot } from '@filmzy/db';
 import {
   ProviderError,
   type ConfigSource,
@@ -32,7 +26,7 @@ import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
-import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
+import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
   chooseMediaService,
@@ -114,7 +108,6 @@ export class StoryboardService implements OnModuleInit {
     @Inject(SPEND_LEDGER) private readonly spend: SpendGuard,
     @Inject(MEDIA_RUNNER_FACTORY) private readonly mediaFor: (dir: string) => MediaRunner,
     @Inject(DATA_DIR) private readonly dataDir: string,
-    @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     private readonly runner: JobRunner,
     private readonly projects: ProjectsService,
     private readonly bible: BibleService,
@@ -178,13 +171,12 @@ export class StoryboardService implements OnModuleInit {
       modelId: chosen.modelId,
       ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     };
-    this.queue.enqueue({
+    this.runner.enqueue({
       kind: STORYBOARD_JOB_KIND,
       payload,
       projectId,
       idempotencyKey: `${STORYBOARD_JOB_KIND}:${shotId}:${mode}:${String(attempt)}`,
     });
-    this.runner.wake();
     return this.storyboardOf(stored.spec, shotId, mode);
   }
 

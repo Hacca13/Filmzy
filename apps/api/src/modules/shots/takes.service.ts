@@ -13,7 +13,6 @@ import {
 } from '@filmzy/contracts';
 import {
   projectsDir,
-  type JobQueue,
   type SheetStore,
   type ShotStore,
   type StoredShot,
@@ -33,7 +32,7 @@ import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
-import { DATA_DIR, JOB_QUEUE } from '../database/database.module.js';
+import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import {
   VIDEO_WAIT,
@@ -48,16 +47,10 @@ import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../tr
 import { assertPlanCurrent, shotOf } from './shot-access.js';
 import { cinematographerInputFor, familyOf } from './storyboard-input.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
+import { STALE_WORK_MS } from './work.js';
 import { videoImages, videoStandInRequest, videoTarget, type VideoImages } from './video-inputs.js';
 
 const ROLE = 'camera_operator';
-
-/**
- * Dopo quanto un take ancora «in coda» o «in lavorazione» non lavora più: l'attesa del video dura al
- * più venti minuti, quindi un take più vecchio è rimasto a metà (il lavoro si è perso). Senza chiuderlo
- * resterebbe bloccato per sempre e non se ne potrebbe chiedere un altro.
- */
-export const STALE_TAKE_MS = 45 * 60 * 1000;
 
 /** Il tipo di lavoro in coda che gira un take video. */
 export const TAKE_JOB_KIND = 'take_generate';
@@ -92,7 +85,6 @@ export class TakesService implements OnModuleInit {
     @Inject(SPEND_LEDGER) private readonly spend: SpendGuard,
     @Inject(MEDIA_RUNNER_FACTORY) private readonly mediaFor: (dir: string) => MediaRunner,
     @Inject(DATA_DIR) private readonly dataDir: string,
-    @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     private readonly runner: JobRunner,
     private readonly projects: ProjectsService,
     private readonly bible: BibleService,
@@ -113,7 +105,7 @@ export class TakesService implements OnModuleInit {
     const now = Date.now();
     for (const take of this.takes.list(shotId)) {
       const open = take.status === 'queued' || take.status === 'running';
-      if (open && now - Date.parse(take.createdAt) > STALE_TAKE_MS) {
+      if (open && now - Date.parse(take.createdAt) > STALE_WORK_MS) {
         this.takes.finish(take.id, { status: 'failed', errorCode: 'timeout' });
       }
     }
@@ -168,13 +160,12 @@ export class TakesService implements OnModuleInit {
       modelId: chosen.modelId,
       ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     };
-    this.queue.enqueue({
+    this.runner.enqueue({
       kind: TAKE_JOB_KIND,
       payload,
       projectId,
       idempotencyKey: `${TAKE_JOB_KIND}:${take.id}`,
     });
-    this.runner.wake();
     return { shotId, takes: this.takes.list(shotId) };
   }
 

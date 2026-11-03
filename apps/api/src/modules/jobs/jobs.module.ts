@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { EventsModule } from '../events/events.module.js';
 import { JobRunner } from './job-runner.service.js';
 
 /**
@@ -7,6 +8,7 @@ import { JobRunner } from './job-runner.service.js';
  * registrano qui con `JobRunner.register`, così la coda non conosce nessun dominio.
  */
 @Module({
+  imports: [EventsModule],
   providers: [JobRunner],
   exports: [JobRunner],
 })

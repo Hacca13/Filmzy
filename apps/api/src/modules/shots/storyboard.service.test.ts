@@ -15,7 +15,6 @@ import {
   createShotStore,
   openFilmzyDatabase,
   type EnqueueInput,
-  type JobQueue,
   type SheetStore,
   type ShotStore,
 } from '@filmzy/db';
@@ -175,17 +174,14 @@ function build() {
       } as unknown as LoadedConfig),
   };
   const spend: SpendGuard = { check: () => Promise.resolve(breach) };
-  const queue = {
-    enqueue: (input: EnqueueInput) => {
-      enqueued.push(input);
-      return {};
-    },
-  } as unknown as JobQueue;
   const runner = {
     register: (kind: string, handler: (job: { payload: unknown }) => Promise<void>) => {
       handlers.set(kind, handler);
     },
-    wake: () => undefined,
+    enqueue: (input: EnqueueInput) => {
+      enqueued.push(input);
+      return {};
+    },
   } as unknown as JobRunner;
   const projects = {
     get: (id: string) => {
@@ -210,7 +206,6 @@ function build() {
     spend,
     () => media,
     dataDir,
-    queue,
     runner,
     projects,
     bibles,

@@ -2,10 +2,12 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import type { DomainEvent } from '@filmzy/contracts';
 import { createJobQueue, openFilmzyDatabase, type JobQueue, type OpenedDatabase } from '@filmzy/db';
 import { Logger } from '@nestjs/common';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { EventBus } from '../events/event-bus.js';
 import { JobRunner } from './job-runner.service.js';
 
 /** I test non devono sporcare l'uscita: il registro di Nest si spegne una volta per tutte. */
@@ -16,13 +18,18 @@ beforeAll(() => {
 let aperto: OpenedDatabase;
 let queue: JobQueue;
 let runner: JobRunner;
+let bus: EventBus;
+let heard: DomainEvent[];
 
 beforeEach(async () => {
   const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-api-'));
   aperto = await openFilmzyDatabase({ dataDir, appVersion: '0.0.0-test' });
   queue = createJobQueue(aperto.db, { retryDelayMs: 1 });
   // Niente controllo periodico nei test: si sveglia a mano, così non ci sono attese.
-  runner = new JobRunner(queue, { concurrency: 2, pollIntervalMs: 60_000 });
+  bus = new EventBus();
+  heard = [];
+  bus.subscribe((event) => heard.push(event));
+  runner = new JobRunner(queue, { concurrency: 2, pollIntervalMs: 60_000 }, bus);
 });
 
 afterEach(async () => {
@@ -44,6 +51,85 @@ describe("l'esecutore della coda (§7)", () => {
 
     expect(fatti).toEqual([messo.id]);
     expect(queue.get(messo.id)?.status).toBe('done');
+  });
+
+  it('dice all’interfaccia quando un lavoro parte e quando finisce, con il film e ciò a cui si riferisce (T4.4)', async () => {
+    runner.register('prova', () => Promise.resolve());
+    const messo = queue.enqueue({
+      kind: 'prova',
+      payload: { shotId: 'shot-1', segreto: 'testo dell’utente' },
+      projectId: 'film-1',
+    });
+
+    runner.wake();
+    await runner.drain();
+
+    const base = {
+      type: 'job.changed',
+      jobId: messo.id,
+      kind: 'prova',
+      projectId: 'film-1',
+      subjectId: 'shot-1',
+    };
+    expect(heard).toEqual([
+      { ...base, status: 'running' },
+      { ...base, status: 'done' },
+    ]);
+    // Del lavoro si dice solo a cosa si riferisce: i suoi dati non escono dal server.
+    expect(JSON.stringify(heard)).not.toContain('testo dell’utente');
+  });
+
+  it('mettere un lavoro in coda dal modulo lo annuncia «in coda» e lo fa partire (T4.4)', async () => {
+    runner.register('prova', () => Promise.resolve());
+
+    const messo = runner.enqueue({
+      kind: 'prova',
+      payload: { shotId: 'shot-1' },
+      projectId: 'film-1',
+    });
+    await runner.drain();
+
+    expect(heard.map((event) => event.type === 'job.changed' && event.status)).toEqual([
+      'queued',
+      'running',
+      'done',
+    ]);
+    expect(queue.get(messo.id)?.status).toBe('done');
+  });
+
+  it('un lavoro fallito lo dice come tale; uno che ritenta torna «in coda»', async () => {
+    runner.register('tecnico', () =>
+      Promise.reject(Object.assign(new Error('Non risponde.'), { code: 'timeout' })),
+    );
+    runner.register('rifiuto', () =>
+      Promise.reject(Object.assign(new Error('Rifiutato.'), { code: 'content_rejected' })),
+    );
+    queue.enqueue({ kind: 'tecnico', payload: {}, maxAttempts: 2 });
+    queue.enqueue({ kind: 'rifiuto', payload: {} });
+
+    runner.wake();
+    await runner.drain();
+
+    const finals = heard.flatMap((event) =>
+      event.type === 'job.changed' && event.status !== 'running'
+        ? [[event.kind, event.status]]
+        : [],
+    );
+    expect(finals).toEqual([
+      ['tecnico', 'queued'],
+      ['rifiuto', 'failed'],
+    ]);
+  });
+
+  it('senza nessuno che sa fare il lavoro lo dice fallito; un lavoro senza dati non cita nessun oggetto', async () => {
+    const messo = queue.enqueue({ kind: 'sconosciuto', payload: 42 });
+
+    runner.wake();
+    await runner.drain();
+
+    expect(heard).toEqual([
+      { type: 'job.changed', jobId: messo.id, kind: 'sconosciuto', status: 'failed' },
+    ]);
   });
 
   it('non fa più lavori insieme di quanti ne può fare', async () => {

@@ -23,6 +23,7 @@ import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
+import { STALE_WORK_MS } from './work.js';
 
 /**
  * Le inquadrature (T3.9, architettura §3.1, §5.2): l'aiuto regista divide una scena della
@@ -57,6 +58,7 @@ export class ShotsService {
     const extras = {
       chosen: this.store.chosenStoryboards(projectId),
       clips: this.takes.latestClips(projectId),
+      working: this.workingNow(projectId),
     };
 
     return {
@@ -70,6 +72,14 @@ export class ShotsService {
         description,
       })),
     };
+  }
+
+  /** Cosa si sta facendo adesso per ogni inquadratura del film (T4.4): il video vince sulle immagini. */
+  private workingNow(projectId: string): Record<string, Work> {
+    const since = new Date(Date.now() - STALE_WORK_MS);
+    const working: Record<string, Work> = { ...this.store.drawing(projectId, since) };
+    for (const shotId of this.takes.inProgress(projectId, since)) working[shotId] = 'video';
+    return working;
   }
 
   /** Quanto costerebbe pensare le inquadrature di una scena, senza chiamare nessuno (D30). */
@@ -106,7 +116,11 @@ export class ShotsService {
     });
     this.projects.reach(projectId, 'shots');
     // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante né un take.
-    return scenePlan(scene, saved, this.bible.knownIds(projectId), { chosen: {}, clips: {} });
+    return scenePlan(scene, saved, this.bible.knownIds(projectId), {
+      chosen: {},
+      clips: {},
+      working: {},
+    });
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
@@ -205,17 +219,20 @@ const activeMovements = (config: TroupeConfig): CameraMovement[] =>
 interface PerShot {
   chosen: Readonly<Record<string, string>>;
   clips: Readonly<Record<string, string>>;
+  working: Readonly<Record<string, Work>>;
 }
 
+type Work = ScenePlan['working'][string];
+
 /** Di un elenco per inquadratura (di tutto il film) si tengono solo quelle della scena. */
-const forShots = (
+const forShots = <T>(
   shots: readonly ShotSpec[],
-  all: Readonly<Record<string, string>>,
-): Record<string, string> =>
+  all: Readonly<Record<string, T>>,
+): Record<string, T> =>
   Object.fromEntries(
     shots.flatMap((shot) => {
-      const assetId = all[shot.id];
-      return assetId === undefined ? [] : [[shot.id, assetId]];
+      const value = all[shot.id];
+      return value === undefined ? [] : [[shot.id, value]];
     }),
   );
 
@@ -238,5 +255,6 @@ function scenePlan(
     shots,
     chosenStoryboards: forShots(shots, extras.chosen),
     latestTakes: forShots(shots, extras.clips),
+    working: forShots(shots, extras.working),
   };
 }

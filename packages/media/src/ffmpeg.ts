@@ -116,6 +116,58 @@ export async function videoDurationS(
   return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
 }
 
+export interface ShrinkImageOptions {
+  input: string;
+  /** Dove si scrive la copia ridotta (JPEG). */
+  output: string;
+  /** Il lato più lungo al massimo, in pixel: mai si ingrandisce. */
+  maxSidePx: number;
+  env?: NodeJS.ProcessEnv;
+  timeoutMs?: number;
+}
+
+/**
+ * Una copia più piccola di un'immagine (JPEG), per farla leggere a un servizio che ha dei limiti di
+ * peso: l'originale non si tocca. Un'immagine già piccola resta delle sue dimensioni. Come per i
+ * fotogrammi, si controlla che il file ci sia davvero invece di fidarsi dell'uscita.
+ */
+export async function shrinkImage(options: ShrinkImageOptions): Promise<void> {
+  const { input, output, maxSidePx, env = process.env, timeoutMs } = options;
+  if (!Number.isInteger(maxSidePx) || maxSidePx < 16) {
+    throw new MediaError('invalid_time', 'La dimensione richiesta non è valida.');
+  }
+
+  const side = String(maxSidePx);
+  const { code, stderr } = await run(
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      input,
+      // Dentro un quadrato di lato `maxSidePx` ma mai oltre l'immagine stessa: niente ingrandimenti.
+      '-vf',
+      `scale=w='min(${side},iw)':h='min(${side},ih)':force_original_aspect_ratio=decrease`,
+      '-frames:v',
+      '1',
+      '-q:v',
+      '3',
+      '-y',
+      output,
+    ],
+    env,
+    timeoutMs,
+  );
+  if (code !== 0) {
+    throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);
+  }
+
+  const written = await stat(output).catch(() => undefined);
+  if (written === undefined || written.size === 0) {
+    throw new MediaError('ffmpeg_failed', "L'immagine non si è potuta ridurre.");
+  }
+}
+
 export interface ExtractFrameOptions {
   /** Il video. Il percorso lo controlla chi chiama (deve stare nella cartella dei dati). */
   input: string;

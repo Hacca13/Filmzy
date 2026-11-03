@@ -125,6 +125,8 @@ export class LocationsService implements OnModuleInit {
     this.projects.get(projectId);
     this.locationOf(projectId, locationId);
     this.store.remove(locationId);
+    // Le foto caricate per quel luogo escono dal film con lui; i file restano nella cartella.
+    this.uploads.removeForLocation(locationId);
   }
 
   /** I servizi tra cui scegliere, con la stima di tutte le immagini del tentativo. */

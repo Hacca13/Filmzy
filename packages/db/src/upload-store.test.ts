@@ -93,3 +93,66 @@ describe('le immagini caricate (T4.8)', () => {
     expect(store.assetIdsOfLocation('nessuno')).toEqual([]);
   });
 });
+
+describe('trovare, aggiornare e togliere (T4.8)', () => {
+  it('si trova la foto già caricata per quel file, film e luogo, e solo quella', () => {
+    const saved = store.add(room);
+
+    expect(store.find('film-1', room)?.id).toBe(saved.id);
+    expect(store.find('film-2', room)).toBeUndefined();
+    expect(store.find('film-1', { ...room, locationId: 'cucina' })).toBeUndefined();
+    expect(
+      store.find('film-1', { ...room, kind: 'object', locationId: undefined }),
+    ).toBeUndefined();
+    expect(store.find('film-1', { ...room, assetId: 'f'.repeat(64) })).toBeUndefined();
+  });
+
+  it('un oggetto (senza luogo) si trova senza luogo', () => {
+    const object = { assetId: 'b'.repeat(64), kind: 'object' as const };
+    const saved = store.add({ projectId: 'film-1', ...object, name: 'Lanterna', checked: true });
+
+    expect(store.find('film-1', object)?.id).toBe(saved.id);
+    expect(store.find('film-1', { ...object, locationId: 'piazza' })).toBeUndefined();
+  });
+
+  it('una foto salvata senza controllo si aggiorna quando il controllo passa; il contrario no', () => {
+    const unchecked = store.add({ ...room, checked: false, description: undefined });
+    expect(unchecked).toMatchObject({ checked: false });
+
+    const upgraded = store.add({ ...room, checked: true, description: 'un salone vuoto' });
+    expect(upgraded).toMatchObject({
+      id: unchecked.id,
+      checked: true,
+      description: 'un salone vuoto',
+    });
+    expect(store.find('film-1', room)).toMatchObject({
+      checked: true,
+      description: 'un salone vuoto',
+    });
+
+    // Ricaricarla senza controllo non toglie quello che c'era.
+    const again = store.add({ ...room, checked: false, description: undefined });
+    expect(again).toMatchObject({ checked: true, description: 'un salone vuoto' });
+    expect(store.list('film-1')).toHaveLength(1);
+  });
+
+  it('le foto di un luogo si tolgono con lui, quelle degli altri luoghi e degli oggetti restano', () => {
+    store.add(room);
+    later();
+    store.add({ ...room, assetId: 'c'.repeat(64), locationId: 'cucina' });
+    later();
+    store.add({
+      projectId: 'film-1',
+      assetId: 'd'.repeat(64),
+      kind: 'object',
+      name: 'Lanterna',
+      checked: true,
+    });
+
+    store.removeForLocation('piazza');
+
+    expect(store.assetIdsOfLocation('piazza')).toEqual([]);
+    expect(store.list('film-1').map((upload) => upload.name)).toEqual(['La stanza', 'Lanterna']);
+    expect(store.assetIdsOfLocation('cucina')).toEqual(['c'.repeat(64)]);
+  });
+});

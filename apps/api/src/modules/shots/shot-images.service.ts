@@ -13,7 +13,7 @@ import {
   type TakeStore,
   type UploadStore,
 } from '@filmzy/db';
-import { MediaError, extractFrame, videoDurationS } from '@filmzy/media';
+import { extractFrame, videoDurationS } from '@filmzy/media';
 import type { Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -25,6 +25,7 @@ import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
+import { mediaStep } from '../media/media-step.js';
 import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { TROUPE } from '../troupe/tokens.js';
@@ -251,22 +252,3 @@ const LAST_MOMENT_MARGIN_S = 0.15;
 
 /** Di quanto un momento può superare la durata di ffmpeg senza essere «oltre la fine» (s): il lettore e ffmpeg arrotondano diversamente. */
 const DURATION_TOLERANCE_S = 0.5;
-
-/**
- * Un passo di ffmpeg: se non riesce l'errore diventa un errore del dominio (`media_failed`) con un
- * messaggio semplice per l'interfaccia, e nei dettagli resta il motivo per chi guarda il registro. Il
- * testo di ffmpeg non arriva all'utente: potrebbe contenere percorsi.
- */
-async function mediaStep<T>(step: () => Promise<T>): Promise<T> {
-  try {
-    return await step();
-  } catch (error) {
-    if (error instanceof MediaError) {
-      throw domainError(error.code === 'ffmpeg_missing' ? 503 : 422, 'media_failed', {
-        // Un video rovinato resta tale; un ffmpeg troppo lento, invece, può riuscire la volta dopo.
-        retryable: error.code === 'timeout',
-      });
-    }
-    throw error;
-  }
-}

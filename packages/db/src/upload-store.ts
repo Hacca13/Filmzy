@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { uploadedImageSchema, type UploadedImage, type UploadKind } from '@filmzy/contracts';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { uploads, type UploadRow } from './schema.js';
+
+/** Dove sta una foto: il file, cosa è e di quale luogo. */
+export interface UploadPlace {
+  assetId: string;
+  kind: UploadKind;
+  locationId?: string | undefined;
+}
 
 /** Una foto da salvare: il file è già tra gli `assets`. */
 export interface NewUpload {
@@ -23,7 +30,12 @@ export interface NewUpload {
  * sola riga: il file è lo stesso (id = checksum).
  */
 export interface UploadStore {
+  /** Salva una foto. Se c'è già (stesso file, film e luogo) resta quella, ma passare il controllo la aggiorna. */
   add: (upload: NewUpload) => UploadedImage;
+  /** La foto già caricata con questo file per questo film e luogo, se c'è. */
+  find: (projectId: string, place: UploadPlace) => UploadedImage | undefined;
+  /** Toglie le foto di un luogo (quando il luogo esce dal film); i file restano. */
+  removeForLocation: (locationId: string) => void;
   list: (projectId: string) => UploadedImage[];
   /** Gli id dei file caricati per un luogo. */
   assetIdsOfLocation: (locationId: string) => string[];
@@ -49,21 +61,44 @@ function toUpload(row: UploadRow): UploadedImage {
 export function createUploadStore(db: FilmzyDb, options: UploadStoreOptions = {}): UploadStore {
   const now = options.now ?? (() => new Date());
 
+  const findRow = (projectId: string, place: UploadPlace): UploadRow | undefined =>
+    db
+      .select()
+      .from(uploads)
+      .where(
+        and(
+          eq(uploads.projectId, projectId),
+          eq(uploads.assetId, place.assetId),
+          eq(uploads.kind, place.kind),
+          place.locationId === undefined
+            ? isNull(uploads.locationId)
+            : eq(uploads.locationId, place.locationId),
+        ),
+      )
+      .get();
+
   return {
+    find(projectId, place) {
+      const row = findRow(projectId, place);
+      return row === undefined ? undefined : toUpload(row);
+    },
+
+    removeForLocation(locationId) {
+      db.delete(uploads).where(eq(uploads.locationId, locationId)).run();
+    },
+
     add(upload) {
-      // Lo stesso file, per lo stesso film e luogo, non si ripete: si rilegge quello che c'è già.
-      const same = db
-        .select()
-        .from(uploads)
-        .where(eq(uploads.projectId, upload.projectId))
-        .all()
-        .find(
-          (row) =>
-            row.assetId === upload.assetId &&
-            row.kind === upload.kind &&
-            row.locationId === (upload.locationId ?? null),
-        );
-      if (same !== undefined) return toUpload(same);
+      // Lo stesso file, per lo stesso film e luogo, non si ripete. Se prima era stato salvato senza
+      // controllo e ora il controllo è passato, la riga si aggiorna: ora ha la sua descrizione.
+      const same = findRow(upload.projectId, upload);
+      if (same !== undefined) {
+        if (!upload.checked || same.checked) return toUpload(same);
+        db.update(uploads)
+          .set({ checked: true, description: upload.description ?? null })
+          .where(eq(uploads.id, same.id))
+          .run();
+        return toUpload({ ...same, checked: true, description: upload.description ?? null });
+      }
 
       const row: UploadRow = {
         id: randomUUID(),

@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { MediaError, extractFrame, ffmpegPath, videoDurationS } from './ffmpeg.js';
+import { MediaError, extractFrame, ffmpegPath, shrinkImage, videoDurationS } from './ffmpeg.js';
 
 const run = promisify(execFile);
 
@@ -73,6 +73,92 @@ describe('videoDurationS', () => {
     expect((await failure(() => videoDurationS(path.join(dir, 'non-c-e.mp4')))).code).toBe(
       'ffmpeg_failed',
     );
+  });
+});
+
+/** Un'immagine vera, di rumore, che pesa parecchio: l'unico modo di provare una riduzione vera. */
+async function makeNoisyPng(width: number, height: number, name: string): Promise<string> {
+  const file = path.join(dir, name);
+  await run(
+    ffmpegPath(),
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      `testsrc2=size=${String(width)}x${String(height)}:rate=1`,
+      '-vf',
+      'noise=alls=80:allf=t',
+      '-frames:v',
+      '1',
+      '-y',
+      file,
+    ],
+    { windowsHide: true },
+  );
+  return file;
+}
+
+describe('shrinkImage', () => {
+  it('una foto grande diventa una copia JPEG più piccola, dentro il lato chiesto', async () => {
+    const input = await makeNoisyPng(2400, 1800, 'grande.png');
+    const output = path.join(dir, 'grande-ridotta.jpg');
+
+    await shrinkImage({ input, output, maxSidePx: 800 });
+
+    const [before, after] = await Promise.all([readFile(input), readFile(output)]);
+    expect(after.length).toBeLessThan(before.length / 4);
+    expect([...after.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+    // 2400x1800 dentro 800: 800x600. Il JPEG lo dice nell'intestazione, non serve decodificarlo.
+    const sof = after.indexOf(Buffer.from([0xff, 0xc0]));
+    expect(sof).toBeGreaterThan(0);
+    expect(after.readUInt16BE(sof + 5)).toBe(600);
+    expect(after.readUInt16BE(sof + 7)).toBe(800);
+  });
+
+  it('una foto già piccola non si ingrandisce', async () => {
+    const input = await makeNoisyPng(320, 200, 'piccola.png');
+    const output = path.join(dir, 'piccola-ridotta.jpg');
+
+    await shrinkImage({ input, output, maxSidePx: 1568 });
+
+    const bytes = await readFile(output);
+    const sof = bytes.indexOf(Buffer.from([0xff, 0xc0]));
+    expect(bytes.readUInt16BE(sof + 5)).toBe(200);
+    expect(bytes.readUInt16BE(sof + 7)).toBe(320);
+  });
+
+  it('un file che non è un’immagine, o che non c’è, è un errore di ffmpeg e non lascia un file', async () => {
+    const text = path.join(dir, 'finta.png');
+    await writeFile(text, 'non sono una foto');
+    const output = path.join(dir, 'non-deve-esserci.jpg');
+
+    expect((await failure(() => shrinkImage({ input: text, output, maxSidePx: 800 }))).code).toBe(
+      'ffmpeg_failed',
+    );
+    expect(
+      (
+        await failure(() =>
+          shrinkImage({ input: path.join(dir, 'non-c-e.png'), output, maxSidePx: 800 }),
+        )
+      ).code,
+    ).toBe('ffmpeg_failed');
+    await expect(readFile(output)).rejects.toThrow();
+  });
+
+  it('un lato che non è un numero ragionevole si rifiuta prima di lanciare ffmpeg', async () => {
+    for (const maxSidePx of [0, -5, 8, 12.5, Number.NaN]) {
+      const error = await failure(() =>
+        shrinkImage({
+          input: path.join(dir, 'qualsiasi.png'),
+          output: path.join(dir, 'x.jpg'),
+          maxSidePx,
+        }),
+      );
+      expect(error.code, String(maxSidePx)).toBe('invalid_time');
+    }
   });
 });
 

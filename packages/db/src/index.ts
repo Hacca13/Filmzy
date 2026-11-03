@@ -16,7 +16,7 @@ export type { CharacterChanges, CharacterStore, NewCharacter } from './character
 export { createLocationStore } from './location-store.js';
 export { createUploadStore } from './upload-store.js';
 export type { AttemptPatch, LocationStore, NewLocation } from './location-store.js';
-export type { NewUpload, UploadStore } from './upload-store.js';
+export type { NewUpload, UploadPlace, UploadStore } from './upload-store.js';
 export { createProjectStore } from './project-store.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';

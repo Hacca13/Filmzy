@@ -66,6 +66,7 @@ filmzy/
 | Modulo | Dove | Responsabilità |
 |---|---|---|
 | `spend` | api | stime, tetti di spesa e spesa fatta, calcolati dagli scontrini (D30) |
+| `uploads` | api | foto di luoghi e oggetti caricate dall'utente: tipo letto dai byte, controllo dell'analista di immagini prima di salvare, rifiuto di persone e marchi (D19, D71) |
 | `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, durata, fase (§3.1) |
 | `bible` | api | personaggi (con tag e dettagli), luoghi (con immagini), schede; assembla la Bibbia per i ruoli |
 | `screenplay` | api, worker | sceneggiatura con versioni e fase (bozza o finale), richieste di modifica, riepilogo con le scelte |
@@ -117,7 +118,7 @@ Su un set i ruoli sono fissi, e chi li ricopre si decide sul foglio di produzion
 L'interfaccia pubblica di `packages/troupe`:
 
 ```ts
-troupe.run(role, input, ctx)      // ruoli LLM: risposta tipizzata e scontrino
+troupe.run(role, input, ctx, images?)      // ruoli LLM: risposta tipizzata e scontrino (con `images`, i file che un ruolo `requires: [vision]` deve guardare, D71)
 troupe.submit(role, input, ctx)   // ruoli immagine e video: lavoro lungo, restituisce l'id presso il fornitore
 troupe.collect(receiptId, event)  // completa il lavoro quando il polling lo trova finito
 troupe.estimate(role, input, ctx) // costo previsto e servizio che lavorerà, per la stima e i tetti di spesa
@@ -141,7 +142,7 @@ troupe.options(role, request)     // i servizi tra cui l'utente può scegliere p
 | `set_designer` | Scenografo | immagine | luogo e stile → 3–4 immagini del set, senza persone | MVP |
 | `moodboard_designer` | Moodboard | LLM | idea, stile, sceneggiatura e, per una scena, la scena → palette, consigli e prompt per le immagini di riferimento | opzione dell'MVP (`moodboard`) |
 | `moodboard_artist` | Immagini del moodboard | immagine | prompt di riferimento e stile → immagini | opzione dell'MVP (`moodboard`) |
-| `image_analyst` | Analista di immagini | LLM con visione | immagine caricata → descrizione, atmosfera, luce, composizione e controllo di persone e marchi | opzione dell'MVP (`moodboard`) |
+| `image_analyst` | Analista di immagini | LLM con visione | immagine caricata → descrizione, atmosfera, luce, composizione e controllo di persone e marchi | caricamenti (T4.8, D71) e `moodboard` (T4.10) |
 | `retoucher` | Ritocco | immagine | immagine + maschera + operazione → immagine ritoccata | opzione dell'MVP (`retouch`) |
 | `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
@@ -655,7 +656,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - **Chiavi (D25, D29):** nel portachiavi del sistema operativo, in sola scrittura per l'interfaccia («Chiave collegata ••••1a2b»), mai nei log né negli export (`pnpm troupe export` scrive solo i riferimenti). Per i test e lo sviluppo valgono le variabili d'ambiente (`env:`).
 - **Responsabilità (D28):** il programma è software libero (AGPL-3.0), fornito «così com'è». L'utente risponde dei file che carica, dei contenuti che crea e di come li pubblica, e rispetta le condizioni dei fornitori che ha scelto. Il README spiega l'uso responsabile.
 - **Impostazioni prudenti di default.** In un programma aperto non si possono imporre, ma proteggono l'account dell'utente dai blocchi dei fornitori: moderatore sui testi prima di ogni spesa (persone reali o famose, minori, contenuti vietati; la politica sta nelle istruzioni del moderatore, quindi è configurabile e versionata), solo persone generate da Filmzy (D19) e dicitura «Contiene contenuti generati con intelligenza artificiale» nei titoli. L'utente può cambiarle dalle impostazioni avanzate, e un'avvertenza spiega cosa rischia.
-- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload`. Anche le immagini caricate nel moodboard (D37) passano dal controllo, fatto dal ruolo `image_analyst` insieme alla descrizione. Qui le persone non fanno rifiutare l'immagine: entra solo per l'analisi (D38). Marchi, personaggi noti e minori sospetti si rifiutano (`image_rejected`). L'interfaccia dice che una copia dell'immagine viene inviata al servizio scelto per leggere le immagini.
+- **Immagini caricate (D19):** ammessi luoghi e oggetti. Con l'impostazione prudente, un modello con visione (capacità `vision`) controlla che non ci siano persone, minori, marchi o personaggi noti prima di salvarle, e un'immagine con persone si rifiuta con un messaggio semplice. Il ritocco (D21) opera solo su immagini generate da Filmzy o già controllate. Funzione `image_upload` (T4.8, D71): `POST /api/projects/:id/uploads` riceve il file come corpo (PNG, JPEG o WebP, fino a 12 MB, riconosciuto dai primi byte), con la prudenza `imageCheck` accesa lo fa guardare a `image_analyst` **prima** di salvarlo e rifiuta con `image_rejected` e `details.imageProblems`; le foto stanno in `progetti/<film>/caricate/` e in `uploads`, e compaiono nelle immagini del luogo (`uploadedAssetIds`) e tra quelle delle inquadrature (`mode: 'upload'`). Anche le immagini caricate nel moodboard (D37) passano dal controllo, fatto dal ruolo `image_analyst` insieme alla descrizione. Qui le persone non fanno rifiutare l'immagine: entra solo per l'analisi (D38). Marchi, personaggi noti e minori sospetti si rifiutano (`image_rejected`). L'interfaccia dice che una copia dell'immagine viene inviata al servizio scelto per leggere le immagini.
 - **File audio caricati (D27):** l'utente può caricarne di propri su qualunque traccia. Restano nella cartella del progetto e **non vanno mai a un fornitore AI**: servono solo al mix con ffmpeg. Il testo che descrive un suono passa dal moderatore.
 - **Volti e voci reali:** `real_people` resta spenta (D4). Chi la accendesse per conto proprio risponde del consenso delle persone e delle regole dei fornitori; le tabelle dei consensi restano per questo.
 - **Limiti di spesa (D30):** stima prima di ogni generazione e tre tetti regolabili dall'utente. Il programma ricorda anche di impostare un limite di spesa nel pannello di ogni fornitore.

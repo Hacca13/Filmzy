@@ -3,6 +3,7 @@ import type { SheetOptions, StartSheetBody } from '@filmzy/contracts';
 import { assetUrl } from '../api/sheet';
 import { Chip, Notice, ToneIcon } from '../components/ui';
 import { useAction } from '../settings/use-action';
+import { FailureActions } from './FailureActions';
 import { GenerateBar, useGeneration } from './generation';
 import { attemptWho, attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
 import type { LiveFilter } from './use-live-jobs';
@@ -71,6 +72,8 @@ export function ImageAttemptsSection<T extends ImageSet>({
   const generation = useGeneration<T>({ loadOptions, start, onStarted: setImages });
   const action = useAction();
   const busy = generation.busy || action.busy;
+  // Solo l'ultimo tentativo offre cosa fare dopo un fallimento: quelli di prima sono storia.
+  const latestAttempt = images?.attempts[0]?.attempt;
 
   return (
     <section className="sheet" aria-label={title}>
@@ -136,6 +139,13 @@ export function ImageAttemptsSection<T extends ImageSet>({
                   ))}
                 </div>
               )}
+              {attempt.status === 'failed' && attempt.attempt === latestAttempt ? (
+                <FailureActions
+                  code={attempt.errorCode}
+                  generation={generation}
+                  busy={busy || working}
+                />
+              ) : null}
             </li>
           ))}
         </ul>

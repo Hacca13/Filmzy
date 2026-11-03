@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { assetUrl } from '../../api/sheet';
 import { fetchTakeOptions, fetchTakes, startTake } from '../../api/takes';
 import { Notice } from '../../components/ui';
+import { FailureActions } from '../FailureActions';
 import { GenerateBar, useGeneration } from '../generation';
 import { useOnIncrease } from '../use-on-increase';
 import { useWatched } from '../use-watched';
@@ -74,6 +75,13 @@ export function ShotVideoSection({
                 />
               )}
               <p className="hint">{takeCaption(take)}</p>
+              {take.status === 'failed' && index === 0 ? (
+                <FailureActions
+                  code={take.errorCode}
+                  generation={generation}
+                  busy={generation.busy || working}
+                />
+              ) : null}
             </li>
           ))}
         </ul>

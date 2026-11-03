@@ -1,7 +1,7 @@
 import type { ShotTake, ShotTakes } from '@filmzy/contracts';
 
 import { formatEstimate } from '../../lib/format';
-import { describeCode } from '../../settings/messages';
+import { failureText } from '../failure';
 
 /**
  * Le piccole decisioni dei take video (T4.3), fuori dai componenti così si provano a parte. Cosa è
@@ -23,10 +23,7 @@ export function takeText(take: ShotTake): string {
     case 'succeeded':
       return take.assetId === undefined ? 'Nessun video' : 'Pronto';
     case 'failed':
-      return (
-        describeCode(take.errorCode) ??
-        'Non è riuscito. Puoi riprovare, anche con un altro servizio.'
-      );
+      return failureText(take.errorCode);
   }
 }
 

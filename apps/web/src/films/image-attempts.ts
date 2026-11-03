@@ -1,7 +1,7 @@
 import type { LocationAttempt } from '@filmzy/contracts';
 
 import { formatEstimate } from '../lib/format';
-import { describeCode } from '../settings/messages';
+import { failureText } from './failure';
 
 /**
  * Le immagini fatte a tentativi (i luoghi, lo storyboard): ogni tentativo è un lavoro in coda con un
@@ -36,9 +36,7 @@ export function describeAttempt(attempt: ImageAttempt, workingText: string): str
     case 'succeeded':
       return attempt.assetIds.length === 0 ? 'Nessuna immagine' : 'Pronto';
     case 'failed':
-      return (
-        describeCode(attempt.errorCode) ?? 'Non è riuscito. Puoi riprovare con un altro tentativo.'
-      );
+      return failureText(attempt.errorCode);
   }
 }
 

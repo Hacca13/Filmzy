@@ -68,6 +68,8 @@ describe('Quanto ho speso (T4.7)', () => {
     expect(html).toContain('12,40 $');
     expect(html).toContain('27,40 $');
     expect(html).toContain('L’ultima corsa · dall’inizio del film');
+    expect(html).toContain('Di cui 12,40 $ questo mese');
+    expect(render({ ...film, monthUsd: 0 }, overview)).not.toContain('questo mese</p>');
     expect(html).toContain('2 film · 2 servizi utilizzati');
     expect(html).toContain('Filmzy è gratuito');
   });

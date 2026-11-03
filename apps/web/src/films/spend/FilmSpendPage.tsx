@@ -69,6 +69,9 @@ export function SpendView({
           <h2>Questo film</h2>
           <p className="spend-total">{formatUsd(film.totalUsd)}</p>
           <p className="hint">{film.title} · dall’inizio del film</p>
+          {film.monthUsd > 0 ? (
+            <p className="hint">Di cui {formatUsd(film.monthUsd)} questo mese</p>
+          ) : null}
         </section>
         {overview === undefined ? null : (
           <section className="panel" aria-label="Tutti i film, questo mese">

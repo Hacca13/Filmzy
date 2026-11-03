@@ -7,7 +7,14 @@ packages:
 # altrimenti l'installazione si ferma.
 #   better-sqlite3  il modulo nativo di SQLite: se gli servisse, deve potersi compilare;
 #   esbuild         arriva con Vite e con drizzle-kit, e il suo script serve solo a sistemare il
-#                   binario nei layout di npm: con pnpm sta già nel pacchetto della piattaforma.
+#                   binario nei layout di npm: con pnpm sta già nel pacchetto della piattaforma;
+#   @ffmpeg-installer/*  il binario di ffmpeg per Linux e macOS: lo script d'installazione fa solo
+#                   `chmod u+x ffmpeg` (rende eseguibile il programma); non
+#                   elencato, l'installazione su Linux e macOS si ferma.
 allowBuilds:
   better-sqlite3: true
   esbuild: false
+  '@ffmpeg-installer/linux-x64': true
+  '@ffmpeg-installer/linux-arm64': true
+  '@ffmpeg-installer/darwin-x64': true
+  '@ffmpeg-installer/darwin-arm64': true

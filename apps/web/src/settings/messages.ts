@@ -71,6 +71,7 @@ const BY_INVALID_FIELD: Record<string, string> = {
   locationId: 'Il luogo di questa foto non c’è più. Aggiorna la pagina e riprova.',
   feature: 'Il caricamento delle foto è spento nelle impostazioni.',
   mask: 'Dipingi prima la zona da ritoccare.',
+  sceneId: 'Questa scena non c’è più nella storia. Aggiorna la pagina e riprova.',
   image: 'Questa immagine non si può ritoccare qui. Aggiorna la pagina e riprova.',
   unchecked:
     'Questa foto è stata caricata senza controllo e non si può ritoccare. Riaccendi il controllo delle foto in Prudenza e caricala di nuovo.',

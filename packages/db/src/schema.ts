@@ -303,6 +303,56 @@ export type CharacterSheetImageRow = typeof characterSheetImages.$inferSelect;
  * alla proposta da cui viene (D18); `chosen_asset_id` è l'immagine scelta come riferimento (T3.7).
  */
 /**
+ * Il moodboard del film (T4.10, D37): palette e consigli, in JSON, e una riga sola per film. Una riga
+ * che non c'è vuol dire «nessun moodboard»; `updatedAt` serve alla regola R9 (i take girati prima
+ * del cambiamento ricevono un avviso leggero).
+ */
+export const moodboards = sqliteTable('moodboards', {
+  projectId: text('project_id').primaryKey(),
+  palette: text('palette').notNull(),
+  notes: text('notes').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+/** Palette e consigli di una scena: se manca, per quella scena vale il moodboard del film. */
+export const moodboardScenes = sqliteTable(
+  'moodboard_scenes',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    sceneId: text('scene_id').notNull(),
+    palette: text('palette').notNull(),
+    notes: text('notes').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [uniqueIndex('moodboard_scenes_per_scena').on(table.projectId, table.sceneId)],
+);
+
+/**
+ * Le immagini di riferimento del moodboard (generate o caricate). Il file sta tra gli `assets`; qui la
+ * lettura del servizio, i colori calcolati dal codice e se l'immagine entra `solo per l'analisi` (D38).
+ */
+export const moodboardReferences = sqliteTable(
+  'moodboard_references',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    sceneId: text('scene_id'),
+    assetId: text('asset_id').notNull(),
+    origin: text('origin').notNull(),
+    analysisOnly: integer('analysis_only', { mode: 'boolean' }).notNull(),
+    description: text('description').notNull(),
+    moodTags: text('mood_tags').notNull(),
+    palette: text('palette').notNull(),
+    generationId: text('generation_id'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('moodboard_references_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type MoodboardReferenceRow = typeof moodboardReferences.$inferSelect;
+
+/**
  * Le immagini caricate dall'utente (T4.8, D19): luoghi e oggetti del film. Il file sta tra gli `assets`
  * (id = checksum); qui il film, cosa sono e cosa ha detto il controllo.
  */

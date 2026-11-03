@@ -11,6 +11,7 @@ import { CastPanel } from './cast/CastPanel';
 import { FinalPanel } from './final/FinalPanel';
 import { ShotsPanel } from './shots/ShotsPanel';
 import { LocationsPanel } from './locations/LocationsPanel';
+import { MoodboardPanel } from './moodboard/MoodboardPanel';
 import { StoryPanel } from './story/StoryPanel';
 import { FilmSpendLine } from './spend/FilmSpendLine';
 import { ideaHref } from './routes';
@@ -80,6 +81,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       <FilmSpendLine filmId={film.id} />
 
       <StoryPanel filmId={film.id} />
+      <MoodboardPanel filmId={film.id} />
       <CastPanel filmId={film.id} />
       <LocationsPanel filmId={film.id} />
       <FinalPanel key={film.id} filmId={film.id} />

@@ -116,7 +116,7 @@ describe('loadConfigFiles sui file di seme del repository', () => {
     expect(config?.models['claude-sonnet']?.kind).toBe('llm');
     expect(config?.connections.fal?.delivery).toBe('polling');
     expect(config?.limits.max_characters).toBe(2);
-    expect(config?.features.moodboard).toBe(false);
+    expect(config?.features.moodboard).toBe(true);
   });
 
   it('dice quale file manca se la cartella non è una configurazione', async () => {

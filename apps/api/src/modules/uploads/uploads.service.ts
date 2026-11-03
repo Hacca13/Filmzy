@@ -1,15 +1,9 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
-import {
-  UPLOAD_MAX_BYTES,
-  type UploadedImage,
-  type UploadQuery,
-  type Uploads,
-} from '@filmzy/contracts';
+import type { UploadedImage, UploadQuery, Uploads } from '@filmzy/contracts';
 import { projectsDir, type LocationStore, type SheetStore, type UploadStore } from '@filmzy/db';
-import { shrinkImage } from '@filmzy/media';
 import { LocalAssetStore, type ConfigSource, type Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -18,24 +12,13 @@ import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
 import { registerAssets } from '../media/image-jobs.js';
-import { mediaStep } from '../media/media-step.js';
 import { PREFERENCES_STORE } from '../preferences/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { detectImageType, imageProblems } from './image-checks.js';
+import { readImageBody } from './image-body.js';
+import { imageProblems } from './image-checks.js';
+import { imageForReading } from './image-for-reading.js';
 import { UPLOAD_STORE } from './tokens.js';
-
-/** Fino a questo peso la foto parte com'è per la lettura (byte); sopra, si manda ridotta. */
-const READ_AS_IS_MAX_BYTES = 3 * 1024 * 1024;
-
-/** Il lato più lungo della copia ridotta (px): i servizi comunque non guardano oltre. */
-const READ_MAX_SIDE_PX = 1568;
-
-const EXTENSIONS: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-};
 
 /** Come si chiama una foto se chi la carica non le dà un nome. */
 const DEFAULT_NAMES = { location: 'Foto del luogo', object: 'Foto dell’oggetto' } as const;
@@ -80,11 +63,7 @@ export class UploadsService {
     }
     this.assertPlace(projectId, query);
 
-    const bytes = this.assertImage(body);
-    const contentType = detectImageType(bytes);
-    if (contentType === undefined) {
-      throw domainError(400, 'invalid_request', { details: { field: 'file' } });
-    }
+    const { bytes, contentType } = readImageBody(body);
 
     const assetId = createHash('sha256').update(bytes).digest('hex');
     const checking = this.preferences.get().imageCheck;
@@ -140,41 +119,6 @@ export class UploadsService {
     if (!known) throw domainError(400, 'invalid_request', { details: { field: 'locationId' } });
   }
 
-  /** Il corpo deve essere un file, non vuoto e non troppo grande. */
-  private assertImage(body: unknown): Buffer {
-    if (!Buffer.isBuffer(body) || body.length === 0 || body.length > UPLOAD_MAX_BYTES) {
-      throw domainError(400, 'invalid_request', { details: { field: 'file' } });
-    }
-    return body;
-  }
-
-  /**
-   * La foto come la riceve il servizio che la legge. I servizi hanno un limite di peso per immagine (circa
-   * 5 MB): una foto grande — come ne fa un telefono — si manda ridotta, ma l'originale è quello che si
-   * salva. Una foto già leggera parte com'è.
-   */
-  private async readable(
-    projectId: string,
-    contentType: string,
-    bytes: Buffer,
-  ): Promise<{ mediaType: string; data: Uint8Array }> {
-    if (bytes.length <= READ_AS_IS_MAX_BYTES) return { mediaType: contentType, data: bytes };
-
-    const dir = path.join(projectsDir(this.dataDir), projectId, 'caricate');
-    await mkdir(dir, { recursive: true });
-    const stem = path.join(dir, `lettura-${randomUUID()}`);
-    const input = `${stem}.${EXTENSIONS[contentType] ?? 'img'}`;
-    const output = `${stem}.jpg`;
-    try {
-      await writeFile(input, bytes);
-      await mediaStep(() => shrinkImage({ input, output, maxSidePx: READ_MAX_SIDE_PX }));
-      return { mediaType: 'image/jpeg', data: await readFile(output) };
-    } finally {
-      // Le copie provvisorie non restano mai: né se è andata bene né se ffmpeg ha fallito.
-      await Promise.all([rm(input, { force: true }), rm(output, { force: true })]);
-    }
-  }
-
   /** Fa guardare la foto all'analista; se non va, la rifiuta. Dà la descrizione di ciò che vede. */
   private async check(
     projectId: string,
@@ -183,7 +127,7 @@ export class UploadsService {
     contentType: string,
     bytes: Buffer,
   ): Promise<string> {
-    const image = await this.readable(projectId, contentType, bytes);
+    const image = await imageForReading({ dataDir: this.dataDir, projectId, contentType, bytes });
     const { data } = await this.troupe.run(
       'image_analyst',
       { image: { assetId }, purpose: 'upload', context: null, language },

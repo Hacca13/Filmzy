@@ -12,12 +12,14 @@ import {
   generateMoodboard,
   removeMoodboardReference,
   saveMoodboardPart,
+  uploadMoodboardReference,
 } from '../../api/moodboard';
 import { assetUrl } from '../../api/sheet';
 import { Chip, Notice, ToneIcon } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
 import { failureText } from '../failure';
 import { GenerateBar, useGeneration } from '../generation';
+import { UploadControl } from '../uploads/UploadControl';
 import { useWatched } from '../use-watched';
 import {
   addColor,
@@ -246,6 +248,16 @@ function PartEditor({
         {justSaved ? <Chip tone="confirmed">Salvato</Chip> : null}
       </div>
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
+
+      <UploadControl
+        filmId={filmId}
+        label="Carica un’immagine di riferimento"
+        hint="Se nell’immagine ci sono persone, entra solo per l’analisi: ne leggiamo atmosfera e colori, ma non si sceglie per un’inquadratura. Marchi e personaggi noti si rifiutano."
+        send={async (file) => {
+          onChange(await uploadMoodboardReference(filmId, sceneId, file));
+        }}
+        onUploaded={() => undefined}
+      />
 
       <References
         references={referencesOf(view.moodboard, sceneId)}

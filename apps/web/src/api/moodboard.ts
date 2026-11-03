@@ -34,6 +34,12 @@ export function generateMoodboard(filmId: string, body: GenerateMoodboardBody) {
   return sendJson('POST', `${base(filmId)}/generate`, moodboardViewSchema, body);
 }
 
+/** Carica un'immagine di riferimento (T4.10): il file è il corpo della richiesta. */
+export function uploadMoodboardReference(filmId: string, sceneId: string | undefined, file: Blob) {
+  const query = sceneId === undefined ? '' : `?${new URLSearchParams({ sceneId }).toString()}`;
+  return sendJson('POST', `${base(filmId)}/references${query}`, moodboardViewSchema, file);
+}
+
 export function removeMoodboardReference(filmId: string, referenceId: string) {
   return sendJson(
     'DELETE',

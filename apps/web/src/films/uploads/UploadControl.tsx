@@ -19,11 +19,18 @@ const ACCEPT = 'image/png,image/jpeg,image/webp';
 export function UploadControl({
   filmId,
   target,
+  send,
+  hint,
   label,
   onUploaded,
 }: {
   filmId: string;
-  target: Omit<UploadTarget, 'name'>;
+  /** Dove va la foto (luogo o oggetto, T4.8). Senza, serve `send`. */
+  target?: Omit<UploadTarget, 'name'>;
+  /** Come si manda il file, per chi non carica luoghi e oggetti (le immagini del moodboard, T4.10): la funzione la decide chi chiama. */
+  send?: (file: File, name: string | undefined) => Promise<unknown>;
+  /** Una frase in più sotto il pulsante, per ciò che vale solo per questo caricamento. */
+  hint?: string;
   label: string;
   /** Dopo un caricamento riuscito: chi mostra le foto le rilegge. */
   onUploaded: () => Promise<void> | void;
@@ -35,7 +42,7 @@ export function UploadControl({
   const [note, setNote] = useState<string>();
 
   // Finché non si sa se la funzione c'è, o se è spenta, non si offre niente.
-  if (state.status !== 'ready' || !state.data.enabled) return null;
+  if (state.status !== 'ready' || (send === undefined && !state.data.enabled)) return null;
   const { checking } = state.data;
 
   const pick = (event: ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +57,10 @@ export function UploadControl({
 
     const name = nameOf(file.name);
     action.run(async () => {
-      await uploadImage(filmId, { ...target, ...(name === undefined ? {} : { name }) }, file);
+      if (send !== undefined) await send(file, name);
+      else if (target !== undefined) {
+        await uploadImage(filmId, { ...target, ...(name === undefined ? {} : { name }) }, file);
+      }
       await onUploaded();
     });
   };
@@ -69,6 +79,7 @@ export function UploadControl({
         {action.busy ? workingText(checking) : label}
       </button>
       <p className="hint">{checkingHint(checking)}</p>
+      {hint === undefined ? null : <p className="hint">{hint}</p>}
       {note === undefined ? null : <Notice tone="error">{note}</Notice>}
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
     </div>

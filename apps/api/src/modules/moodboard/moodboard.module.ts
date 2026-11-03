@@ -21,9 +21,11 @@ import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { CastModule } from '../cast/cast.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
+import { PreferencesModule } from '../preferences/preferences.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { MoodboardGenerationService } from './moodboard-generation.service.js';
+import { MoodboardUploadService } from './moodboard-upload.service.js';
 import { MoodboardService } from './moodboard.service.js';
 import { MoodboardStoreModule } from './moodboard-store.module.js';
 
@@ -34,6 +36,7 @@ class MoodboardController {
   constructor(
     private readonly moodboard: MoodboardService,
     private readonly generation: MoodboardGenerationService,
+    private readonly uploads: MoodboardUploadService,
   ) {}
 
   @Get()
@@ -56,6 +59,16 @@ class MoodboardController {
     return this.generation.generate(projectId, parseBody(generateMoodboardBodySchema, body ?? {}));
   }
 
+  /** Carica un'immagine di riferimento (T4.10): il file è il corpo della richiesta (PNG, JPEG o WebP). */
+  @Post('references')
+  addReference(
+    @Param('projectId') projectId: string,
+    @Query() query: unknown,
+    @Body() body: unknown,
+  ): Promise<MoodboardView> {
+    return this.uploads.add(projectId, parseBody(moodboardOptionsQuerySchema, query).sceneId, body);
+  }
+
   /** Toglie un'immagine di riferimento. */
   @Delete('references/:referenceId')
   removeReference(
@@ -73,9 +86,16 @@ class MoodboardController {
 }
 
 @Module({
-  imports: [CastModule, JobsModule, ProjectsModule, ScreenplayModule, MoodboardStoreModule],
+  imports: [
+    CastModule,
+    JobsModule,
+    PreferencesModule,
+    ProjectsModule,
+    ScreenplayModule,
+    MoodboardStoreModule,
+  ],
   controllers: [MoodboardController],
-  providers: [MoodboardService, MoodboardGenerationService],
+  providers: [MoodboardService, MoodboardGenerationService, MoodboardUploadService],
   exports: [MoodboardService],
 })
 export class MoodboardModule {}

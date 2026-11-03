@@ -1,17 +1,32 @@
-import { MOODBOARD_NOTES_MAX_CHARS, type MoodboardView } from '@filmzy/contracts';
+import {
+  MOODBOARD_NOTES_MAX_CHARS,
+  type MoodboardRun,
+  type MoodboardView,
+  type MoodReference,
+} from '@filmzy/contracts';
 import { useCallback, useState } from 'react';
 
-import { fetchMoodboard, saveMoodboardPart } from '../../api/moodboard';
-import { Chip, Notice } from '../../components/ui';
-import { useResource } from '../../lib/use-resource';
-import { describeError } from '../../settings/messages';
+import {
+  fetchMoodboard,
+  fetchMoodboardOptions,
+  generateMoodboard,
+  removeMoodboardReference,
+  saveMoodboardPart,
+} from '../../api/moodboard';
+import { assetUrl } from '../../api/sheet';
+import { Chip, Notice, ToneIcon } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
+import { failureText } from '../failure';
+import { GenerateBar, useGeneration } from '../generation';
+import { useWatched } from '../use-watched';
 import {
   addColor,
   canAddColor,
   changeColor,
   partOf,
+  referencesOf,
   removeColor,
+  runIsWorking,
   samePart,
   type PartText,
 } from './palette';
@@ -20,18 +35,30 @@ const WHOLE_FILM = 'film';
 
 /**
  * «Moodboard» (T4.10, D37): facoltativo ma consigliato. Colori, consigli (luce, colore, macchina,
- * ritmo) e, nei passi dopo, immagini di riferimento: per tutto il film, o per una scena che ha
- * un'atmosfera sua. Senza moodboard il film funziona come prima. Si corregge sempre a mano.
+ * ritmo) e immagini di riferimento: per tutto il film, o per una scena che ha un'atmosfera sua.
+ * Senza moodboard il film funziona come prima. Si può scrivere a mano o farlo creare («Crea il
+ * moodboard», con la stima e «Cambia servizio» come ogni generazione), e si corregge sempre. Mentre
+ * le immagini arrivano la pagina si aggiorna da sola.
  */
 export function MoodboardPanel({ filmId }: { filmId: string }) {
   const load = useCallback((signal: AbortSignal) => fetchMoodboard(filmId, signal), [filmId]);
-  const { state, setData } = useResource(load);
+  const {
+    value: view,
+    setValue,
+    problem,
+  } = useWatched(load, runIsWorking, {
+    kinds: ['moodboard_images'],
+    projectId: filmId,
+  });
   const [target, setTarget] = useState(WHOLE_FILM);
 
-  if (state.status === 'loading') return <p className="hint">Un attimo…</p>;
-  if (state.status === 'error') return <Notice tone="error">{describeError(state.error)}</Notice>;
-
-  const view = state.data;
+  if (view === undefined) {
+    return problem === undefined ? (
+      <p className="hint">Un attimo…</p>
+    ) : (
+      <Notice tone="error">{problem}</Notice>
+    );
+  }
   // Spenta, la funzione non si offre.
   if (!view.enabled) return null;
 
@@ -64,22 +91,23 @@ export function MoodboardPanel({ filmId }: { filmId: string }) {
         </>
       )}
 
-      <PartEditor key={target} filmId={filmId} view={view} sceneId={sceneId} onSaved={setData} />
+      <PartEditor key={target} filmId={filmId} view={view} sceneId={sceneId} onChange={setValue} />
+      {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
     </section>
   );
 }
 
-/** I colori e i consigli di una parte, da modificare e salvare. */
+/** I colori, i consigli e le immagini di una parte: da modificare, salvare o far creare. */
 function PartEditor({
   filmId,
   view,
   sceneId,
-  onSaved,
+  onChange,
 }: {
   filmId: string;
   view: MoodboardView;
   sceneId: string | undefined;
-  onSaved: (view: MoodboardView) => void;
+  onChange: (view: MoodboardView) => void;
 }) {
   const saved = partOf(view.moodboard, sceneId);
   const [draft, setDraft] = useState<PartText>(saved);
@@ -87,6 +115,23 @@ function PartEditor({
   const action = useAction();
   const unchanged = samePart(draft, saved);
   const idBase = sceneId ?? WHOLE_FILM;
+  const working = runIsWorking(view);
+
+  const loadOptions = useCallback(
+    (signal: AbortSignal) => fetchMoodboardOptions(filmId, sceneId, signal),
+    [filmId, sceneId],
+  );
+  const generation = useGeneration<MoodboardView>({
+    loadOptions,
+    start: (body) =>
+      generateMoodboard(filmId, { ...(sceneId === undefined ? {} : { sceneId }), ...body }),
+    // Colori e consigli nuovi sostituiscono quelli di prima: la bozza in modifica riparte da lì.
+    onStarted: (next) => {
+      onChange(next);
+      setDraft(partOf(next.moodboard, sceneId));
+      setJustSaved(false);
+    },
+  });
 
   const edit = (next: PartText) => {
     setDraft(next);
@@ -101,6 +146,16 @@ function PartEditor({
           quella.
         </p>
       )}
+
+      <section className="sheet" aria-label="Crea il moodboard">
+        <h5>Fallo creare a Filmzy</h5>
+        <p className="hint">
+          Propone i colori e i consigli (che sostituiscono quelli di questa parte) e crea alcune
+          immagini di riferimento. Poi puoi correggere tutto a mano.
+        </p>
+        <GenerateBar generation={generation} createVerb="Crea il moodboard" disabled={working} />
+        <RunState run={view.run} sceneId={sceneId} />
+      </section>
 
       <fieldset className="moodboard-palette">
         <legend>Colori</legend>
@@ -181,7 +236,7 @@ function PartEditor({
                 palette: [...draft.palette],
                 notes: draft.notes,
               });
-              onSaved(next);
+              onChange(next);
               setJustSaved(true);
             });
           }}
@@ -191,6 +246,94 @@ function PartEditor({
         {justSaved ? <Chip tone="confirmed">Salvato</Chip> : null}
       </div>
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
+
+      <References
+        references={referencesOf(view.moodboard, sceneId)}
+        busy={action.busy}
+        onRemove={(referenceId) => {
+          action.run(async () => {
+            onChange(await removeMoodboardReference(filmId, referenceId));
+          });
+        }}
+      />
     </div>
+  );
+}
+
+/** Come sta andando l'ultima richiesta di immagini, se riguarda questa parte. */
+function RunState({
+  run,
+  sceneId,
+}: {
+  run: MoodboardRun | undefined;
+  sceneId: string | undefined;
+}) {
+  if (run === undefined || run.sceneId !== sceneId) return null;
+  if (run.status === 'queued' || run.status === 'running') {
+    return <Chip tone="info">{`Sto creando le immagini… (${String(run.images)} fatte)`}</Chip>;
+  }
+  if (run.status === 'failed') {
+    return (
+      <div className="sheet-placeholder wide" data-tone="error">
+        <ToneIcon tone="error" size={26} />
+        {failureText(run.errorCode)}
+      </div>
+    );
+  }
+  return null;
+}
+
+/** Le immagini di riferimento di una parte: cosa mostrano, i loro colori e se entrano solo per l'analisi. */
+function References({
+  references,
+  busy,
+  onRemove,
+}: {
+  references: readonly MoodReference[];
+  busy: boolean;
+  onRemove: (referenceId: string) => void;
+}) {
+  if (references.length === 0) return null;
+  return (
+    <section className="moodboard-references" aria-label="Immagini di riferimento">
+      <h5>Immagini di riferimento</h5>
+      <div className="use-grid">
+        {references.map((reference, index) => (
+          <figure key={reference.id ?? reference.assetId}>
+            <div className="use-picture">
+              <img src={assetUrl(reference.assetId)} alt={`Riferimento ${String(index + 1)}`} />
+              {reference.analysisOnly ? (
+                <span className="use-chip">
+                  <Chip tone="info">Solo per l’analisi</Chip>
+                </span>
+              ) : null}
+            </div>
+            <div className="palette-dots" aria-label="Colori dell’immagine">
+              {reference.palette.map((color) => (
+                <span
+                  key={color.hex}
+                  className="palette-dot"
+                  style={{ backgroundColor: color.hex }}
+                  title={color.hex}
+                />
+              ))}
+            </div>
+            <figcaption className="hint">{reference.description}</figcaption>
+            {reference.id === undefined ? null : (
+              <button
+                type="button"
+                className="button"
+                disabled={busy}
+                onClick={() => {
+                  if (reference.id !== undefined) onRemove(reference.id);
+                }}
+              >
+                Togli
+              </button>
+            )}
+          </figure>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -49,7 +49,7 @@ describe('resolveRole sul seme', () => {
   });
 
   it('si ferma su un ruolo che non è configurato', () => {
-    expect(() => resolveRole(seed, 'moodboard_designer')).toThrow(
+    expect(() => resolveRole(seed, 'voice_actor')).toThrow(
       expect.objectContaining({ code: 'config_invalid' }),
     );
   });

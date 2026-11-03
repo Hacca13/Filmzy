@@ -7,7 +7,9 @@ import {
   canAddColor,
   changeColor,
   partOf,
+  referencesOf,
   removeColor,
+  runIsWorking,
   samePart,
 } from './palette';
 
@@ -82,5 +84,46 @@ describe('samePart', () => {
     expect(samePart(base, { ...base, palette: [blue, amber] })).toBe(false);
     expect(samePart(base, { ...base, palette: [{ hex: amber.hex }, blue] })).toBe(false);
     expect(samePart(base, { ...base, palette: [amber] })).toBe(false);
+  });
+});
+
+describe('le immagini e il lavoro in corso (T4.10)', () => {
+  const reference = {
+    assetId: 'a'.repeat(64),
+    origin: 'generated' as const,
+    analysisOnly: false,
+    description: 'x',
+    moodTags: [],
+    palette: [],
+  };
+  const board: Moodboard = {
+    projectId: 'film-1',
+    film: { palette: [], notes: '', references: [reference] },
+    scenes: [
+      {
+        sceneId: 'scene-2',
+        palette: [],
+        notes: '',
+        references: [{ ...reference, assetId: 'b'.repeat(64) }],
+      },
+    ],
+  };
+
+  it('le immagini sono quelle della parte: del film, o della scena', () => {
+    expect(referencesOf(board, undefined)).toHaveLength(1);
+    expect(referencesOf(board, 'scene-2')[0]?.assetId).toBe('b'.repeat(64));
+    expect(referencesOf(board, 'scene-9')).toEqual([]);
+  });
+
+  it('un lavoro è in corso se è in coda o lavora; finito, riuscito o no, no', () => {
+    const run = (status: 'queued' | 'running' | 'succeeded' | 'failed') => ({
+      run: { id: 'r', status, images: 0, createdAt: '2026-11-03T10:00:00.000Z' },
+    });
+
+    expect(runIsWorking(run('queued'))).toBe(true);
+    expect(runIsWorking(run('running'))).toBe(true);
+    expect(runIsWorking(run('succeeded'))).toBe(false);
+    expect(runIsWorking(run('failed'))).toBe(false);
+    expect(runIsWorking({})).toBe(false);
   });
 });

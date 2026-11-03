@@ -1216,6 +1216,18 @@ a.button {
   gap: 8px;
 }
 
+.palette-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.palette-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
 /* Ritocco col pennello (T4.9) */
 .retouch-stage {
   position: relative;

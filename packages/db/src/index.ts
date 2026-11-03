@@ -22,6 +22,7 @@ export type {
   MoodboardChanges,
   MoodboardStore,
   MoodboardText,
+  RunPatch,
   StoredReference,
 } from './moodboard-store.js';
 export { createProjectStore } from './project-store.js';

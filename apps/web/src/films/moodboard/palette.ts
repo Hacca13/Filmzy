@@ -1,4 +1,10 @@
-import { MAX_PALETTE_COLORS, type Color, type Moodboard } from '@filmzy/contracts';
+import {
+  MAX_PALETTE_COLORS,
+  type Color,
+  type Moodboard,
+  type MoodboardView,
+  type MoodReference,
+} from '@filmzy/contracts';
 
 /**
  * Le piccole decisioni del moodboard (T4.10, D37), fuori dai componenti così si provano a parte. Cosa
@@ -61,4 +67,18 @@ export function samePart(a: PartText, b: PartText): boolean {
         (color.name ?? '') === (b.palette.at(index)?.name ?? ''),
     )
   );
+}
+
+/** Le immagini di riferimento della parte (del film, o della scena). */
+export function referencesOf(moodboard: Moodboard, sceneId: string | undefined): MoodReference[] {
+  const part =
+    sceneId === undefined
+      ? moodboard.film
+      : moodboard.scenes.find((scene) => scene.sceneId === sceneId);
+  return part?.references ?? [];
+}
+
+/** Un lavoro di immagini è in coda o in corso: serve continuare a guardare e non chiederne un altro. */
+export function runIsWorking(view: Pick<MoodboardView, 'run'>): boolean {
+  return view.run?.status === 'queued' || view.run?.status === 'running';
 }

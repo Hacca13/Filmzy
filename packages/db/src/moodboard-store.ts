@@ -3,20 +3,24 @@ import { randomUUID } from 'node:crypto';
 import {
   colorSchema,
   moodReferenceSchema,
+  moodboardRunSchema,
   type Color,
   type Moodboard,
   type MoodboardPart,
+  type MoodboardRun,
   type MoodReference,
 } from '@filmzy/contracts';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { FilmzyDb } from './open.js';
 import {
   moodboardReferences,
+  moodboardRuns,
   moodboardScenes,
   moodboards,
   type MoodboardReferenceRow,
+  type MoodboardRunRow,
 } from './schema.js';
 
 /** Palette e consigli di una parte (film o scena): le immagini sono a parte. */
@@ -51,6 +55,19 @@ export interface MoodboardStore {
   /** Un riferimento con il suo id, se è di quel film. */
   findReference: (projectId: string, referenceId: string) => StoredReference | undefined;
   changes: (projectId: string) => MoodboardChanges;
+  /** Apre una richiesta di immagini (in coda) e ne dà l'id. */
+  startRun: (projectId: string, sceneId: string | undefined, modelLabel: string) => string;
+  updateRun: (runId: string, patch: RunPatch) => void;
+  /** L'ultima richiesta del film. */
+  latestRun: (projectId: string) => MoodboardRun | undefined;
+}
+
+/** Cosa cambia di una richiesta mentre lavora e quando finisce. */
+export interface RunPatch {
+  status?: MoodboardRun['status'];
+  images?: number;
+  errorCode?: string;
+  costUsd?: number;
 }
 
 /** Un riferimento con la parte a cui appartiene e il suo id. */
@@ -70,6 +87,7 @@ const parsePalette = (json: string): Color[] => paletteSchema.parse(JSON.parse(j
 
 const toReference = (row: MoodboardReferenceRow): MoodReference =>
   moodReferenceSchema.parse({
+    id: row.id,
     assetId: row.assetId,
     origin: row.origin,
     analysisOnly: row.analysisOnly,
@@ -77,6 +95,18 @@ const toReference = (row: MoodboardReferenceRow): MoodReference =>
     moodTags: z.array(z.string()).parse(JSON.parse(row.moodTags)),
     palette: parsePalette(row.palette),
     ...(row.generationId === null ? {} : { generationId: row.generationId }),
+  });
+
+const toRun = (row: MoodboardRunRow): MoodboardRun =>
+  moodboardRunSchema.parse({
+    id: row.id,
+    ...(row.sceneId === null ? {} : { sceneId: row.sceneId }),
+    status: row.status,
+    images: row.images,
+    ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
+    ...(row.modelLabel === null ? {} : { modelLabel: row.modelLabel }),
+    ...(row.costUsd === null ? {} : { costUsd: row.costUsd }),
+    createdAt: new Date(row.createdAt).toISOString(),
   });
 
 const isEmpty = (text: MoodboardText): boolean =>
@@ -229,6 +259,48 @@ export function createMoodboardStore(
           )
           .run().changes > 0
       );
+    },
+
+    startRun(projectId, sceneId, modelLabel) {
+      const id = randomUUID();
+      const at = now().getTime();
+      db.insert(moodboardRuns)
+        .values({
+          id,
+          projectId,
+          sceneId: sceneId ?? null,
+          status: 'queued',
+          images: 0,
+          modelLabel,
+          createdAt: at,
+          updatedAt: at,
+        })
+        .run();
+      return id;
+    },
+
+    updateRun(runId, patch) {
+      db.update(moodboardRuns)
+        .set({
+          ...(patch.status === undefined ? {} : { status: patch.status }),
+          ...(patch.images === undefined ? {} : { images: patch.images }),
+          ...(patch.errorCode === undefined ? {} : { errorCode: patch.errorCode }),
+          ...(patch.costUsd === undefined ? {} : { costUsd: patch.costUsd }),
+          updatedAt: now().getTime(),
+        })
+        .where(eq(moodboardRuns.id, runId))
+        .run();
+    },
+
+    latestRun(projectId) {
+      const row = db
+        .select()
+        .from(moodboardRuns)
+        .where(eq(moodboardRuns.projectId, projectId))
+        .orderBy(desc(moodboardRuns.createdAt), desc(moodboardRuns.id))
+        .limit(1)
+        .get();
+      return row === undefined ? undefined : toRun(row);
     },
 
     changes(projectId) {

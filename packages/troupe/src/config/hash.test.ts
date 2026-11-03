@@ -72,6 +72,6 @@ describe('hashRoleConfig', () => {
   });
 
   it('non dà un hash per un ruolo che non è configurato', () => {
-    expect(hashRoleConfig(seed, 'moodboard_designer')).toBeUndefined();
+    expect(hashRoleConfig(seed, 'voice_actor')).toBeUndefined();
   });
 });

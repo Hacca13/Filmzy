@@ -134,6 +134,13 @@
       "when": 1793709019041,
       "tag": "0018_moodboard",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1793721042534,
+      "tag": "0019_moodboard_richieste",
+      "breakpoints": true
     }
   ]
 }

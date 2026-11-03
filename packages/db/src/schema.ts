@@ -352,6 +352,26 @@ export const moodboardReferences = sqliteTable(
 
 export type MoodboardReferenceRow = typeof moodboardReferences.$inferSelect;
 
+/** Una richiesta di immagini di riferimento (T4.10): un lavoro in coda con il suo stato, come un tentativo. */
+export const moodboardRuns = sqliteTable(
+  'moodboard_runs',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    sceneId: text('scene_id'),
+    status: text('status').notNull(),
+    images: integer('images').notNull(),
+    errorCode: text('error_code'),
+    modelLabel: text('model_label'),
+    costUsd: real('cost_usd'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('moodboard_runs_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type MoodboardRunRow = typeof moodboardRuns.$inferSelect;
+
 /**
  * Le immagini caricate dall'utente (T4.8, D19): luoghi e oggetti del film. Il file sta tra gli `assets`
  * (id = checksum); qui il film, cosa sono e cosa ha detto il controllo.

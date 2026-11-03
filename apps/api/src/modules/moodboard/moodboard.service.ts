@@ -26,10 +26,12 @@ export class MoodboardService {
 
   async view(projectId: string): Promise<MoodboardView> {
     this.projects.get(projectId);
+    const run = this.store.latestRun(projectId);
     return {
       enabled: await this.isEnabled(),
       moodboard: this.store.get(projectId),
       scenes: this.scenes(projectId),
+      ...(run === undefined ? {} : { run }),
     };
   }
 
@@ -48,6 +50,15 @@ export class MoodboardService {
       palette: body.palette,
       notes: body.notes.trim(),
     });
+    return this.view(projectId);
+  }
+
+  /** Toglie un'immagine di riferimento; il file resta nella cartella del film. */
+  async removeReference(projectId: string, referenceId: string): Promise<MoodboardView> {
+    this.projects.get(projectId);
+    if (!this.store.removeReference(projectId, referenceId)) {
+      throw domainError(404, 'not_found', { details: { field: 'referenceId' } });
+    }
     return this.view(projectId);
   }
 

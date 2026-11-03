@@ -116,7 +116,12 @@ describe('il moodboard nel database (T4.10)', () => {
     store.addReference('film-1', 'scene-3', reference());
 
     expect(store.get('film-1').scenes).toEqual([
-      { sceneId: 'scene-3', palette: [], notes: '', references: [reference()] },
+      {
+        sceneId: 'scene-3',
+        palette: [],
+        notes: '',
+        references: [{ ...reference(), id: expect.any(String) as string }],
+      },
     ]);
   });
 

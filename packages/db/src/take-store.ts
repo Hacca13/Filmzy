@@ -9,7 +9,7 @@ import {
 import { and, desc, eq, gte, inArray, isNotNull } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
-import { shots, takes, type TakeRow } from './schema.js';
+import { shots, takeFrames, takes, type TakeFrameRow, type TakeRow } from './schema.js';
 
 /** Un take appena chiesto: il servizio che lo farà, scelto dall'utente (D36). */
 export interface NewTake {
@@ -28,6 +28,18 @@ export interface TakePatch {
   modelId?: string;
   modelLabel?: string;
 }
+
+/** Un fotogramma preso da un take: il momento (secondi) e l'immagine che ne è venuta. */
+export interface TakeFrame {
+  id: string;
+  shotId: string;
+  takeId: string;
+  atS: number;
+  assetId: string;
+  createdAt: string;
+}
+
+export type NewTakeFrame = Omit<TakeFrame, 'id' | 'createdAt'>;
 
 /** Un take con l'inquadratura a cui appartiene. */
 export interface StoredTake {
@@ -48,7 +60,13 @@ export interface TakeStore {
   get: (takeId: string) => StoredTake | undefined;
   /** I take di un'inquadratura dal più recente. */
   list: (shotId: string) => ShotTake[];
-  /** La clip del take riuscito più recente di ogni inquadratura del film che ne ha una. */
+  /** Sceglie il take da tenere per l'inquadratura, o toglie la scelta con `undefined` (torna a valere il più recente). */
+  choose: (shotId: string, takeId: string | undefined) => void;
+  /** Salva un fotogramma preso da un take (T4.6): il file è già un'immagine registrata. */
+  addFrame: (frame: NewTakeFrame) => TakeFrame;
+  /** I fotogrammi presi dai take di un'inquadratura, dal più recente. */
+  frames: (shotId: string) => TakeFrame[];
+  /** La clip che la card fa vedere per ogni inquadratura del film che ne ha una: quella del take scelto, o del più recente riuscito. */
   latestClips: (projectId: string) => Record<string, string>;
   /** Le inquadrature del film con un take in coda o in lavorazione adesso (non più vecchio di `since`: uno più vecchio si è perso). */
   inProgress: (projectId: string, since: Date) => string[];
@@ -58,8 +76,18 @@ export interface TakeStoreOptions {
   now?: () => Date;
 }
 
-function toTake(row: TakeRow): ShotTake {
+const toFrame = (row: Omit<TakeFrameRow, 'createdAt'> & { createdAt: number }): TakeFrame => ({
+  id: row.id,
+  shotId: row.shotId,
+  takeId: row.takeId,
+  atS: row.atS,
+  assetId: row.assetId,
+  createdAt: new Date(row.createdAt).toISOString(),
+});
+
+function toTake(row: TakeRow, chosen: boolean): ShotTake {
   return shotTakeSchema.parse({
+    chosen,
     id: row.id,
     status: sheetImageStatusSchema.parse(row.status),
     modelId: row.modelId,
@@ -73,6 +101,11 @@ function toTake(row: TakeRow): ShotTake {
 
 export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): TakeStore {
   const now = options.now ?? (() => new Date());
+
+  /** Il take scelto di un'inquadratura, se ce n'è uno. */
+  const chosenOf = (shotId: string): string | undefined =>
+    db.select({ id: shots.chosenTakeId }).from(shots).where(eq(shots.id, shotId)).get()?.id ??
+    undefined;
 
   const shotIdsOf = (projectId: string): string[] =>
     db
@@ -99,7 +132,7 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         updatedAt: at,
       };
       db.insert(takes).values(row).run();
-      return toTake(row);
+      return toTake(row, false);
     },
 
     finish(takeId, patch) {
@@ -122,17 +155,43 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
 
     get(takeId) {
       const row = db.select().from(takes).where(eq(takes.id, takeId)).get();
-      return row === undefined ? undefined : { shotId: row.shotId, take: toTake(row) };
+      return row === undefined
+        ? undefined
+        : { shotId: row.shotId, take: toTake(row, chosenOf(row.shotId) === row.id) };
     },
 
     list(shotId) {
+      const chosen = chosenOf(shotId);
       return db
         .select()
         .from(takes)
         .where(eq(takes.shotId, shotId))
         .orderBy(desc(takes.createdAt), desc(takes.id))
         .all()
-        .map(toTake);
+        .map((row) => toTake(row, row.id === chosen));
+    },
+
+    choose(shotId, takeId) {
+      db.update(shots)
+        .set({ chosenTakeId: takeId ?? null })
+        .where(eq(shots.id, shotId))
+        .run();
+    },
+
+    addFrame(frame) {
+      const row = { id: randomUUID(), createdAt: now().getTime(), ...frame };
+      db.insert(takeFrames).values(row).run();
+      return toFrame(row);
+    },
+
+    frames(shotId) {
+      return db
+        .select()
+        .from(takeFrames)
+        .where(eq(takeFrames.shotId, shotId))
+        .orderBy(desc(takeFrames.createdAt), desc(takeFrames.id))
+        .all()
+        .map(toFrame);
     },
 
     inProgress(projectId, since) {
@@ -169,13 +228,24 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         )
         .orderBy(desc(takes.createdAt), desc(takes.id))
         .all();
-      // Dal più recente: la prima clip incontrata per un'inquadratura è la sua più recente.
+      // Dal più recente: la prima clip incontrata per un'inquadratura è la sua più recente. Ma se
+      // l'utente ne ha scelto un'altra (e riuscita) vale quella.
+      const chosenIds = new Map(
+        db
+          .select({ id: shots.id, take: shots.chosenTakeId })
+          .from(shots)
+          .where(inArray(shots.id, shotIds))
+          .all()
+          .flatMap((shot) => (shot.take === null ? [] : [[shot.id, shot.take] as const])),
+      );
       const latest: Record<string, string> = {};
+      const chosen: Record<string, string> = {};
       for (const row of rows) {
-        if (row.assetId !== null && latest[row.shotId] === undefined)
-          latest[row.shotId] = row.assetId;
+        if (row.assetId === null) continue;
+        if (latest[row.shotId] === undefined) latest[row.shotId] = row.assetId;
+        if (chosenIds.get(row.shotId) === row.id) chosen[row.shotId] = row.assetId;
       }
-      return latest;
+      return { ...latest, ...chosen };
     },
   };
 }

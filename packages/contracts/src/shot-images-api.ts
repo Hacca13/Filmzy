@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { assetIdSchema, shotIdSchema } from './ids.js';
+import { assetIdSchema, shotIdSchema, takeIdSchema } from './ids.js';
 import { shotImageSchema } from './shot.js';
 import { storyboardModeSchema } from './storyboard-api.js';
 
@@ -30,11 +30,17 @@ export const setShotImagesBodySchema = z.strictObject({
 
 export type SetShotImagesBody = z.infer<typeof setShotImagesBodySchema>;
 
-/** Un'immagine che l'inquadratura può usare: una variante di un tentativo riuscito. */
+/**
+ * Un'immagine che l'inquadratura può usare: una variante di un tentativo riuscito (`storyboard`,
+ * `end_frame`, col numero del tentativo) oppure un fotogramma preso da un suo take (`take_frame`, T4.6,
+ * col take e il momento).
+ */
 export const imageCandidateSchema = z.object({
   assetId: assetIdSchema,
-  mode: storyboardModeSchema,
-  attempt: z.number().int().positive(),
+  mode: z.enum([...storyboardModeSchema.options, 'take_frame']),
+  attempt: z.number().int().positive().optional(),
+  takeId: takeIdSchema.optional(),
+  atS: z.number().nonnegative().optional(),
 });
 
 export type ImageCandidate = z.infer<typeof imageCandidateSchema>;

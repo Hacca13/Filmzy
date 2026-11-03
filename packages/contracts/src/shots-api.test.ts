@@ -21,7 +21,7 @@ const scene = {
   stale: false,
   shots: [shot],
   chosenStoryboards: {},
-  latestTakes: {},
+  clips: {},
   working: {},
 };
 
@@ -53,14 +53,12 @@ describe('working', () => {
   });
 });
 
-describe('latestTakes', () => {
+describe('clips', () => {
   it('porta la clip più recente di ogni inquadratura che ne ha una', () => {
-    expect(
-      scenePlanSchema.parse({ ...scene, latestTakes: { 'shot-1': 'clip-1' } }).latestTakes,
-    ).toEqual({
+    expect(scenePlanSchema.parse({ ...scene, clips: { 'shot-1': 'clip-1' } }).clips).toEqual({
       'shot-1': 'clip-1',
     });
-    expect(scenePlanSchema.safeParse({ ...scene, latestTakes: undefined }).success).toBe(false);
+    expect(scenePlanSchema.safeParse({ ...scene, clips: undefined }).success).toBe(false);
   });
 });
 

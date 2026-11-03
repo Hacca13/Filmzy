@@ -35,8 +35,8 @@ export const scenePlanSchema = z.object({
   shots: z.array(shotSpecSchema),
   /** La variante di storyboard scelta per ogni inquadratura che ne ha una: il riferimento visivo della card (T4.1). */
   chosenStoryboards: z.record(shotIdSchema, assetIdSchema),
-  /** La clip del take riuscito più recente di ogni inquadratura (T4.3): è ciò che la card fa vedere. */
-  latestTakes: z.record(shotIdSchema, assetIdSchema),
+  /** La clip che la card fa vedere per ogni inquadratura che ne ha una: quella del take scelto (T4.6) o, se non ce n'è, del più recente riuscito (T4.3). */
+  clips: z.record(shotIdSchema, assetIdSchema),
   /**
    * Cosa si sta facendo adesso per ogni inquadratura che ha un lavoro in coda o in corso (T4.4): la card
    * lo dice e, quando il lavoro finisce, passa da sola a «pronto». Il video vince sulle immagini.

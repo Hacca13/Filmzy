@@ -18,6 +18,7 @@ import {
   shotPlans,
   shots,
   storyboardAttempts,
+  takeFrames,
   takes,
   type ShotPlanRow,
   type ShotRow,
@@ -156,6 +157,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         if (removed.length > 0) {
           tx.delete(storyboardAttempts).where(inArray(storyboardAttempts.shotId, removed)).run();
           tx.delete(takes).where(inArray(takes.shotId, removed)).run();
+          tx.delete(takeFrames).where(inArray(takeFrames.shotId, removed)).run();
         }
         tx.delete(shots).where(scene).run();
         tx.delete(shotPlans)

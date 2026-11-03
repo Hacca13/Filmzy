@@ -3,7 +3,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ShotVideoSection } from './ShotVideoSection';
-import { takeCaption, takeText, takesAreWorking } from './takes-model';
+import {
+  formatMoment,
+  keptTake,
+  takeCaption,
+  takeText,
+  takesAreWorking,
+  timeInVideo,
+} from './takes-model';
 
 const take = (status: ShotTake['status'], extra: Partial<ShotTake> = {}): ShotTake => ({
   id: 't-1',
@@ -69,5 +76,47 @@ describe('ShotVideoSection', () => {
     expect(html).toContain('nuovo take');
     expect(html).toContain('Genera il video');
     expect(html).toMatch(/<button[^>]*disabled/);
+  });
+});
+
+describe('keptTake (T4.6)', () => {
+  const done = (id: string, extra: Partial<ShotTake> = {}) =>
+    take('succeeded', { id, assetId: `clip-${id}`, ...extra });
+
+  it('senza scelta vale il più recente riuscito; un take scelto vale anche se è più vecchio', () => {
+    const newest = done('nuovo');
+    const oldest = done('vecchio');
+
+    expect(keptTake({ shotId: 's', takes: [newest, oldest] })?.id).toBe('nuovo');
+    expect(keptTake({ shotId: 's', takes: [newest, { ...oldest, chosen: true }] })?.id).toBe(
+      'vecchio',
+    );
+  });
+
+  it('i take non riusciti non contano, e senza take riusciti non c’è niente da tenere', () => {
+    expect(keptTake({ shotId: 's', takes: [take('failed', { id: 'x' }), done('buono')] })?.id).toBe(
+      'buono',
+    );
+    expect(
+      keptTake({ shotId: 's', takes: [take('failed', { id: 'x', chosen: true })] }),
+    ).toBeUndefined();
+    expect(keptTake({ shotId: 's', takes: [] })).toBeUndefined();
+  });
+});
+
+describe('timeInVideo e formatMoment (T4.6)', () => {
+  it('il momento del lettore si arrotonda ai millesimi; senza lettore o con un valore strano vale l’inizio', () => {
+    expect(timeInVideo(1.23456)).toBe(1.235);
+    expect(timeInVideo(0)).toBe(0);
+    expect(timeInVideo(undefined)).toBe(0);
+    expect(timeInVideo(Number.NaN)).toBe(0);
+    expect(timeInVideo(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(timeInVideo(-3)).toBe(0);
+  });
+
+  it('il momento si legge in italiano, con la virgola', () => {
+    expect(formatMoment(1.5)).toBe('1,5 s');
+    expect(formatMoment(0)).toBe('0 s');
+    expect(formatMoment(2.346)).toBe('2,35 s');
   });
 });

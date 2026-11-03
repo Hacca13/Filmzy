@@ -3,7 +3,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ShotImagesSection } from './ShotImagesSection';
-import { hasFirstFrame, reassign, uniqueCandidates, useOf, videoNotice } from './images-model';
+import {
+  candidateCaption,
+  hasFirstFrame,
+  reassign,
+  uniqueCandidates,
+  useOf,
+  videoNotice,
+} from './images-model';
 
 const image = (use: ShotImage['use'], assetId: string): ShotImage => ({
   use,
@@ -98,5 +105,15 @@ describe('ShotImagesSection', () => {
     expect(html).toContain('Imposta le immagini');
     expect(html).toContain('Facoltativo');
     expect(html).toContain('decide l&#x27;aiuto regista');
+  });
+});
+
+describe('candidateCaption (T4.6)', () => {
+  it('un fotogramma preso da un video dice da dove viene e a che momento; le altre immagini no', () => {
+    expect(candidateCaption({ assetId: 'a', mode: 'take_frame', takeId: 't-1', atS: 1.5 })).toBe(
+      'Dal video · 1,5 s',
+    );
+    expect(candidateCaption({ assetId: 'b', mode: 'storyboard', attempt: 1 })).toBeUndefined();
+    expect(candidateCaption({ assetId: 'c', mode: 'take_frame' })).toBeUndefined();
   });
 });

@@ -63,7 +63,12 @@ export function ShotImagesPanel({
           onSettled={refreshImages}
         />
       ) : null}
-      <ShotVideoSection filmId={filmId} shotId={shot.id} onSettled={onChanged} />
+      <ShotVideoSection
+        filmId={filmId}
+        shotId={shot.id}
+        onSettled={onChanged}
+        onImagesChanged={refreshImages}
+      />
     </div>
   );
 }

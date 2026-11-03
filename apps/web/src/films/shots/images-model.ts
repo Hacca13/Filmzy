@@ -1,5 +1,7 @@
 import type { ImageCandidate, ShotImage, ShotImageChoice } from '@filmzy/contracts';
 
+import { formatMoment } from './takes-model';
+
 /**
  * Le piccole decisioni di «Imposta le immagini» (T4.2), fuori dai componenti così si provano a
  * parte. Cosa è permesso lo decide il server; qui si dice solo come presentarlo e come costruire la
@@ -48,6 +50,13 @@ export function uniqueCandidates(candidates: readonly ImageCandidate[]): ImageCa
     seen.add(candidate.assetId);
     return true;
   });
+}
+
+/** Da dove viene un'immagine, quando non è nata dallo storyboard: «Dal video · 1,5 s». */
+export function candidateCaption(candidate: ImageCandidate): string | undefined {
+  return candidate.mode === 'take_frame' && candidate.atS !== undefined
+    ? `Dal video · ${formatMoment(candidate.atS)}`
+    : undefined;
 }
 
 /** Se nessun servizio video attivato accetta le immagini scelte, lo si dice subito (D20): senza spendere. */

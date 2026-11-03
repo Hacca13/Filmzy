@@ -1,5 +1,6 @@
 import type { LocationAttempt } from '@filmzy/contracts';
 
+import { formatEstimate } from '../lib/format';
 import { describeCode } from '../settings/messages';
 
 /**
@@ -39,4 +40,13 @@ export function describeAttempt(attempt: ImageAttempt, workingText: string): str
         describeCode(attempt.errorCode) ?? 'Non è riuscito. Puoi riprovare con un altro tentativo.'
       );
   }
+}
+
+/**
+ * Chi ha fatto il tentativo e quanto è costato, per la sua intestazione: «Seedream · Standard · 0,27 $».
+ * Mentre lavora c'è solo il servizio scelto; senza nessuno dei due, niente.
+ */
+export function attemptWho(attempt: ImageAttempt): string {
+  const cost = attempt.costUsd === undefined ? undefined : formatEstimate(attempt.costUsd);
+  return [attempt.modelLabel, cost].filter((part) => part !== undefined).join(' · ');
 }

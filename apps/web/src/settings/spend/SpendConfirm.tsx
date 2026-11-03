@@ -35,7 +35,7 @@ export async function raiseLimit(
  */
 export function SpendConfirm({ breach, providerLabel, busy, onProceed, onRaise, onCancel }: Props) {
   return (
-    <Notice tone="info">
+    <Notice tone="info" title="Prima di continuare">
       {breachText(breach, providerLabel)}
       <span className="actions">
         <button

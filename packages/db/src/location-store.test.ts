@@ -84,6 +84,45 @@ describe('le immagini del set', () => {
     expect(attempts[1]?.assetIds).toEqual(['a', 'b', 'c']);
   });
 
+  it('un tentativo dice con quale servizio è fatto, e da riuscito quanto è costato davvero', () => {
+    const location = store.create('film-1', piazza);
+    const first = store.startAttempt(location.id, 'Seedream · Standard');
+    const bare = store.startAttempt(location.id);
+
+    expect(store.images(location.id).attempts.map((a) => a.modelLabel)).toEqual([
+      undefined,
+      'Seedream · Standard',
+    ]);
+    store.finishAttempt(location.id, first, { status: 'running' });
+    store.finishAttempt(location.id, first, {
+      status: 'succeeded',
+      assetIds: ['a'],
+      modelLabel: 'Seedream · Standard (quello che ha lavorato)',
+      costUsd: 0.27,
+    });
+    store.finishAttempt(location.id, bare, { status: 'failed', errorCode: 'timeout' });
+
+    const { attempts } = store.images(location.id);
+    expect(attempts[1]).toMatchObject({
+      modelLabel: 'Seedream · Standard (quello che ha lavorato)',
+      costUsd: 0.27,
+    });
+    expect(attempts[0]).not.toHaveProperty('costUsd');
+  });
+
+  it('mentre il tentativo lavora il servizio scelto resta, e non c’è ancora un costo', () => {
+    const location = store.create('film-1', piazza);
+    const attempt = store.startAttempt(location.id, 'Seedream · Standard');
+
+    store.finishAttempt(location.id, attempt, { status: 'running' });
+
+    expect(store.images(location.id).attempts[0]).toMatchObject({
+      status: 'running',
+      modelLabel: 'Seedream · Standard',
+    });
+    expect(store.images(location.id).attempts[0]).not.toHaveProperty('costUsd');
+  });
+
   it('i tentativi sono per luogo: ognuno riparte da 1', () => {
     const one = store.create('film-1', piazza);
     const two = store.create('film-1', { ...piazza, name: 'La stazione', proposalId: 'st' });

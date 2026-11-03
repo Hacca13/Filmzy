@@ -33,6 +33,10 @@ export const locationAttemptSchema = z.object({
   /** I file, quando il tentativo è riuscito: si aprono da `GET /api/assets/:assetId`. */
   assetIds: z.array(assetIdSchema),
   errorCode: z.string().min(1).optional(),
+  /** Il servizio che fa (o ha fatto) il tentativo, con il nome amichevole: lo dice l'intestazione del tentativo. */
+  modelLabel: z.string().min(1).optional(),
+  /** Quanto è costato davvero, dallo scontrino chiuso. Solo se il tentativo è riuscito. */
+  costUsd: z.number().nonnegative().optional(),
 });
 
 export type LocationAttempt = z.infer<typeof locationAttemptSchema>;

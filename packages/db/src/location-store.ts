@@ -28,6 +28,9 @@ export interface AttemptPatch {
   assetIds?: string[];
   receiptId?: string;
   errorCode?: string;
+  /** Il servizio che ha lavorato davvero (dallo scontrino) e il costo vero: solo se il tentativo è riuscito. */
+  modelLabel?: string;
+  costUsd?: number;
 }
 
 /**
@@ -43,7 +46,8 @@ export interface LocationStore {
   list: (projectId: string) => Location[];
   /** Toglie il luogo e i suoi tentativi; `true` se c'era. */
   remove: (id: string) => boolean;
-  startAttempt: (locationId: string) => number;
+  /** Apre un tentativo in coda; `modelLabel` è il servizio scelto, che l'intestazione mostra subito. */
+  startAttempt: (locationId: string, modelLabel?: string) => number;
   finishAttempt: (locationId: string, attempt: number, patch: AttemptPatch) => void;
   images: (locationId: string) => LocationImages;
   /** Sceglie l'immagine di riferimento, o la toglie con `undefined`. */
@@ -73,6 +77,8 @@ function toAttempt(row: LocationAttemptRow) {
     createdAt: new Date(row.createdAt).toISOString(),
     assetIds,
     ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
+    ...(row.modelLabel === null ? {} : { modelLabel: row.modelLabel }),
+    ...(row.costUsd === null ? {} : { costUsd: row.costUsd }),
   });
 }
 
@@ -127,7 +133,7 @@ export function createLocationStore(
       });
     },
 
-    startAttempt(locationId) {
+    startAttempt(locationId, modelLabel) {
       return db.transaction((tx) => {
         const last = tx
           .select({ attempt: locationAttempts.attempt })
@@ -145,6 +151,7 @@ export function createLocationStore(
             attempt,
             status: 'queued',
             assetIds: '[]',
+            ...(modelLabel === undefined ? {} : { modelLabel }),
             createdAt: at,
             updatedAt: at,
           })
@@ -168,6 +175,8 @@ export function createLocationStore(
           assetIds: JSON.stringify(patch.assetIds ?? []),
           receiptId: patch.receiptId ?? null,
           errorCode: patch.errorCode ?? null,
+          costUsd: patch.costUsd ?? null,
+          ...(patch.modelLabel === undefined ? {} : { modelLabel: patch.modelLabel }),
           updatedAt: now().getTime(),
         })
         .where(eq(locationAttempts.id, target.id))

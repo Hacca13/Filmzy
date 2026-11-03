@@ -31,6 +31,14 @@ export function sceneStatus(scene: ScenePlan): string {
   return scene.shots.length === 1 ? '1 inquadratura' : `${String(scene.shots.length)} inquadrature`;
 }
 
+/** Il chip dello stato di una scena: confermato se ha le inquadrature, da controllare se è da pensare o da rifare. */
+export function sceneChip(scene: ScenePlan): { label: string; tone: 'confirmed' | 'warning' } {
+  return {
+    label: sceneStatus(scene),
+    tone: scene.planned && !scene.stale ? 'confirmed' : 'warning',
+  };
+}
+
 /** «La piazza · sera · con Anna, Marco»: dove, quando e chi, per l'entrata o l'uscita di un'inquadratura. */
 export function continuityLine(state: ContinuityState, names: Names): string {
   const place = namesOf([state.locationId], names.locations);

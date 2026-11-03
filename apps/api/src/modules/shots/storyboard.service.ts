@@ -169,7 +169,7 @@ export class StoryboardService implements OnModuleInit {
     if (latest?.status === 'queued' || latest?.status === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'storyboard' } });
     }
-    const attempt = this.store.startStoryboard(shotId, mode);
+    const attempt = this.store.startStoryboard(shotId, mode, chosen.label);
     const payload: StoryboardJobPayload = {
       projectId,
       shotId,
@@ -303,6 +303,8 @@ export class StoryboardService implements OnModuleInit {
         status: 'succeeded',
         assetIds: assets.map((asset) => asset.assetId),
         receiptId: receipt.id,
+        modelLabel: receipt.modelLabel,
+        ...(receipt.actualCostUsd === undefined ? {} : { costUsd: receipt.actualCostUsd }),
       });
     } catch (error) {
       const errorCode = error instanceof ProviderError ? error.code : 'unknown';

@@ -166,3 +166,50 @@ describe('le immagini del set', () => {
     expect(reopened.images(location.id).attempts[0]?.assetIds).toEqual(['a']);
   });
 });
+
+describe('il ritocco e il riferimento che cambia (T4.9)', () => {
+  it('un tentativo può essere un ritocco, e si rilegge con cosa è stato chiesto', () => {
+    const location = store.create('film-1', piazza);
+    const retouch = {
+      sourceAssetId: 'a'.repeat(64),
+      operation: 'remove' as const,
+    };
+
+    const attempt = store.startAttempt(location.id, 'Nano Banana', retouch);
+    const plain = store.startAttempt(location.id, 'Nano Banana');
+
+    const attempts = store.images(location.id).attempts;
+    expect(attempts.find((item) => item.attempt === attempt)?.retouch).toEqual(retouch);
+    expect(attempts.find((item) => item.attempt === plain)?.retouch).toBeUndefined();
+  });
+
+  it('il riferimento che cambia si ricorda; sceglierlo uguale, o scegliere per la prima volta, no/sì', () => {
+    const location = store.create('film-1', piazza);
+    expect(store.referenceChanges('film-1')).toEqual({});
+
+    store.choose(location.id, 'a');
+    const first = store.referenceChanges('film-1')[location.id];
+    expect(first).toBe(clock.getTime());
+
+    clock = new Date(clock.getTime() + 60_000);
+    store.choose(location.id, 'a');
+    expect(store.referenceChanges('film-1')[location.id]).toBe(first);
+
+    clock = new Date(clock.getTime() + 60_000);
+    store.choose(location.id, 'b');
+    expect(store.referenceChanges('film-1')[location.id]).toBe(clock.getTime());
+
+    clock = new Date(clock.getTime() + 60_000);
+    store.choose(location.id, undefined);
+    expect(store.referenceChanges('film-1')[location.id]).toBe(clock.getTime());
+  });
+
+  it('di un film si leggono solo i suoi luoghi', () => {
+    const mine = store.create('film-1', piazza);
+    const other = store.create('film-2', { ...piazza, proposalId: 'altra' });
+    store.choose(mine.id, 'a');
+    store.choose(other.id, 'a');
+
+    expect(Object.keys(store.referenceChanges('film-1'))).toEqual([mine.id]);
+  });
+});

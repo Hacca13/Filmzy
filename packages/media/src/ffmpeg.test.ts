@@ -6,7 +6,15 @@ import { promisify } from 'node:util';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { MediaError, extractFrame, ffmpegPath, shrinkImage, videoDurationS } from './ffmpeg.js';
+import {
+  MediaError,
+  extractFrame,
+  ffmpegPath,
+  markArea,
+  maskHasPaint,
+  shrinkImage,
+  videoDurationS,
+} from './ffmpeg.js';
 
 const run = promisify(execFile);
 
@@ -100,6 +108,132 @@ async function makeNoisyPng(width: number, height: number, name: string): Promis
   );
   return file;
 }
+
+/** Una maschera 160x100: un quadrato 64x64 dipinto a (20,20), il resto trasparente. */
+async function makeMask(name: string, painted: boolean): Promise<string> {
+  const file = path.join(dir, name);
+  const source = painted
+    ? 'color=c=white:s=64x64,format=rgba'
+    : 'color=c=black@0.0:s=64x64,format=rgba';
+  await run(
+    ffmpegPath(),
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      source,
+      '-vf',
+      'pad=160:100:20:20:color=black@0',
+      '-frames:v',
+      '1',
+      '-y',
+      file,
+    ],
+    { windowsHide: true },
+  );
+  return file;
+}
+
+/** Il colore di un pixel (R, G, B), letto con ffmpeg: l'unico modo di guardare dentro un PNG senza una libreria. */
+async function pixelAt(file: string, x: number, y: number): Promise<number[]> {
+  const { stdout } = await run(
+    ffmpegPath(),
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      file,
+      '-vf',
+      `crop=1:1:${String(x)}:${String(y)}`,
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'rgb24',
+      '-',
+    ],
+    { encoding: 'buffer', windowsHide: true },
+  );
+  return [...stdout];
+}
+
+describe('markArea e maskHasPaint', () => {
+  it('la zona dipinta si vede in magenta trasparente sull’immagine, il resto non cambia', async () => {
+    const image = await makeNoisyPng(320, 200, 'da-marcare.png');
+    const mask = await makeMask('maschera.png', true);
+    const output = path.join(dir, 'marcata.png');
+
+    await markArea({ image, mask, output });
+
+    // La maschera è 160x100 e l'immagine 320x200: la tela si porta alla misura dell'immagine.
+    const [before, inside, outside, outsideBefore] = await Promise.all([
+      pixelAt(image, 100, 100),
+      pixelAt(output, 100, 100),
+      pixelAt(output, 5, 5),
+      pixelAt(image, 5, 5),
+    ]);
+    expect(outside).toEqual(outsideBefore);
+    expect(inside).not.toEqual(before);
+    // Magenta sopra: tanto rosso e blu, poco verde.
+    expect(inside[0]).toBeGreaterThan(inside[1] ?? 0);
+    expect(inside[2]).toBeGreaterThan(inside[1] ?? 0);
+  });
+
+  it('una maschera con il pennello di un altro colore dà la stessa zona magenta', async () => {
+    const image = await makeNoisyPng(320, 200, 'da-marcare-2.png');
+    const mask = path.join(dir, 'maschera-verde.png');
+    await run(
+      ffmpegPath(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=green:s=64x64,format=rgba',
+        '-vf',
+        'pad=160:100:20:20:color=black@0',
+        '-frames:v',
+        '1',
+        '-y',
+        mask,
+      ],
+      { windowsHide: true },
+    );
+    const output = path.join(dir, 'marcata-verde.png');
+
+    await markArea({ image, mask, output });
+
+    const inside = await pixelAt(output, 100, 100);
+    expect(inside[0]).toBeGreaterThan(inside[1] ?? 0);
+  });
+
+  it('dice se la maschera ha un punto dipinto: una vuota no', async () => {
+    expect(await maskHasPaint(await makeMask('piena.png', true))).toBe(true);
+    expect(await maskHasPaint(await makeMask('vuota.png', false))).toBe(false);
+  });
+
+  it('un file che non è un’immagine, o che non c’è, è un errore di ffmpeg e non lascia un file', async () => {
+    const text = path.join(dir, 'finta-maschera.png');
+    await writeFile(text, 'non sono una maschera');
+    const output = path.join(dir, 'non-deve-esserci-2.png');
+    const image = await makeNoisyPng(64, 64, 'piccola-2.png');
+
+    expect((await failure(() => markArea({ image, mask: text, output }))).code).toBe(
+      'ffmpeg_failed',
+    );
+    expect(
+      (await failure(() => markArea({ image: path.join(dir, 'non-c-e.png'), mask: text, output })))
+        .code,
+    ).toBe('ffmpeg_failed');
+    expect((await failure(() => maskHasPaint(text))).code).toBe('ffmpeg_failed');
+    await expect(readFile(output)).rejects.toThrow();
+  });
+});
 
 describe('shrinkImage', () => {
   it('una foto grande diventa una copia JPEG più piccola, dentro il lato chiesto', async () => {

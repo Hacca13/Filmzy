@@ -1,6 +1,8 @@
 import {
   addLocationBodySchema,
   chooseLocationImageBodySchema,
+  retouchOptionsQuerySchema,
+  retouchQuerySchema,
   startSheetBodySchema,
   type Location,
   type LocationImages,
@@ -18,6 +20,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseFilters,
 } from '@nestjs/common';
 
@@ -26,10 +29,12 @@ import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { CastModule } from '../cast/cast.module.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
+import { ModerationModule } from '../moderation/moderation.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { LocationsService } from './locations.service.js';
 import { UploadStoreModule } from '../uploads/upload-store.module.js';
+import { RetouchService } from './retouch.service.js';
 import { LOCATION_STORE } from './tokens.js';
 
 /**
@@ -40,7 +45,10 @@ import { LOCATION_STORE } from './tokens.js';
 @Controller('projects/:projectId/locations')
 @UseFilters(ProviderErrorFilter)
 class LocationsController {
-  constructor(private readonly locations: LocationsService) {}
+  constructor(
+    private readonly locations: LocationsService,
+    private readonly retouch: RetouchService,
+  ) {}
 
   @Get()
   list(@Param('projectId') projectId: string): Locations {
@@ -83,6 +91,27 @@ class LocationsController {
     return this.locations.start(projectId, locationId, parseBody(startSheetBodySchema, body ?? {}));
   }
 
+  /** I servizi e la stima di un ritocco (T4.9). */
+  @Get(':locationId/retouch/options')
+  retouchOptions(
+    @Param('projectId') projectId: string,
+    @Param('locationId') locationId: string,
+    @Query() query: unknown,
+  ): Promise<SheetOptions> {
+    return this.retouch.options(projectId, locationId, parseBody(retouchOptionsQuerySchema, query));
+  }
+
+  /** «Ritocca» (T4.9): la maschera è il file della richiesta (PNG); il resto sta nell'indirizzo. */
+  @Post(':locationId/retouch')
+  startRetouch(
+    @Param('projectId') projectId: string,
+    @Param('locationId') locationId: string,
+    @Query() query: unknown,
+    @Body() body: unknown,
+  ): Promise<LocationImages> {
+    return this.retouch.start(projectId, locationId, parseBody(retouchQuerySchema, query), body);
+  }
+
   @Put(':locationId/images/choice')
   choose(
     @Param('projectId') projectId: string,
@@ -98,10 +127,18 @@ class LocationsController {
 }
 
 @Module({
-  imports: [CastModule, JobsModule, ProjectsModule, ScreenplayModule, UploadStoreModule],
+  imports: [
+    CastModule,
+    JobsModule,
+    ModerationModule,
+    ProjectsModule,
+    ScreenplayModule,
+    UploadStoreModule,
+  ],
   controllers: [LocationsController],
   providers: [
     LocationsService,
+    RetouchService,
     {
       provide: LOCATION_STORE,
       useFactory: (opened: OpenedDatabase): LocationStore => createLocationStore(opened.db),

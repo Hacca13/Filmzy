@@ -4,9 +4,11 @@ import {
   locationAttemptSchema,
   locationImagesSchema,
   locationSchema,
+  retouchInfoSchema,
   sheetImageStatusSchema,
   type Location,
   type LocationImages,
+  type RetouchInfo,
   type SheetImageStatus,
 } from '@filmzy/contracts';
 import { desc, eq } from 'drizzle-orm';
@@ -47,11 +49,16 @@ export interface LocationStore {
   /** Toglie il luogo e i suoi tentativi; `true` se c'era. */
   remove: (id: string) => boolean;
   /** Apre un tentativo in coda; `modelLabel` è il servizio scelto, che l'intestazione mostra subito. */
-  startAttempt: (locationId: string, modelLabel?: string) => number;
+  startAttempt: (locationId: string, modelLabel?: string, retouch?: RetouchInfo) => number;
   finishAttempt: (locationId: string, attempt: number, patch: AttemptPatch) => void;
   images: (locationId: string) => LocationAttempts;
-  /** Sceglie l'immagine di riferimento, o la toglie con `undefined`. */
+  /**
+   * Sceglie l'immagine di riferimento, o la toglie con `undefined`. Se l'immagine cambia davvero si
+   * ricorda quando (T4.9, R6): le inquadrature fatte prima di allora sono da rivedere.
+   */
   choose: (locationId: string, assetId: string | undefined) => void;
+  /** Quando è cambiato il riferimento di ogni luogo del film che l'ha cambiato (ms), per accorgersi delle inquadrature da rivedere. */
+  referenceChanges: (projectId: string) => Record<string, number>;
 }
 
 /** Le immagini di un luogo fatte da Filmzy: i tentativi e la scelta. Le foto caricate le aggiunge chi le conosce. */
@@ -82,6 +89,7 @@ function toAttempt(row: LocationAttemptRow) {
     ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
     ...(row.modelLabel === null ? {} : { modelLabel: row.modelLabel }),
     ...(row.costUsd === null ? {} : { costUsd: row.costUsd }),
+    ...(row.retouch === null ? {} : { retouch: retouchInfoSchema.parse(JSON.parse(row.retouch)) }),
   });
 }
 
@@ -136,7 +144,7 @@ export function createLocationStore(
       });
     },
 
-    startAttempt(locationId, modelLabel) {
+    startAttempt(locationId, modelLabel, retouch) {
       return db.transaction((tx) => {
         const last = tx
           .select({ attempt: locationAttempts.attempt })
@@ -155,6 +163,7 @@ export function createLocationStore(
             status: 'queued',
             assetIds: '[]',
             ...(modelLabel === undefined ? {} : { modelLabel }),
+            ...(retouch === undefined ? {} : { retouch: JSON.stringify(retouch) }),
             createdAt: at,
             updatedAt: at,
           })
@@ -203,10 +212,29 @@ export function createLocationStore(
     },
 
     choose(locationId, assetId) {
+      const at = now().getTime();
+      const changed = (row(locationId)?.chosenAssetId ?? undefined) !== assetId;
       db.update(locations)
-        .set({ chosenAssetId: assetId ?? null, updatedAt: now().getTime() })
+        .set({
+          chosenAssetId: assetId ?? null,
+          updatedAt: at,
+          ...(changed ? { referenceChangedAt: at } : {}),
+        })
         .where(eq(locations.id, locationId))
         .run();
+    },
+
+    referenceChanges(projectId) {
+      return Object.fromEntries(
+        db
+          .select({ id: locations.id, changedAt: locations.referenceChangedAt })
+          .from(locations)
+          .where(eq(locations.projectId, projectId))
+          .all()
+          .flatMap((location) =>
+            location.changedAt === null ? [] : [[location.id, location.changedAt] as const],
+          ),
+      );
     },
   };
 }

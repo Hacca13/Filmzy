@@ -25,6 +25,63 @@ export const addLocationBodySchema = z.strictObject({
 
 export type AddLocationBody = z.infer<typeof addLocationBodySchema>;
 
+/**
+ * Il ritocco col pennello (T4.9, D21): togli un oggetto, sostituiscilo con altro, cambia il suo colore.
+ * L'utente dipinge la zona e, per «sostituisci» e «cambia colore», dice con parole sue cosa vuole.
+ */
+export const RETOUCH_OPERATIONS = ['remove', 'replace', 'recolor'] as const;
+
+export const retouchOperationSchema = z.enum(RETOUCH_OPERATIONS);
+
+export type RetouchOperation = z.infer<typeof retouchOperationSchema>;
+
+/** Quanto può essere lunga la richiesta di ritocco: una frase, non un racconto. */
+export const RETOUCH_INSTRUCTION_MAX_CHARS = 300;
+
+/** Cosa è stato chiesto in un ritocco: di quale immagine e che cosa. Lo mostra l'intestazione del tentativo. */
+export const retouchInfoSchema = z.object({
+  sourceAssetId: assetIdSchema,
+  operation: retouchOperationSchema,
+  instruction: z.string().min(1).optional(),
+});
+
+export type RetouchInfo = z.infer<typeof retouchInfoSchema>;
+
+/**
+ * Le domande di un ritocco (`POST /projects/:id/locations/:locationId/retouch?…`): la maschera è il
+ * corpo della richiesta (PNG). `remove` non vuole parole; `replace` e `recolor` sì. Nell'indirizzo
+ * tutto è testo, quindi il «sì, proseguo» del limite di spesa è la parola `true`.
+ */
+export const retouchQuerySchema = z
+  .strictObject({
+    assetId: assetIdSchema,
+    operation: retouchOperationSchema,
+    instruction: z.string().trim().min(1).max(RETOUCH_INSTRUCTION_MAX_CHARS).optional(),
+    modelId: modelIdSchema.optional(),
+    spendConfirmed: z.literal('true').optional(),
+  })
+  .superRefine((query, context) => {
+    const needsWords = query.operation !== 'remove';
+    if (needsWords && query.instruction === undefined) {
+      context.addIssue({ code: 'custom', path: ['instruction'], message: 'serve una richiesta' });
+    }
+    if (!needsWords && query.instruction !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['instruction'],
+        message: 'non serve una richiesta',
+      });
+    }
+  });
+
+export type RetouchQuery = z.infer<typeof retouchQuerySchema>;
+
+/** Le domande per i servizi e la stima di un ritocco (`GET …/retouch/options?…`): l'immagine e l'operazione bastano. */
+export const retouchOptionsQuerySchema = z.strictObject({
+  assetId: assetIdSchema,
+  operation: retouchOperationSchema,
+});
+
 /** Un tentativo: le immagini del set nate dalla stessa richiesta (stato unico: è una sola chiamata). */
 export const locationAttemptSchema = z.object({
   attempt: z.number().int().positive(),
@@ -37,6 +94,8 @@ export const locationAttemptSchema = z.object({
   modelLabel: z.string().min(1).optional(),
   /** Quanto è costato davvero, dallo scontrino chiuso. Solo se il tentativo è riuscito. */
   costUsd: z.number().nonnegative().optional(),
+  /** Se il tentativo è un ritocco (T4.9) e non un set nuovo: di quale foto e che cosa. */
+  retouch: retouchInfoSchema.optional(),
 });
 
 export type LocationAttempt = z.infer<typeof locationAttemptSchema>;
@@ -66,6 +125,8 @@ export const locationJobPayloadSchema = z.object({
   attempt: z.number().int().positive(),
   modelId: modelIdSchema,
   spendConfirmed: z.boolean().optional(),
+  /** Se è un ritocco: cosa chiede, e dov'è la maschera (relativa alla cartella dei dati). */
+  retouch: retouchInfoSchema.extend({ maskPath: z.string().min(1) }).optional(),
 });
 
 export type LocationJobPayload = z.infer<typeof locationJobPayloadSchema>;

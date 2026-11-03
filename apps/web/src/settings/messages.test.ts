@@ -205,4 +205,18 @@ describe('le foto caricate (T4.8)', () => {
     expect(describeError(refused('locationId'))).toContain('luogo');
     expect(describeError(refused('feature'))).toContain('spento');
   });
+
+  it('il ritocco: la zona da dipingere, un’immagine che non si può ritoccare e una foto senza controllo', () => {
+    const refused = (field: string) =>
+      new ApiError('http_error', {
+        status: 400,
+        serverCode: 'invalid_request',
+        details: { field },
+      });
+
+    expect(describeError(refused('mask'))).toContain('Dipingi');
+    expect(describeError(refused('image'))).toContain('non si può ritoccare');
+    expect(describeError(refused('unchecked'))).toContain('senza controllo');
+    expect(describeError(refused('instruction'))).toContain('Controlla cosa hai scritto');
+  });
 });

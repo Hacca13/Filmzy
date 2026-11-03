@@ -168,6 +168,92 @@ export async function shrinkImage(options: ShrinkImageOptions): Promise<void> {
   }
 }
 
+export interface MarkAreaOptions {
+  /** L'immagine da ritoccare. */
+  image: string;
+  /** La maschera (PNG): dove l'utente ha dipinto è opaco, il resto trasparente. */
+  mask: string;
+  /** Dove si scrive l'immagine con la zona evidenziata (PNG). */
+  output: string;
+  env?: NodeJS.ProcessEnv;
+  timeoutMs?: number;
+}
+
+/**
+ * Quanto è visibile la zona dipinta sull'immagine marcata (0–1): abbastanza da vederla bene, non così
+ * piena da nascondere quello che c'è sotto — il servizio deve capire cosa c'è da ritoccare.
+ */
+const MARK_OPACITY = 0.6;
+
+/**
+ * Nessun servizio del catalogo accetta una maschera vera (`mask_edit`, architettura §4.3): la zona
+ * dipinta si evidenzia **sull'immagine**, in magenta trasparente, e il servizio riceve questa. La
+ * maschera si porta alla misura dell'immagine (il pennello lavora su una tela che può avere un'altra
+ * risoluzione). Il colore lo decide il codice, non la maschera: qualunque colore abbia il pennello, la
+ * zona si vede sempre uguale.
+ */
+export async function markArea(options: MarkAreaOptions): Promise<void> {
+  const { image, mask, output, env = process.env, timeoutMs } = options;
+  const { code, stderr } = await run(
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      image,
+      '-i',
+      mask,
+      '-filter_complex',
+      `[1:v]format=rgba,lutrgb=r=255:g=0:b=255,colorchannelmixer=aa=${String(MARK_OPACITY)}[tint];` +
+        '[tint][0:v]scale2ref=w=iw:h=ih[m][b];[b][m]overlay=format=auto',
+      '-frames:v',
+      '1',
+      '-y',
+      output,
+    ],
+    env,
+    timeoutMs,
+  );
+  if (code !== 0) {
+    throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);
+  }
+
+  const written = await stat(output).catch(() => undefined);
+  if (written === undefined || written.size === 0) {
+    throw new MediaError('ffmpeg_failed', 'La zona non si è potuta evidenziare.');
+  }
+}
+
+/**
+ * La maschera ha almeno un punto dipinto? Una maschera vuota non dice cosa ritoccare: il servizio non
+ * cambierebbe niente e si spenderebbe per niente. Lo dice il canale trasparente, letto da ffmpeg.
+ */
+export async function maskHasPaint(
+  mask: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<boolean> {
+  const { code, stdout, stderr } = await run(
+    [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      mask,
+      '-vf',
+      'format=rgba,alphaextract,signalstats,metadata=print:key=lavfi.signalstats.YMAX:file=-',
+      '-f',
+      'null',
+      '-',
+    ],
+    env,
+  );
+  const highest = /lavfi\.signalstats\.YMAX=(\d+(?:\.\d+)?)/.exec(stdout);
+  if (code !== 0 || highest === null) {
+    throw new MediaError('ffmpeg_failed', `Non riesco a leggere la maschera: ${tail(stderr)}`);
+  }
+  return Number(highest[1]) > 0;
+}
+
 export interface ExtractFrameOptions {
   /** Il video. Il percorso lo controlla chi chiama (deve stare nella cartella dei dati). */
   input: string;

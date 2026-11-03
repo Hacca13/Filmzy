@@ -58,6 +58,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   shots: [shot],
   chosenStoryboards: {},
   clips: {},
+  flags: {},
   working: {},
   ...patch,
 });
@@ -126,6 +127,17 @@ describe('ShotCard', () => {
         {...storyboard}
       />,
     );
+
+  it('un’inquadratura con un giallo lo dice con il motivo; senza gialli non c’è niente (T4.9, R6)', () => {
+    const flagged = render(shot, false, {
+      flags: [{ code: 'R6', reason: 'Il luogo è cambiato. Rifai lo storyboard.', origin: 'rule' }],
+    });
+
+    expect(flagged).toContain('Da rivedere');
+    expect(flagged).toContain('Il luogo è cambiato. Rifai lo storyboard.');
+    expect(render()).not.toContain('Da rivedere');
+    expect(render(shot, false, { flags: [] })).not.toContain('Da rivedere');
+  });
 
   it('mostra cosa succede, il piano, la durata, la luce e come entra ed esce', () => {
     const html = render();

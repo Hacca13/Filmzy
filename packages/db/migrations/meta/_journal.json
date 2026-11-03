@@ -120,6 +120,13 @@
       "when": 1793704745235,
       "tag": "0016_immagini_caricate",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1793707393352,
+      "tag": "0017_ritocco_e_riferimento_cambiato",
+      "breakpoints": true
     }
   ]
 }

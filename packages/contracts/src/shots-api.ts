@@ -23,6 +23,18 @@ export const SHOT_DURATION_RANGE_S = { min: 3, max: 8 } as const;
  * non le ha pensate; `stale` dice che la scena è cambiata dopo (la stesura è stata corretta o
  * riscritta) e le inquadrature vanno rifatte.
  */
+/**
+ * Una segnalazione di continuità su un'inquadratura (architettura §8): un codice, un motivo in italiano
+ * e da dove viene. È un giallo: l'inquadratura resta com'è, e l'utente decide se rifarla.
+ */
+export const continuityFlagSchema = z.object({
+  code: z.string().min(1),
+  reason: z.string().min(1),
+  origin: z.enum(['rule', 'llm', 'vision']),
+});
+
+export type ContinuityFlag = z.infer<typeof continuityFlagSchema>;
+
 export const scenePlanSchema = z.object({
   sceneNumber: z.number().int().positive(),
   heading: z.string().min(1),
@@ -42,6 +54,8 @@ export const scenePlanSchema = z.object({
    * lo dice e, quando il lavoro finisce, passa da sola a «pronto». Il video vince sulle immagini.
    */
   working: z.record(shotIdSchema, z.enum(['storyboard', 'end_frame', 'video'])),
+  /** I gialli delle inquadrature che ne hanno (T4.9): per ora R6, un luogo cambiato dopo che l'inquadratura era stata fatta. */
+  flags: z.record(shotIdSchema, z.array(continuityFlagSchema)),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

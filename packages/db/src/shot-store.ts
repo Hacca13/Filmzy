@@ -83,6 +83,8 @@ export interface ShotStore {
   chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
   /** La variante scelta di ogni inquadratura del film che ne ha una. */
   chosenStoryboards: (projectId: string) => Record<string, string>;
+  /** Quando è arrivata l'ultima immagine riuscita (storyboard o ultimo fotogramma) di ogni inquadratura del film che ne ha una (ms). */
+  lastDrawnAt: (projectId: string) => Record<string, number>;
   /** Cosa si sta disegnando adesso (tentativo in coda o in lavorazione) per ogni inquadratura del film; l'ultimo fotogramma vince sullo storyboard. */
   drawing: (projectId: string, since: Date) => Record<string, StoryboardMode>;
 }
@@ -340,6 +342,30 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         }
       }
       return drawing;
+    },
+
+    lastDrawnAt(projectId) {
+      const shotIds = db
+        .select({ id: shots.id })
+        .from(shots)
+        .where(eq(shots.projectId, projectId))
+        .all()
+        .map((shot) => shot.id);
+      if (shotIds.length === 0) return {};
+
+      const done = db
+        .select({ shotId: storyboardAttempts.shotId, at: storyboardAttempts.updatedAt })
+        .from(storyboardAttempts)
+        .where(
+          and(
+            inArray(storyboardAttempts.shotId, shotIds),
+            eq(storyboardAttempts.status, 'succeeded'),
+          ),
+        )
+        .all();
+      const latest: Record<string, number> = {};
+      for (const { shotId, at } of done) latest[shotId] = Math.max(latest[shotId] ?? 0, at);
+      return latest;
     },
 
     chosenStoryboards(projectId) {

@@ -1,5 +1,8 @@
 import { execFile, type ExecFileException } from 'node:child_process';
-import { stat } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import installer from '@ffmpeg-installer/ffmpeg';
 
@@ -252,6 +255,105 @@ export async function maskHasPaint(
     throw new MediaError('ffmpeg_failed', `Non riesco a leggere la maschera: ${tail(stderr)}`);
   }
   return Number(highest[1]) > 0;
+}
+
+/** Il lato dell'immagine ridotta da cui si contano i colori: 32x32 basta e costa niente. */
+const COLOR_SAMPLE_SIDE = 32;
+
+/** Quanto devono distare due colori (nello spazio RGB) per contare come due colori diversi. */
+const MIN_COLOR_DISTANCE = 56;
+
+/**
+ * I colori dominanti di una serie di pixel RGB (3 byte l'uno), dal più frequente. I colori si
+ * raggruppano a 16 livelli per canale e di ogni gruppo si fa la media; poi si prendono i gruppi più
+ * numerosi saltando quelli troppo simili a uno già scelto, perché una palette di sette sfumature dello
+ * stesso blu non serve a nessuno. Tutto è esatto e non costa niente (D37).
+ */
+export function dominantFromRgb(pixels: Uint8Array, count: number): string[] {
+  const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
+  for (let offset = 0; offset + 2 < pixels.length; offset += 3) {
+    const r = pixels[offset] ?? 0;
+    const g = pixels[offset + 1] ?? 0;
+    const b = pixels[offset + 2] ?? 0;
+    const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    const bucket = buckets.get(key) ?? { n: 0, r: 0, g: 0, b: 0 };
+    bucket.n += 1;
+    bucket.r += r;
+    bucket.g += g;
+    bucket.b += b;
+    buckets.set(key, bucket);
+  }
+
+  const chosen: { r: number; g: number; b: number }[] = [];
+  const byFrequency = [...buckets.values()].sort((a, b) => b.n - a.n);
+  for (const bucket of byFrequency) {
+    if (chosen.length >= count) break;
+    const color = {
+      r: Math.round(bucket.r / bucket.n),
+      g: Math.round(bucket.g / bucket.n),
+      b: Math.round(bucket.b / bucket.n),
+    };
+    const similar = chosen.some(
+      (other) =>
+        Math.hypot(other.r - color.r, other.g - color.g, other.b - color.b) < MIN_COLOR_DISTANCE,
+    );
+    if (!similar) chosen.push(color);
+  }
+  return chosen.map(
+    ({ r, g, b }) => `#${[r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('')}`,
+  );
+}
+
+export interface DominantColorsOptions {
+  input: string;
+  /** Quanti colori al massimo. */
+  count: number;
+  env?: NodeJS.ProcessEnv;
+  timeoutMs?: number;
+}
+
+/**
+ * I colori dominanti di un'immagine (D37): il codice li calcola, perché è esatto e non costa. ffmpeg
+ * porta l'immagine a 32x32 e la scrive come pixel grezzi in un file provvisorio, che non resta mai.
+ */
+export async function dominantColors(options: DominantColorsOptions): Promise<string[]> {
+  const { input, count, env = process.env, timeoutMs } = options;
+  if (!Number.isInteger(count) || count < 1) {
+    throw new MediaError('invalid_time', 'Il numero di colori non è valido.');
+  }
+
+  const raw = path.join(tmpdir(), `filmzy-colori-${randomUUID()}.rgb`);
+  try {
+    const { code, stderr } = await run(
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        input,
+        '-vf',
+        `scale=${String(COLOR_SAMPLE_SIDE)}:${String(COLOR_SAMPLE_SIDE)}:flags=area,format=rgb24`,
+        '-frames:v',
+        '1',
+        '-f',
+        'rawvideo',
+        '-y',
+        raw,
+      ],
+      env,
+      timeoutMs,
+    );
+    if (code !== 0) {
+      throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);
+    }
+    const pixels = await readFile(raw).catch(() => undefined);
+    if (pixels === undefined || pixels.length === 0) {
+      throw new MediaError('ffmpeg_failed', "Dall'immagine non si sono letti i colori.");
+    }
+    return dominantFromRgb(pixels, count);
+  } finally {
+    await rm(raw, { force: true });
+  }
 }
 
 export interface ExtractFrameOptions {

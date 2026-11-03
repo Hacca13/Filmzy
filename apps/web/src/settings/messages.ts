@@ -74,7 +74,8 @@ const BY_INVALID_FIELD: Record<string, string> = {
   image: 'Questa immagine non si può ritoccare qui. Aggiorna la pagina e riprova.',
   unchecked:
     'Questa foto è stata caricata senza controllo e non si può ritoccare. Riaccendi il controllo delle foto in Prudenza e caricala di nuovo.',
-  instruction: 'Scrivi cosa vuoi al posto della zona dipinta.',
+  instruction:
+    'Il campo di testo serve per «Sostituisci» e «Cambia colore», non per «Togli». Controlla cosa hai scritto.',
 };
 
 /** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */

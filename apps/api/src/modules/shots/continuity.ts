@@ -10,12 +10,28 @@ import type { ContinuityFlag, ShotSpec } from '@filmzy/contracts';
 export const LOCATION_CHANGED_REASON =
   'Il luogo è cambiato dopo che hai fatto questa inquadratura. Rifai lo storyboard e il video per tenerla allineata.';
 
+/**
+ * Quando un'inquadratura è allineata al suo luogo: il lavoro **più vecchio** fra immagini e video che ha.
+ * Rifare solo il video non basta se lo storyboard è ancora quello di prima (e viceversa): il giallo
+ * passa quando tutto ciò che c'è è stato rifatto. Senza nessun lavoro non c'è niente da allineare.
+ */
+export function oldestWork(
+  drawnAt: Readonly<Record<string, number>>,
+  takeAt: Readonly<Record<string, number>>,
+): Record<string, number> {
+  const oldest: Record<string, number> = {};
+  for (const shotId of new Set([...Object.keys(drawnAt), ...Object.keys(takeAt)])) {
+    oldest[shotId] = Math.min(drawnAt[shotId] ?? Infinity, takeAt[shotId] ?? Infinity);
+  }
+  return oldest;
+}
+
 export interface LocationChangeInput {
   /** Le inquadrature di cui si chiedono le segnalazioni. */
   shots: readonly ShotSpec[];
   /** Quando è cambiato il riferimento di ogni luogo che l'ha cambiato (ms). */
   changedAt: Readonly<Record<string, number>>;
-  /** Quando è arrivato l'ultimo lavoro riuscito di ogni inquadratura (ms): immagini o video. */
+  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
   workedAt: Readonly<Record<string, number>>;
 }
 

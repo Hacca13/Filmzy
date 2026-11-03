@@ -217,6 +217,6 @@ describe('le foto caricate (T4.8)', () => {
     expect(describeError(refused('mask'))).toContain('Dipingi');
     expect(describeError(refused('image'))).toContain('non si può ritoccare');
     expect(describeError(refused('unchecked'))).toContain('senza controllo');
-    expect(describeError(refused('instruction'))).toContain('Scrivi');
+    expect(describeError(refused('instruction'))).toContain('Controlla cosa hai scritto');
   });
 });

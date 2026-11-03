@@ -156,6 +156,11 @@ export function ImageAttemptsSection<T extends ImageSet>({
               {/* «Riprova» rifarebbe le immagini del set, non il ritocco: per un ritocco si riapre il pennello. */}
               {attempt.status === 'failed' &&
               attempt.attempt === latestAttempt &&
+              attempt.retouch !== undefined ? (
+                <p className="hint">Per riprovare, apri di nuovo «Ritocca» su un’immagine.</p>
+              ) : null}
+              {attempt.status === 'failed' &&
+              attempt.attempt === latestAttempt &&
               attempt.retouch === undefined ? (
                 <FailureActions
                   code={attempt.errorCode}

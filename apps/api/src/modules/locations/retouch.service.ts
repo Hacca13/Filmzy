@@ -120,6 +120,8 @@ export class RetouchService implements OnModuleInit {
     const project = this.projects.get(projectId);
     this.assertEligible(projectId, locationId, query.assetId);
     const mask = this.assertMask(body);
+    // Un tentativo già in corso rifiuta la richiesta: meglio saperlo prima di scrivere e leggere file.
+    this.assertNoneRunning(locationId);
 
     const maskFile = await this.keepMask(projectId, mask);
     let queued = false;
@@ -160,11 +162,9 @@ export class RetouchService implements OnModuleInit {
         projectId,
       });
 
-      // Come per le immagini del set: un tentativo alla volta, il controllo subito prima di aprirlo.
-      const latest = this.store.images(locationId).attempts[0];
-      if (latest?.status === 'queued' || latest?.status === 'running') {
-        throw domainError(409, 'invalid_request', { details: { field: 'images' } });
-      }
+      // Come per le immagini del set: un tentativo alla volta, il controllo subito prima di aprirlo
+      // (dopo le attese, con un doppio clic la seconda richiesta lo trova già aperto).
+      this.assertNoneRunning(locationId);
       const retouch = {
         sourceAssetId: query.assetId,
         operation: query.operation,
@@ -182,18 +182,32 @@ export class RetouchService implements OnModuleInit {
           maskPath: path.relative(this.dataDir, maskFile).replaceAll('\\', '/'),
         },
       };
-      this.runner.enqueue({
-        kind: RETOUCH_JOB_KIND,
-        payload,
-        projectId,
-        idempotencyKey: `${RETOUCH_JOB_KIND}:${locationId}:${String(attempt)}`,
-      });
+      try {
+        this.runner.enqueue({
+          kind: RETOUCH_JOB_KIND,
+          payload,
+          projectId,
+          idempotencyKey: `${RETOUCH_JOB_KIND}:${locationId}:${String(attempt)}`,
+        });
+      } catch (error) {
+        // Senza un lavoro il tentativo resterebbe in coda per sempre e bloccherebbe il luogo.
+        this.store.finishAttempt(locationId, attempt, { status: 'failed', errorCode: 'unknown' });
+        throw error;
+      }
       queued = true;
     } finally {
       // La maschera serve al lavoro in coda; se non si è accodato niente non serve a nessuno.
       if (!queued) await rm(maskFile, { force: true });
     }
     return this.locations.images(projectId, locationId);
+  }
+
+  /** Un tentativo del luogo alla volta: oltre a costare due volte, i risultati si confonderebbero. */
+  private assertNoneRunning(locationId: string): void {
+    const latest = this.store.images(locationId).attempts[0];
+    if (latest?.status === 'queued' || latest?.status === 'running') {
+      throw domainError(409, 'invalid_request', { details: { field: 'images' } });
+    }
   }
 
   /**

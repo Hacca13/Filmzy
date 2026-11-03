@@ -22,7 +22,7 @@ import { LOCATION_STORE } from '../locations/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { locationChangeFlags } from './continuity.js';
+import { locationChangeFlags, oldestWork } from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
@@ -79,13 +79,9 @@ export class ShotsService {
     };
   }
 
-  /** Quando è arrivato l'ultimo lavoro riuscito di ogni inquadratura (ms): immagini o video, il più recente. */
+  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms): immagini o video. */
   private workedAt(projectId: string): Record<string, number> {
-    const worked: Record<string, number> = { ...this.store.lastDrawnAt(projectId) };
-    for (const [shotId, at] of Object.entries(this.takes.lastTakeAt(projectId))) {
-      worked[shotId] = Math.max(worked[shotId] ?? 0, at);
-    }
-    return worked;
+    return oldestWork(this.store.lastDrawnAt(projectId), this.takes.lastTakeAt(projectId));
   }
 
   /** Cosa si sta facendo adesso per ogni inquadratura del film (T4.4): il video vince sulle immagini. */

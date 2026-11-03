@@ -109,7 +109,6 @@ const BY_CODE: Record<string, Failure> = {
     actions: [],
     mayHaveCost: false,
   },
-  // Per esempio un fotogramma impostato che non c'è più: un altro tentativo non lo rimette a posto.
   // Un'immagine che ffmpeg non sa preparare (T4.9): un altro servizio non cambia niente.
   media_failed: {
     reason: 'Non riesco a preparare l’immagine',
@@ -117,6 +116,7 @@ const BY_CODE: Record<string, Failure> = {
     actions: [],
     mayHaveCost: false,
   },
+  // Per esempio un fotogramma impostato che non c'è più: un altro tentativo non lo rimette a posto.
   invalid_request: {
     reason: 'La richiesta non si può fare così',
     advice: 'Controlla le immagini impostate: se una non c’è più, cambiala',

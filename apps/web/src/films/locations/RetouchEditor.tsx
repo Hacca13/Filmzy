@@ -128,13 +128,14 @@ export function RetouchEditor({
 
       <div className="retouch-stage">
         <img
+          ref={(image) => {
+            // Un'immagine già in memoria può essere pronta prima di `onLoad`: la tela si misura subito.
+            if (image?.complete === true) sizeCanvas(canvas.current, image);
+          }}
           src={assetUrl(assetId)}
           alt="L’immagine da ritoccare"
           onLoad={(event) => {
-            const element = canvas.current;
-            if (element === null) return;
-            element.width = event.currentTarget.naturalWidth;
-            element.height = event.currentTarget.naturalHeight;
+            sizeCanvas(canvas.current, event.currentTarget);
           }}
         />
         <canvas
@@ -218,6 +219,14 @@ export function RetouchEditor({
       </Notice>
     </section>
   );
+}
+
+/** La tela ha la risoluzione vera dell'immagine: il tratto deve cadere nel punto giusto anche dopo il ridimensionamento. */
+function sizeCanvas(element: HTMLCanvasElement | null, image: HTMLImageElement): void {
+  if (element === null || image.naturalWidth === 0) return;
+  // Cambiare la misura svuota la tela: solo se è diversa, per non cancellare il pennello senza motivo.
+  if (element.width !== image.naturalWidth) element.width = image.naturalWidth;
+  if (element.height !== image.naturalHeight) element.height = image.naturalHeight;
 }
 
 /** La tela come file PNG: dipinto è pieno, il resto trasparente. */

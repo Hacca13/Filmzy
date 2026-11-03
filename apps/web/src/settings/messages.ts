@@ -1,4 +1,4 @@
-import type { ModerationRejection } from '@filmzy/contracts';
+import type { ImageProblem, ModerationRejection } from '@filmzy/contracts';
 
 import { ApiError } from '../api/client';
 
@@ -31,6 +31,8 @@ const BY_SERVER_CODE: Record<string, string> = {
     'Questa operazione supera un limite di spesa che hai scelto. Puoi cambiarlo in «Spese e tetti».',
   media_failed:
     'Non riesco a leggere questo video. Prova con un altro momento, o genera il video di nuovo.',
+  image_rejected:
+    'Non posso usare questa foto. Prova con la foto di un luogo o di un oggetto, senza persone né marchi.',
 };
 
 /**
@@ -65,12 +67,43 @@ const BY_INVALID_FIELD: Record<string, string> = {
   firstFrame: "Imposta prima il primo fotogramma: l'ultimo si ricava da quello.",
   takeId: 'Questo video non c’è più o non è riuscito. Aggiorna la pagina e riprova.',
   atS: 'Questo momento è oltre la fine del video. Scegline uno prima.',
+  file: 'Questo file non è una foto che posso usare. Vanno bene PNG, JPEG o WebP, fino a 12 MB.',
+  locationId: 'Il luogo di questa foto non c’è più. Aggiorna la pagina e riprova.',
+  feature: 'Il caricamento delle foto è spento nelle impostazioni.',
 };
+
+/** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */
+const IMAGE_PROBLEM_TEXT: Record<ImageProblem, string> = {
+  people: 'ci sono delle persone (i personaggi li crea Filmzy: tu carichi luoghi e oggetti)',
+  brand: 'si vede un marchio o un logo',
+  known_character: 'c’è un personaggio noto o protetto',
+  minor: 'c’è un minore',
+  explicit: 'il contenuto non è adatto',
+  other: 'c’è qualcosa che non si può usare',
+};
+
+/** «Non posso usare questa foto: ci sono delle persone e si vede un marchio. Prova con…» */
+export function describeImageProblems(problems: readonly ImageProblem[]): string {
+  const reasons = problems.map((problem) => IMAGE_PROBLEM_TEXT[problem]);
+  const list =
+    reasons.length <= 1
+      ? (reasons[0] ?? '')
+      : `${reasons.slice(0, -1).join(', ')} e ${reasons[reasons.length - 1] ?? ''}`;
+  return `Non posso usare questa foto: ${list}. Prova con la foto di un luogo o di un oggetto, senza persone né marchi.`;
+}
 
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'network_error') {
       return 'Filmzy non risponde. Chiudi il programma e riaprilo.';
+    }
+    const imageProblems = error.details?.imageProblems;
+    if (
+      error.serverCode === 'image_rejected' &&
+      imageProblems !== undefined &&
+      imageProblems.length > 0
+    ) {
+      return describeImageProblems(imageProblems);
     }
     const moderation = error.details?.moderation;
     if (error.serverCode === 'content_rejected' && moderation !== undefined) {

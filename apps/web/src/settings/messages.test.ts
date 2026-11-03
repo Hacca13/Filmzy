@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '../api/client';
-import { describeError } from './messages';
+import { describeError, describeImageProblems } from './messages';
 
 function httpError(serverCode: string): ApiError {
   return new ApiError('http_error', { status: 422, serverCode });
@@ -161,5 +161,48 @@ describe('rigenera e scegli (T4.6)', () => {
   it('un take che non c’è più o un momento oltre la fine dicono cosa fare', () => {
     expect(describeError(refused('takeId'))).toContain('non c’è più');
     expect(describeError(refused('atS'))).toContain('oltre la fine');
+  });
+});
+
+describe('le foto caricate (T4.8)', () => {
+  const rejected = (imageProblems?: string[]) =>
+    new ApiError('http_error', {
+      status: 422,
+      serverCode: 'image_rejected',
+      ...(imageProblems === undefined ? {} : { details: { imageProblems } as never }),
+    });
+
+  it('una foto con persone dice che i personaggi li crea Filmzy, e cosa caricare', () => {
+    const text = describeError(rejected(['people']));
+
+    expect(text).toContain('ci sono delle persone');
+    expect(text).toContain('i personaggi li crea Filmzy');
+    expect(text).toContain('un luogo o di un oggetto');
+  });
+
+  it('più motivi si elencano in una frase sola, con «e» prima dell’ultimo', () => {
+    expect(describeImageProblems(['people', 'brand', 'minor'])).toContain(
+      'ci sono delle persone (i personaggi li crea Filmzy: tu carichi luoghi e oggetti), si vede un marchio o un logo e c’è un minore.',
+    );
+    expect(describeImageProblems(['explicit'])).toContain('il contenuto non è adatto.');
+    expect(describeImageProblems(['other'])).toContain('c’è qualcosa che non si può usare');
+  });
+
+  it('senza motivi la frase è lo stesso chiara', () => {
+    expect(describeError(rejected())).toContain('Non posso usare questa foto');
+    expect(describeError(rejected([]))).toContain('Non posso usare questa foto');
+  });
+
+  it('un file sbagliato, un luogo che non c’è o la funzione spenta hanno la loro frase', () => {
+    const refused = (field: string) =>
+      new ApiError('http_error', {
+        status: 400,
+        serverCode: 'invalid_request',
+        details: { field },
+      });
+
+    expect(describeError(refused('file'))).toContain('PNG, JPEG o WebP');
+    expect(describeError(refused('locationId'))).toContain('luogo');
+    expect(describeError(refused('feature'))).toContain('spento');
   });
 });

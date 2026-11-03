@@ -1,4 +1,5 @@
 import type { SheetOptions, StartSheetBody } from '@filmzy/contracts';
+import type { ReactNode } from 'react';
 
 import { assetUrl } from '../api/sheet';
 import { Chip, Notice, ToneIcon } from '../components/ui';
@@ -35,6 +36,11 @@ interface Props<T extends ImageSet> {
   onSettled?: () => void;
   /** Che lavoro fa queste immagini e a cosa si riferisce (T4.4): il server avvisa quando cambia, senza controlli continui. */
   live?: LiveFilter;
+  /**
+   * Un posto sotto il pulsante «Crea» per altro che aggiunge immagini (il caricamento di una foto, T4.8).
+   * Riceve `refresh`, che rilegge le immagini quando ne è arrivata una nuova.
+   */
+  extra?: (refresh: () => Promise<void>) => ReactNode;
 }
 
 /**
@@ -58,6 +64,7 @@ export function ImageAttemptsSection<T extends ImageSet>({
   onChosen,
   onSettled,
   live,
+  extra,
 }: Props<T>) {
   const {
     value: images,
@@ -72,6 +79,15 @@ export function ImageAttemptsSection<T extends ImageSet>({
   const generation = useGeneration<T>({ loadOptions, start, onStarted: setImages });
   const action = useAction();
   const busy = generation.busy || action.busy;
+  const refresh = async () => {
+    setImages(await load(new AbortController().signal));
+  };
+  const choosePhoto = (assetId: string) => {
+    action.run(async () => {
+      setImages(await choose(assetId));
+      onChosen?.();
+    });
+  };
   // Solo l'ultimo tentativo offre cosa fare dopo un fallimento: quelli di prima sono storia.
   const latestAttempt =
     images === undefined ? undefined : Math.max(0, ...images.attempts.map((item) => item.attempt));
@@ -90,6 +106,8 @@ export function ImageAttemptsSection<T extends ImageSet>({
         {loadProblem === undefined ? null : <Notice tone="error">{loadProblem}</Notice>}
         {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       </GenerateBar>
+
+      {extra?.(refresh)}
 
       {images === undefined ? null : (
         <ul className="attempts">
@@ -112,31 +130,15 @@ export function ImageAttemptsSection<T extends ImageSet>({
               ) : (
                 <div className={wide ? 'sheet-images wide' : 'sheet-images'}>
                   {attempt.assetIds.map((assetId, index) => (
-                    <figure key={assetId} data-chosen={assetId === images.chosenAssetId}>
-                      <img
-                        src={assetUrl(assetId)}
-                        alt={`${imageLabel}, immagine ${String(index + 1)}`}
-                      />
-                      {assetId === images.chosenAssetId ? (
-                        <figcaption>
-                          <Chip tone="confirmed">{chosenText}</Chip>
-                        </figcaption>
-                      ) : (
-                        <button
-                          type="button"
-                          className="button"
-                          disabled={busy}
-                          onClick={() => {
-                            action.run(async () => {
-                              setImages(await choose(assetId));
-                              onChosen?.();
-                            });
-                          }}
-                        >
-                          Scegli questa
-                        </button>
-                      )}
-                    </figure>
+                    <ChoosableImage
+                      key={assetId}
+                      assetId={assetId}
+                      alt={`${imageLabel}, immagine ${String(index + 1)}`}
+                      chosen={assetId === images.chosenAssetId}
+                      chosenText={chosenText}
+                      busy={busy}
+                      onChoose={choosePhoto}
+                    />
                   ))}
                 </div>
               )}
@@ -149,8 +151,67 @@ export function ImageAttemptsSection<T extends ImageSet>({
               ) : null}
             </li>
           ))}
+          {images.uploadedAssetIds === undefined || images.uploadedAssetIds.length === 0 ? null : (
+            <li className="attempt">
+              <div className="attempt-head">
+                <strong>Le tue foto</strong>
+              </div>
+              <div className={wide ? 'sheet-images wide' : 'sheet-images'}>
+                {images.uploadedAssetIds.map((assetId, index) => (
+                  <ChoosableImage
+                    key={assetId}
+                    assetId={assetId}
+                    alt={`Tua foto ${String(index + 1)}`}
+                    chosen={assetId === images.chosenAssetId}
+                    chosenText={chosenText}
+                    busy={busy}
+                    onChoose={choosePhoto}
+                  />
+                ))}
+              </div>
+            </li>
+          )}
         </ul>
       )}
     </section>
+  );
+}
+
+/** Un'immagine tra cui scegliere il riferimento: se è quella scelta lo dice, altrimenti offre «Scegli questa». */
+function ChoosableImage({
+  assetId,
+  alt,
+  chosen,
+  chosenText,
+  busy,
+  onChoose,
+}: {
+  assetId: string;
+  alt: string;
+  chosen: boolean;
+  chosenText: string;
+  busy: boolean;
+  onChoose: (assetId: string) => void;
+}) {
+  return (
+    <figure data-chosen={chosen}>
+      <img src={assetUrl(assetId)} alt={alt} />
+      {chosen ? (
+        <figcaption>
+          <Chip tone="confirmed">{chosenText}</Chip>
+        </figcaption>
+      ) : (
+        <button
+          type="button"
+          className="button"
+          disabled={busy}
+          onClick={() => {
+            onChoose(assetId);
+          }}
+        >
+          Scegli questa
+        </button>
+      )}
+    </figure>
   );
 }

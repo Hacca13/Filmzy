@@ -109,7 +109,10 @@ async function requestJson<T>(
       signal,
       ...(body === undefined
         ? {}
-        : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+        : body instanceof Blob
+          ? // Un file (una foto caricata) parte così com'è, col tipo che ha: il server ne guarda i byte.
+            { headers: { 'content-type': body.type }, body }
+          : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
     });
   } catch (cause) {
     throw new ApiError('network_error', { cause });

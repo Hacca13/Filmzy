@@ -29,6 +29,17 @@ export const providerSpendSchema = z.object({
 
 export type ProviderSpend = z.infer<typeof providerSpendSchema>;
 
+/** Un film nell'elenco delle spese: quanto è costato dall'inizio e quanto questo mese. */
+export const filmSpendLineSchema = z.object({
+  projectId: projectIdSchema,
+  /** Il titolo del film; per un film che non c'è più, una frase che lo dice. */
+  title: z.string().min(1),
+  spentUsd: z.number().nonnegative(),
+  monthUsd: z.number().nonnegative(),
+});
+
+export type FilmSpendLine = z.infer<typeof filmSpendLineSchema>;
+
 /** `GET /spend`. */
 export const spendOverviewSchema = z.object({
   /** L'inizio del mese a cui si riferisce la spesa dei fornitori. */
@@ -38,8 +49,52 @@ export const spendOverviewSchema = z.object({
   /** I limiti che non sono di un fornitore: per film e «chiedi conferma sopra». */
   filmBudgetUsd: z.number().positive().optional(),
   confirmAboveUsd: z.number().positive().optional(),
-  /** Quanto si è speso per ogni film, dal più caro. */
-  films: z.array(z.object({ projectId: projectIdSchema, spentUsd: z.number().nonnegative() })),
+  /** Quanti fornitori hanno speso qualcosa questo mese (T4.7). */
+  servicesMonth: z.number().int().nonnegative(),
+  /** Quanti film hanno speso qualcosa questo mese. */
+  filmsMonth: z.number().int().nonnegative(),
+  /** Quanto si è speso per ogni film che ha speso qualcosa, prima quelli del mese e dal più caro. */
+  films: z.array(filmSpendLineSchema),
 });
 
 export type SpendOverview = z.infer<typeof spendOverviewSchema>;
+
+/**
+ * Quanto è costato un film (T4.7, D30), diviso per ruolo e per servizio: «Quanto ho speso». Il conto
+ * viene dagli scontrini, lo stesso della spesa del mese: una chiamata fallita non spende. Il server
+ * dà i nomi in parole semplici; l'interfaccia li mostra.
+ */
+export const roleSpendSchema = z.object({
+  role: z.string().min(1),
+  /** Il nome del ruolo come lo vede l'utente («Operatore di ripresa»). */
+  label: z.string().min(1),
+  spentUsd: z.number().nonnegative(),
+  calls: z.number().int().nonnegative(),
+});
+
+export type RoleSpend = z.infer<typeof roleSpendSchema>;
+
+export const serviceSpendSchema = z.object({
+  modelId: z.string().min(1),
+  /** Il nome del servizio nel catalogo («Kling · Standard»). */
+  label: z.string().min(1),
+  /** Il fornitore che l'ha fatto girare («fal.ai»). */
+  providerLabel: z.string().min(1),
+  spentUsd: z.number().nonnegative(),
+  calls: z.number().int().nonnegative(),
+});
+
+export type ServiceSpend = z.infer<typeof serviceSpendSchema>;
+
+/** `GET /spend/films/:projectId`. Ruoli e servizi dal più caro. */
+export const filmSpendSchema = z.object({
+  projectId: projectIdSchema,
+  title: z.string().min(1),
+  totalUsd: z.number().nonnegative(),
+  /** La parte spesa nel mese corrente. */
+  monthUsd: z.number().nonnegative(),
+  roles: z.array(roleSpendSchema),
+  services: z.array(serviceSpendSchema),
+});
+
+export type FilmSpend = z.infer<typeof filmSpendSchema>;

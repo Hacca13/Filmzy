@@ -256,7 +256,7 @@ describe('panoramica', () => {
     expect(fal?.percent).toBeCloseTo((amount / 10) * 100, 1);
   });
 
-  it("dà l'inizio del mese, il totale e i film dal più caro", async () => {
+  it("dà l'inizio del mese, il totale e quanti fornitori hanno speso", async () => {
     await spend(2, { projectId: 'film-1' });
     await spend(5, { projectId: 'film-2' });
     await spend(1, { connectionId: 'anthropic' });
@@ -265,10 +265,8 @@ describe('panoramica', () => {
 
     expect(new Date(overview?.monthStart ?? '').getTime()).toBe(new Date(2026, 9, 1).getTime());
     expect(overview?.totalMonthUsd).toBeCloseTo(8);
-    expect(overview?.films).toEqual([
-      { projectId: 'film-2', spentUsd: 5 },
-      { projectId: 'film-1', spentUsd: 2 },
-    ]);
+    expect(overview?.servicesMonth).toBe(2);
+    expect(overview).not.toHaveProperty('films');
   });
 
   it('un fornitore spento senza spesa non si mostra; uno sparito ma con spesa sì', async () => {

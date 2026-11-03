@@ -1193,6 +1193,52 @@ a.button {
   margin: 0;
 }
 
+/* Ritocco col pennello (T4.9) */
+.retouch-stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+
+.retouch-stage img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* La tela copre l'immagine: il pennello si vede trasparente, ma la maschera esce piena. */
+.retouch-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.retouch-tools,
+.retouch-operations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.retouch-operations {
+  border: 0;
+  padding: 0;
+}
+
+.shot-flag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Caricamento delle foto (T4.8) */
 .upload-control {
   display: flex;

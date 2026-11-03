@@ -190,6 +190,7 @@ function SceneSection({
               storyboardAssetId={scene.chosenStoryboards[shot.id]}
               clipAssetId={scene.clips[shot.id]}
               working={scene.working[shot.id]}
+              flags={scene.flags[shot.id]}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}
               onStoryboard={() => {

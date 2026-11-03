@@ -3,6 +3,7 @@ import {
   locationSchema,
   locationsSchema,
   sheetOptionsSchema,
+  type RetouchOperation,
   type StartSheetBody,
 } from '@filmzy/contracts';
 import { z } from 'zod';
@@ -38,6 +39,51 @@ export function fetchLocationOptions(filmId: string, locationId: string, signal?
 
 export function startLocationImages(filmId: string, locationId: string, body: StartSheetBody) {
   return sendJson('POST', `${one(filmId, locationId)}/images`, locationImagesSchema, body);
+}
+
+/** I servizi e la stima di un ritocco (T4.9). */
+export function fetchRetouchOptions(
+  filmId: string,
+  locationId: string,
+  assetId: string,
+  operation: RetouchOperation,
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({ assetId, operation });
+  return getJson(
+    `${one(filmId, locationId)}/retouch/options?${query.toString()}`,
+    sheetOptionsSchema,
+    {
+      signal,
+    },
+  );
+}
+
+/** Cosa chiede un ritocco: l'immagine, l'operazione e, se serve, le parole dell'utente. */
+export interface RetouchRequest {
+  assetId: string;
+  operation: RetouchOperation;
+  instruction?: string;
+}
+
+/** «Ritocca» (T4.9): la maschera (PNG) è il corpo della richiesta, il resto sta nell'indirizzo. */
+export function startRetouch(
+  filmId: string,
+  locationId: string,
+  request: RetouchRequest,
+  mask: Blob,
+  body: StartSheetBody,
+) {
+  const query = new URLSearchParams({ assetId: request.assetId, operation: request.operation });
+  if (request.instruction !== undefined) query.set('instruction', request.instruction);
+  if (body.modelId !== undefined) query.set('modelId', body.modelId);
+  if (body.spendConfirmed === true) query.set('spendConfirmed', 'true');
+  return sendJson(
+    'POST',
+    `${one(filmId, locationId)}/retouch?${query.toString()}`,
+    locationImagesSchema,
+    mask,
+  );
 }
 
 export function chooseLocationImage(filmId: string, locationId: string, assetId: string) {

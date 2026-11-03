@@ -1,4 +1,4 @@
-import type { ProjectChoice, ScenePlan, ShotSpec } from '@filmzy/contracts';
+import type { ContinuityFlag, ProjectChoice, ScenePlan, ShotSpec } from '@filmzy/contracts';
 
 import { assetUrl } from '../../api/sheet';
 import { Chip } from '../../components/ui';
@@ -25,6 +25,8 @@ interface Props {
   clipAssetId?: string | undefined;
   /** Cosa si sta facendo adesso per questa inquadratura (T4.4): la card lo dice e, finito, mostra il risultato. */
   working?: ShotWork | undefined;
+  /** I gialli di questa inquadratura (T4.9): per ora un luogo cambiato dopo che l'inquadratura era stata fatta (R6). */
+  flags?: readonly ContinuityFlag[] | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
   /** Senza, la card non offre lo storyboard: il piano è da rifare e il server lo rifiuterebbe. */
@@ -46,6 +48,7 @@ export function ShotCard({
   storyboardAssetId,
   clipAssetId,
   working,
+  flags = [],
   storyboardOpen,
   canStoryboard,
   onStoryboard,
@@ -77,6 +80,12 @@ export function ShotCard({
         />
       )}
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
+      {flags.map((flag) => (
+        <div key={flag.code} className="shot-flag">
+          <Chip tone="warning">Da rivedere</Chip>
+          <p className="hint">{flag.reason}</p>
+        </div>
+      ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>
       <p className="hint">

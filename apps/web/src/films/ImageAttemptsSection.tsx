@@ -8,6 +8,7 @@ import { FailureActions } from './FailureActions';
 import { GenerateBar, useGeneration } from './generation';
 import { attemptWho, attemptsAreWorking, describeAttempt, type ImageSet } from './image-attempts';
 import type { LiveFilter } from './use-live-jobs';
+import { RETOUCH_WORKING_TEXT, retouchText } from './locations/retouch-model';
 import { useOnIncrease } from './use-on-increase';
 import { useWatched } from './use-watched';
 
@@ -41,6 +42,8 @@ interface Props<T extends ImageSet> {
    * Riceve `refresh`, che rilegge le immagini quando ne è arrivata una nuova.
    */
   extra?: (refresh: () => Promise<void>) => ReactNode;
+  /** Se c'è, ogni immagine offre «Ritocca» (T4.9): apre il ritocco di quell'immagine. */
+  onRetouch?: (assetId: string) => void;
 }
 
 /**
@@ -65,6 +68,7 @@ export function ImageAttemptsSection<T extends ImageSet>({
   onSettled,
   live,
   extra,
+  onRetouch,
 }: Props<T>) {
   const {
     value: images,
@@ -118,6 +122,9 @@ export function ImageAttemptsSection<T extends ImageSet>({
                 {attemptWho(attempt) === '' ? null : (
                   <span className="hint">{attemptWho(attempt)}</span>
                 )}
+                {attempt.retouch === undefined ? null : (
+                  <span className="hint">{retouchText(attempt.retouch)}</span>
+                )}
               </div>
               {attempt.assetIds.length === 0 ? (
                 <div
@@ -125,7 +132,10 @@ export function ImageAttemptsSection<T extends ImageSet>({
                   data-tone={attempt.status === 'failed' ? 'error' : undefined}
                 >
                   {attempt.status === 'failed' ? <ToneIcon tone="error" size={26} /> : null}
-                  {describeAttempt(attempt, workingText)}
+                  {describeAttempt(
+                    attempt,
+                    attempt.retouch === undefined ? workingText : RETOUCH_WORKING_TEXT,
+                  )}
                 </div>
               ) : (
                 <div className={wide ? 'sheet-images wide' : 'sheet-images'}>
@@ -138,11 +148,15 @@ export function ImageAttemptsSection<T extends ImageSet>({
                       chosenText={chosenText}
                       busy={busy}
                       onChoose={choosePhoto}
+                      onRetouch={onRetouch}
                     />
                   ))}
                 </div>
               )}
-              {attempt.status === 'failed' && attempt.attempt === latestAttempt ? (
+              {/* «Riprova» rifarebbe le immagini del set, non il ritocco: per un ritocco si riapre il pennello. */}
+              {attempt.status === 'failed' &&
+              attempt.attempt === latestAttempt &&
+              attempt.retouch === undefined ? (
                 <FailureActions
                   code={attempt.errorCode}
                   generation={generation}
@@ -166,6 +180,7 @@ export function ImageAttemptsSection<T extends ImageSet>({
                     chosenText={chosenText}
                     busy={busy}
                     onChoose={choosePhoto}
+                    onRetouch={onRetouch}
                   />
                 ))}
               </div>
@@ -185,6 +200,7 @@ function ChoosableImage({
   chosenText,
   busy,
   onChoose,
+  onRetouch,
 }: {
   assetId: string;
   alt: string;
@@ -192,6 +208,7 @@ function ChoosableImage({
   chosenText: string;
   busy: boolean;
   onChoose: (assetId: string) => void;
+  onRetouch?: ((assetId: string) => void) | undefined;
 }) {
   return (
     <figure data-chosen={chosen}>
@@ -210,6 +227,18 @@ function ChoosableImage({
           }}
         >
           Scegli questa
+        </button>
+      )}
+      {onRetouch === undefined ? null : (
+        <button
+          type="button"
+          className="button"
+          disabled={busy}
+          onClick={() => {
+            onRetouch(assetId);
+          }}
+        >
+          Ritocca
         </button>
       )}
     </figure>

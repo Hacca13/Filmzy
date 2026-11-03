@@ -70,6 +70,11 @@ const BY_INVALID_FIELD: Record<string, string> = {
   file: 'Questo file non è una foto che posso usare. Vanno bene PNG, JPEG o WebP, fino a 12 MB.',
   locationId: 'Il luogo di questa foto non c’è più. Aggiorna la pagina e riprova.',
   feature: 'Il caricamento delle foto è spento nelle impostazioni.',
+  mask: 'Dipingi prima la zona da ritoccare.',
+  image: 'Questa immagine non si può ritoccare qui. Aggiorna la pagina e riprova.',
+  unchecked:
+    'Questa foto è stata caricata senza controllo e non si può ritoccare. Riaccendi il controllo delle foto in Prudenza e caricala di nuovo.',
+  instruction: 'Scrivi cosa vuoi al posto della zona dipinta.',
 };
 
 /** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */

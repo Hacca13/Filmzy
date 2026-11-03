@@ -218,6 +218,7 @@ Fatto il 3/11 (D69): ogni «Genera» aggiunge un take solo a quell'inquadratura;
 
 **T4.7 Quanto ho speso.** Pannello della spesa costruito sugli scontrini: per film, ruolo e modello, e la spesa del mese di ogni connessione rispetto al suo tetto.
 _Fatto quando:_ si vede quanto è costato ogni film, per ruolo e per modello.
+Fatto il 3/11 (D70): la schermata «Quanto ho speso» (`#/film/:id/spese`, con il collegamento dalla pagina del film e dalle Impostazioni) mostra il totale del film e del mese, la spesa per film, per ruolo e per servizio (con il fornitore) e, per ogni fornitore, quanto manca al limite; i numeri sono gli stessi dei limiti (un conto solo, dagli scontrini). Manca: i ruoli raccolti in gruppi come nel disegno, un altro mese, l'esportazione della spesa, l'intestazione del film. Qui finisce M4 (le opzioni T4.8–T4.10 si decidono ora).
 
 **Opzioni** (funzioni spente finché non sono pronte; si decide dopo T4.7 se entrano nell'MVP):
 

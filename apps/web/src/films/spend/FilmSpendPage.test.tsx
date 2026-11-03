@@ -30,6 +30,7 @@ const overview: SpendOverview = {
   totalMonthUsd: 27.4,
   servicesMonth: 2,
   filmsMonth: 2,
+  filmsMonthUsd: 27.4,
   providers: [
     {
       connectionId: 'fal',
@@ -100,13 +101,39 @@ describe('Quanto ho speso (T4.7)', () => {
   it('senza spesa dice che non si è speso niente, senza barre né totali finti', () => {
     const html = render(
       { ...film, totalUsd: 0, monthUsd: 0, roles: [], services: [] },
-      { ...overview, totalMonthUsd: 0, filmsMonth: 0, servicesMonth: 0, films: [] },
+      {
+        ...overview,
+        totalMonthUsd: 0,
+        filmsMonthUsd: 0,
+        filmsMonth: 0,
+        servicesMonth: 0,
+        films: [],
+      },
     );
 
     expect(html).toContain('Questo mese non hai ancora speso niente.');
     expect(html).toContain('Per questo film non hai ancora speso niente.');
     expect(html).not.toContain('Totale del film');
     expect(html).toContain('0 film · 0 servizi utilizzati');
+  });
+
+  it('dice quanto del mese non è di nessun film, così il conto torna', () => {
+    const withTests = { ...overview, totalMonthUsd: 30.4 };
+
+    expect(render(film, withTests)).toContain('Di questi, 3,00 $ non sono di nessun film');
+    expect(render()).not.toContain('non sono di nessun film');
+  });
+
+  it('se il riepilogo del mese non si legge, il film si vede lo stesso e il problema è detto', () => {
+    const html = renderToStaticMarkup(
+      <SpendView film={film} overview={undefined} overviewProblem="Filmzy non risponde." />,
+    );
+
+    expect(html).toContain('Per ruolo · questo film');
+    expect(html).toContain('Operatore di ripresa');
+    expect(html).toContain('Filmzy non risponde.');
+    expect(html).not.toContain('Tutti i film, questo mese');
+    expect(html).not.toContain('Questo mese, per servizio');
   });
 
   it('dà il collegamento al film e alle impostazioni dei limiti', () => {

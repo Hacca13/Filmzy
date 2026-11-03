@@ -93,7 +93,8 @@ export function filmBreakdown(
 
   const services: ServiceSpend[] = [...sumBy(rows, (row) => row.modelId).entries()].flatMap(
     ([modelId, group]) => {
-      const connectionId = group.rows[0]?.connectionId ?? '';
+      // Gli scontrini più vecchi non dicevano il fornitore: se un altro lo dice, vale quello.
+      const connectionId = group.rows.find((row) => row.connectionId !== '')?.connectionId ?? '';
       return group.spentUsd > 0 || group.calls > 0
         ? [
             {
@@ -135,25 +136,29 @@ export class SpendReport {
       this.receipts.spendRows({ since: new Date(base.monthStart) }),
       (projectId) => this.projects.get(projectId)?.title,
     );
-    return { ...base, filmsMonth: films.filter((film) => film.monthUsd > 0).length, films };
+    const monthFilms = films.filter((film) => film.monthUsd > 0);
+    return {
+      ...base,
+      filmsMonth: monthFilms.length,
+      filmsMonthUsd: monthFilms.reduce((sum, film) => sum + film.monthUsd, 0),
+      films,
+    };
   }
 
   async film(projectId: string): Promise<FilmSpend> {
     const project = this.projects.get(projectId);
-    if (project === undefined)
+    const rows = this.receipts.spendRows({ projectId });
+    // Un film sparito ma con scontrini si può ancora guardare: i soldi sono andati lo stesso.
+    if (project === undefined && rows.length === 0) {
       throw domainError(404, 'not_found', { details: { field: 'projectId' } });
+    }
 
     const loaded = await this.configSource.load();
-    const monthStart = (await this.ledger.overview())?.monthStart;
-    const rows = this.receipts.spendRows({ projectId });
-    const monthRows =
-      monthStart === undefined
-        ? []
-        : this.receipts.spendRows({ projectId, since: new Date(monthStart) });
+    const monthRows = this.receipts.spendRows({ projectId, since: this.ledger.monthStart() });
 
     return {
       projectId,
-      title: project.title,
+      title: project?.title ?? MISSING_FILM_TITLE,
       totalUsd: rows.reduce((sum, row) => sum + row.spentUsd, 0),
       monthUsd: monthRows.reduce((sum, row) => sum + row.spentUsd, 0),
       ...filmBreakdown(rows, loaded.config),

@@ -21,6 +21,7 @@ describe('spendOverviewSchema', () => {
       filmBudgetUsd: 10,
       servicesMonth: 2,
       filmsMonth: 1,
+      filmsMonthUsd: 4.1,
       films: [{ projectId: 'film-1', title: 'L’ultima corsa', spentUsd: 9.2, monthUsd: 4.1 }],
     };
 
@@ -39,6 +40,7 @@ describe('spendOverviewSchema', () => {
         providers: [provider],
         servicesMonth: 0,
         filmsMonth: 0,
+        filmsMonthUsd: 0,
         films: [],
       }).success,
     ).toBe(false);

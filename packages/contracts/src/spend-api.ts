@@ -49,6 +49,11 @@ export const spendOverviewSchema = z.object({
   /** I limiti che non sono di un fornitore: per film e «chiedi conferma sopra». */
   filmBudgetUsd: z.number().positive().optional(),
   confirmAboveUsd: z.number().positive().optional(),
+  /**
+   * Quanto si è speso questo mese per i film (T4.7). È meno di `totalMonthUsd` se ci sono spese che non
+   * sono di un film, come le prove fatte dalle impostazioni.
+   */
+  filmsMonthUsd: z.number().nonnegative(),
   /** Quanti fornitori hanno speso qualcosa questo mese (T4.7). */
   servicesMonth: z.number().int().nonnegative(),
   /** Quanti film hanno speso qualcosa questo mese. */

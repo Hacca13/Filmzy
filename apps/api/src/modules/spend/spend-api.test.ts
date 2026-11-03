@@ -52,6 +52,7 @@ describe('limiti di spesa (T3.1)', () => {
     expect(overview.films).toEqual([]);
     expect(overview.filmsMonth).toBe(0);
     expect(overview.servicesMonth).toBe(0);
+    expect(overview.filmsMonthUsd).toBe(0);
     expect(overview.providers.every((p) => p.level === 'none' && p.spentUsd === 0)).toBe(true);
   });
 

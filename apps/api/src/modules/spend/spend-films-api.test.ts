@@ -144,6 +144,15 @@ describe('quanto è costato un film', () => {
     expect(spent.monthUsd).toBe(2);
   });
 
+  it('un film sparito ma con scontrini si può ancora guardare, con una frase al posto del titolo', async () => {
+    await receipt({ projectId: 'film-sparito', actualCostUsd: 2.5 });
+
+    const spent = await filmSpend('film-sparito');
+
+    expect(spent).toMatchObject({ title: 'Un film che non c’è più', totalUsd: 2.5 });
+    expect(spent.roles).toHaveLength(1);
+  });
+
   it('un film che non c’è dà «non trovato»', async () => {
     const reply = await client.call('GET', '/spend/films/non-esiste');
 
@@ -163,6 +172,9 @@ describe('l’elenco dei film nella spesa', () => {
 
     expect(line).toEqual({ projectId: film.id, title: film.title, spentUsd: 13, monthUsd: 4 });
     expect(overview.filmsMonth).toBe(overview.films.filter((item) => item.monthUsd > 0).length);
+    expect(overview.filmsMonthUsd).toBeCloseTo(
+      overview.films.reduce((sum, item) => sum + item.monthUsd, 0),
+    );
     expect(overview.servicesMonth).toBeGreaterThan(0);
     // I film che spendono nel mese stanno prima di quelli che non hanno speso.
     const months = overview.films.map((item) => item.monthUsd);

@@ -15,7 +15,7 @@ const WARNING_PERCENT = 80;
 const EPSILON = 1e-9;
 
 /** Ciò che il registro sa da solo: la spesa del mese per fornitore e i limiti. */
-export type LedgerOverview = Omit<SpendOverview, 'films' | 'filmsMonth'>;
+export type LedgerOverview = Omit<SpendOverview, 'films' | 'filmsMonth' | 'filmsMonthUsd'>;
 
 export interface SpendLedgerOptions {
   receipts: ReceiptStore;
@@ -131,7 +131,7 @@ export class SpendLedger implements SpendGuard {
   }
 
   /** L'inizio del mese **dell'utente** (fuso del suo computer): il mese di cui parla chi guarda la spesa. */
-  private monthStart(): Date {
+  monthStart(): Date {
     const now = this.now();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   }

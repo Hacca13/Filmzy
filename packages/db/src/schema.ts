@@ -334,6 +334,8 @@ export const locations = sqliteTable(
     prompt: text('prompt').notNull(),
     proposalId: text('proposal_id'),
     chosenAssetId: text('chosen_asset_id'),
+    /** Quando l'immagine di riferimento è cambiata (T4.9, R6): le inquadrature fatte prima ingialliscono. */
+    referenceChangedAt: integer('reference_changed_at'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -359,6 +361,8 @@ export const locationAttempts = sqliteTable(
     /** Il servizio e il costo vero: li mostra l'intestazione del tentativo. */
     modelLabel: text('model_label'),
     costUsd: real('cost_usd'),
+    /** Se è un ritocco (T4.9): l'immagine, l'operazione e le parole dell'utente, in JSON. */
+    retouch: text('retouch'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },

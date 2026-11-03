@@ -44,7 +44,7 @@ import { promptTargetSchema, roleMoodboardFieldSchema, visualPromptSchema } from
 /** `moderator`: controllo di un testo dell'utente prima di ogni spesa (architettura §5.3, §10). */
 export const moderatorInputSchema = z.object({
   text: z.string().min(1),
-  context: z.enum(['idea', 'character', 'scene']),
+  context: z.enum(['idea', 'character', 'scene', 'retouch']),
   language: z.string().min(1),
 });
 

@@ -21,6 +21,7 @@ describe('describeError', () => {
       'invalid_output',
       'no_eligible_model',
       'spend_cap_reached',
+      'media_failed',
     ]) {
       const message = describeError(httpError(code));
 
@@ -146,5 +147,19 @@ describe('il video (T4.3)', () => {
     });
 
     expect(describeError(refused)).toContain('già in lavorazione');
+  });
+});
+
+describe('rigenera e scegli (T4.6)', () => {
+  const refused = (field: string) =>
+    new ApiError('http_error', {
+      status: 409,
+      serverCode: 'invalid_request',
+      details: { field },
+    });
+
+  it('un take che non c’è più o un momento oltre la fine dicono cosa fare', () => {
+    expect(describeError(refused('takeId'))).toContain('non c’è più');
+    expect(describeError(refused('atS'))).toContain('oltre la fine');
   });
 });

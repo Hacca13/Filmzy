@@ -112,6 +112,20 @@ export class TakesService implements OnModuleInit {
     return this.takes.list(shotId);
   }
 
+  /**
+   * «Tieni questo take» (T4.6): è quello che la card fa vedere, al posto del più recente. Deve essere
+   * riuscito e dell'inquadratura. Gli altri restano: si può cambiare idea.
+   */
+  choose(projectId: string, shotId: string, takeId: string): ShotTakes {
+    this.target(projectId, shotId);
+    const found = this.takes.get(takeId);
+    if (found?.shotId !== shotId || found.take.status !== 'succeeded') {
+      throw domainError(409, 'invalid_request', { details: { field: 'takeId' } });
+    }
+    this.takes.choose(shotId, takeId);
+    return { shotId, takes: this.currentTakes(shotId) };
+  }
+
   /** I servizi tra cui scegliere, con la stima di tutto il take (testo e video). */
   async options(projectId: string, shotId: string): Promise<SheetOptions> {
     const { stored } = this.target(projectId, shotId);

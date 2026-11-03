@@ -254,7 +254,7 @@ function scenePlan(
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots,
     chosenStoryboards: forShots(shots, extras.chosen),
-    latestTakes: forShots(shots, extras.clips),
+    clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
   };
 }

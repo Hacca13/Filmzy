@@ -16,25 +16,40 @@ import type { MediaInput } from '@filmzy/troupe';
  * `undefined` se il file non c'è più (cartella ripulita a mano, record vecchio): chi chiama decide
  * se si può andare avanti senza quel riferimento.
  */
+/**
+ * Dove sta il file di un'immagine o di un video registrato, come percorso assoluto — se sta davvero
+ * dentro la cartella dei dati. Il percorso nel database è relativo ed è controllato prima di essere
+ * usato: un record rovinato non deve poter far leggere un file fuori da lì.
+ */
+export function assetFile(
+  files: Pick<SheetStore, 'getAsset'>,
+  dataDir: string,
+  assetId: string,
+): { file: string; contentType: string } | undefined {
+  const record = files.getAsset(assetId);
+  if (record === undefined) return undefined;
+
+  const root = path.resolve(dataDir);
+  const file = path.resolve(root, record.path);
+  return file.startsWith(root + path.sep) ? { file, contentType: record.contentType } : undefined;
+}
+
 export async function referenceInput(
   files: Pick<SheetStore, 'getAsset'>,
   dataDir: string,
   assetId: string,
   use: MediaInput['use'] = 'reference',
 ): Promise<MediaInput | undefined> {
-  const record = files.getAsset(assetId);
-  if (record === undefined) return undefined;
-
-  const root = path.resolve(dataDir);
-  const file = path.resolve(root, record.path);
-  if (!file.startsWith(root + path.sep)) return undefined;
+  const found = assetFile(files, dataDir, assetId);
+  if (found === undefined) return undefined;
+  const { file, contentType } = found;
 
   try {
     return {
       use,
       file: {
         fileName: path.basename(file),
-        contentType: record.contentType,
+        contentType,
         bytes: new Uint8Array(await readFile(file)),
       },
     };

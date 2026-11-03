@@ -205,6 +205,9 @@ importers:
       '@filmzy/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@filmzy/media':
+        specifier: workspace:*
+        version: link:../../packages/media
       '@filmzy/troupe':
         specifier: workspace:*
         version: link:../../packages/troupe

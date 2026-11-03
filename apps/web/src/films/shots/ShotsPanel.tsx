@@ -188,7 +188,7 @@ function SceneSection({
                 });
               }}
               storyboardAssetId={scene.chosenStoryboards[shot.id]}
-              clipAssetId={scene.latestTakes[shot.id]}
+              clipAssetId={scene.clips[shot.id]}
               working={scene.working[shot.id]}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}

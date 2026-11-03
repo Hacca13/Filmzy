@@ -419,14 +419,14 @@ describe('la clip più recente', () => {
 
     const plans = await service.plans(film.id);
 
-    expect(plans.scenes[0]?.latestTakes).toEqual({ [shot.id]: 'clip-1' });
-    expect(plans.scenes[1]?.latestTakes).toEqual({});
+    expect(plans.scenes[0]?.clips).toEqual({ [shot.id]: 'clip-1' });
+    expect(plans.scenes[1]?.clips).toEqual({});
   });
 
   it('un piano appena rifatto non ha ancora nessun take', async () => {
     const again = await build().plan(film.id, { sceneNumber: 1 });
 
-    expect(again.latestTakes).toEqual({});
+    expect(again.clips).toEqual({});
   });
 });
 

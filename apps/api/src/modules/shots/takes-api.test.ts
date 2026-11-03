@@ -86,7 +86,7 @@ describe('i take video di un’inquadratura', () => {
     expect(file.headers.get('content-type')).toContain('video/mp4');
 
     const plans = shotPlansSchema.parse((await client.call('GET', shots)).body);
-    expect(Object.values(plans.scenes[0]?.latestTakes ?? {})).toEqual([take?.assetId]);
+    expect(Object.values(plans.scenes[0]?.clips ?? {})).toEqual([take?.assetId]);
   }, 30_000);
 
   it('rigenerare con un altro servizio dà un secondo take che dice con quale è stato fatto', async () => {
@@ -176,6 +176,6 @@ describe('i take video di un’inquadratura', () => {
 
     expect((await client.call('GET', `${path}/takes`)).status).toBe(404);
     const plans = shotPlansSchema.parse((await client.call('GET', shots)).body);
-    expect(plans.scenes[0]?.latestTakes).toEqual({});
+    expect(plans.scenes[0]?.clips).toEqual({});
   }, 30_000);
 });

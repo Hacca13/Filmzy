@@ -1,5 +1,6 @@
 import {
   MAX_SHOT_REFERENCES,
+  type ImageCandidate,
   type ShotImage,
   type ShotImageChoice,
   type ShotSpec,
@@ -16,11 +17,20 @@ import { domainError } from '../../http/domain-error.js';
 export const imageAssetId = (spec: ShotSpec, use: ShotImage['use']): string | undefined =>
   spec.images.find((image) => image.use === use)?.assetId;
 
-const generated = (choice: ShotImageChoice): ShotImage => ({
-  use: choice.use,
-  from: 'generate',
-  assetId: choice.assetId,
-});
+/**
+ * L'immagine come sta nella scheda: nata da una generazione, o presa da un take (con il take e il
+ * momento, T4.6). Da dove viene lo dice il candidato, mai l'utente.
+ */
+const fromCandidate = (choice: ShotImageChoice, candidate: ImageCandidate): ShotImage =>
+  candidate.mode === 'take_frame'
+    ? {
+        use: choice.use,
+        from: 'take_frame',
+        assetId: choice.assetId,
+        ...(candidate.takeId === undefined ? {} : { takeId: candidate.takeId }),
+        ...(candidate.atS === undefined ? {} : { atS: candidate.atS }),
+      }
+    : { use: choice.use, from: 'generate', assetId: choice.assetId };
 
 /**
  * Le scelte dell'utente diventano le immagini della scheda, ma solo se hanno senso: un'immagine tra
@@ -30,9 +40,10 @@ const generated = (choice: ShotImageChoice): ShotImage => ({
  */
 export function imagesFromChoices(
   choices: readonly ShotImageChoice[],
-  candidates: ReadonlySet<string>,
+  candidates: ReadonlyMap<string, ImageCandidate>,
 ): ShotImage[] {
-  if (choices.some((choice) => !candidates.has(choice.assetId))) {
+  const found = choices.map((choice) => candidates.get(choice.assetId));
+  if (found.some((candidate) => candidate === undefined)) {
     throw domainError(409, 'invalid_request', { details: { field: 'assetId' } });
   }
   const count = (use: ShotImage['use']) => choices.filter((choice) => choice.use === use).length;
@@ -45,7 +56,10 @@ export function imagesFromChoices(
   ) {
     throw domainError(409, 'invalid_request', { details: { field: 'images' } });
   }
-  return choices.map(generated);
+  return choices.flatMap((choice, index) => {
+    const candidate = found[index];
+    return candidate === undefined ? [] : [fromCandidate(choice, candidate)];
+  });
 }
 
 /**
@@ -57,7 +71,7 @@ export function withLastFrame(spec: ShotSpec, assetId: string): ShotSpec {
     ...spec,
     images: [
       ...spec.images.filter((image) => image.use !== 'last_frame' && image.assetId !== assetId),
-      generated({ use: 'last_frame', assetId }),
+      { use: 'last_frame', from: 'generate', assetId },
     ],
   };
 }

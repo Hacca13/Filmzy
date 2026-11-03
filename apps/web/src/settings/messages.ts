@@ -29,6 +29,8 @@ const BY_SERVER_CODE: Record<string, string> = {
   role_disabled: 'Questo ruolo è spento. Accendilo per provarlo.',
   spend_cap_reached:
     'Questa operazione supera un limite di spesa che hai scelto. Puoi cambiarlo in «Spese e tetti».',
+  media_failed:
+    'Non riesco a leggere questo video. Prova con un altro momento, o genera il video di nuovo.',
 };
 
 /**
@@ -61,6 +63,8 @@ const BY_INVALID_FIELD: Record<string, string> = {
     'Questa combinazione di immagini non va: un solo primo e un solo ultimo fotogramma, e poche immagini di ispirazione.',
   assetId: 'Questa immagine non è tra quelle di questa inquadratura. Aggiorna la pagina e riprova.',
   firstFrame: "Imposta prima il primo fotogramma: l'ultimo si ricava da quello.",
+  takeId: 'Questo video non c’è più o non è riuscito. Aggiorna la pagina e riprova.',
+  atS: 'Questo momento è oltre la fine del video. Scegline uno prima.',
 };
 
 export function describeError(error: unknown): string {

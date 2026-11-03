@@ -10,6 +10,7 @@ const take = (status: ShotTake['status'], extra: Partial<ShotTake> = {}): ShotTa
   status,
   modelId: 'kling-o3-standard',
   modelLabel: 'Kling · Standard',
+  chosen: false,
   createdAt: '2026-11-02T10:00:00.000Z',
   ...extra,
 });

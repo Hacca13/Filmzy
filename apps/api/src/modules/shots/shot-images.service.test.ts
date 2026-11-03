@@ -7,7 +7,15 @@ import {
   type ShotSpec,
   type StoryBible,
 } from '@filmzy/contracts';
-import { createShotStore, openFilmzyDatabase, type ShotStore } from '@filmzy/db';
+import {
+  createShotStore,
+  createSheetStore,
+  createTakeStore,
+  openFilmzyDatabase,
+  type SheetStore,
+  type ShotStore,
+  type TakeStore,
+} from '@filmzy/db';
 import type { Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { mkdtemp } from 'node:fs/promises';
@@ -33,6 +41,9 @@ interface VideoCheck {
 }
 
 let store: ShotStore;
+let takes: TakeStore;
+let files: SheetStore;
+let dataDir: string;
 let checks: VideoCheck[];
 let accepted: number;
 
@@ -54,7 +65,7 @@ function build() {
     },
   } as unknown as ProjectsService;
   const bibles = { assemble: () => Promise.resolve(bible) } as unknown as BibleService;
-  return new ShotImagesService(store, troupe, projects, bibles);
+  return new ShotImagesService(store, takes, files, dataDir, troupe, projects, bibles);
 }
 
 /** Un tentativo riuscito di uno storyboard con queste immagini: sono quelle tra cui scegliere. */
@@ -76,11 +87,11 @@ async function refusal(call: () => Promise<unknown>): Promise<{ status: number; 
 }
 
 beforeEach(async () => {
-  const opened = await openFilmzyDatabase({
-    dataDir: await mkdtemp(path.join(tmpdir(), 'filmzy-immagini-')),
-    appVersion: '0.0.0-test',
-  });
+  dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-immagini-'));
+  const opened = await openFilmzyDatabase({ dataDir, appVersion: '0.0.0-test' });
   store = createShotStore(opened.db);
+  takes = createTakeStore(opened.db);
+  files = createSheetStore(opened.db);
   store.replaceScene({
     projectId: film.id,
     sceneNumber: 1,

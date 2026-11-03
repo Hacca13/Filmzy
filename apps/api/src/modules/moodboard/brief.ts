@@ -23,9 +23,11 @@ export function moodboardBrief(moodboard: Moodboard, sceneId?: string): Moodboar
     referenceDescriptions: [...moodboard.film.references, ...(scene?.references ?? [])].map(
       (reference) => reference.description,
     ),
-    // La parte della scena porta solo i suoi colori e consigli: se è vuota, vale quella del film.
-    ...(scene !== undefined && hasContent(scene)
-      ? { scene: { palette: scene.palette, notes: scene.notes } }
-      : {}),
+    // La parte della scena porta solo i suoi colori e consigli: se è vuota, vale quella del film. Il campo
+    // c'è sempre (`null` senza parte): le istruzioni lo leggono senza controllare che esista.
+    scene:
+      scene !== undefined && hasContent(scene)
+        ? { palette: scene.palette, notes: scene.notes }
+        : null,
   };
 }

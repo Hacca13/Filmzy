@@ -122,6 +122,7 @@ describe('il moodboard di un film', () => {
       palette: [amber],
       notes: 'Luce calda.',
       referenceDescriptions: [],
+      scene: null,
     });
   }, 60_000);
 });

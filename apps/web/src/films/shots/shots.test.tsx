@@ -136,6 +136,12 @@ describe('ShotCard', () => {
     expect(flagged).toContain('Da rivedere');
     expect(flagged).toContain('Il luogo è cambiato. Rifai lo storyboard.');
     expect(render()).not.toContain('Da rivedere');
+    const light = render(shot, false, {
+      flags: [{ code: 'R9', reason: 'Il moodboard è cambiato. Rigiralo.', origin: 'rule' }],
+    });
+    expect(light).toContain('Avviso leggero');
+    expect(light).toContain('Il moodboard è cambiato. Rigiralo.');
+    expect(light).not.toContain('Da rivedere');
     expect(render(shot, false, { flags: [] })).not.toContain('Da rivedere');
   });
 

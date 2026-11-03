@@ -44,6 +44,7 @@ describe('moodboardBrief: il testo che leggono i ruoli (D37)', () => {
       palette: [amber],
       notes: 'Luce calda.',
       referenceDescriptions: ['a quiet station at dusk'],
+      scene: null,
     });
     expect(JSON.stringify(brief)).not.toContain('a'.repeat(64));
   });
@@ -93,11 +94,12 @@ describe('moodboardBrief: il testo che leggono i ruoli (D37)', () => {
       scenes: [{ sceneId: 'scene-2', palette: [], notes: '', references: [] }],
     });
 
-    expect(moodboardBrief(moodboard, 'scene-2')?.scene).toBeUndefined();
+    expect(moodboardBrief(moodboard, 'scene-2')?.scene).toBeNull();
     expect(moodboardBrief(moodboard, 'scene-9')).toEqual({
       palette: [amber],
       notes: 'Film.',
       referenceDescriptions: [],
+      scene: null,
     });
   });
 

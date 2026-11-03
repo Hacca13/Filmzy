@@ -10,6 +10,7 @@ import {
   type SheetStore,
   type ShotStore,
   type StoredShot,
+  type MoodboardStore,
   type TakeStore,
   type UploadStore,
 } from '@filmzy/db';
@@ -32,6 +33,7 @@ import { TROUPE } from '../troupe/tokens.js';
 import { shotOf } from './shot-access.js';
 import { imagesFromChoices } from './shot-images.js';
 import { videoStandInRequest } from './video-inputs.js';
+import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { UPLOAD_STORE } from '../uploads/tokens.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 
@@ -52,6 +54,7 @@ export class ShotImagesService {
     @Inject(SHOT_STORE) private readonly store: ShotStore,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(UPLOAD_STORE) private readonly uploads: UploadStore,
+    @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(DATA_DIR) private readonly dataDir: string,
     @Inject(TROUPE) private readonly troupe: Troupe,
@@ -68,7 +71,7 @@ export class ShotImagesService {
   async set(projectId: string, shotId: string, body: SetShotImagesBody): Promise<ShotImages> {
     const { stored } = this.target(projectId, shotId);
     const candidates = new Map(
-      this.candidates(projectId, shotId).map(
+      this.candidates(projectId, shotId, stored.spec.sceneId).map(
         (candidate) => [candidate.assetId, candidate] as const,
       ),
     );
@@ -192,11 +195,11 @@ export class ShotImagesService {
   }
 
   private async view(projectId: string, shotId: string, spec: ShotSpec): Promise<ShotImages> {
-    const bible = await this.bible.assemble(projectId);
+    const bible = await this.bible.assemble(projectId, spec.sceneId);
     return {
       shotId,
       images: spec.images,
-      candidates: this.candidates(projectId, shotId),
+      candidates: this.candidates(projectId, shotId, spec.sceneId),
       videoServices: await this.videoServices(spec, bible),
     };
   }
@@ -205,7 +208,7 @@ export class ShotImagesService {
    * Le varianti riuscite dello storyboard e dell'ultimo fotogramma, dalla più recente, i fotogrammi
    * presi dai take dell'inquadratura (T4.6) e le foto che l'utente ha caricato per il film (T4.8).
    */
-  private candidates(projectId: string, shotId: string): ImageCandidate[] {
+  private candidates(projectId: string, shotId: string, sceneId: string): ImageCandidate[] {
     const frames: ImageCandidate[] = this.takes.frames(shotId).map((frame) => ({
       assetId: frame.assetId,
       mode: 'take_frame',
@@ -215,7 +218,24 @@ export class ShotImagesService {
     const uploaded: ImageCandidate[] = this.uploads
       .list(projectId)
       .map((upload) => ({ assetId: upload.assetId, mode: 'upload' }));
-    return [...this.drawn(shotId), ...frames, ...uploaded];
+    return [
+      ...this.drawn(shotId),
+      ...frames,
+      ...uploaded,
+      ...this.fromMoodboard(projectId, sceneId),
+    ];
+  }
+
+  /**
+   * Le immagini del moodboard del film e della scena (T4.10), per «Dal moodboard». Quelle «solo per
+   * l'analisi» (con persone, D38) non si offrono: non vanno a un modello di generazione.
+   */
+  private fromMoodboard(projectId: string, sceneId: string): ImageCandidate[] {
+    const board = this.moodboards.get(projectId);
+    const scene = board.scenes.find((part) => part.sceneId === sceneId);
+    return [...board.film.references, ...(scene?.references ?? [])]
+      .filter((reference) => !reference.analysisOnly)
+      .map((reference) => ({ assetId: reference.assetId, mode: 'moodboard' }));
   }
 
   private drawn(shotId: string): ImageCandidate[] {

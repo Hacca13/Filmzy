@@ -69,6 +69,8 @@ export function cinematographerInputFor(args: {
     cinematography: { camera, lighting, lens, grade, ...override },
     movement,
     target: { family, ...target },
+    // La Bibbia porta già il moodboard di questa scena (T4.10), se l'utente ne ha uno.
+    moodboard: bible.moodboard ?? null,
   };
 }
 

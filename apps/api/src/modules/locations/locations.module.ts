@@ -30,6 +30,7 @@ import { CastModule } from '../cast/cast.module.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { ModerationModule } from '../moderation/moderation.module.js';
+import { MoodboardStoreModule } from '../moodboard/moodboard-store.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { ScreenplayModule } from '../screenplay/screenplay.module.js';
 import { LocationsService } from './locations.service.js';
@@ -131,6 +132,7 @@ class LocationsController {
     CastModule,
     JobsModule,
     ModerationModule,
+    MoodboardStoreModule,
     ProjectsModule,
     ScreenplayModule,
     UploadStoreModule,

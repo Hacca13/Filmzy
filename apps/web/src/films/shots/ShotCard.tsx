@@ -13,6 +13,18 @@ const WORK_TEXT: Record<ShotWork, string> = {
   video: 'Sto girando il video…',
 };
 
+/**
+ * Il chip di un giallo: «Da rivedere» per un luogo cambiato (R6), un avviso leggero (R9, il moodboard
+ * cambiato dopo il video) con un tono più calmo. Sempre con parole, mai solo colore.
+ */
+function FlagChip({ code }: { code: string }) {
+  return code === 'R9' ? (
+    <Chip tone="info">Avviso leggero</Chip>
+  ) : (
+    <Chip tone="warning">Da rivedere</Chip>
+  );
+}
+
 interface Props {
   shot: ShotSpec;
   movements: readonly ProjectChoice[];
@@ -82,7 +94,7 @@ export function ShotCard({
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
         <div key={flag.code} className="shot-flag">
-          <Chip tone="warning">Da rivedere</Chip>
+          <FlagChip code={flag.code} />
           <p className="hint">{flag.reason}</p>
         </div>
       ))}

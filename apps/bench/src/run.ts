@@ -501,6 +501,8 @@ function cinematographerInput(input: CinematographerInputArgs): CinematographerI
       frame: 'clip',
       inputs: ['references'],
     },
+    // Le prove dei modelli non hanno un moodboard: stesso ingresso per tutti i servizi (T4.10).
+    moodboard: null,
   };
 }
 

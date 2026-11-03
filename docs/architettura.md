@@ -550,7 +550,7 @@ Un solo file di database; i file dei progetti stanno in cartelle accanto. I camp
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini: una riga per `id`, aggiornata durante la vita della chiamata (regola 10), con le colonne per cercare e sommare (`purpose`, `role`, `model_id`, `status`, costi) e lo scontrino intero in JSON (D36, D48) |
 | Coda | `jobs` | i lavori lunghi (§7): tipo, dato in JSON, stato, priorità, tentativi e `run_after` per l'attesa crescente, chiave di idempotenza unica, film a cui appartengono |
 | Informazioni | `meta` | versione dello schema e versione del programma che ha aperto il database (§6.2) |
-| Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino |
+| Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references`, `moodboard_runs` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino; le richieste di immagini hanno il loro stato (D73) |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
 | Esportazioni | `exports` | |

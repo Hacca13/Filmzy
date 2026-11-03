@@ -13,6 +13,7 @@ import {
   createTakeStore,
   createUploadStore,
   openFilmzyDatabase,
+  type MoodboardStore,
   type SheetStore,
   type ShotStore,
   type TakeStore,
@@ -68,7 +69,24 @@ function build() {
     },
   } as unknown as ProjectsService;
   const bibles = { assemble: () => Promise.resolve(bible) } as unknown as BibleService;
-  return new ShotImagesService(store, takes, uploads, files, dataDir, troupe, projects, bibles);
+  const moodboards = {
+    get: () => ({
+      projectId: film.id,
+      film: { palette: [], notes: '', references: [] },
+      scenes: [],
+    }),
+  } as unknown as MoodboardStore;
+  return new ShotImagesService(
+    store,
+    takes,
+    uploads,
+    moodboards,
+    files,
+    dataDir,
+    troupe,
+    projects,
+    bibles,
+  );
 }
 
 /** Un tentativo riuscito di uno storyboard con queste immagini: sono quelle tra cui scegliere. */

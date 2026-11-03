@@ -221,6 +221,7 @@ export const ROLE_INPUT_EXAMPLES: Record<RoleId, unknown> = {
       frame: 'end',
       inputs: ['first_frame', 'last_frame'],
     },
+    moodboard: null,
   },
   script_supervisor: {
     screenplay: exampleScreenplay,

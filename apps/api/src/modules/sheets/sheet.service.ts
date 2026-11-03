@@ -12,7 +12,7 @@ import {
   type SheetOptions,
   type StartSheetBody,
 } from '@filmzy/contracts';
-import { projectsDir, type CharacterStore, type SheetStore } from '@filmzy/db';
+import { projectsDir, type CharacterStore, type MoodboardStore, type SheetStore } from '@filmzy/db';
 import {
   ProviderError,
   type ConfigSource,
@@ -35,6 +35,8 @@ import {
   renderImagePrompt,
   waitForMedia,
 } from '../media/image-jobs.js';
+import { moodboardBrief } from '../moodboard/brief.js';
+import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 
@@ -63,6 +65,7 @@ export class SheetService implements OnModuleInit {
   constructor(
     @Inject(SHEET_STORE) private readonly sheets: SheetStore,
     @Inject(CHARACTER_STORE) private readonly characters: CharacterStore,
+    @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     @Inject(TROUPE) private readonly troupe: Troupe,
     @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
     @Inject(INSTRUCTIONS_SOURCE) private readonly instructions: InstructionsSource,
@@ -253,7 +256,13 @@ export class SheetService implements OnModuleInit {
       role: ROLE,
       releaseRef: config.roles[ROLE]?.instructions,
       userRef: loaded.settings?.roleSettings[ROLE]?.instructions,
-      input: { character, style, angle, moodboard: null },
+      // La palette del moodboard del film, se l'utente ne ha uno (T4.10).
+      input: {
+        character,
+        style,
+        angle,
+        moodboard: moodboardBrief(this.moodboards.get(project.id)) ?? null,
+      },
     });
 
     return {

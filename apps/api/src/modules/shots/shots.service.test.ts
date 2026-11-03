@@ -16,6 +16,7 @@ import {
   createShotStore,
   openFilmzyDatabase,
   type LocationStore,
+  type MoodboardStore,
   type ShotStore,
   type TakeStore,
 } from '@filmzy/db';
@@ -134,6 +135,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     lastTakeAt: () => ({}),
   } as unknown as TakeStore;
   const locations = { referenceChanges: () => ({}) } as unknown as LocationStore;
+  const moodboards = { changes: () => ({ scenes: {} }) } as unknown as MoodboardStore;
   return new ShotsService(
     store,
     troupe,
@@ -143,6 +145,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     projects,
     takes,
     locations,
+    moodboards,
   );
 }
 

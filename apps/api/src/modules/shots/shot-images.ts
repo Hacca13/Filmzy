@@ -17,9 +17,18 @@ import { domainError } from '../../http/domain-error.js';
 export const imageAssetId = (spec: ShotSpec, use: ShotImage['use']): string | undefined =>
   spec.images.find((image) => image.use === use)?.assetId;
 
+/** Da dove viene un'immagine che non è un fotogramma di un take: caricata, del moodboard o generata. */
+const sourceOf = (candidate: ImageCandidate): ShotImage['from'] =>
+  candidate.mode === 'upload'
+    ? 'upload'
+    : candidate.mode === 'moodboard'
+      ? 'moodboard'
+      : 'generate';
+
 /**
- * L'immagine come sta nella scheda: nata da una generazione, caricata dall'utente (T4.8), o presa da
- * un take (con il take e il momento, T4.6). Da dove viene lo dice il candidato, mai l'utente.
+ * L'immagine come sta nella scheda: nata da una generazione, caricata dall'utente (T4.8), del moodboard
+ * (T4.10), o presa da un take (con il take e il momento, T4.6). Da dove viene lo dice il candidato,
+ * mai l'utente.
  */
 const fromCandidate = (choice: ShotImageChoice, candidate: ImageCandidate): ShotImage =>
   candidate.mode === 'take_frame'
@@ -32,7 +41,7 @@ const fromCandidate = (choice: ShotImageChoice, candidate: ImageCandidate): Shot
       }
     : {
         use: choice.use,
-        from: candidate.mode === 'upload' ? 'upload' : 'generate',
+        from: sourceOf(candidate),
         assetId: choice.assetId,
       };
 

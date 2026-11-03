@@ -130,7 +130,7 @@ export class TakesService implements OnModuleInit {
   async options(projectId: string, shotId: string): Promise<SheetOptions> {
     const { stored } = this.target(projectId, shotId);
     const config = await this.config();
-    const bible = await this.bible.assemble(projectId);
+    const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
     return { options: await this.priced(stored.spec, bible, config) };
   }
 
@@ -146,7 +146,7 @@ export class TakesService implements OnModuleInit {
     });
 
     const config = await this.config();
-    const bible = await this.bible.assemble(projectId);
+    const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
     const chosen = await chooseMediaService({
       role: ROLE,
       options: await this.priced(stored.spec, bible, config),
@@ -205,7 +205,7 @@ export class TakesService implements OnModuleInit {
     try {
       this.takes.finish(takeId, { status: 'running' });
       const config = await this.config();
-      const bible = await this.bible.assemble(projectId);
+      const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
       const family = familyOf(config, payload.modelId);
       const images = videoImages(stored.spec, bible);
       const files = await this.readFiles(images);

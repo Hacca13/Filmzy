@@ -31,7 +31,11 @@ export class BibleService {
     private readonly projects: ProjectsService,
   ) {}
 
-  async assemble(projectId: string): Promise<StoryBible> {
+  /**
+   * La Bibbia del film. Con `sceneId` il moodboard (T4.10) porta anche la parte di quella scena: la
+   * usano i compiti che lavorano su una scena o su un'inquadratura.
+   */
+  async assemble(projectId: string, sceneId?: string): Promise<StoryBible> {
     const project = this.projects.get(projectId);
     const config = await this.config();
 
@@ -49,7 +53,7 @@ export class BibleService {
     }
 
     // Il moodboard c'è solo se l'utente l'ha fatto (D37): senza, la Bibbia è quella di prima.
-    const brief = moodboardBrief(this.moodboards.get(projectId));
+    const brief = moodboardBrief(this.moodboards.get(projectId), sceneId);
 
     return {
       project: {

@@ -11,7 +11,14 @@ import type {
   ShotSpec,
 } from '@filmzy/contracts';
 import { SHOT_DURATION_RANGE_S } from '@filmzy/contracts';
-import type { LocationStore, ShotStore, StoredShotPlan, TakeStore } from '@filmzy/db';
+import type {
+  LocationStore,
+  MoodboardChanges,
+  MoodboardStore,
+  ShotStore,
+  StoredShotPlan,
+  TakeStore,
+} from '@filmzy/db';
 import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -19,10 +26,11 @@ import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { withoutImages } from '../bible/without-images.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
+import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { locationChangeFlags, oldestWork } from './continuity.js';
+import { locationChangeFlags, mergeFlags, moodboardChangeFlags, oldestWork } from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
@@ -49,6 +57,7 @@ export class ShotsService {
     private readonly projects: ProjectsService,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(LOCATION_STORE) private readonly locations: LocationStore,
+    @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -64,6 +73,8 @@ export class ShotsService {
       working: this.workingNow(projectId),
       locationChanges: this.locations.referenceChanges(projectId),
       workedAt: this.workedAt(projectId),
+      moodboardChanges: this.moodboards.changes(projectId),
+      takeAt: this.takes.lastTakeAt(projectId),
     };
 
     return {
@@ -132,6 +143,8 @@ export class ShotsService {
       working: {},
       locationChanges: {},
       workedAt: {},
+      moodboardChanges: { scenes: {} },
+      takeAt: {},
     });
   }
 
@@ -174,7 +187,8 @@ export class ShotsService {
       throw domainError(404, 'not_found', { details: { field: 'sceneNumber' } });
     }
     const config = await this.config();
-    const bible = await this.bible.assemble(projectId);
+    // La Bibbia di questa scena: il moodboard porta anche la parte della scena, se c'è (T4.10).
+    const bible = await this.bible.assemble(projectId, sceneIdOf(sceneNumber));
     // Senza luoghi le schede non si possono scrivere: ogni inquadratura ne ha uno.
     const firstLocation = bible.locations[0];
     if (firstLocation === undefined) {
@@ -193,7 +207,7 @@ export class ShotsService {
       previousExit: this.exitBefore(projectId, scene.number, final, this.bible.knownIds(projectId)),
       cameraMovements: activeMovements(config),
       language: project.language,
-      moodboard: null,
+      moodboard: bible.moodboard ?? null,
     };
     return { input, final, scene, bible, config };
   }
@@ -235,6 +249,9 @@ interface PerShot {
   /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è finito l'ultimo lavoro di ogni inquadratura (ms): servono ai gialli (R6). */
   locationChanges: Readonly<Record<string, number>>;
   workedAt: Readonly<Record<string, number>>;
+  /** Quando sono cambiati palette e consigli del moodboard, e quando è finito l'ultimo take di ogni inquadratura (ms): servono ai gialli leggeri (R9). */
+  moodboardChanges: MoodboardChanges;
+  takeAt: Readonly<Record<string, number>>;
 }
 
 type Work = ScenePlan['working'][string];
@@ -271,10 +288,13 @@ function scenePlan(
     chosenStoryboards: forShots(shots, extras.chosen),
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
-    flags: locationChangeFlags({
-      shots,
-      changedAt: extras.locationChanges,
-      workedAt: extras.workedAt,
-    }),
+    flags: mergeFlags(
+      locationChangeFlags({
+        shots,
+        changedAt: extras.locationChanges,
+        workedAt: extras.workedAt,
+      }),
+      moodboardChangeFlags({ shots, changes: extras.moodboardChanges, takeAt: extras.takeAt }),
+    ),
   };
 }

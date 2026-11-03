@@ -179,6 +179,7 @@ describe('la Bibbia del film', () => {
       palette: [{ hex: '#c2813a' }],
       notes: 'Luce calda, ombre lunghe.',
       referenceDescriptions: ['a quiet station at dusk'],
+      scene: null,
     });
   });
 

@@ -193,6 +193,8 @@ export const cinematographerInputSchema = z.object({
   }),
   movement: cameraMovementSchema,
   target: promptTargetSchema,
+  /** Il moodboard dell'utente (T4.10, D37): solo testo; `null` se non ce n'è uno. */
+  moodboard: roleMoodboardFieldSchema,
 });
 
 export type CinematographerInput = z.infer<typeof cinematographerInputSchema>;

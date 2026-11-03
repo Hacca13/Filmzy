@@ -104,7 +104,8 @@
       "inputs": [
         "references"
       ]
-    }
+    },
+    "moodboard": null
   },
   "expect": {
     "maxChars": 200,

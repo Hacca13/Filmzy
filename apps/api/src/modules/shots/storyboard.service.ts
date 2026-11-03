@@ -123,7 +123,7 @@ export class StoryboardService implements OnModuleInit {
     const { stored } = this.target(projectId, shotId);
     assertCanDraw(stored.spec, mode);
     const config = await this.config();
-    const bible = await this.bible.assemble(projectId);
+    const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
     return { options: await this.priced(stored.spec, bible, config, mode) };
   }
 
@@ -145,7 +145,7 @@ export class StoryboardService implements OnModuleInit {
     assertCanDraw(stored.spec, mode);
 
     const config = await this.config();
-    const bible = await this.bible.assemble(projectId);
+    const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
     const chosen = await chooseMediaService({
       role: ROLE,
       options: await this.priced(stored.spec, bible, config, mode),
@@ -252,7 +252,7 @@ export class StoryboardService implements OnModuleInit {
     try {
       this.store.finishStoryboard(shotId, mode, attempt, { status: 'running' });
       const config = await this.config();
-      const bible = await this.bible.assemble(projectId);
+      const bible = await this.bible.assemble(projectId, stored.spec.sceneId);
       const family = familyOf(config, payload.modelId);
       const context = {
         purpose: 'product',

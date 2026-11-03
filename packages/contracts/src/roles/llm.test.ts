@@ -236,6 +236,7 @@ describe('cinematographer', () => {
       frame: 'clip' as const,
       inputs: ['references'] as const,
     },
+    moodboard: null,
   };
 
   it('espone i percorsi che usano le istruzioni v1', () => {
@@ -248,6 +249,23 @@ describe('cinematographer', () => {
     expect(parsed.movement.endFrameHint).toContain('tighter framing');
     expect(parsed.cinematography.lens).toContain('35mm');
     expect(parsed.target.maxPromptChars).toBe(900);
+  });
+
+  it('il moodboard è sempre presente: null se il film non ne ha uno (T4.10)', () => {
+    const brief = {
+      palette: [{ hex: '#c2813a' }],
+      notes: 'Luce calda.',
+      referenceDescriptions: [],
+      scene: null,
+    };
+
+    expect(cinematographerInputSchema.parse({ ...input, moodboard: brief }).moodboard).toEqual(
+      brief,
+    );
+    expect(cinematographerInputSchema.parse(input).moodboard).toBeNull();
+    expect(cinematographerInputSchema.safeParse({ ...input, moodboard: undefined }).success).toBe(
+      false,
+    );
   });
 
   it('rifiuta un personaggio senza nome', () => {

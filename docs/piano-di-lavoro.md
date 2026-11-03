@@ -210,6 +210,7 @@ Fatto il 2/11 (D67): `GET /api/events` manda `job.changed` quando un lavoro part
 
 **T4.5 Rifiuti ed errori.** Messaggi semplici, nessun tentativo di aggirare i filtri.
 _Fatto quando:_ un rifiuto simulato non registra spesa e non prova altri modelli.
+Fatto il 2/11 (D68): ogni tentativo o take fallito dice perché e cosa si può fare, con le frasi del disegno «Generazione · Errori»; dopo un rifiuto del contenuto non si offre nessuna scelta che lo aggiri, negli altri casi «Riprova» e «Cambia servizio» (o il collegamento alle impostazioni per chiave, fondi e limite di spesa). Provato con un fornitore finto che rifiuta: un solo scontrino per richiesta, nessun costo, nessun altro servizio; con il testo del prompt rifiutato il video non parte. Manca: dire quale parte è stata rifiutata, un registro degli errori, `image_rejected` dai servizi veri.
 
 **T4.6 Rigenera e scegli.** Più take per inquadratura, scelta del take; «Usa un fotogramma del video come punto di partenza» (estratto con ffmpeg).
 _Fatto quando:_ si può rigenerare una sola inquadratura senza toccare le altre, e partire da un fotogramma di un take.

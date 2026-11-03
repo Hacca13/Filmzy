@@ -1,6 +1,6 @@
 import type { CharacterSheet, SheetAngle, SheetAttempt, SheetImageStatus } from '@filmzy/contracts';
 
-import { describeCode } from '../../settings/messages';
+import { failureText } from '../failure';
 
 /**
  * Le piccole decisioni della scheda del personaggio (T3.6), fuori dai componenti così si provano a
@@ -27,7 +27,7 @@ export function imageStatusText(status: SheetImageStatus, errorCode?: string): s
     case 'succeeded':
       return 'Pronta';
     case 'failed':
-      return describeCode(errorCode) ?? 'Non è riuscita. Puoi riprovare con un altro tentativo.';
+      return failureText(errorCode);
   }
 }
 

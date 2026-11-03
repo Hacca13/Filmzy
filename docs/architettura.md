@@ -365,6 +365,8 @@ Ogni errore arriva all'interfaccia con un **codice**, l'indicazione `retryable` 
 | `config_invalid`, `role_disabled` | configurazione | no | correggere le impostazioni |
 | `invalid_request`, `not_found` | richiesta sbagliata o elemento che non esiste più | no | ricaricare |
 
+**Nelle generazioni (T4.5, D68)** un tentativo di immagini o un take fallito porta il suo codice e l'interfaccia (`films/failure.ts`) dice in parole semplici il motivo e cosa si può fare, per codice: «Riprova» e «Cambia servizio» per gli errori tecnici, il collegamento alle impostazioni per chiave, fondi e limite di spesa, **niente** dopo un rifiuto del contenuto (né «Riprova» né un altro servizio: non si aggira un rifiuto). Un lavoro rifiutato lascia **un solo scontrino**, fallito e senza costo; se a essere rifiutato è il testo del prompt il video non parte.
+
 ### 4.11 Scontrini
 
 Ogni chiamata a un fornitore scrive uno scontrino: prodotto, prove dalle impostazioni, valutazioni, bench, tentativi falliti. Contiene:

@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { cp, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,4 +65,26 @@ export async function startApp(
   });
   await app.listen(0, '127.0.0.1');
   return { app, dataDir, client: new Client(await app.getUrl()) };
+}
+
+/**
+ * Il server vero con il fornitore finto che risponde **come dicono le fixture**: per provare cosa
+ * succede quando un servizio rifiuta o fallisce (T4.5). `fixtures` dice, per ruolo, la risposta finta
+ * (per esempio un errore `content_rejected`); i ruoli senza fixture rispondono con il loro esempio.
+ * Il seme di `config/` si copia in una cartella temporanea: quello vero non si tocca.
+ */
+export async function startAppWithFixtures(fixtures: Record<string, unknown>) {
+  const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
+  await cp(CONFIG_DIR, configDir, { recursive: true });
+
+  const fixturesDir = await mkdtemp(path.join(tmpdir(), 'filmzy-fixture-'));
+  for (const [role, fixture] of Object.entries(fixtures)) {
+    await writeFile(path.join(fixturesDir, `${role}.json`), JSON.stringify(fixture));
+  }
+  // JSON è anche YAML valido: le barre del percorso di Windows restano a posto fra le virgolette.
+  await writeFile(
+    path.join(configDir, 'ai', 'environments', 'offline.yaml'),
+    `connections:\n  "*":\n    adapter: fake\n    fixtures: ${JSON.stringify(fixturesDir)}\n`,
+  );
+  return startApp(undefined, 'offline', configDir);
 }

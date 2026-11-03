@@ -885,6 +885,17 @@ a.button {
   aspect-ratio: 16 / 9;
 }
 
+/* Cosa si può fare dopo un fallimento (T4.5): «Riprova», «Cambia servizio», un collegamento */
+.failure-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.failure-actions .hint {
+  margin: 0;
+}
+
 /* Un tentativo fallito: lo dice dove sarebbe l'immagine, in rosso (come nel disegno) */
 .sheet-placeholder[data-tone='error'] {
   flex-direction: column;

@@ -85,9 +85,7 @@ export function RetouchEditor({
   ) => {
     const element = canvas.current;
     const context = element?.getContext('2d');
-    if (element === null || element === undefined || context === null || context === undefined) {
-      return undefined;
-    }
+    if (element === null || context === null || context === undefined) return undefined;
     const box = element.getBoundingClientRect();
     const to = toCanvasPoint({ x: event.clientX, y: event.clientY }, box, element);
 

@@ -461,7 +461,7 @@ I risultati non stanno nella scheda. Ogni tentativo è un **Take**: `shotId`, `k
 | `moodboard_designer` | `scope` (`film`, `scene`), `idea`, `genre`, `tone`, `style`, `cinematography`, `screenplay`, `sceneId?`, `moodboard?` (quello che c'è già), `referenceCount`, `language` | `palette[]` (`hex`, `name`, `use`), `notes` (consigli su luce, colore, macchina, ritmo), `referencePrompts[]` (in inglese) |
 | `moodboard_artist` | `prompt`, `style`, `variants` | immagini |
 | `image_analyst` | `image`, `purpose` (`moodboard`), `context?`, `language` | `description` (in inglese), `moodTags[]`, `lighting`, `composition`, `containsPeople`, `flags[]` (marchi, personaggi noti, minori sospetti), `suggestions?` |
-| `retoucher` | `image`, `mask`, `operation` (`remove`, `replace`, `recolor`), `instruction?`, `style` | immagine |
+| `retoucher` | `image`, `mask`, `operation` (`remove`, `replace`, `recolor`), `instruction?`, `style` | immagine (T4.9, D72: finché nessun servizio ha `mask_edit`, la zona dipinta si evidenzia sull'immagine e arriva come `base_image`) |
 | `storyboard_artist` | `mode` (`storyboard`, `end_frame`), prompt visivo, riferimenti, `variants`, `baseImage?` (per `end_frame`) | immagini |
 | `camera_operator` | prompt visivo, riferimenti, `durationS` | video |
 | `composer` | `cue` (`description`, `mood`, `durationS`), `genre`, `tone`, `style` | musica |

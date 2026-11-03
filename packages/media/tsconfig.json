@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Lancia ffmpeg e legge file: le servono i moduli di Node.
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src", "vitest.config.ts"]
+}

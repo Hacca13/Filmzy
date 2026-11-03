@@ -1,10 +1,12 @@
 import {
   changeShotBodySchema,
   chooseStoryboardBodySchema,
+  chooseTakeBodySchema,
   planSceneBodySchema,
   planSceneEstimateBodySchema,
   setShotImagesBodySchema,
   startSheetBodySchema,
+  takeFrameBodySchema,
   type PlanSceneEstimate,
   type ScenePlan,
   type SheetOptions,
@@ -170,6 +172,32 @@ class ShotsController {
   @Get(':shotId/takes')
   takeList(@Param('projectId') projectId: string, @Param('shotId') shotId: string): ShotTakes {
     return this.takes.list(projectId, shotId);
+  }
+
+  /** «Tieni questo take»: la card fa vedere quello (prima di `:takeId`, perché «choice» non sia un id). */
+  @Put(':shotId/takes/choice')
+  chooseTake(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Body() body: unknown,
+  ): ShotTakes {
+    return this.takes.choose(projectId, shotId, parseBody(chooseTakeBodySchema, body).takeId);
+  }
+
+  /** «Usa questo fotogramma come punto di partenza»: diventa il primo fotogramma dell'inquadratura. */
+  @Post(':shotId/takes/:takeId/frame')
+  useFrame(
+    @Param('projectId') projectId: string,
+    @Param('shotId') shotId: string,
+    @Param('takeId') takeId: string,
+    @Body() body: unknown,
+  ): Promise<ShotImages> {
+    return this.shotImages.useTakeFrame(
+      projectId,
+      shotId,
+      takeId,
+      parseBody(takeFrameBodySchema, body).atS,
+    );
   }
 
   @Get(':shotId/takes/options')

@@ -18,6 +18,7 @@ const STATUS: Partial<Record<DomainErrorCode, number>> = {
   content_rejected: 422,
   image_rejected: 422,
   config_invalid: 422,
+  media_failed: 422,
   invalid_output: 502,
   provider_unavailable: 502,
   provider_auth_failed: 502,

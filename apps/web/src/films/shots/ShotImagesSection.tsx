@@ -10,6 +10,7 @@ import { describeError } from '../../settings/messages';
 import { useAction } from '../../settings/use-action';
 import {
   USE_LABELS,
+  candidateCaption,
   reassign,
   uniqueCandidates,
   useOf,
@@ -86,6 +87,7 @@ export function ShotImagesSection({
               {uniqueCandidates(images.candidates).map((candidate, index) => {
                 const selectId = `uso-${shotId}-${candidate.assetId.slice(0, 12)}`;
                 const current = useOf(images.images, candidate.assetId);
+                const caption = candidateCaption(candidate);
                 return (
                   <figure key={candidate.assetId}>
                     <div className="use-picture">
@@ -99,6 +101,9 @@ export function ShotImagesSection({
                         </span>
                       )}
                     </div>
+                    {caption === undefined ? null : (
+                      <figcaption className="hint">{caption}</figcaption>
+                    )}
                     <label htmlFor={selectId}>Come usarla</label>
                     <select
                       id={selectId}

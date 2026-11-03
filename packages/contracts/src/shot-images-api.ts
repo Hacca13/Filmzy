@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { assetIdSchema, shotIdSchema } from './ids.js';
+import { assetIdSchema, shotIdSchema, takeIdSchema } from './ids.js';
 import { shotImageSchema } from './shot.js';
 import { storyboardModeSchema } from './storyboard-api.js';
 
@@ -8,8 +8,8 @@ import { storyboardModeSchema } from './storyboard-api.js';
  * «Imposta le immagini» (T4.2, D20): per ogni inquadratura l'utente decide quali immagini fanno da
  * ispirazione, da primo fotogramma («da qui parte») e da ultimo («qui finisce»). Il ruolo è un
  * requisito per il servizio che girerà il video, non un suggerimento. Per ora le immagini sono
- * quelle generate per quell'inquadratura (storyboard e ultimo fotogramma): le persone le crea
- * Filmzy (D19), e i fotogrammi presi da un take o le immagini caricate arrivano dopo (T4.6, T4.8).
+ * quelle generate per quell'inquadratura (storyboard e ultimo fotogramma) e i fotogrammi presi dai suoi
+ * take (T4.6): le persone le crea Filmzy (D19), e le immagini caricate arrivano dopo (T4.8).
  */
 
 /** Quante immagini di ispirazione al massimo: poi il servizio ha i suoi limiti, che il controllo conosce. */
@@ -30,11 +30,17 @@ export const setShotImagesBodySchema = z.strictObject({
 
 export type SetShotImagesBody = z.infer<typeof setShotImagesBodySchema>;
 
-/** Un'immagine che l'inquadratura può usare: una variante di un tentativo riuscito. */
+/**
+ * Un'immagine che l'inquadratura può usare: una variante di un tentativo riuscito (`storyboard`,
+ * `end_frame`, col numero del tentativo) oppure un fotogramma preso da un suo take (`take_frame`, T4.6,
+ * col take e il momento).
+ */
 export const imageCandidateSchema = z.object({
   assetId: assetIdSchema,
-  mode: storyboardModeSchema,
-  attempt: z.number().int().positive(),
+  mode: z.enum([...storyboardModeSchema.options, 'take_frame']),
+  attempt: z.number().int().positive().optional(),
+  takeId: takeIdSchema.optional(),
+  atS: z.number().nonnegative().optional(),
 });
 
 export type ImageCandidate = z.infer<typeof imageCandidateSchema>;

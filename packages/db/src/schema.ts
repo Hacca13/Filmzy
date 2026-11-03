@@ -381,6 +381,8 @@ export const shots = sqliteTable(
     spec: text('spec').notNull(),
     /** La variante di storyboard scelta: il riferimento visivo della card (T4.1). */
     chosenAssetId: text('chosen_asset_id'),
+    /** Il take che l'utente ha scelto di tenere (T4.6): quello che la card fa vedere. */
+    chosenTakeId: text('chosen_take_id'),
   },
   (table) => [index('shots_per_scena').on(table.projectId, table.sceneNumber, table.position)],
 );
@@ -440,3 +442,22 @@ export const takes = sqliteTable(
 );
 
 export type TakeRow = typeof takes.$inferSelect;
+
+/**
+ * I fotogrammi presi da un take (T4.6): «Usa questo fotogramma come punto di partenza». Restano dopo
+ * che l'utente sceglie altro, così si possono riprendere; il file è un'immagine normale (`assets`).
+ */
+export const takeFrames = sqliteTable(
+  'take_frames',
+  {
+    id: text('id').primaryKey(),
+    shotId: text('shot_id').notNull(),
+    takeId: text('take_id').notNull(),
+    atS: real('at_s').notNull(),
+    assetId: text('asset_id').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('take_frames_per_inquadratura').on(table.shotId, table.createdAt)],
+);
+
+export type TakeFrameRow = typeof takeFrames.$inferSelect;

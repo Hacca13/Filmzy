@@ -53,6 +53,7 @@ describe('i take di un’inquadratura', () => {
     const take = store.start('a1', kling);
 
     expect(take).toMatchObject({
+      chosen: false,
       status: 'queued',
       modelId: 'kling-o3-standard',
       modelLabel: 'Kling · Standard',
@@ -132,6 +133,88 @@ describe('la clip più recente di ogni inquadratura', () => {
   });
 });
 
+describe('il take scelto (T4.6)', () => {
+  it('nessuno è scelto all’inizio; scegliere un take lo segna, e un altro scelto lo toglie al primo', () => {
+    const first = store.start('a1', kling);
+    tick();
+    const second = store.start('a1', seedance);
+
+    expect(store.list('a1').map((take) => take.chosen)).toEqual([false, false]);
+
+    store.choose('a1', first.id);
+    expect(store.list('a1').map((take) => [take.id, take.chosen])).toEqual([
+      [second.id, false],
+      [first.id, true],
+    ]);
+    expect(store.get(first.id)?.take.chosen).toBe(true);
+
+    store.choose('a1', second.id);
+    expect(
+      store
+        .list('a1')
+        .filter((take) => take.chosen)
+        .map((take) => take.id),
+    ).toEqual([second.id]);
+  });
+
+  it('togliere la scelta fa tornare a valere il più recente; la scelta di un’inquadratura non tocca le altre', () => {
+    const a1 = store.start('a1', kling);
+    const a2 = store.start('a2', kling);
+    store.choose('a1', a1.id);
+
+    expect(store.list('a2')[0]?.chosen).toBe(false);
+    expect(store.get(a2.id)?.take.chosen).toBe(false);
+
+    store.choose('a1', undefined);
+    expect(store.list('a1')[0]?.chosen).toBe(false);
+  });
+});
+
+describe('la clip che la card fa vedere, con la scelta (T4.6)', () => {
+  it('vale il take scelto, anche se non è il più recente; senza scelta, il più recente', () => {
+    const old = store.start('a1', kling);
+    store.finish(old.id, { status: 'succeeded', assetId: 'clip-vecchia' });
+    tick();
+    const recent = store.start('a1', seedance);
+    store.finish(recent.id, { status: 'succeeded', assetId: 'clip-nuova' });
+
+    expect(store.latestClips('film-1')).toEqual({ a1: 'clip-nuova' });
+
+    store.choose('a1', old.id);
+    expect(store.latestClips('film-1')).toEqual({ a1: 'clip-vecchia' });
+
+    store.choose('a1', undefined);
+    expect(store.latestClips('film-1')).toEqual({ a1: 'clip-nuova' });
+  });
+
+  it('un take scelto che non è riuscito non conta: si torna al più recente riuscito', () => {
+    const ok = store.start('a1', kling);
+    store.finish(ok.id, { status: 'succeeded', assetId: 'clip-buona' });
+    tick();
+    const bad = store.start('a1', seedance);
+    store.finish(bad.id, { status: 'failed', errorCode: 'timeout' });
+
+    store.choose('a1', bad.id);
+
+    expect(store.latestClips('film-1')).toEqual({ a1: 'clip-buona' });
+  });
+});
+
+describe('i fotogrammi presi da un take (T4.6)', () => {
+  it('si salvano col take e il momento, e si leggono dal più recente, solo dell’inquadratura', () => {
+    const take = store.start('a1', kling);
+    const first = store.addFrame({ shotId: 'a1', takeId: take.id, atS: 1.5, assetId: 'img-1' });
+    tick();
+    const second = store.addFrame({ shotId: 'a1', takeId: take.id, atS: 0, assetId: 'img-2' });
+    store.addFrame({ shotId: 'a2', takeId: 'altro', atS: 3, assetId: 'img-3' });
+
+    expect(first).toMatchObject({ shotId: 'a1', takeId: take.id, atS: 1.5, assetId: 'img-1' });
+    expect(store.frames('a1').map((frame) => frame.id)).toEqual([second.id, first.id]);
+    expect(store.frames('a1')[0]?.createdAt).toBe('2026-11-02T10:00:01.000Z');
+    expect(store.frames('non-c-e')).toEqual([]);
+  });
+});
+
 describe('le inquadrature con un take in corso', () => {
   it('sono quelle con un take in coda o in lavorazione, e solo del film', () => {
     const waiting = store.start('a1', kling);
@@ -167,8 +250,10 @@ describe('un take rimasto a metà', () => {
 });
 
 describe('rifare il piano della scena', () => {
-  it('porta via i take delle inquadrature di prima, e lascia quelli delle altre scene', () => {
+  it('porta via i take, i fotogrammi e la scelta delle inquadrature di prima, e lascia quelli delle altre scene', () => {
     const gone = store.start('a1', kling);
+    store.choose('a1', gone.id);
+    store.addFrame({ shotId: 'a1', takeId: gone.id, atS: 1, assetId: 'img' });
     shots.replaceScene({
       projectId: 'film-1',
       sceneNumber: 2,
@@ -188,5 +273,6 @@ describe('rifare il piano della scena', () => {
 
     expect(store.get(gone.id)).toBeUndefined();
     expect(store.get(kept.id)).toBeDefined();
+    expect(store.frames('a1')).toEqual([]);
   });
 });

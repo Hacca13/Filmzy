@@ -27,6 +27,8 @@ export const shotTakeSchema = z.object({
   /** Il costo reale della clip, dallo scontrino chiuso. Solo se il take è riuscito. */
   costUsd: z.number().nonnegative().optional(),
   errorCode: z.string().min(1).optional(),
+  /** È il take che l'utente ha scelto di tenere per l'inquadratura (T4.6): è quello che la card fa vedere. */
+  chosen: z.boolean(),
   createdAt: z.string().min(1),
 });
 
@@ -50,3 +52,23 @@ export const takeJobPayloadSchema = z.object({
 });
 
 export type TakeJobPayload = z.infer<typeof takeJobPayloadSchema>;
+
+/** «Tieni questo take»: quello che la card fa vedere al posto del più recente. Deve essere riuscito. */
+export const chooseTakeBodySchema = z.strictObject({
+  takeId: takeIdSchema,
+});
+
+export type ChooseTakeBody = z.infer<typeof chooseTakeBodySchema>;
+
+/** Un secondo di un video: nessun filmato dura più di un'ora, e un numero enorme è un errore, non una richiesta. */
+export const MAX_FRAME_TIME_S = 3600;
+
+/**
+ * «Usa questo fotogramma come punto di partenza» (T4.6): il momento del take, in secondi. Il server lo
+ * confronta con la durata vera del video; qui si scartano solo i numeri che non possono essere un tempo.
+ */
+export const takeFrameBodySchema = z.strictObject({
+  atS: z.number().nonnegative().max(MAX_FRAME_TIME_S),
+});
+
+export type TakeFrameBody = z.infer<typeof takeFrameBodySchema>;

@@ -1,11 +1,21 @@
-import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '@filmzy/contracts';
+import {
+  ROLE_INPUT_EXAMPLES,
+  cinematographerInputSchema,
+  type ImageCandidate,
+  type ShotSpec,
+} from '@filmzy/contracts';
 import { HttpException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
 import { imageAssetId, imagesFromChoices, withLastFrame } from './shot-images.js';
 
 const spec: ShotSpec = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
-const known = new Set(['a', 'b', 'c', 'd', 'e']);
+const known = new Map<string, ImageCandidate>(
+  ['a', 'b', 'c', 'd', 'e'].map((assetId) => [
+    assetId,
+    { assetId, mode: 'storyboard', attempt: 1 } as const,
+  ]),
+);
 
 function refusal(call: () => unknown): { status: number; field: unknown } {
   try {
@@ -66,6 +76,28 @@ describe('imagesFromChoices', () => {
         field: 'images',
       });
     }
+  });
+});
+
+describe('imagesFromChoices e i fotogrammi dei take (T4.6)', () => {
+  it('un fotogramma preso da un take resta legato al take e al momento; le altre sono generate', () => {
+    const candidates = new Map<string, ImageCandidate>([
+      ['frame', { assetId: 'frame', mode: 'take_frame', takeId: 'take-1', atS: 2.5 }],
+      ['drawn', { assetId: 'drawn', mode: 'end_frame', attempt: 2 }],
+    ]);
+
+    expect(
+      imagesFromChoices(
+        [
+          { use: 'first_frame', assetId: 'frame' },
+          { use: 'last_frame', assetId: 'drawn' },
+        ],
+        candidates,
+      ),
+    ).toEqual([
+      { use: 'first_frame', from: 'take_frame', assetId: 'frame', takeId: 'take-1', atS: 2.5 },
+      { use: 'last_frame', from: 'generate', assetId: 'drawn' },
+    ]);
   });
 });
 

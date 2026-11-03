@@ -1,4 +1,9 @@
-import { sheetOptionsSchema, shotTakesSchema, type StartSheetBody } from '@filmzy/contracts';
+import {
+  sheetOptionsSchema,
+  shotImagesSchema,
+  shotTakesSchema,
+  type StartSheetBody,
+} from '@filmzy/contracts';
 
 import { getJson, sendJson } from './client';
 
@@ -17,4 +22,19 @@ export function fetchTakeOptions(filmId: string, shotId: string, signal?: AbortS
 
 export function startTake(filmId: string, shotId: string, body: StartSheetBody) {
   return sendJson('POST', base(filmId, shotId), shotTakesSchema, body);
+}
+
+/** «Tieni questo take» (T4.6): è quello che la card fa vedere al posto del più recente. */
+export function chooseTake(filmId: string, shotId: string, takeId: string) {
+  return sendJson('PUT', `${base(filmId, shotId)}/choice`, shotTakesSchema, { takeId });
+}
+
+/** «Usa questo fotogramma come punto di partenza» (T4.6): diventa il primo fotogramma. */
+export function useTakeFrame(filmId: string, shotId: string, takeId: string, atS: number) {
+  return sendJson(
+    'POST',
+    `${base(filmId, shotId)}/${encodeURIComponent(takeId)}/frame`,
+    shotImagesSchema,
+    { atS },
+  );
 }

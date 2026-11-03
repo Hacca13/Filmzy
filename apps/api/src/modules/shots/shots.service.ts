@@ -11,16 +11,18 @@ import type {
   ShotSpec,
 } from '@filmzy/contracts';
 import { SHOT_DURATION_RANGE_S } from '@filmzy/contracts';
-import type { ShotStore, StoredShotPlan, TakeStore } from '@filmzy/db';
+import type { LocationStore, ShotStore, StoredShotPlan, TakeStore } from '@filmzy/db';
 import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { withoutImages } from '../bible/without-images.js';
+import { LOCATION_STORE } from '../locations/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
+import { locationChangeFlags } from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
@@ -46,6 +48,7 @@ export class ShotsService {
     private readonly bible: BibleService,
     private readonly projects: ProjectsService,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
+    @Inject(LOCATION_STORE) private readonly locations: LocationStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -59,6 +62,8 @@ export class ShotsService {
       chosen: this.store.chosenStoryboards(projectId),
       clips: this.takes.latestClips(projectId),
       working: this.workingNow(projectId),
+      locationChanges: this.locations.referenceChanges(projectId),
+      workedAt: this.workedAt(projectId),
     };
 
     return {
@@ -72,6 +77,15 @@ export class ShotsService {
         description,
       })),
     };
+  }
+
+  /** Quando è arrivato l'ultimo lavoro riuscito di ogni inquadratura (ms): immagini o video, il più recente. */
+  private workedAt(projectId: string): Record<string, number> {
+    const worked: Record<string, number> = { ...this.store.lastDrawnAt(projectId) };
+    for (const [shotId, at] of Object.entries(this.takes.lastTakeAt(projectId))) {
+      worked[shotId] = Math.max(worked[shotId] ?? 0, at);
+    }
+    return worked;
   }
 
   /** Cosa si sta facendo adesso per ogni inquadratura del film (T4.4): il video vince sulle immagini. */
@@ -120,6 +134,8 @@ export class ShotsService {
       chosen: {},
       clips: {},
       working: {},
+      locationChanges: {},
+      workedAt: {},
     });
   }
 
@@ -220,6 +236,9 @@ interface PerShot {
   chosen: Readonly<Record<string, string>>;
   clips: Readonly<Record<string, string>>;
   working: Readonly<Record<string, Work>>;
+  /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è finito l'ultimo lavoro di ogni inquadratura (ms): servono ai gialli (R6). */
+  locationChanges: Readonly<Record<string, number>>;
+  workedAt: Readonly<Record<string, number>>;
 }
 
 type Work = ScenePlan['working'][string];
@@ -256,5 +275,10 @@ function scenePlan(
     chosenStoryboards: forShots(shots, extras.chosen),
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
+    flags: locationChangeFlags({
+      shots,
+      changedAt: extras.locationChanges,
+      workedAt: extras.workedAt,
+    }),
   };
 }

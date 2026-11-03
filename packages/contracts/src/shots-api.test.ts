@@ -23,6 +23,7 @@ const scene = {
   chosenStoryboards: {},
   clips: {},
   working: {},
+  flags: {},
 };
 
 describe('scenePlanSchema', () => {
@@ -37,6 +38,24 @@ describe('scenePlanSchema', () => {
   it('rifiuta una scena senza numero valido e un’inquadratura che non è una scheda', () => {
     expect(scenePlanSchema.safeParse({ ...scene, sceneNumber: 0 }).success).toBe(false);
     expect(scenePlanSchema.safeParse({ ...scene, shots: [{ id: 'x' }] }).success).toBe(false);
+  });
+});
+
+describe('flags (T4.9)', () => {
+  it('un’inquadratura può avere dei gialli, con codice, motivo e origine; senza il campo la scena non vale', () => {
+    const flagged = {
+      ...scene,
+      flags: { 'shot-1': [{ code: 'R6', reason: 'Il luogo è cambiato.', origin: 'rule' }] },
+    };
+
+    expect(scenePlanSchema.parse(flagged).flags['shot-1']?.[0]?.code).toBe('R6');
+    expect(
+      scenePlanSchema.safeParse({
+        ...scene,
+        flags: { 'shot-1': [{ code: 'R6', reason: 'x', origin: 'a caso' }] },
+      }).success,
+    ).toBe(false);
+    expect(scenePlanSchema.safeParse({ ...scene, flags: undefined }).success).toBe(false);
   });
 });
 

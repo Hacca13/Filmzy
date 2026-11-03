@@ -49,9 +49,9 @@ const fixtureSchema = z.strictObject({
 
 type Fixture = z.infer<typeof fixtureSchema>;
 
-/** Un PNG 1×1 trasparente: un file immagine vero, piccolo quanto basta. */
+/** Un PNG 1×1 trasparente: un file immagine vero, che si apre davvero (ffmpeg lo legge), piccolo quanto basta. */
 const PLACEHOLDER_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMB/axgwQAAAABJRU5ErkJggg==',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=',
   'base64',
 );
 

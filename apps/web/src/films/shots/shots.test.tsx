@@ -58,6 +58,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   shots: [shot],
   chosenStoryboards: {},
   clips: {},
+  flags: {},
   working: {},
   ...patch,
 });

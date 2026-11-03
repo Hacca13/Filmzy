@@ -12,7 +12,13 @@ import {
   type ShotPlannerInput,
   type StoryBible,
 } from '@filmzy/contracts';
-import { createShotStore, openFilmzyDatabase, type ShotStore, type TakeStore } from '@filmzy/db';
+import {
+  createShotStore,
+  openFilmzyDatabase,
+  type LocationStore,
+  type ShotStore,
+  type TakeStore,
+} from '@filmzy/db';
 import type { ConfigSource, LoadedConfig, Troupe } from '@filmzy/troupe';
 import { HttpException } from '@nestjs/common';
 import { mkdtemp } from 'node:fs/promises';
@@ -125,8 +131,19 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
   const takes = {
     latestClips: () => clips,
     inProgress: () => videoInProgress,
+    lastTakeAt: () => ({}),
   } as unknown as TakeStore;
-  return new ShotsService(store, troupe, configSource, screenplays, bibles, projects, takes);
+  const locations = { referenceChanges: () => ({}) } as unknown as LocationStore;
+  return new ShotsService(
+    store,
+    troupe,
+    configSource,
+    screenplays,
+    bibles,
+    projects,
+    takes,
+    locations,
+  );
 }
 
 async function failure(call: () => Promise<unknown>): Promise<{ status: number; code: string }> {

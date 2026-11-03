@@ -68,6 +68,8 @@ export interface TakeStore {
   frames: (shotId: string) => TakeFrame[];
   /** La clip che la card fa vedere per ogni inquadratura del film che ne ha una: quella del take scelto, o del più recente riuscito. */
   latestClips: (projectId: string) => Record<string, string>;
+  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura del film che ne ha uno (ms). */
+  lastTakeAt: (projectId: string) => Record<string, number>;
   /** Le inquadrature del film con un take in coda o in lavorazione adesso (non più vecchio di `since`: uno più vecchio si è perso). */
   inProgress: (projectId: string, since: Date) => string[];
 }
@@ -210,6 +212,21 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         )
         .all();
       return rows.map((row) => row.shotId);
+    },
+
+    lastTakeAt(projectId) {
+      const shotIds = shotIdsOf(projectId);
+      if (shotIds.length === 0) return {};
+
+      const latest: Record<string, number> = {};
+      for (const row of db
+        .select({ shotId: takes.shotId, at: takes.updatedAt })
+        .from(takes)
+        .where(and(inArray(takes.shotId, shotIds), eq(takes.status, 'succeeded')))
+        .all()) {
+        latest[row.shotId] = Math.max(latest[row.shotId] ?? 0, row.at);
+      }
+      return latest;
     },
 
     latestClips(projectId) {

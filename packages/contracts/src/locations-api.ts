@@ -76,6 +76,12 @@ export const retouchQuerySchema = z
 
 export type RetouchQuery = z.infer<typeof retouchQuerySchema>;
 
+/** Le domande per i servizi e la stima di un ritocco (`GET …/retouch/options?…`): l'immagine e l'operazione bastano. */
+export const retouchOptionsQuerySchema = z.strictObject({
+  assetId: assetIdSchema,
+  operation: retouchOperationSchema,
+});
+
 /** Un tentativo: le immagini del set nate dalla stessa richiesta (stato unico: è una sola chiamata). */
 export const locationAttemptSchema = z.object({
   attempt: z.number().int().positive(),

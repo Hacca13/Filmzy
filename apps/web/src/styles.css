@@ -1192,3 +1192,42 @@ a.button {
 .shot-continuity dd {
   margin: 0;
 }
+
+/* Quanto ho speso (T4.7) */
+.spend-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.spend-total {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.spend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.spend-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+}
+
+.spend-item-head strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.spend-sum {
+  margin: 8px 0 0;
+  font-weight: 600;
+  color: var(--text);
+}

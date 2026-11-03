@@ -2,6 +2,7 @@ import type { ConnectionsOverview, ProviderSpend, SpendOverview } from '@filmzy/
 
 import { fetchConnections, setFilmBudget, setMonthlyCap } from '../../api/connections';
 import { fetchSpend, setConfirmAbove } from '../../api/spend';
+import { spendHref } from '../../films/routes';
 import { Notice, Panel } from '../../components/ui';
 import { formatUsd } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
@@ -118,7 +119,8 @@ function SpendView({ spend, connections, onSpend, onConnections }: ViewProps) {
         <Panel title="Per film">
           {spend.films.map((film) => (
             <p key={film.projectId} className="hint">
-              Film {film.projectId} · {formatUsd(film.spentUsd)}
+              <a href={spendHref(film.projectId)}>{film.title}</a> · {formatUsd(film.spentUsd)} in
+              tutto · {formatUsd(film.monthUsd)} questo mese
             </p>
           ))}
         </Panel>

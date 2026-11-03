@@ -12,6 +12,7 @@ import { FinalPanel } from './final/FinalPanel';
 import { ShotsPanel } from './shots/ShotsPanel';
 import { LocationsPanel } from './locations/LocationsPanel';
 import { StoryPanel } from './story/StoryPanel';
+import { FilmSpendLine } from './spend/FilmSpendLine';
 import { ideaHref } from './routes';
 
 /**
@@ -75,6 +76,8 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
           </a>
         </div>
       </section>
+
+      <FilmSpendLine filmId={film.id} />
 
       <StoryPanel filmId={film.id} />
       <CastPanel filmId={film.id} />

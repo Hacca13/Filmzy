@@ -56,8 +56,10 @@ export const scenePlanSchema = z.object({
    * lo dice e, quando il lavoro finisce, passa da sola a «pronto». Il video vince sulle immagini.
    */
   working: z.record(shotIdSchema, z.enum(['storyboard', 'end_frame', 'video'])),
-  /** I gialli delle inquadrature che ne hanno (T4.9): per ora R6, un luogo cambiato dopo che l'inquadratura era stata fatta. */
+  /** I gialli delle inquadrature che ne hanno (T4.9, T5.1): una regola di continuità che non torna, con il motivo. */
   flags: z.record(shotIdSchema, z.array(continuityFlagSchema)),
+  /** I gialli della scena stessa (T5.1): R7, la scena nomina un personaggio che non c'è più nel film. */
+  sceneFlags: z.array(continuityFlagSchema),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

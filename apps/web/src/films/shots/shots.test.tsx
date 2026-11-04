@@ -8,6 +8,7 @@ import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import { FlagNote } from './FlagNote';
 import { ShotCard } from './ShotCard';
 import { continuityLine, humanize, sceneChip, sceneStatus, type Names } from './model';
 
@@ -59,6 +60,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   chosenStoryboards: {},
   clips: {},
   flags: {},
+  sceneFlags: [],
   working: {},
   ...patch,
 });
@@ -101,6 +103,31 @@ describe('continuityLine', () => {
 
   it('salta ciò che non si riconosce o non c’è', () => {
     expect(continuityLine({ ...entry, locationId: 'altrove', present: [] }, names)).toBe('sera');
+  });
+});
+
+describe('FlagNote', () => {
+  it('un giallo vero dice «Da rivedere», uno leggero «Avviso leggero», sempre con il motivo (anche per una scena, R7)', () => {
+    const strong = renderToStaticMarkup(
+      <FlagNote
+        flag={{
+          code: 'R7',
+          reason: 'La scena nomina un personaggio tolto.',
+          origin: 'rule',
+          light: false,
+        }}
+      />,
+    );
+    const light = renderToStaticMarkup(
+      <FlagNote
+        flag={{ code: 'R4', reason: 'La fotografia è cambiata.', origin: 'rule', light: true }}
+      />,
+    );
+
+    expect(strong).toContain('Da rivedere');
+    expect(strong).toContain('La scena nomina un personaggio tolto.');
+    expect(light).toContain('Avviso leggero');
+    expect(light).not.toContain('Da rivedere');
   });
 });
 

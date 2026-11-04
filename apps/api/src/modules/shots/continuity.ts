@@ -1,8 +1,8 @@
-import type { ContinuityFlag, ShotSpec } from '@filmzy/contracts';
+import type { ContinuityFlag, ScreenplayScene, ShotSpec } from '@filmzy/contracts';
 
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
- * ci sono R3, R5, R6 (T4.9, D21) e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
+ * ci sono R3, R4, R5, R6 (T4.9, D21), R7 e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
  * si provano a parte: i dati li leggono i servizi.
  */
 
@@ -57,6 +57,63 @@ export function moodboardChangeFlags(
     ];
   }
   return flags;
+}
+
+/** Cosa vede l'utente quando la fotografia del film è cambiata dopo il video (R4, avviso leggero). */
+export const CINEMATOGRAPHY_CHANGED_REASON =
+  'La fotografia del film è cambiata dopo che hai girato questo video. Se vuoi che ne tenga conto, rigiralo.';
+
+export interface CinematographyChangeInput {
+  shots: readonly ShotSpec[];
+  /** Quando è cambiata la fotografia del film (ms), se è cambiata. */
+  changedAt: number | undefined;
+  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura (ms). */
+  takeAt: Readonly<Record<string, number>>;
+}
+
+/**
+ * R4: se cambia la fotografia del film, i take girati con la precedente ricevono un avviso **leggero**.
+ * Un'inquadratura che ha una fotografia sua non la segue, e quindi non cambia; un video rifatto dopo il
+ * cambiamento è allineato.
+ */
+export function cinematographyChangeFlags(
+  input: CinematographyChangeInput,
+): Record<string, ContinuityFlag[]> {
+  const flags: Record<string, ContinuityFlag[]> = {};
+  if (input.changedAt === undefined) return flags;
+  for (const shot of input.shots) {
+    const take = input.takeAt[shot.id];
+    if (shot.cinematography !== 'inherit' || take === undefined || take >= input.changedAt)
+      continue;
+    flags[shot.id] = [
+      { code: 'R4', reason: CINEMATOGRAPHY_CHANGED_REASON, origin: 'rule', light: true },
+    ];
+  }
+  return flags;
+}
+
+/**
+ * R7: se un personaggio viene scartato o sostituito dopo la stesura ufficiale, la scena che lo nomina
+ * diventa gialla. Il nome non c'è più (il personaggio è stato tolto): si dice quanti sono.
+ */
+export function removedCharacterFlags(
+  scene: ScreenplayScene,
+  knownCharacters: ReadonlySet<string>,
+): ContinuityFlag[] {
+  const missing = scene.characterIds.filter((characterId) => !knownCharacters.has(characterId));
+  if (missing.length === 0) return [];
+  const who =
+    missing.length === 1
+      ? 'un personaggio che non c’è più nel film'
+      : `${String(missing.length)} personaggi che non ci sono più nel film`;
+  return [
+    {
+      code: 'R7',
+      reason: `Questa scena nomina ${who}. Correggi la stesura o rimetti nel cast chi serve.`,
+      origin: 'rule',
+      light: false,
+    },
+  ];
 }
 
 /** Un elenco a voce: «Anna», «Anna e Marco», «Anna, Marco e Luca». */

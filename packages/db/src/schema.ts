@@ -191,6 +191,8 @@ export const projects = sqliteTable(
     language: text('language').notNull(),
     durationS: integer('duration_s').notNull(),
     phase: text('phase').notNull(),
+    /** Quando la fotografia del film è stata cambiata l'ultima volta, dopo la creazione (T5.1, R4). */
+    cinematographyChangedAt: integer('cinematography_changed_at'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },

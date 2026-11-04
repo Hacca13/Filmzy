@@ -24,6 +24,7 @@ const scene = {
   clips: {},
   working: {},
   flags: {},
+  sceneFlags: [],
 };
 
 describe('scenePlanSchema', () => {

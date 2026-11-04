@@ -35,11 +35,13 @@ import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { chainFlags, type PreviousScene } from './chain-flags.js';
 import {
   characterSheetFlags,
+  cinematographyChangeFlags,
   frameChangeFlags,
   locationChangeFlags,
   mergeFlags,
   moodboardChangeFlags,
   oldestWork,
+  removedCharacterFlags,
 } from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
@@ -85,6 +87,7 @@ export class ShotsService {
       locationChanges: this.locations.referenceChanges(projectId),
       sheetChanges: this.sheets.sheetChanges(projectId),
       framesChanges: this.store.framesChanges(projectId),
+      cinematographyChangedAt: this.projects.cinematographyChangedAt(projectId),
       characterNames: known.names.characters,
       workedAt: this.workedAt(projectId),
       moodboardChanges: config.features.moodboard
@@ -286,6 +289,8 @@ interface PerShot {
   /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
   sheetChanges: Readonly<Record<string, number>>;
   framesChanges: Readonly<Record<string, number>>;
+  /** Quando è cambiata la fotografia del film (R4). */
+  cinematographyChangedAt: number | undefined;
   characterNames: Readonly<Record<string, string>>;
   /** Quando sono cambiati palette e consigli del moodboard, e quando è finito l'ultimo take di ogni inquadratura (ms): servono ai gialli leggeri (R9). */
   moodboardChanges: MoodboardChanges;
@@ -323,6 +328,7 @@ function scenePlan(
     stale: plan !== undefined && isStale(scene, plan, known),
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots,
+    sceneFlags: removedCharacterFlags(scene, known.characters),
     chosenStoryboards: forShots(shots, extras.chosen),
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
@@ -334,6 +340,11 @@ function scenePlan(
         names: extras.characterNames,
       }),
       frameChangeFlags({ shots, changedAt: extras.framesChanges, takeAt: extras.takeAt }),
+      cinematographyChangeFlags({
+        shots,
+        changedAt: extras.cinematographyChangedAt,
+        takeAt: extras.takeAt,
+      }),
       locationChangeFlags({
         shots,
         changedAt: extras.locationChanges,

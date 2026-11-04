@@ -83,6 +83,12 @@ export class ProjectsService {
     }
   }
 
+  /** Quando la fotografia del film è cambiata dopo la creazione (ms); `undefined` se non è mai cambiata (R4). */
+  cinematographyChangedAt(id: string): number | undefined {
+    this.get(id);
+    return this.store.cinematographyChangedAt(id);
+  }
+
   async update(id: string, body: UpdateProjectBody): Promise<Project> {
     const current = this.get(id);
     this.assertChoicesExist(await this.presets(), body);

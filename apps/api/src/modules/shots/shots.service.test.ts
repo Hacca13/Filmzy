@@ -88,6 +88,9 @@ let videoInProgress: string[];
 let planned: typeof proposal;
 /** Quando è cambiata la scheda di ogni personaggio (ms). */
 let sheetChanges: Record<string, number>;
+/** Quando è cambiata la fotografia del film, e quando è arrivato l'ultimo take di ogni inquadratura (ms). */
+let cinematographyChangedAt: number | undefined;
+let takeTimes: Record<string, number>;
 
 function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {}) {
   const troupe = {
@@ -142,11 +145,12 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     reach: (_id: string, phase: string) => {
       reached.push(phase);
     },
+    cinematographyChangedAt: () => cinematographyChangedAt,
   } as unknown as ProjectsService;
   const takes = {
     latestClips: () => clips,
     inProgress: () => videoInProgress,
-    lastTakeAt: () => ({}),
+    lastTakeAt: () => takeTimes,
   } as unknown as TakeStore;
   const locations = { referenceChanges: () => ({}) } as unknown as LocationStore;
   const moodboards = { changes: () => ({ scenes: {} }) } as unknown as MoodboardStore;
@@ -190,6 +194,8 @@ beforeEach(async () => {
   videoInProgress = [];
   planned = proposal;
   sheetChanges = {};
+  cinematographyChangedAt = undefined;
+  takeTimes = {};
   final = {
     id: 'stesura-1',
     projectId: film.id,
@@ -459,6 +465,41 @@ describe('la continuità fra le inquadrature (T5.1)', () => {
     expect(plans.scenes[0]?.stale).toBe(true);
     expect(Object.keys(plans.scenes[0]?.flags ?? {})).toEqual([]);
     expect(Object.keys(plans.scenes[1]?.flags ?? {})).toEqual([]);
+  });
+});
+
+describe('R4 e R7 nel piano (T5.1)', () => {
+  it('R4: la fotografia cambiata dopo il video dà un avviso leggero', async () => {
+    const service = build();
+    const shot = (await service.plan(film.id, { sceneNumber: 1 })).shots[0];
+    if (shot === undefined) throw new Error("doveva esserci un'inquadratura");
+    takeTimes = { [shot.id]: 1000 };
+    expect((await service.plans(film.id)).scenes[0]?.flags[shot.id]).toBeUndefined();
+
+    cinematographyChangedAt = 2000;
+    const flagged = (await service.plans(film.id)).scenes[0]?.flags[shot.id];
+
+    expect(flagged).toEqual([expect.objectContaining({ code: 'R4', light: true })]);
+  });
+
+  it('R7: una scena che nomina un personaggio che il film non ha più è gialla, anche senza inquadrature', async () => {
+    const [first, second] = final.screenplay.scenes;
+    if (first === undefined || second === undefined) throw new Error('servono due scene');
+    final = {
+      ...final,
+      screenplay: {
+        ...final.screenplay,
+        scenes: [{ ...first, characterIds: ['tolto'] }, second],
+      },
+    };
+
+    const plans = await build().plans(film.id);
+
+    expect(plans.scenes[0]?.planned).toBe(false);
+    expect(plans.scenes[0]?.sceneFlags).toEqual([
+      expect.objectContaining({ code: 'R7', light: false }),
+    ]);
+    expect(plans.scenes[1]?.sceneFlags).toEqual([]);
   });
 });
 

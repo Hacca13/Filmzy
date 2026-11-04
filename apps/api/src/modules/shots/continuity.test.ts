@@ -2,15 +2,18 @@ import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '
 import { describe, expect, it } from 'vitest';
 
 import {
+  CINEMATOGRAPHY_CHANGED_REASON,
   FRAMES_CHANGED_REASON,
   LOCATION_CHANGED_REASON,
   MOODBOARD_CHANGED_REASON,
   characterSheetFlags,
+  cinematographyChangeFlags,
   frameChangeFlags,
   locationChangeFlags,
   mergeFlags,
   moodboardChangeFlags,
   oldestWork,
+  removedCharacterFlags,
 } from './continuity.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
@@ -170,6 +173,58 @@ describe('R5: il primo o l’ultimo fotogramma cambiato ingiallisce i take girat
     expect(flags['s1']).toEqual([
       { code: 'R5', reason: FRAMES_CHANGED_REASON, origin: 'rule', light: false },
     ]);
+  });
+});
+
+describe('R4: la fotografia del film cambiata avvisa i take girati prima, in modo leggero', () => {
+  it('solo i take prima del cambiamento, e non le inquadrature con una fotografia loro', () => {
+    const own: ShotSpec = { ...shotIn('s3', 'piazza'), cinematography: { lens: '85mm' } };
+    const shots = [shotIn('s1', 'piazza'), shotIn('s2', 'piazza'), own];
+
+    const flags = cinematographyChangeFlags({
+      shots,
+      changedAt: 500,
+      takeAt: { s1: 100, s2: 600, s3: 100 },
+    });
+
+    expect(Object.keys(flags)).toEqual(['s1']);
+    expect(flags['s1']).toEqual([
+      { code: 'R4', reason: CINEMATOGRAPHY_CHANGED_REASON, origin: 'rule', light: true },
+    ]);
+  });
+
+  it('se la fotografia non è mai cambiata non c’è niente', () => {
+    expect(
+      cinematographyChangeFlags({
+        shots: [shotIn('s1', 'piazza')],
+        changedAt: undefined,
+        takeAt: { s1: 100 },
+      }),
+    ).toEqual({});
+  });
+});
+
+describe('R7: una scena che nomina un personaggio che non c’è più è gialla', () => {
+  const scene = (characterIds: string[]) => ({
+    number: 1,
+    heading: 'INT. STAZIONE - SERA',
+    timeOfDay: 'sera',
+    characterIds,
+    summary: 'Anna aspetta.',
+    beats: [],
+    durationS: 20,
+  });
+  const known = new Set(['anna', 'marco']);
+
+  it('un personaggio tolto, o più di uno, si dice con parole semplici; se ci sono tutti non c’è niente', () => {
+    expect(removedCharacterFlags(scene(['anna', 'marco']), known)).toEqual([]);
+
+    const one = removedCharacterFlags(scene(['anna', 'luca']), known);
+    expect(one).toEqual([expect.objectContaining({ code: 'R7', origin: 'rule', light: false })]);
+    expect(one[0]?.reason).toContain('un personaggio che non c’è più');
+
+    const two = removedCharacterFlags(scene(['luca', 'sara']), known);
+    expect(two[0]?.reason).toContain('2 personaggi che non ci sono più');
   });
 });
 

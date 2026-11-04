@@ -14,6 +14,7 @@ import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
 import { useLiveJobs } from '../use-live-jobs';
+import { FlagNote } from './FlagNote';
 import { ShotCard } from './ShotCard';
 import { ShotImagesPanel } from './ShotImagesPanel';
 import { sceneChip, type Names } from './model';
@@ -166,6 +167,9 @@ function SceneSection({
         </p>
       )}
       {working ? <Chip tone="info">L&apos;aiuto regista sta pensando</Chip> : null}
+      {scene.sceneFlags.map((flag) => (
+        <FlagNote key={flag.code} flag={flag} />
+      ))}
       {scene.stale ? (
         <Notice tone="info" title="Informazione">
           Dopo aver pensato le inquadrature è cambiato qualcosa: la scena, oppure un personaggio o

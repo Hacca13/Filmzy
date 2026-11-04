@@ -91,6 +91,7 @@ function fakeStore() {
       saved.push(`update:${id}`);
       return { ...film, ...changes };
     },
+    cinematographyChangedAt: () => undefined,
   };
   return { saved, store };
 }

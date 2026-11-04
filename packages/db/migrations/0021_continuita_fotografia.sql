@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `cinematography_changed_at` integer;

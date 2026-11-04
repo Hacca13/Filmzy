@@ -91,7 +91,7 @@ Compromesso: l'audio nativo del modello costa meno (è incluso) e spesso è sinc
 - **Lip sync:** Sync lipsync-2 0,04–0,05 $/s; lipsync-2-pro 0,067–0,083 $/s.
 - **Doppiaggio ElevenLabs (solo audio):** 0,33 $/min con watermark, 0,50 $/min senza. Il labiale va rifatto a parte.
 
-> **Aggiornamento 4/11/2026 (T5.4, D78):** la frase che segue è superata per ElevenLabs: i termini di Eleven Music escludono «film, TV, radio» su tutti i piani tranne Enterprise Music. Musica ed effetti passano da Stable Audio 3 su fal.
+> **Aggiornamento 4/11/2026 (T5.4, D78):** la frase che segue è superata per ElevenLabs: i termini di Eleven Music escludono «film, TV, radio» su tutti i piani tranne Enterprise Music. Musica ed effetti passano da Stable Audio 3 su fal. Su Suno (D79): esistono un accesso ufficiale dietro login, di cui non si sono potute leggere le condizioni, e molti rivenditori non ufficiali, vietati dai suoi termini.
 
 **Musica:** Suno non ha un'API pubblica self-service e a luglio 2026 aveva ancora cause aperte con Sony e Universal: da evitare in un prodotto. ElevenLabs Music ha un'API, diritti commerciali sui piani a pagamento e dichiara dati di addestramento con licenza; costa circa 0,18 $ al minuto.
 

@@ -22,6 +22,7 @@ import {
   loadEnvironmentOverlay,
   validateConfig,
   validateInstructions,
+  validateServicePolicy,
   type ConfigEnvironment,
   type ConfigIssue,
   type SecretSources,
@@ -367,6 +368,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
         effective.config,
         path.join(this.configDir, 'ai', 'instructions'),
       )),
+      ...(await validateServicePolicy(effective.config, this.configDir)),
     ];
   }
 

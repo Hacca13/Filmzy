@@ -865,7 +865,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Decisione:**
 1. **Musica ed effetti con Stable Audio 3 su fal** (`music-stable-audio-3`, `sfx-stable-audio-3`; famiglia `stable_audio`): è l'unico con un testo del fornitore che non pone limiti per tipo di opera e dichiara dati con licenza. Costa pochissimo e passa dalla stessa connessione e chiave dei video: nessun adapter, nessuna chiave in più per l'utente. Compaiono in Connessioni, sotto «Musica ed effetti».
-2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta nel catalogo per le voci di Fase 2.
+2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta per le voci di Fase 2; la voce del catalogo è uscita con D79.
 3. **Prezzo a clip.** Nuova unità `per_audio`. La pagina dice «per audio» senza dire se dipende dalla durata: lo dirà il primo scontrino vero.
 4. **Limiti di durata nel catalogo** (`max_duration_s`): 120 s per la musica (dalla pagina), 30 s per gli effetti (valore prudente: la pagina non lo dà). Una richiesta più lunga si porta dentro il limite.
 5. Compositore e rumorista sono accesi; le funzioni `music` e `sound_effects` restano spente fino a T5.5, che porta le tracce.
@@ -877,3 +877,20 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 - La qualità è ignota: **nessuna prova d'ascolto**. Va fatta con T4.0, costa pochi centesimi. Il modello Small è il più piccolo; se non basta si valuta Medium o Large (380 s).
 **Scartate:** ElevenLabs Enterprise (contratto, non adatto a un programma con le chiavi dell'utente); Sonilo come predefinito (film su un piano che via fal non si può verificare); Suno (cause aperte, nessuna API). Un secondo servizio in «Cambia servizio» si aggiunge dopo la prova d'ascolto, se la licenza regge.
 **Conseguenze:** `pricing.unit: per_audio`; `capabilities.max_duration_s` per musica ed effetti; famiglia `stable_audio`. **Non fatto:** prova d'ascolto; il collegamento vero (tracce, lavori in coda, R8) è T5.5.
+
+## D79 · ElevenLabs Music e Suno non si possono aggiungere; il brano fatto altrove si carica — 04/11/2026
+
+**Cambia** D78: `music-elevenlabs` esce dal catalogo. **Richiesta dell'autore:** un errore «per policy» se l'utente prova a inserirli.
+**Decisione:**
+1. `config/ai/policy.yaml` elenca i servizi vietati: tipi, testo da cercare, motivo. È un dato, non codice (regola d'oro 2). Non sta nella release, così non si toglie pubblicando una bozza né si perde ripristinandone una vecchia; chi modifica i file del programma può farlo: è software libero, e la responsabilità è sua.
+2. `validateServicePolicy` controlla tutto il catalogo, usato o no: errore `service_blocked_by_policy`, visibile appena si salva la bozza, che ferma la pubblicazione, il ripristino, l'import e `pnpm troupe check`. Il messaggio dice perché e cosa fare. Senza il file, o con un file rotto, non si pubblica.
+3. Il testo si cerca all'inizio delle parole di id, nome e id presso il fornitore del servizio e di id, nome, adapter e indirizzo della connessione: ferma anche chi passa da un rivenditore (`sunoapi.org`) e non scambia «nessuno» per Suno. Non è una difesa assoluta: un nome inventato passa. Serve a dire la regola, non a sorvegliare l'utente.
+4. ElevenLabs è vietato per la **sola musica**: le voci serviranno in Fase 2 e gli effetti sonori non stanno sotto i termini di Eleven Music. Gli effetti non si sono letti in dettaglio: vanno letti prima di aggiungerli.
+5. Caricare un brano fatto altrove resta possibile (D27, arriva con T5.5): lo sceglie l'utente, con il suo piano. Filmzy non controlla da dove viene un file.
+
+**Uso personale, cosa dicono i termini (4/11):**
+- **ElevenLabs:** non ha una clausola per l'uso personale; l'esclusione di film, TV e radio sta nella riga dell'uso commerciale. Ma §4.3 e §4.8(e) vietano di mettere i modelli a disposizione tramite applicazioni proprie o di terzi: riguarda il programma, non il film, quindi un avviso all'utente non lo risolve. Serve un permesso scritto.
+- **Suno:** ammette l'uso personale e non commerciale anche sul piano gratuito. I termini generali non parlano di API; vietano però copie ottenute fuori dai suoi canali, quindi i rivenditori sono fuori. L'accesso ufficiale esiste dietro login e le sue condizioni non si sono potute leggere: **se le si ottiene e lo permettono**, si toglie la regola da `policy.yaml` e si aggiunge il servizio con un avviso «solo uso personale». L'autore dice di aver già usato queste API: resta da capire se ufficiali o di un rivenditore.
+
+**Scartata per ora:** aggiungerli con un avviso. **Non è un parere legale.**
+**Conseguenze:** nuovo file `config/ai/policy.yaml`, schema `servicePolicyFileSchema`, `readConfigFile` condiviso. Una release già pubblicata che contiene un servizio vietato non si ferma da sola, ma non si può più ripubblicare finché non lo si toglie.

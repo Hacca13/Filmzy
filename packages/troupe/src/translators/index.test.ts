@@ -75,13 +75,15 @@ describe('musica ed effetti (T5.4, D78)', () => {
 });
 
 describe('il seme di musica ed effetti (D78)', () => {
-  it('compositore e rumorista passano da fal; ElevenLabs Music resta spento e non vale per i film', () => {
+  it('compositore e rumorista passano da fal; ElevenLabs è spento e senza servizi', () => {
     expect(seed.roles.composer).toMatchObject({ model: 'music-stable-audio-3' });
     expect(seed.roles.sfx_artist).toMatchObject({ model: 'sfx-stable-audio-3' });
     expect(modelOf(seed, 'music-stable-audio-3').connection).toBe('fal');
     expect(modelOf(seed, 'sfx-stable-audio-3').connection).toBe('fal');
     expect(seed.connections.elevenlabs?.enabled).toBe(false);
-    expect(modelOf(seed, 'music-elevenlabs').capabilities).toMatchObject({ commercial_use: false });
+    expect(Object.values(seed.models).filter((model) => model.connection === 'elevenlabs')).toEqual(
+      [],
+    );
   });
 });
 

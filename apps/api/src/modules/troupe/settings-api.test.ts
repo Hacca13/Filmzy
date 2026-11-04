@@ -101,6 +101,34 @@ describe('impostazioni avanzate (T2.3)', () => {
       expect((await client.draft()).activeRelease?.id).toBe(activeRelease?.id);
     });
 
+    it('un servizio vietato dai suoi termini si ferma con il motivo, e non si pubblica (D79)', async () => {
+      const { config, activeRelease } = await client.draft();
+      const music = config.models['music-stable-audio-3'];
+      if (music === undefined) throw new Error('il seme non ha la musica');
+
+      const saved = await client.call('PUT', '/troupe/draft', {
+        config: {
+          ...config,
+          models: {
+            ...config.models,
+            'la-mia-musica': { ...music, label: 'Suno', provider_model: 'suno' },
+          },
+        },
+      });
+
+      const blocked = draftViewSchema
+        .parse(saved.body)
+        .issues.find((issue) => issue.code === 'service_blocked_by_policy');
+      expect(blocked).toMatchObject({ severity: 'error', modelId: 'la-mia-musica' });
+      expect(blocked?.message).toContain('Per policy di Filmzy non si può usare «Suno»');
+
+      const published = publishResponseSchema.parse(
+        (await client.call('POST', '/troupe/publish', { note: 'vietata' })).body,
+      );
+      expect(published.release).toBeUndefined();
+      expect((await client.draft()).activeRelease?.id).toBe(activeRelease?.id);
+    });
+
     it('la nota è obbligatoria', async () => {
       const reply = await client.call('POST', '/troupe/publish', { note: '   ' });
 

@@ -36,7 +36,7 @@ describe('validateConfig sui file di seme', () => {
     const issues = validateConfig(seed, { now: NOW, secrets: SEED_SECRETS });
 
     // Dopo T1.7 il seme non ha più né errori né avvisi: i servizi che l'MVP usa sono `active`,
-    // con id e prezzi verificati. ElevenLabs Music resta `testing`, ma nessun ruolo lo usa (D78).
+    // con id e prezzi verificati.
     expect(issues).toEqual([]);
   });
 
@@ -106,7 +106,11 @@ describe('riferimenti (§4.6 punto 2)', () => {
       config.roles.composer = {
         ...roleOf(config, 'composer'),
         enabled: false,
-        model: 'music-elevenlabs',
+        model: 'musica-da-provare',
+      };
+      config.models['musica-da-provare'] = {
+        ...modelOf(config, 'music-stable-audio-3'),
+        status: 'testing',
       };
     });
 

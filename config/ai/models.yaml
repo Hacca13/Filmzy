@@ -264,16 +264,3 @@ models:
     request_fields: { prompt: prompt, negative_prompt: negative_prompt, duration_s: duration }
     pricing: { unit: per_audio, value: 0.0283, note: "a clip, come dice la pagina; se dipende dalla durata lo dirà la prova d'ascolto", checked: 2026-11-04 }
     status: active
-
-  # Non in uso (D78): i termini di Eleven Music escludono «film, TV, radio» su tutti i piani tranne Enterprise
-  # Music e vietano di offrire i modelli tramite applicazioni di terzi. Filmzy fa film.
-  music-elevenlabs:
-    label: ElevenLabs Music
-    kind: music
-    connection: elevenlabs
-    provider_model: music_v2_5
-    family: elevenlabs_music
-    capabilities:
-      commercial_use: false                   # per i film serve il piano Enterprise Music (D78)
-    pricing: { unit: per_second, value: 0.0025, note: "0,15 $ al minuto; clip da 3 s a 5 minuti", checked: 2026-10-21 }
-    status: testing                           # POST /v1/music verificato il 4/11; manca l'adapter, e resta spento (D78)

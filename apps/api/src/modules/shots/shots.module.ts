@@ -29,6 +29,7 @@ import { Body, Controller, Get, Module, Param, Patch, Post, Put, UseFilters } fr
 
 import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
+import { AudioStoreModule } from '../audio/audio-store.module.js';
 import { BibleModule } from '../bible/bible.module.js';
 import { CastModule } from '../cast/cast.module.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
@@ -253,6 +254,7 @@ class ShotsController {
 
 @Module({
   imports: [
+    AudioStoreModule,
     ProjectsModule,
     ScreenplayModule,
     BibleModule,
@@ -264,7 +266,7 @@ class ShotsController {
     UploadStoreModule,
   ],
   controllers: [ShotsController],
-  exports: [ShotsService],
+  exports: [ShotsService, SHOT_STORE],
   providers: [
     ShotsService,
     StoryboardService,

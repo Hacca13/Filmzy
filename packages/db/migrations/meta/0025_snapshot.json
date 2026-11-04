@@ -182,10 +182,7 @@
       "indexes": {
         "audio_clips_per_film": {
           "name": "audio_clips_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -236,10 +233,7 @@
       "indexes": {
         "audio_tracks_per_tipo": {
           "name": "audio_tracks_per_tipo",
-          "columns": [
-            "project_id",
-            "kind"
-          ],
+          "columns": ["project_id", "kind"],
           "isUnique": true
         }
       },
@@ -332,10 +326,7 @@
       "indexes": {
         "audio_variants_per_clip": {
           "name": "audio_variants_per_clip",
-          "columns": [
-            "clip_id",
-            "created_at"
-          ],
+          "columns": ["clip_id", "created_at"],
           "isUnique": false
         }
       },
@@ -421,11 +412,7 @@
       "indexes": {
         "sheet_images_per_angolo": {
           "name": "sheet_images_per_angolo",
-          "columns": [
-            "character_id",
-            "attempt",
-            "angle"
-          ],
+          "columns": ["character_id", "attempt", "angle"],
           "isUnique": true
         }
       },
@@ -539,10 +526,7 @@
       "indexes": {
         "characters_per_film": {
           "name": "characters_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -636,25 +620,17 @@
       "indexes": {
         "generations_per_scopo": {
           "name": "generations_per_scopo",
-          "columns": [
-            "purpose",
-            "created_at"
-          ],
+          "columns": ["purpose", "created_at"],
           "isUnique": false
         },
         "generations_per_fornitore": {
           "name": "generations_per_fornitore",
-          "columns": [
-            "connection_id",
-            "created_at"
-          ],
+          "columns": ["connection_id", "created_at"],
           "isUnique": false
         },
         "generations_per_film": {
           "name": "generations_per_film",
-          "columns": [
-            "project_id"
-          ],
+          "columns": ["project_id"],
           "isUnique": false
         }
       },
@@ -692,10 +668,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "ignored_flags_project_id_flag_key_pk": {
-          "columns": [
-            "project_id",
-            "flag_key"
-          ],
+          "columns": ["project_id", "flag_key"],
           "name": "ignored_flags_project_id_flag_key_pk"
         }
       },
@@ -759,11 +732,7 @@
       "indexes": {
         "instruction_versions_una_sola": {
           "name": "instruction_versions_una_sola",
-          "columns": [
-            "instructions_id",
-            "version",
-            "family"
-          ],
+          "columns": ["instructions_id", "version", "family"],
           "isUnique": true
         }
       },
@@ -894,25 +863,17 @@
       "indexes": {
         "jobs_da_fare": {
           "name": "jobs_da_fare",
-          "columns": [
-            "status",
-            "run_after",
-            "priority"
-          ],
+          "columns": ["status", "run_after", "priority"],
           "isUnique": false
         },
         "jobs_idempotenza": {
           "name": "jobs_idempotenza",
-          "columns": [
-            "idempotency_key"
-          ],
+          "columns": ["idempotency_key"],
           "isUnique": true
         },
         "jobs_per_film": {
           "name": "jobs_per_film",
-          "columns": [
-            "project_id"
-          ],
+          "columns": ["project_id"],
           "isUnique": false
         }
       },
@@ -1012,10 +973,7 @@
       "indexes": {
         "location_attempts_per_tentativo": {
           "name": "location_attempts_per_tentativo",
-          "columns": [
-            "location_id",
-            "attempt"
-          ],
+          "columns": ["location_id", "attempt"],
           "isUnique": true
         }
       },
@@ -1101,10 +1059,7 @@
       "indexes": {
         "locations_per_film": {
           "name": "locations_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1221,10 +1176,7 @@
       "indexes": {
         "moodboard_references_per_film": {
           "name": "moodboard_references_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1310,10 +1262,7 @@
       "indexes": {
         "moodboard_runs_per_film": {
           "name": "moodboard_runs_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1371,10 +1320,7 @@
       "indexes": {
         "moodboard_scenes_per_scena": {
           "name": "moodboard_scenes_per_scena",
-          "columns": [
-            "project_id",
-            "scene_id"
-          ],
+          "columns": ["project_id", "scene_id"],
           "isUnique": true
         }
       },
@@ -1519,9 +1465,7 @@
       "indexes": {
         "projects_per_modifica": {
           "name": "projects_per_modifica",
-          "columns": [
-            "updated_at"
-          ],
+          "columns": ["updated_at"],
           "isUnique": false
         }
       },
@@ -1593,11 +1537,7 @@
       "indexes": {
         "screenplays_per_versione": {
           "name": "screenplays_per_versione",
-          "columns": [
-            "project_id",
-            "stage",
-            "version"
-          ],
+          "columns": ["project_id", "stage", "version"],
           "isUnique": true
         }
       },
@@ -1648,10 +1588,7 @@
       "indexes": {
         "script_checks_per_film": {
           "name": "script_checks_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1723,10 +1660,7 @@
       "indexes": {
         "script_issues_per_controllo": {
           "name": "script_issues_per_controllo",
-          "columns": [
-            "check_id",
-            "position"
-          ],
+          "columns": ["check_id", "position"],
           "isUnique": false
         }
       },
@@ -1830,10 +1764,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "shot_plans_project_id_scene_number_pk": {
-          "columns": [
-            "project_id",
-            "scene_number"
-          ],
+          "columns": ["project_id", "scene_number"],
           "name": "shot_plans_project_id_scene_number_pk"
         }
       },
@@ -1903,11 +1834,7 @@
       "indexes": {
         "shots_per_scena": {
           "name": "shots_per_scena",
-          "columns": [
-            "project_id",
-            "scene_number",
-            "position"
-          ],
+          "columns": ["project_id", "scene_number", "position"],
           "isUnique": false
         }
       },
@@ -2008,11 +1935,7 @@
       "indexes": {
         "storyboard_attempts_per_tentativo": {
           "name": "storyboard_attempts_per_tentativo",
-          "columns": [
-            "shot_id",
-            "mode",
-            "attempt"
-          ],
+          "columns": ["shot_id", "mode", "attempt"],
           "isUnique": true
         }
       },
@@ -2070,10 +1993,7 @@
       "indexes": {
         "take_frames_per_inquadratura": {
           "name": "take_frames_per_inquadratura",
-          "columns": [
-            "shot_id",
-            "created_at"
-          ],
+          "columns": ["shot_id", "created_at"],
           "isUnique": false
         }
       },
@@ -2166,10 +2086,7 @@
       "indexes": {
         "takes_per_inquadratura": {
           "name": "takes_per_inquadratura",
-          "columns": [
-            "shot_id",
-            "created_at"
-          ],
+          "columns": ["shot_id", "created_at"],
           "isUnique": false
         }
       },
@@ -2279,16 +2196,12 @@
       "indexes": {
         "troupe_releases_id_unique": {
           "name": "troupe_releases_id_unique",
-          "columns": [
-            "id"
-          ],
+          "columns": ["id"],
           "isUnique": true
         },
         "troupe_releases_attivazione": {
           "name": "troupe_releases_attivazione",
-          "columns": [
-            "activated_at"
-          ],
+          "columns": ["activated_at"],
           "isUnique": false
         }
       },
@@ -2367,10 +2280,7 @@
       "indexes": {
         "uploads_per_film": {
           "name": "uploads_per_film",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },

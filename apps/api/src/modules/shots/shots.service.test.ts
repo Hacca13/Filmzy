@@ -15,6 +15,7 @@ import {
 import {
   createShotStore,
   openFilmzyDatabase,
+  type AudioStore,
   type LocationStore,
   type MoodboardStore,
   type ScriptCheckStore,
@@ -169,6 +170,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     moodboards,
     sheets,
     scriptChecks,
+    { clips: () => [] } as unknown as AudioStore,
   );
 }
 

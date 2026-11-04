@@ -17,6 +17,8 @@ import { and, asc, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import type { AttemptPatch } from './location-store.js';
 import type { FilmzyDb } from './open.js';
 import {
+  audioClips,
+  audioVariants,
   ignoredFlags,
   shotPlans,
   shots,
@@ -179,7 +181,8 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           eq(shots.projectId, plan.projectId),
           eq(shots.sceneNumber, plan.sceneNumber),
         );
-        // Le inquadrature di prima spariscono con i loro tentativi di storyboard e i loro take: i file restano.
+        // Le inquadrature di prima spariscono con i loro tentativi di storyboard, i take e gli effetti
+        // agganciati (la musica sta sulla scena, e resta): i file restano.
         const removed = tx
           .select({ id: shots.id })
           .from(shots)
@@ -190,6 +193,16 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           tx.delete(storyboardAttempts).where(inArray(storyboardAttempts.shotId, removed)).run();
           tx.delete(takes).where(inArray(takes.shotId, removed)).run();
           tx.delete(takeFrames).where(inArray(takeFrames.shotId, removed)).run();
+          const effects = tx
+            .select({ id: audioClips.id })
+            .from(audioClips)
+            .where(inArray(audioClips.shotId, removed))
+            .all()
+            .map((clip) => clip.id);
+          if (effects.length > 0) {
+            tx.delete(audioVariants).where(inArray(audioVariants.clipId, effects)).run();
+            tx.delete(audioClips).where(inArray(audioClips.id, effects)).run();
+          }
         }
         tx.delete(shots).where(scene).run();
         tx.delete(shotPlans)

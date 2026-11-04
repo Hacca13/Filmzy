@@ -17,6 +17,7 @@ import {
   openFilmzyDatabase,
   type LocationStore,
   type MoodboardStore,
+  type ScriptCheckStore,
   type SheetStore,
   type ShotStore,
   type TakeStore,
@@ -155,6 +156,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
   const locations = { referenceChanges: () => ({}) } as unknown as LocationStore;
   const moodboards = { changes: () => ({ scenes: {} }) } as unknown as MoodboardStore;
   const sheets = { sheetChanges: () => sheetChanges } as unknown as SheetStore;
+  const scriptChecks = { latest: () => undefined } as unknown as ScriptCheckStore;
   return new ShotsService(
     store,
     troupe,
@@ -166,6 +168,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     locations,
     moodboards,
     sheets,
+    scriptChecks,
   );
 }
 

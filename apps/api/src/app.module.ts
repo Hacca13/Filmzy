@@ -17,6 +17,7 @@ import { ProjectsModule } from './modules/projects/projects.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ScreenplayModule } from './modules/screenplay/screenplay.module.js';
+import { ScriptCheckModule } from './modules/script-check/script-check.module.js';
 import { SecretsModule } from './modules/secrets/secrets.module.js';
 import { SheetsModule } from './modules/sheets/sheets.module.js';
 import { ShotsModule } from './modules/shots/shots.module.js';
@@ -61,6 +62,7 @@ export class AppModule {
         ProjectsModule,
         RolesModule,
         ScreenplayModule,
+        ScriptCheckModule,
         SheetsModule,
         ShotsModule,
         SpendModule,

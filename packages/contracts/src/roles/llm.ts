@@ -216,11 +216,16 @@ export const scriptSupervisorInputSchema = z.object({
 
 export type ScriptSupervisorInput = z.infer<typeof scriptSupervisorInputSchema>;
 
+/**
+ * Una cosa che non torna. `code` è un'etichetta corta scelta dal modello (per esempio `plot`, `presence`,
+ * `costume`, `time_place`); `severity` è `warning` per un problema vero e `notice` per un dubbio che
+ * merita solo un'occhiata (diventa un avviso leggero).
+ */
 export const scriptSupervisorIssueSchema = z.object({
   sceneId: sceneIdSchema.optional(),
   shotId: shotIdSchema.optional(),
   code: z.string().min(1),
-  severity: z.string().min(1),
+  severity: z.enum(['warning', 'notice']),
   reason: z.string().min(1),
 });
 

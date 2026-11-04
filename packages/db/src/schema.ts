@@ -377,6 +377,44 @@ export const moodboardRuns = sqliteTable(
 export type MoodboardRunRow = typeof moodboardRuns.$inferSelect;
 
 /**
+ * Il controllo della storia (T5.2): la segretaria di edizione legge la stesura finale e le inquadrature
+ * pensate. Per film ne vale uno solo, l'ultimo. `fingerprint` riassume ciò che ha letto (la stesura e le
+ * inquadrature): se cambia, il controllo è vecchio.
+ */
+export const scriptChecks = sqliteTable(
+  'script_checks',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    /** Lo scontrino della chiamata. */
+    generationId: text('generation_id').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('script_checks_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type ScriptCheckRow = typeof scriptChecks.$inferSelect;
+
+/** Una cosa che non torna, nell'ordine in cui la segretaria l'ha detta. */
+export const scriptIssues = sqliteTable(
+  'script_issues',
+  {
+    id: text('id').primaryKey(),
+    checkId: text('check_id').notNull(),
+    position: integer('position').notNull(),
+    sceneId: text('scene_id'),
+    shotId: text('shot_id'),
+    code: text('code').notNull(),
+    light: integer('light', { mode: 'boolean' }).notNull(),
+    reason: text('reason').notNull(),
+  },
+  (table) => [index('script_issues_per_controllo').on(table.checkId, table.position)],
+);
+
+export type ScriptIssueRow = typeof scriptIssues.$inferSelect;
+
+/**
  * Le immagini caricate dall'utente (T4.8, D19): luoghi e oggetti del film. Il file sta tra gli `assets`
  * (id = checksum); qui il film, cosa sono e cosa ha detto il controllo.
  */

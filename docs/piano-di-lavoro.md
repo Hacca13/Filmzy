@@ -250,7 +250,7 @@ Fatto il 4/11 (D75, migrazione 0022): «Controlla la storia» in «Le inquadratu
 Fatto il 4/11 (D77, migrazione 0024): sulla card e sulla scena ogni giallo ha i suoi pulsanti, decisi dal server: «Rigenera» apre il riquadro dell'inquadratura (non spende da solo), «Rifai le inquadrature» con la stima, «Ignora» e, una volta ignorato, «Rimetti». Se la situazione cambia di nuovo il giallo torna. Provato col server vero e il fornitore finto. Manca: un rimedio guidato per R7 e per la segretaria, un elenco di tutti i gialli del film.
 **T5.4** Fornitori audio: mini-ricerca su musica ed effetti sonori (API, prezzi, diritti commerciali, durata massima), voci nel catalogo e prova d'ascolto. La ricerca del 13/10 copre solo la musica.
 _Fatto quando:_ musica ed effetti hanno un fornitore scelto e collegato dalla pagina Connessioni, e la scelta è registrata in `docs/decisioni.md`.
-Fatto il 4/11 (D78), tranne la prova d'ascolto: musica ed effetti con Stable Audio 3 su fal (circa 0,03 $ a clip, stessa chiave dei video), voci nel catalogo, compositore e rumorista collegati, visibili in Connessioni e in «Chi fa cosa». ElevenLabs Music è nel catalogo, spento di partenza e con una scritta: i suoi termini escludono i film (D79). **Manca la prova d'ascolto**: pochi centesimi, ma costa e i servizi veri sono rimandati (con T4.0); le funzioni `music` e `sound_effects` restano spente fino a T5.5.
+Fatto il 4/11 (D78), tranne la prova d'ascolto: musica ed effetti con Stable Audio 3 su fal (circa 0,03 $ a clip, stessa chiave dei video), voci nel catalogo, compositore e rumorista collegati, visibili in Connessioni e in «Chi fa cosa». ElevenLabs Music e Suno non si offrono: chi li aggiunge a mano vede un avviso (D79). **Manca la prova d'ascolto**: pochi centesimi, ma costa e i servizi veri sono rimandati (con T4.0); le funzioni `music` e `sound_effects` restano spente fino a T5.5.
 **T5.5** Tracce audio: tabelle `audio_tracks`, `audio_clips` e `audio_variants`, ruoli `composer`, `sfx_artist` e `sound_planner` («Suggerisci i suoni»), adapter audio, funzioni `music` e `sound_effects`. Caricamento di file propri su qualunque traccia; i file caricati non vanno mai a un fornitore AI (D27).
 _Fatto quando:_ la musica di una scena e un effetto su un'inquadratura si generano, si cambiano tra le varianti e si eliminano senza toccare il video; un file caricato finisce nel mix senza uscire dal computer.
 **T5.6** Editor delle tracce: Video (audio originale spento), Dialoghi (registrazioni caricate, come voce fuori campo), Musica ed Effetti, con muto e volume; pannello del blocco (descrizione, «Genera» con «Cambia servizio» (T3.1), «Cambia» tra le varianti, «Carica un file», «Elimina»).
@@ -274,8 +274,6 @@ _Fatto quando:_ da un computer senza Node l'installatore avvia l'app, un film di
 _Fatto quando:_ almeno 5 persone non tecniche installano Filmzy, collegano i loro servizi e finiscono un corto da sole.
 
 ## Fuori dal codice
-
-- **ElevenLabs Music e Suno (D79):** far leggere a un legale se la scritta basta. I termini di ElevenLabs vietano di offrire i modelli tramite altri programmi: il rischio può ricadere su chi distribuisce Filmzy, non solo su chi lo usa.
 
 - **Musica ed effetti (D78):** far leggere a un legale la licenza Stability (Community) per i film degli utenti, e chiedere a fal o a Stability conferma scritta che valga anche per chi usa i modelli tramite fal.
 

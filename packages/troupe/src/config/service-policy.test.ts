@@ -6,7 +6,7 @@ import type { ModelEntry } from '@filmzy/contracts';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { TroupeConfig } from './load-files.js';
-import { loadSeedConfig, modelOf, roleOf, SEED_CONFIG_DIR } from './seed.fixtures.js';
+import { loadSeedConfig, modelOf, SEED_CONFIG_DIR } from './seed.fixtures.js';
 import { validateServicePolicy } from './service-policy.js';
 
 let seed: TroupeConfig;
@@ -26,7 +26,6 @@ function withService(service: {
   provider_model?: string;
   connection?: string;
   kind?: 'music' | 'voice';
-  off_by_default?: boolean;
 }): TroupeConfig {
   const copy = structuredClone(seed);
   copy.models.nuovo = { ...modelOf(seed, 'music-stable-audio-3'), ...service } as ModelEntry;
@@ -39,9 +38,8 @@ async function tempConfigDir(): Promise<string> {
   return dir;
 }
 
-describe('i servizi con termini da conoscere (D79)', () => {
-  it('il seme non avvisa: ElevenLabs Music è spento e ha la scritta accanto all’interruttore', async () => {
-    expect(modelOf(seed, 'music-elevenlabs').off_by_default).toBe(true);
+describe('i servizi che Filmzy non offre (D79)', () => {
+  it('il seme non ne offre nessuno', async () => {
     expect(await validateServicePolicy(seed, SEED_CONFIG_DIR)).toEqual([]);
   });
 
@@ -63,17 +61,6 @@ describe('i servizi con termini da conoscere (D79)', () => {
     expect(issues[0]?.message).toContain('«La mia musica»');
     expect(issues[0]?.message).toContain('escludono i film');
     expect(issues[0]?.message).toContain('una tua responsabilità');
-  });
-
-  it('avvisa di un servizio spento di partenza se un ruolo lo usa: non ha davanti l’interruttore', async () => {
-    const config = structuredClone(seed);
-    config.roles.composer = { ...roleOf(config, 'composer'), model: 'music-elevenlabs' };
-
-    const issues = await validateServicePolicy(config, SEED_CONFIG_DIR);
-
-    expect(issues).toEqual([
-      expect.objectContaining({ severity: 'warning', modelId: 'music-elevenlabs' }),
-    ]);
   });
 
   it('riconosce ElevenLabs Music anche se passa da un altro fornitore', async () => {

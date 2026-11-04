@@ -43,14 +43,6 @@ function provider(extra: Partial<ProviderState> = {}): ProviderState {
   };
 }
 
-describe('il prezzo a minuto (D79)', () => {
-  it('si dice al minuto', () => {
-    expect(
-      formatPrice({ unit: 'per_started_minute', value: 0.6, checked: '2026-11-04' }),
-    ).toContain('al minuto');
-  });
-});
-
 describe('il prezzo di una clip (D78)', () => {
   it('si dice a clip', () => {
     expect(formatPrice({ unit: 'per_audio', value: 0.03, checked: '2026-11-04' })).toContain(

@@ -34,7 +34,7 @@ export class UserSettingsService {
 
 /**
  * Le scelte quando non ce n'è ancora nessuna: «tutti i servizi attivi» (§4.3), cioè quelli non
- * ritirati di un fornitore acceso, tranne quelli che l'utente deve accendere da sé (D79). Si scrivono per
+ * ritirati di un fornitore acceso. Si scrivono per
  * intero alla prima modifica perché, appena esiste una riga, il filtro sugli attivati vale: una
  * riga con l'elenco vuoto spegnerebbe tutto.
  */
@@ -43,9 +43,7 @@ export function implicitSettings(config: TroupeConfigData): UserSettings {
     enabledModelIds: Object.entries(config.models)
       .filter(
         ([, model]) =>
-          model.status !== 'retired' &&
-          model.off_by_default !== true &&
-          config.connections[model.connection]?.enabled === true,
+          model.status !== 'retired' && config.connections[model.connection]?.enabled === true,
       )
       .map(([id]) => id),
     defaultModels: {},

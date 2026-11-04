@@ -64,17 +64,3 @@ describe('mediaCostUsd', () => {
     ).toBeUndefined();
   });
 });
-
-describe('il prezzo a minuto cominciato (D79)', () => {
-  const pricing = { unit: 'per_started_minute', value: 0.6, checked: '2026-11-04' } as const;
-
-  it('un minuto cominciato si paga intero', () => {
-    expect(mediaCostUsd(pricing, { seconds: 30 })).toBeCloseTo(0.6);
-    expect(mediaCostUsd(pricing, { seconds: 60 })).toBeCloseTo(0.6);
-    expect(mediaCostUsd(pricing, { seconds: 61 })).toBeCloseTo(1.2);
-  });
-
-  it('senza durata non si inventa un costo', () => {
-    expect(mediaCostUsd(pricing, undefined)).toBeUndefined();
-  });
-});

@@ -61,29 +61,14 @@ describe('musica ed effetti (T5.4, D78)', () => {
     });
   });
 
-  it('ElevenLabs Music vuole la durata in millisecondi, come dice la pagina del fornitore (D79)', () => {
-    const model = modelOf(seed, 'music-elevenlabs');
-    const input = clip('music-elevenlabs', 30);
-
-    expect(translator('elevenlabs_music').check(input, model)).toEqual([]);
-    expect(translator('elevenlabs_music').build(input, model).providerInput).toEqual({
-      prompt: 'sparse piano, bittersweet',
-      music_length_ms: 30_000,
-    });
-  });
-
   it('una durata fuori dai limiti rende il servizio non adatto: niente tagli in silenzio (regola 6)', () => {
     const music = modelOf(seed, 'music-stable-audio-3');
     const sfx = modelOf(seed, 'sfx-stable-audio-3');
-    const elevenlabs = modelOf(seed, 'music-elevenlabs');
 
     expect(translator('stable_audio').check(clip('music-stable-audio-3', 500), music)).toEqual([
       expect.objectContaining({ field: 'capabilities.max_duration_s' }),
     ]);
     expect(translator('stable_audio').check(clip('sfx-stable-audio-3', 90), sfx)).toHaveLength(1);
-    expect(translator('elevenlabs_music').check(clip('music-elevenlabs', 2), elevenlabs)).toEqual([
-      expect.objectContaining({ reason: expect.stringContaining('da 3 fino a 600') as string }),
-    ]);
   });
 });
 

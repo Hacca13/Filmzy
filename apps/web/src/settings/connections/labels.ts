@@ -47,8 +47,6 @@ export function formatPrice(pricing: ModelPricing): string {
       return `${formatUsd(pricing.value)} a immagine`;
     case 'per_audio':
       return `${formatUsd(pricing.value)} a clip`;
-    case 'per_started_minute':
-      return `${formatUsd(pricing.value)} al minuto`;
     case 'per_mtok':
       // Il testo costa in base a quanto si scrive: un numero solo non direbbe la verità.
       return 'a consumo';

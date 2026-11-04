@@ -255,7 +255,7 @@ describe("«Cambia servizio»: l'elenco per l'utente (D36)", () => {
   });
 });
 
-describe('il costo di una clip a tempo (D79, D80)', () => {
+describe('il costo di una clip che si paga a tempo (D80)', () => {
   const clip: Omit<TranslateInput, 'modelId'> = {
     role: 'composer',
     prompt: 'sparse piano, bittersweet',
@@ -267,19 +267,34 @@ describe('il costo di una clip a tempo (D79, D80)', () => {
   };
   const settings: UserSettings = {
     ...noSettings,
-    enabledModelIds: ['music-stable-audio-3', 'music-elevenlabs'],
+    enabledModelIds: ['music-stable-audio-3', 'musica-al-secondo'],
   };
+  const withPricedBySecond = () =>
+    withSeed((config) => {
+      config.models['musica-al-secondo'] = {
+        ...modelOf(config, 'music-stable-audio-3'),
+        pricing: { unit: 'per_second', value: 0.01, checked: '2026-11-04' },
+      };
+    });
 
-  it('un minuto cominciato si stima intero: non è gratis, e i limiti di spesa lo vedono', () => {
+  it('si stima dalla durata: non è gratis, e i limiti di spesa lo vedono', () => {
     const chosen = route(
-      input({ roleId: 'composer', request: clip, chosenModelId: 'music-elevenlabs', settings }),
+      input({
+        roleId: 'composer',
+        config: withPricedBySecond(),
+        request: clip,
+        chosenModelId: 'musica-al-secondo',
+        settings,
+      }),
     );
 
-    expect(chosen.estimatedCostUsd).toBeCloseTo(0.6);
+    expect(chosen.estimatedCostUsd).toBeCloseTo(0.3);
   });
 
   it('non passa davanti al servizio che costa meno', () => {
-    const chosen = route(input({ roleId: 'composer', request: clip, settings }));
+    const chosen = route(
+      input({ roleId: 'composer', config: withPricedBySecond(), request: clip, settings }),
+    );
 
     expect(chosen.modelId).toBe('music-stable-audio-3');
   });

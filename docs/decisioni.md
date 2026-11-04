@@ -878,45 +878,43 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Scartate:** ElevenLabs Enterprise (contratto, non adatto a un programma con le chiavi dell'utente); Sonilo come predefinito (film su un piano che via fal non si può verificare); Suno (cause aperte, nessuna API). Un secondo servizio in «Cambia servizio» si aggiunge dopo la prova d'ascolto, se la licenza regge.
 **Conseguenze:** `pricing.unit: per_audio`; `capabilities.max_duration_s` per musica ed effetti; famiglia `stable_audio`. **Non fatto:** prova d'ascolto; il collegamento vero (tracce, lavori in coda, R8) è T5.5.
 
-## D79 · ElevenLabs Music e Suno: si possono usare, spenti e con una scritta che lascia la scelta all'utente — 04/11/2026
+## D79 · ElevenLabs Music e Suno non si offrono; chi li aggiunge a mano vede un avviso — 04/11/2026
 
-**Cambia** D78: ElevenLabs Music non è più escluso. **Decisione dell'autore**, dopo aver letto i rischi qui sotto: «se con la scritta sposto la responsabilità all'utente, lo metterei».
-**Decisione:**
-1. `config/ai/policy.yaml` elenca i servizi con termini da conoscere: tipi, testo da cercare, scritta. È un dato (regola d'oro 2) e non sta nella release, così non si perde pubblicando una bozza né ripristinandone una vecchia.
-2. La scritta compare in Connessioni, accanto all'interruttore («Da sapere prima di attivarlo»). «Chi fa cosa» e gli altri elenchi mostrano solo i servizi attivati, quindi non si arriva a usarne uno senza averla avuta davanti. Chi aggiunge il servizio a mano nelle impostazioni avanzate vede un avviso (`service_terms_notice`), che non ferma la pubblicazione. Senza il file, o con un file rotto, non si pubblica: la scritta sparirebbe senza dirlo.
-3. **Spento di partenza** (`off_by_default`): lo accende l'utente. Resta la regola delle impostazioni prudenti (D19, D28): si cambiano, ma con un'avvertenza.
-4. **ElevenLabs Music passa da fal** (`fal-ai/elevenlabs/music`): stessa chiave dei video, nessun adapter nuovo. Costa 0,60 $ al minuto e un minuto cominciato si paga intero (nuova unità `per_started_minute`), contro 0,03 $ a clip di Stable Audio. Il modo diretto (0,15 $/min) chiederebbe un adapter e una chiave in più. La durata va in millisecondi (`duration_ms`). Non è mai stato provato.
-5. **Suno non è nel catalogo:** la scritta è pronta, ma collegarlo chiede un adapter, e per scriverlo servono le istruzioni della sua API ufficiale, che stanno dietro il login. L'autore dice di averla usata: resta da capire se era quella ufficiale. I rivenditori non si collegano: i termini di Suno vietano copie ottenute fuori dai suoi canali.
-6. Il testo si cerca all'inizio delle parole di id, nome e id presso il fornitore del servizio e di id, nome, adapter e indirizzo della connessione: trova anche chi passa da un rivenditore e non scambia «nessuno» per Suno. Un nome inventato passa: serve a informare, non a sorvegliare.
-7. ElevenLabs ha la scritta per la **sola musica**: voci ed effetti non stanno sotto i termini di Eleven Music. I termini degli effetti non si sono letti in dettaglio: vanno letti prima di aggiungerli.
-8. Caricare un brano fatto altrove resta possibile (D27, con T5.5) e senza scritta: Filmzy non vede da dove viene un file.
-
+**Cambia** D78: la voce `music-elevenlabs` esce dal catalogo. **Decisione dell'autore:** «se può rivalersi su di me, togli; comunque metti l'avviso se l'utente prova a metterlo». La versione provata per qualche ora (i due servizi offerti, spenti di partenza, con una scritta) è stata tolta quando si è chiarito che la scritta non copre chi distribuisce il programma.
 **Cosa dicono i termini (4/11):**
-- **ElevenLabs:** non ha una clausola per l'uso personale; l'esclusione di film, TV e radio sta nella riga dell'uso commerciale. §4.3 e §4.8(e) vietano di mettere i modelli a disposizione tramite applicazioni proprie o di terzi, salvo permesso scritto.
-- **Suno:** ammette l'uso personale e non commerciale sul piano gratuito e quello commerciale sui piani a pagamento. Non parla di API né di film.
+- **ElevenLabs:** escludono film, TV e radio dall'uso commerciale su tutti i piani tranne Enterprise Music; §4.3 e §4.8(e) vietano di mettere i modelli a disposizione tramite applicazioni proprie o di terzi, salvo permesso scritto. Riguarda il programma, non il film: può ricadere su chi distribuisce Filmzy, con qualunque scritta. Passare da fal non è una garanzia: la pagina di `fal-ai/elevenlabs/music` dice solo «Commercial use».
+- **Suno:** ammette l'uso personale sul piano gratuito e quello commerciale sui piani a pagamento, e vieta le copie ottenute fuori dai suoi canali. L'accesso ufficiale sta dietro il login.
+- **`sunoapi.org`** (segnalato dall'autore, che ne ha usato le API) **non è Suno:** la documentazione non dice chi lo gestisce e non collega termini, e una ricerca lo conferma come servizio di terzi. Passare da lì è proprio ciò che i termini di Suno vietano.
 
-**Rischio da non dimenticare:** la scritta informa l'utente e mette su di lui il modo in cui usa il film, ma **non è detto che sposti tutta la responsabilità**. Il divieto di offrire i modelli tramite altri programmi riguarda il programma: può ricadere su chi distribuisce Filmzy, e ElevenLabs o fal possono chiudere l'accesso. Non cambia quello che i termini permettono, e una scritta non vincola nessuno come un contratto. Passare da fal può spostare il problema, ma le pagine di fal dicono solo «Commercial use», senza condizioni. Per questo c'è una voce in «Fuori dal codice»: da far leggere a un legale prima del rilascio. **Non è un parere legale.**
-**Scartate:** l'errore che impediva di aggiungerli (la prima versione di questa decisione, cambiata lo stesso giorno); ElevenLabs acceso di partenza.
-**Conseguenze:** `servicePolicyFileSchema`, `off_by_default`, `ServiceState.termsNotice`, `per_started_minute`, `duration_ms`, famiglia `elevenlabs_music`, `readConfigFile` condiviso.
+**Decisione:**
+1. Filmzy non offre nessuno dei due. Nel catalogo restano i soli servizi con un testo che regge (D78).
+2. `config/ai/policy.yaml` elenca i servizi da segnalare: tipi, testo da cercare, scritta. È un dato (regola d'oro 2) e non sta nella release, così non si perde pubblicando o ripristinando.
+3. **Chi li aggiunge a mano** dalle impostazioni avanzate può farlo, ma vede un avviso (`service_terms_notice`) che non ferma la pubblicazione, e in Connessioni la stessa scritta accanto all'interruttore. La procedura guidata non li propone. Senza il file, o con un file rotto, non si pubblica: la scritta sparirebbe senza dirlo.
+4. Il testo si cerca all'inizio delle parole di id, nome e id presso il fornitore del servizio e di id, nome, adapter e indirizzo della connessione: trova anche chi passa da un rivenditore e non scambia «nessuno» per Suno. Un nome inventato passa: serve a informare, non a sorvegliare.
+5. ElevenLabs ha la scritta per la **sola musica**: le voci non stanno sotto i termini di Eleven Music e i loro termini vanno letti prima di aggiungerle (Fase 2). Stessa cosa per gli effetti.
+6. Caricare un brano fatto altrove resta possibile (D27, con T5.5), senza scritta: Filmzy non vede da dove viene un file. Lo sceglie l'utente, con il suo piano.
+
+**Rischio che resta:** il codice è libero e l'utente può aggiungere ciò che vuole. Filmzy non lo offre e lo dice: è il massimo che si può fare senza sorvegliarlo. **Non è un parere legale.**
+**Scartate:** l'errore che impediva di aggiungerli (prima versione: l'autore ha preferito un avviso); offrirli spenti con una scritta; collegare `sunoapi.org`.
+**Conseguenze:** `servicePolicyFileSchema`, `ServiceState.termsNotice`, `readConfigFile` condiviso.
 
 ## D80 · Controllo di T5.1–T5.4 con Opus xhigh: cosa si è corretto e cosa no — 04/11/2026
 
 **Realizza** la richiesta dell'autore di far rileggere a Opus xhigh il lavoro fatto con effort medium. Sono uscite 15 segnalazioni, verificate una per una sul codice.
 **Corrette:**
-1. **La stima di una clip a tempo era 0 $** (errore di D79): il calcolo passava i secondi solo ai video, quindi ElevenLabs Music non contava per i limiti di spesa e passava davanti a Stable Audio. Ora si guarda l'unità del prezzo. Il costo vero segue la stima, come per i video: fal non dice la durata.
+1. **La stima di una clip audio a tempo era 0 $**: il calcolo passava i secondi solo ai video, quindi un servizio del genere non contava per i limiti di spesa e passava davanti agli altri. Ora si guarda l'unità del prezzo. Il costo vero segue la stima, come per i video: fal non dice la durata.
 2. **Una riparazione non si contava** (da T1.x, tutti i ruoli di testo): lo scontrino teneva i consumi dell'ultima chiamata, e una risposta fuori schema vista dall'adapter non ne aveva. Ora si sommano tutte, anche quelle finite male.
 3. **Rifare il piano senza avviso** (T5.3): la conferma guardava solo video e storyboard scelti, ma si perdono anche i tentativi non scelti, le immagini e i lavori in corso. Lo decide il server (`ScenePlan.hasWork`), il testo lo dice e il riquadro si porta in vista.
 4. **R2 tornava dopo «Ignora»** (T5.1): la chiave dipendeva dalle parole. Ora dipende da cosa è diverso: id e testo normalizzato. Riscrivere la stessa uscita o rinominare un luogo non la cambia.
 5. **R3 e R6 passavano senza aver rifatto niente** (T5.1, D76.4 l'aveva corretto solo per i take): contava l'ultimo tentativo riuscito. Ora conta la variante scelta, o l'ultimo tentativo se non ce n'è, e fra storyboard e ultimo fotogramma il più vecchio.
 6. **Una nota «nessuno» spegneva R1, e ogni nota spegneva R2** (T5.1): le note che non dichiarano niente non si tengono, e R2 non guarda la nota, scritta pensando all'uscita di prima. Può dare un giallo in più: si ignora.
-7. **Una durata audio fuori dai limiti si tagliava in silenzio** (D78): contro la regola 6. Ora il servizio non è adatto (`no_eligible_model`). Nuovo `min_duration_s`.
+7. **Una durata audio fuori dai limiti si tagliava in silenzio** (D78): contro la regola 6. Ora il servizio non è adatto (`no_eligible_model`).
 8. **Una scena da rifare dava gialli** (contro D74.7), con «Ignora» come sola azione.
-9. **Senza `policy.yaml` la scritta spariva e il servizio si accendeva** (D79): ora un servizio spento di partenza non si accende, e rimesso il file non serve riavviare. La procedura guidata non propone un servizio con la scritta, e un ruolo che ne usa uno spento avvisa.
+9. **Senza `policy.yaml` la scritta spariva fino al riavvio** (D79): ora rimesso il file torna da sola. La procedura guidata non propone un servizio con la scritta.
 10. **Il controllo della storia ripagava per poco** (T5.2): un id nullo o un motivo vuoto non chiedono più una riparazione: li sistema `settleIssues`.
 
 **Non corrette, con il perché:**
 - Le cinque funzioni dei gialli «cambiato dopo il lavoro» si somigliano, ma non c'è la differenza di comportamento segnalata: `changed > worked` e `worked >= changed → salta` dicono la stessa cosa. Si tengono: sono corte e leggibili, e R3 è diversa.
-- `resolveRole` senza impostazioni usa un servizio spento di partenza se il ruolo lo dichiara: è una scelta esplicita nelle impostazioni avanzate, che ora avvisa.
 - Letture ripetute nel percorso di «Ignora» e del controllo: poco lavoro su SQLite locale. Si è tolta solo quella doppia in `plans`.
 - `severity` del controllo resta chiusa: un valore sconosciuto merita la riparazione.
 

@@ -82,7 +82,6 @@ export class ConnectionsService {
   ): Promise<ConnectionsOverview> {
     const { config } = await this.effective();
     const own = this.modelsOf(config, connectionId);
-    const policy = await this.servicePolicy();
 
     const unknown = modelIds.find((id) => !own.has(id));
     if (unknown !== undefined) {
@@ -95,9 +94,6 @@ export class ConnectionsService {
       const wasEnabled = new Set(settings.enabledModelIds);
       for (const id of modelIds.filter((candidate) => !wasEnabled.has(candidate))) {
         this.assertCanEnable(config, connectionId, id, own.get(id));
-        if (policy === undefined && own.get(id)?.off_by_default === true) {
-          throw domainError(409, 'no_eligible_model', { details: { connectionId, modelId: id } });
-        }
       }
 
       const wanted = new Set(modelIds);
@@ -214,8 +210,7 @@ export class ConnectionsService {
 
   /**
    * Il file non cambia mentre il programma gira: una volta letto si tiene. Se manca o è rotto la pagina
-   * resta usabile, ma ci si riprova alla prossima richiesta e i servizi spenti di partenza non si accendono:
-   * l'utente non avrebbe davanti la loro scritta (D79).
+   * resta usabile e ci si riprova alla prossima richiesta; la pubblicazione si ferma e lo spiega (D79).
    */
   private async servicePolicy(): Promise<ServicePolicyFile | undefined> {
     if (this.policy !== undefined) return this.policy;

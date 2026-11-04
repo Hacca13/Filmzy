@@ -33,11 +33,9 @@ export function serviceTermsNotices(
 }
 
 /**
- * Avvisa di chi aggiunge a mano un servizio con termini da conoscere (D79): non ferma la pubblicazione,
- * la scelta è dell'utente. Il file si legge a ogni controllo, come le istruzioni, così una release non
- * può portarsi dietro un elenco più corto; senza il file non si pubblica, perché la scritta sparirebbe
- * senza dirlo. Un servizio spento di partenza non avvisa qui, finché nessun ruolo lo usa: la sua scritta
- * sta accanto all'interruttore.
+ * Avvisa di chi aggiunge a mano un servizio che Filmzy non offre (D79): non ferma la pubblicazione, la
+ * scelta è dell'utente. Il file si legge a ogni controllo, come le istruzioni, così una release non può
+ * portarsi dietro un elenco più corto; senza il file non si pubblica, perché la scritta sparirebbe senza dirlo.
  */
 export async function validateServicePolicy(
   config: TroupeConfig,
@@ -48,7 +46,7 @@ export async function validateServicePolicy(
 
   return [...serviceTermsNotices(config, data)].flatMap(([modelId, notice]) => {
     const model = config.models[modelId];
-    return model === undefined || (model.off_by_default === true && !usedByRole(modelId, config))
+    return model === undefined
       ? []
       : [
           {
@@ -61,12 +59,6 @@ export async function validateServicePolicy(
           },
         ];
   });
-}
-
-function usedByRole(modelId: string, config: TroupeConfig): boolean {
-  return Object.values(config.roles).some(
-    (role) => role?.model === modelId || role?.routing?.candidates.includes(modelId) === true,
-  );
 }
 
 /**

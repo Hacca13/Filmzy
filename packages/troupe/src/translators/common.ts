@@ -21,7 +21,6 @@ export type RequestFieldName =
   | 'mask'
   | 'variants'
   | 'duration_s'
-  | 'duration_ms'
   | 'resolution'
   | 'aspect_ratio'
   | 'audio';
@@ -53,17 +52,10 @@ export function inputModeOf(inputs: readonly MediaInput[]): string {
 export function commonIssues(input: TranslateInput, model: ModelEntry): TranslateIssue[] {
   const issues: TranslateIssue[] = [];
   if ((model.kind === 'music' || model.kind === 'sfx') && input.durationS !== undefined) {
-    const { min_duration_s: min, max_duration_s: max } = model.capabilities;
-    if (
-      (max !== undefined && input.durationS > max) ||
-      (min !== undefined && input.durationS < min)
-    ) {
-      const limits = [
-        ...(min === undefined ? [] : [`da ${String(min)}`]),
-        ...(max === undefined ? [] : [`fino a ${String(max)}`]),
-      ].join(' ');
+    const max = model.capabilities.max_duration_s;
+    if (max !== undefined && input.durationS > max) {
       issues.push({
-        reason: `fa clip ${limits} secondi, qui ne servono ${String(input.durationS)}`,
+        reason: `fa clip fino a ${String(max)} secondi, qui ne servono ${String(input.durationS)}`,
         field: 'capabilities.max_duration_s',
       });
     }

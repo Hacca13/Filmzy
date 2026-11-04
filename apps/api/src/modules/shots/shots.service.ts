@@ -32,7 +32,7 @@ import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { chainFlags, type PreviousScene } from './chain-flags.js';
+import { chainFlags, type Names, type PreviousScene } from './chain-flags.js';
 import {
   characterSheetFlags,
   cinematographyChangeFlags,
@@ -43,7 +43,14 @@ import {
   oldestWork,
   removedCharacterFlags,
 } from './continuity.js';
-import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
+import {
+  hashScene,
+  isStale,
+  sceneIdOf,
+  settleShots,
+  usableExit,
+  type KnownIds,
+} from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
 
@@ -96,32 +103,13 @@ export class ShotsService {
       takeAt: this.takes.lastTakeAt(projectId),
     };
 
-    // R2 guarda la scena pensata subito prima: si tiene a mano mentre si scorrono le scene in ordine.
-    let before: PreviousScene | undefined;
-    const scenes = final.screenplay.scenes.map((scene) => {
-      const plan = stored.get(scene.number);
-      const current = scenePlan(scene, plan, known, extras);
-      if (plan === undefined) return current;
-      const plannedAt = Date.parse(plan.createdAt);
-      const chained = current.stale
-        ? current
-        : {
-            ...current,
-            flags: mergeFlags(
-              chainFlags({ shots: plan.shots, plannedAt, before, names: known.names }),
-              current.flags,
-            ),
-          };
-      // Un piano vecchio non vale come punto di partenza (lo stesso criterio di `exitBefore`).
-      const last = plan.shots.at(-1);
-      before =
-        current.stale || last === undefined ? undefined : { exit: last.continuity.exit, plannedAt };
-      return chained;
-    });
+    const scenes = final.screenplay.scenes.map((scene) =>
+      scenePlan(scene, stored.get(scene.number), known, extras),
+    );
 
     return {
       finalVersionId: final.id,
-      scenes,
+      scenes: addChainFlags(scenes, stored, known.names),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
         label,
@@ -264,8 +252,7 @@ export class ShotsService {
       (scene) => scene.number === before?.sceneNumber,
     );
     if (before === undefined || beforeScene === undefined) return null;
-    if (isStale(beforeScene, before, known)) return null;
-    return before.shots.at(-1)?.continuity.exit ?? null;
+    return usableExit(before, isStale(beforeScene, before, known)) ?? null;
   }
 
   private async config(): Promise<TroupeConfig> {
@@ -310,6 +297,36 @@ const forShots = <T>(
       return value === undefined ? [] : [[shot.id, value]];
     }),
   );
+
+/**
+ * R1 e R2 di ogni scena. R2 guarda la scena pensata subito prima, che fa da punto di partenza solo se
+ * il suo piano vale ancora (lo stesso criterio di `exitBefore`); una scena da rifare non dà gialli di
+ * continuità.
+ */
+function addChainFlags(
+  scenes: readonly ScenePlan[],
+  stored: ReadonlyMap<number, StoredShotPlan>,
+  names: Names,
+): ScenePlan[] {
+  let before: PreviousScene | undefined;
+  return scenes.map((current) => {
+    const plan = stored.get(current.sceneNumber);
+    if (plan === undefined) return current;
+    const plannedAt = Date.parse(plan.createdAt);
+    const exit = usableExit(plan, current.stale);
+    const chained = current.stale
+      ? current
+      : {
+          ...current,
+          flags: mergeFlags(
+            chainFlags({ shots: plan.shots, plannedAt, before, names }),
+            current.flags,
+          ),
+        };
+    before = exit === undefined ? undefined : { exit, plannedAt };
+    return chained;
+  });
+}
 
 /** Una scena della stesura con il suo piano, se c'è, e ciò che la card mostra di ogni sua inquadratura. */
 function scenePlan(

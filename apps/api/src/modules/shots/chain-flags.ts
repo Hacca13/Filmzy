@@ -26,10 +26,6 @@ export interface ChainInput {
   names: Names;
 }
 
-/**
- * Il testo libero lo scrive un modello: «Sera», «sera.» e «di sera» non si distinguono a occhio, quindi
- * si confrontano senza badare a maiuscole, accenti e punteggiatura (ma «di sera» e «notte» sì).
- */
 const plain = (text: string): string =>
   text
     .toLowerCase()
@@ -37,6 +33,32 @@ const plain = (text: string): string =>
     .replace(/\p{M}/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
+
+/** Parole che non cambiano il senso di un'ora o di un abito: «di sera» e «sera» sono la stessa cosa. */
+const FILLER_WORDS = new Set(
+  'a al alla dal dalla di del della il in la le lo nel nella un una e'.split(' '),
+);
+
+const wordsOf = (text: string): Set<string> =>
+  new Set(
+    plain(text)
+      .split(' ')
+      .filter((word) => word !== '' && !FILLER_WORDS.has(word)),
+  );
+
+/**
+ * Il testo libero lo scrive un modello, e non lo ripete sempre uguale: due testi dicono la stessa cosa se
+ * le parole di uno stanno tutte nell'altro, senza badare a maiuscole, accenti, punteggiatura e
+ * articoli («sera», «Sera.» e «tarda sera»; «giacca blu» e «giacca blu scura»), ma «sera» e «notte», o
+ * «giacca blu» e «giacca rossa», no.
+ */
+const sameText = (a: string, b: string): boolean => {
+  const first = wordsOf(a);
+  const second = wordsOf(b);
+  if (first.size === 0 || second.size === 0) return plain(a) === plain(b);
+  const [fewer, more] = first.size <= second.size ? [first, second] : [second, first];
+  return [...fewer].every((word) => more.has(word));
+};
 
 const quoted = (text: string): string => `«${text}»`;
 
@@ -55,7 +77,7 @@ export function continuityDifferences(
       `il luogo cambia (da ${quoted(where(from.locationId))} a ${quoted(where(to.locationId))})`,
     );
   }
-  if (plain(from.timeOfDay) !== plain(to.timeOfDay)) {
+  if (!sameText(from.timeOfDay, to.timeOfDay)) {
     differences.push(`l'ora cambia (da ${quoted(from.timeOfDay)} a ${quoted(to.timeOfDay)})`);
   }
   for (const id of to.present.filter((present) => !from.present.includes(present))) {
@@ -67,18 +89,16 @@ export function continuityDifferences(
   for (const id of to.present.filter((present) => from.present.includes(present))) {
     const before = from.costumes[id];
     const after = to.costumes[id];
-    if (before !== undefined && after !== undefined && plain(before) !== plain(after)) {
+    if (before !== undefined && after !== undefined && !sameText(before, after)) {
       differences.push(`${who(id)} cambia d'abito (da ${quoted(before)} a ${quoted(after)})`);
     }
   }
 
-  const fromProps = new Map(from.props.map((prop) => [plain(prop), prop]));
-  const toProps = new Map(to.props.map((prop) => [plain(prop), prop]));
-  for (const [key, prop] of toProps) {
-    if (!fromProps.has(key)) differences.push(`compare ${quoted(prop)}`);
+  for (const prop of to.props.filter((item) => !from.props.some((old) => sameText(item, old)))) {
+    differences.push(`compare ${quoted(prop)}`);
   }
-  for (const [key, prop] of fromProps) {
-    if (!toProps.has(key)) differences.push(`sparisce ${quoted(prop)}`);
+  for (const prop of from.props.filter((item) => !to.props.some((now) => sameText(item, now)))) {
+    differences.push(`sparisce ${quoted(prop)}`);
   }
   return differences;
 }

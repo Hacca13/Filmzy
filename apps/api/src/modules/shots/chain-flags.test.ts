@@ -49,6 +49,22 @@ describe('cosa è diverso fra uscita ed entrata', () => {
     expect(continuityDifferences(state(), same, names)).toEqual([]);
   });
 
+  it("il testo libero detto in modo un po' diverso è lo stesso: «sera» e «di sera», «giacca blu» e «giacca blu scura»", () => {
+    const worded = state({
+      timeOfDay: 'di sera',
+      costumes: { anna: 'giacca blu scura' },
+      props: ['la valigia'],
+    });
+
+    expect(continuityDifferences(state(), worded, names)).toEqual([]);
+    expect(continuityDifferences(worded, state(), names)).toEqual([]);
+    // Ma un’ora o un colore diversi no.
+    expect(
+      continuityDifferences(state(), state({ costumes: { anna: 'giacca rossa' } }), names),
+    ).toHaveLength(1);
+    expect(continuityDifferences(state(), state({ timeOfDay: 'di notte' }), names)).toHaveLength(1);
+  });
+
   it('luogo, ora, persone, abiti e oggetti che cambiano sono detti con i nomi', () => {
     const to = state({
       locationId: 'stazione',

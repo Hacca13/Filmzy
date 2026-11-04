@@ -938,3 +938,19 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Limiti noti, segnalati dalla rilettura e tenuti:** una stesura riscritta che rinumera le scene lascia la musica sulla scena con quel numero, senza avviso (se la scena non c'è più non si genera: T5.6 deve mostrarlo); lo stesso file caricato in due film resta nella cartella del primo, come le foto (T4.8); R8 non vede un take partito prima dell'effetto e finito dopo.
 
 **Non fatto:** interfaccia (T5.6), mix (T5.7), cambiare muto e volume (T5.6); nessuna prova con i servizi veri (T4.0).
+
+## D82 · Editor delle tracce: linea del tempo dal server, audio originale per take — 05/11/2026
+
+**Realizza** T5.6 (D24, D27, D43, D81). Il mix è T5.7.
+**Decisione:**
+1. **La linea del tempo la calcola il server** (regola 8) con una funzione pura, che userà anche il montaggio. Una scena pensata dura quanto le sue inquadrature, una non pensata il tempo scritto nella stesura. La musica sta dentro la sua scena; un effetto o una voce possono sforare nell'inquadratura dopo, ma non oltre la fine del film.
+2. **Una clip senza posizione ha perso il suo posto:** è il limite lasciato da D81. Non sta sulle tracce, l'editor la elenca e si può solo togliere: non si genera.
+3. **L'audio originale si accende per un take,** non per un'inquadratura (D24): tornare a un altro take riparte spento. Accenderlo riapre la traccia, che parte muta: chi lo accende vuole sentirlo. Si controlla al clic se la clip ha un suono, non a ogni lettura: leggere ogni clip con ffmpeg a ogni apertura costerebbe secondi. Quindi l'icona non è spenta in anticipo come nel disegno: dice «generata senza audio» al clic.
+4. **«Carica un file» su un blocco** è una variante, subito in uso: non si perdono quelle generate, e il file non va a nessuno (D27). La durata del blocco non cambia, il mix taglia al suo posto.
+5. **Si genera quello che l'utente vede:** «Genera» salva prima il testo non ancora salvato.
+6. **«Elimina» chiede conferma solo se ci sono suoni generati,** perché si sono pagati e con la clip si perdono.
+7. Codici più precisi: `audioFile` per un file audio rifiutato (prima condivideva `file` con le foto e il messaggio parlava di foto), `music` per una seconda musica sulla scena (prima diceva che la scena non c'era più).
+
+**Non preso dal disegno:** miniature delle clip e forma d'onda (si ascolta col lettore del browser), proposte dentro le tracce (sono un elenco sopra), «Annulla» di una generazione in corso (il server non ha come fermarla).
+
+**Non fatto:** non è stato guardato in un browser, solo coi test; nessuna prova con i servizi veri (T4.0).

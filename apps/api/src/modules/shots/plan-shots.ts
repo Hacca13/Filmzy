@@ -162,7 +162,11 @@ export function settleShots(args: SettleArgs): ShotSpec[] {
       images: [],
       dialogue: shot.dialogue.filter((line) => characters.has(line.characterId)),
       cinematography: 'inherit',
-      continuity: { entry: state(shot.continuity.entry), exit: state(shot.continuity.exit) },
+      continuity: {
+        entry: state(shot.continuity.entry),
+        exit: state(shot.continuity.exit),
+        ...(shot.continuity.change === undefined ? {} : { change: shot.continuity.change }),
+      },
     };
   });
 }

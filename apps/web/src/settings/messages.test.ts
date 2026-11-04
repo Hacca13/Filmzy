@@ -203,7 +203,7 @@ describe('le foto caricate (T4.8)', () => {
 
     expect(describeError(refused('file'))).toContain('PNG, JPEG o WebP');
     expect(describeError(refused('locationId'))).toContain('luogo');
-    expect(describeError(refused('feature'))).toContain('spento');
+    expect(describeError(refused('feature'))).toContain('spenta');
   });
 
   it('il ritocco: la zona da dipingere, un’immagine che non si può ritoccare e una foto senza controllo', () => {

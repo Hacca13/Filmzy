@@ -48,6 +48,40 @@ beforeEach(async () => {
   };
 });
 
+describe('quando è partito il take che la card fa vedere (regole di continuità)', () => {
+  it('conta la partenza, non l’arrivo; il più recente, ma se ne è scelto uno vale quello', () => {
+    shots.replaceScene({
+      projectId: 'film-tempi',
+      sceneNumber: 1,
+      sceneHash: 'h',
+      screenplayId: 's',
+      shots: [shot('t1')],
+    });
+    const old = store.start('t1', kling);
+    const oldAt = clock.getTime();
+    tick();
+    store.finish(old.id, { status: 'succeeded', assetId: 'clip-1' });
+    tick();
+    const recent = store.start('t1', kling);
+    const recentAt = clock.getTime();
+    tick();
+    tick();
+    // Arriva molto dopo: conta comunque quando è partito.
+    store.finish(recent.id, { status: 'succeeded', assetId: 'clip-2' });
+    expect(store.lastTakeAt('film-tempi')).toEqual({ t1: recentAt });
+
+    store.choose('t1', old.id);
+    expect(store.lastTakeAt('film-tempi')).toEqual({ t1: oldAt });
+
+    // Un take fallito non conta.
+    store.choose('t1', undefined);
+    tick();
+    const failed = store.start('t1', kling);
+    store.finish(failed.id, { status: 'failed', errorCode: 'timeout' });
+    expect(store.lastTakeAt('film-tempi')).toEqual({ t1: recentAt });
+  });
+});
+
 describe('i take di un’inquadratura', () => {
   it('un take nasce in coda con il servizio scelto, senza clip né costo', () => {
     const take = store.start('a1', kling);

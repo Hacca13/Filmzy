@@ -432,6 +432,11 @@ describe('la continuità fra le inquadrature (T5.1)', () => {
         .map((flag) => flag.code);
     expect(await codesOf(1)).toEqual([]);
 
+    // Ripensata uguale: l'uscita non è cambiata, la scena 2 resta com'è.
+    await pause();
+    await service.plan(film.id, { sceneNumber: 1 });
+    expect(await codesOf(1)).toEqual([]);
+
     // La scena 1 viene ripensata e ora finisce di notte: la scena 2, fatta prima, non combacia più.
     await pause();
     planned = { ...proposal, shots: [withTime(shot, { exit: 'notte' })] };
@@ -468,6 +473,24 @@ describe('la continuità fra le inquadrature (T5.1)', () => {
     expect(plans.scenes[0]?.stale).toBe(true);
     expect(Object.keys(plans.scenes[0]?.flags ?? {})).toEqual([]);
     expect(Object.keys(plans.scenes[1]?.flags ?? {})).toEqual([]);
+  });
+});
+
+describe('R2: un taglio fra due scene non è un errore (T5.1)', () => {
+  it('se la differenza c’era già, ripensare la scena prima con la stessa uscita non ingiallisce niente', async () => {
+    const [shot] = proposal.shots;
+    if (shot === undefined) throw new Error("serve un esempio con un'inquadratura");
+    const service = build();
+    await service.plan(film.id, { sceneNumber: 1 });
+    // La scena 2 comincia all'alba, anche se la prima finisce al tramonto.
+    planned = { ...proposal, shots: [withTime(shot, { entry: 'alba' })] };
+    await service.plan(film.id, { sceneNumber: 2 });
+    planned = proposal;
+
+    await service.plan(film.id, { sceneNumber: 1 });
+
+    const plans = await service.plans(film.id);
+    expect(plans.scenes.flatMap((scene) => Object.values(scene.flags).flat())).toEqual([]);
   });
 });
 

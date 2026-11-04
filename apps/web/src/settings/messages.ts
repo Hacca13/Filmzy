@@ -69,7 +69,14 @@ const BY_INVALID_FIELD: Record<string, string> = {
   atS: 'Questo momento è oltre la fine del video. Scegline uno prima.',
   file: 'Questo file non è una foto che posso usare. Vanno bene PNG, JPEG o WebP, fino a 12 MB.',
   locationId: 'Il luogo di questa foto non c’è più. Aggiorna la pagina e riprova.',
-  feature: 'Il caricamento delle foto è spento nelle impostazioni.',
+  feature: 'Questa funzione è spenta nelle impostazioni.',
+  // Il moodboard (T4.10).
+  moodboard: 'Le immagini del moodboard sono già in lavorazione. Aspetta che finiscano.',
+  screenplay: 'Scrivi prima la storia: il moodboard parte da lì.',
+  // Il controllo della storia (T5.2).
+  shots:
+    'Non c’è ancora niente da controllare: pensa le inquadrature di almeno una scena (o rifai quelle da rifare).',
+  check: 'Il controllo della storia è già in corso. Aspetta che finisca.',
   mask: 'Dipingi prima la zona da ritoccare.',
   sceneId: 'Questa scena non c’è più nella storia. Aggiorna la pagina e riprova.',
   image: 'Questa immagine non si può ritoccare qui. Aggiorna la pagina e riprova.',

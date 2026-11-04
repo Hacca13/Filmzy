@@ -128,8 +128,8 @@ describe('cosa si tiene di ciò che risponde', () => {
     expect(settled[0]).not.toHaveProperty('shotId');
     expect(settled[1]).not.toHaveProperty('sceneId');
     expect(settled[1]).not.toHaveProperty('shotId');
-    // La scena 3 non ha inquadrature pensate: la segretaria non l'ha vista fra quelle da controllare.
-    expect(settled[2]).not.toHaveProperty('sceneId');
+    // La scena 3 non ha inquadrature pensate, ma la segretaria l'ha letta: l'id vale.
+    expect(settled[2]).toMatchObject({ sceneId: 'scene-3' });
     expect(settled[3]).not.toHaveProperty('sceneId');
   });
 

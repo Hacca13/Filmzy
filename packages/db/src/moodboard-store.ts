@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import {
   colorSchema,
@@ -175,15 +176,21 @@ export function createMoodboardStore(
     },
 
     saveText(projectId, sceneId, text) {
-      const at = now().getTime();
+      const notes = text.notes.trim();
       const values = {
         palette: JSON.stringify(text.palette),
-        notes: text.notes.trim(),
-        updatedAt: at,
+        notes,
+        updatedAt: now().getTime(),
       };
+      const sameAs = (row: { palette: string; notes: string } | undefined): boolean =>
+        (row?.notes ?? '') === notes &&
+        isDeepStrictEqual(row === undefined ? [] : parsePalette(row.palette), text.palette);
 
-      // Anche una parte svuotata resta in tabella: palette e consigli sono cambiati, e le regole (R9) lo ricordano.
+      // Salvare senza cambiare niente non è un cambiamento: la data resta, e le regole (R9) non avvisano.
+      // Una parte svuotata invece resta in tabella: palette e consigli sono cambiati, e le regole lo ricordano.
       if (sceneId === undefined) {
+        const film = db.select().from(moodboards).where(eq(moodboards.projectId, projectId)).get();
+        if (sameAs(film)) return;
         db.insert(moodboards)
           .values({ projectId, ...values })
           .onConflictDoUpdate({ target: moodboards.projectId, set: values })
@@ -196,6 +203,7 @@ export function createMoodboardStore(
         eq(moodboardScenes.sceneId, sceneId),
       );
       const existing = db.select().from(moodboardScenes).where(where).get();
+      if (sameAs(existing)) return;
       if (existing === undefined) {
         db.insert(moodboardScenes)
           .values({ id: randomUUID(), projectId, sceneId, ...values })

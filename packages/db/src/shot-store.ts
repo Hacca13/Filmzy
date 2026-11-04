@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  continuityStateSchema,
   shotStoryboardSchema,
   shotSpecSchema,
   storyboardModeSchema,
   sheetImageStatusSchema,
   storyboardAttemptSchema,
+  type ContinuityState,
   type ShotSpec,
   type ShotStoryboard,
   type StoryboardMode,
@@ -37,6 +39,8 @@ export interface NewShotPlan {
   generationId?: string;
   /** Ciò che l'aiuto regista ha spiegato (per esempio perché cambia la fotografia). */
   notes?: string;
+  /** L'uscita della scena prima che l'aiuto regista ha ricevuto, se c'era (R2). */
+  previousExit?: ContinuityState;
   shots: ShotSpec[];
 }
 
@@ -88,7 +92,11 @@ export interface ShotStore {
   chooseStoryboard: (shotId: string, assetId: string | undefined) => void;
   /** La variante scelta di ogni inquadratura del film che ne ha una. */
   chosenStoryboards: (projectId: string) => Record<string, string>;
-  /** Quando è arrivata l'ultima immagine riuscita (storyboard o ultimo fotogramma) di ogni inquadratura del film che ne ha una (ms). */
+  /**
+   * Quando è **partita** l'ultima immagine riuscita (storyboard o ultimo fotogramma) di ogni inquadratura del
+   * film che ne ha una (ms): un lavoro legge i suoi ingressi all'inizio, quindi ciò che cambia mentre lavora
+   * non è dentro il risultato.
+   */
   lastDrawnAt: (projectId: string) => Record<string, number>;
   /** Cosa si sta disegnando adesso (tentativo in coda o in lavorazione) per ogni inquadratura del film; l'ultimo fotogramma vince sullo storyboard. */
   drawing: (projectId: string, since: Date) => Record<string, StoryboardMode>;
@@ -133,6 +141,9 @@ function toPlan(row: ShotPlanRow, planShots: ShotRow[]): StoredShotPlan {
     screenplayId: row.screenplayId,
     ...(row.generationId === null ? {} : { generationId: row.generationId }),
     ...(row.notes === null ? {} : { notes: row.notes }),
+    ...(row.previousExit === null
+      ? {}
+      : { previousExit: continuityStateSchema.parse(JSON.parse(row.previousExit)) }),
     shots: planShots.map(toSpec),
     createdAt: new Date(row.createdAt).toISOString(),
   };
@@ -194,6 +205,8 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
             screenplayId: plan.screenplayId,
             generationId: plan.generationId ?? null,
             notes: plan.notes ?? null,
+            previousExit:
+              plan.previousExit === undefined ? null : JSON.stringify(plan.previousExit),
             createdAt: now().getTime(),
           })
           .returning()
@@ -384,7 +397,7 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
       if (shotIds.length === 0) return {};
 
       const done = db
-        .select({ shotId: storyboardAttempts.shotId, at: storyboardAttempts.updatedAt })
+        .select({ shotId: storyboardAttempts.shotId, at: storyboardAttempts.createdAt })
         .from(storyboardAttempts)
         .where(
           and(

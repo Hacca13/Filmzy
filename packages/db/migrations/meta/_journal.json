@@ -162,6 +162,13 @@
       "when": 1793788602213,
       "tag": "0022_controllo_storia",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793791967772,
+      "tag": "0023_piano_uscita_di_partenza",
+      "breakpoints": true
     }
   ]
 }

@@ -630,8 +630,8 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 
 - Ogni inquadratura ha uno stato di **entrata** e uno di **uscita**: luogo, ora, chi c'è, costumi, oggetti.
 - **Regole deterministiche**, immediate e gratuite:
-  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato (`continuity.change`); luogo, ora, persone, abiti e oggetti si confrontano, il testo libero senza badare a maiuscole e punteggiatura (D74);
-  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono: la prima inquadratura di una scena dipende dall'uscita della scena pensata subito prima, e diventa gialla se quella è stata ripensata dopo e ora non combacia più (D74);
+  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato (`continuity.change`); luogo, ora, persone, abiti e oggetti si confrontano, il testo libero con le stesse parole, senza badare a maiuscole, punteggiatura, articoli e preposizioni (D76);
+  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono: la prima inquadratura di una scena dipende dall'uscita della scena pensata subito prima, e diventa gialla se quell'uscita è cambiata rispetto a quella da cui il piano è partito (`shot_plans.previous_exit`) e ora non combacia più; una differenza che c'era già è un taglio, non un errore (D76);
   - **R3:** se la scheda di un personaggio cambia dopo un take (anche per un ritocco che tocca volto o abiti), diventano gialli i take con quel personaggio; oggi la scheda cambia quando il volto si blocca su un altro tentativo o si sblocca (D74);
   - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero (`projects.cinematography_changed_at`; un'inquadratura con una fotografia sua non la segue; D74);
   - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli (l'ispirazione non conta; D74);

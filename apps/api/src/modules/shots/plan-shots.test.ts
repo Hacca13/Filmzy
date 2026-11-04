@@ -102,6 +102,30 @@ function codeOf(call: () => unknown): string | undefined {
   return undefined;
 }
 
+describe('il cambiamento dichiarato', () => {
+  it('arriva fino alla scheda, altrimenti R1 lo segnalerebbe come un errore', () => {
+    const [proposed] = shotPlannerOutputSchema.parse(ROLE_OUTPUT_EXAMPLES.shot_planner).shots;
+    if (proposed === undefined) throw new Error('serve un esempio');
+    const input = shotPlannerInputSchema.parse(ROLE_INPUT_EXAMPLES.shot_planner);
+    const args = {
+      sceneId: 'scene-1',
+      scene: input.scene,
+      bible: input.bible,
+      movementIds: [proposed.intent.cameraMovement],
+    };
+    const change = 'Un anno dopo.';
+
+    const [declared] = settleShots({
+      ...args,
+      proposed: [{ ...proposed, continuity: { ...proposed.continuity, change } }],
+    });
+    const [plain] = settleShots({ ...args, proposed: [proposed] });
+
+    expect(declared?.continuity.change).toBe(change);
+    expect(plain?.continuity).not.toHaveProperty('change');
+  });
+});
+
 describe('hashScene', () => {
   it('è lo stesso per la stessa scena e cambia con il testo o con chi ci sta', () => {
     expect(hashScene(scene)).toBe(hashScene({ ...scene }));

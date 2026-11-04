@@ -34,6 +34,36 @@ const reference = (extra: Partial<MoodReference> = {}): MoodReference => ({
   ...extra,
 });
 
+describe('salvare senza cambiare niente', () => {
+  const amber = { hex: '#c2813a', name: 'Ambra' };
+
+  it('non è un cambiamento, per il film e per la scena: R9 non avvisa', () => {
+    store.saveText('film-same', undefined, { palette: [amber], notes: 'Luce calda.' });
+    store.saveText('film-same', 'scene-1', { palette: [amber], notes: 'Sera.' });
+    const before = store.changes('film-same');
+
+    clock = new Date(clock.getTime() + 60_000);
+    // Stesso contenuto, anche con le chiavi in un altro ordine e spazi in più nei consigli.
+    store.saveText('film-same', undefined, {
+      palette: [{ name: 'Ambra', hex: '#c2813a' }],
+      notes: ' Luce calda. ',
+    });
+    store.saveText('film-same', 'scene-1', { palette: [amber], notes: 'Sera.' });
+
+    expect(store.changes('film-same')).toEqual(before);
+
+    store.saveText('film-same', undefined, { palette: [amber], notes: 'Luce fredda.' });
+    expect(store.changes('film-same').film).toBe(clock.getTime());
+  });
+
+  it('una parte vuota che non c’è mai stata non si crea: non c’è niente da ricordare', () => {
+    store.saveText('film-vuoto', undefined, { palette: [], notes: '  ' });
+    store.saveText('film-vuoto', 'scene-1', { palette: [], notes: '' });
+
+    expect(store.changes('film-vuoto')).toEqual({ scenes: {} });
+  });
+});
+
 describe('il moodboard nel database (T4.10)', () => {
   it('un film senza moodboard ha una parte vuota e nessuna scena', () => {
     expect(store.get('film-1')).toEqual({
@@ -53,6 +83,7 @@ describe('il moodboard nel database (T4.10)', () => {
 
   it('una parte svuotata torna come all’inizio, ma si ricorda che è cambiata (R9)', () => {
     store.saveText('film-1', undefined, { palette: [amber], notes: 'x' });
+    store.saveText('film-1', 'scene-1', { palette: [amber], notes: 'y' });
     later();
     store.saveText('film-1', undefined, { palette: [], notes: '   ' });
     store.saveText('film-1', 'scene-1', { palette: [], notes: '' });

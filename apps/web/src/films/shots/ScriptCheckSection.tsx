@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { estimateScriptCheck, fetchScriptCheck, runScriptCheck } from '../../api/script-check';
 import { Chip, Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
+import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
@@ -68,7 +69,8 @@ export function ScriptCheckSection({ filmId, stamp, onChecked }: Props) {
 
   const estimateUsd =
     estimate.state.status === 'ready' ? estimate.state.data.estimate.estimatedCostUsd : undefined;
-  const view = check.state.status === 'ready' ? check.state.data : undefined;
+  // Mentre si rilegge resta il controllo di prima: l'elenco non lampeggia.
+  const view = useLastReady(check.state);
   const label =
     view === undefined || view.state === 'none' ? 'Controlla la storia' : 'Controlla di nuovo';
   const summary = view === undefined || view.state === 'none' ? undefined : checkSummary(view);

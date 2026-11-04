@@ -1,6 +1,7 @@
 import type {
   CameraMovement,
   ChangeShotBody,
+  ContinuityState,
   PlanSceneBody,
   PlanSceneEstimate,
   ScenePlan,
@@ -35,7 +36,7 @@ import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { addScriptFlags } from '../script-check/script-check.js';
 import { SCRIPT_CHECK_STORE } from '../script-check/tokens.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { chainFlags, type Names, type PreviousScene } from './chain-flags.js';
+import { chainFlags, type Names } from './chain-flags.js';
 import {
   characterSheetFlags,
   cinematographyChangeFlags,
@@ -126,7 +127,7 @@ export class ShotsService {
     };
   }
 
-  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms): immagini o video. */
+  /** Quando è partito il lavoro riuscito più vecchio di ogni inquadratura (ms): immagini o video. */
   private workedAt(projectId: string): Record<string, number> {
     return oldestWork(this.store.lastDrawnAt(projectId), this.takes.lastTakeAt(projectId));
   }
@@ -169,6 +170,7 @@ export class ShotsService {
       screenplayId: final.id,
       generationId: receipt.id,
       ...(data.notes === undefined ? {} : { notes: data.notes }),
+      ...(input.previousExit === null ? {} : { previousExit: input.previousExit }),
       shots,
     });
     this.projects.reach(projectId, 'shots');
@@ -278,7 +280,7 @@ interface PerShot {
   chosen: Readonly<Record<string, string>>;
   clips: Readonly<Record<string, string>>;
   working: Readonly<Record<string, Work>>;
-  /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è finito l'ultimo lavoro di ogni inquadratura (ms): servono ai gialli (R6). */
+  /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è partito il lavoro più vecchio di ogni inquadratura (ms): servono ai gialli (R6). */
   locationChanges: Readonly<Record<string, number>>;
   workedAt: Readonly<Record<string, number>>;
   /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
@@ -287,7 +289,7 @@ interface PerShot {
   /** Quando è cambiata la fotografia del film (R4). */
   cinematographyChangedAt: number | undefined;
   characterNames: Readonly<Record<string, string>>;
-  /** Quando sono cambiati palette e consigli del moodboard, e quando è finito l'ultimo take di ogni inquadratura (ms): servono ai gialli leggeri (R9). */
+  /** Quando sono cambiati palette e consigli del moodboard, e quando è partito il take che la card fa vedere (ms): servono ai gialli leggeri (R9). */
   moodboardChanges: MoodboardChanges;
   takeAt: Readonly<Record<string, number>>;
 }
@@ -316,22 +318,20 @@ function addChainFlags(
   stored: ReadonlyMap<number, StoredShotPlan>,
   names: Names,
 ): ScenePlan[] {
-  let before: PreviousScene | undefined;
+  let before: ContinuityState | undefined;
   return scenes.map((current) => {
     const plan = stored.get(current.sceneNumber);
     if (plan === undefined) return current;
-    const plannedAt = Date.parse(plan.createdAt);
-    const exit = usableExit(plan, current.stale);
     const chained = current.stale
       ? current
       : {
           ...current,
           flags: mergeFlags(
-            chainFlags({ shots: plan.shots, plannedAt, before, names }),
+            chainFlags({ shots: plan.shots, basedOn: plan.previousExit, before, names }),
             current.flags,
           ),
         };
-    before = exit === undefined ? undefined : { exit, plannedAt };
+    before = usableExit(plan, current.stale);
     return chained;
   });
 }

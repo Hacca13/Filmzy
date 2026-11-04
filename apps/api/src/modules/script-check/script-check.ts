@@ -48,11 +48,13 @@ export interface KnownPlaces {
 }
 
 export function placesOf(scenes: readonly ScenePlan[]): KnownPlaces {
-  const used = usableScenes(scenes);
   return {
-    sceneIds: new Set(used.map((scene) => sceneIdOf(scene.sceneNumber))),
+    // Le scene le legge tutte, anche quelle non ancora pensate; le inquadrature solo di quelle che valgono.
+    sceneIds: new Set(scenes.map((scene) => sceneIdOf(scene.sceneNumber))),
     shotScenes: new Map(
-      used.flatMap((scene) => scene.shots.map((shot) => [shot.id, shot.sceneId] as const)),
+      usableScenes(scenes).flatMap((scene) =>
+        scene.shots.map((shot) => [shot.id, shot.sceneId] as const),
+      ),
     ),
   };
 }

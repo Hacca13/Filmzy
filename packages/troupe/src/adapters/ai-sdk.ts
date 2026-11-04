@@ -137,11 +137,6 @@ function numberParam(value: string | number | boolean | undefined): number | und
   return typeof value === 'number' ? value : undefined;
 }
 
-/**
- * Traduce l'errore del fornitore in un codice di §4.10, perché è il codice che decide se si
- * riprova e cosa legge l'utente. Il messaggio non contiene mai la chiave (D25): si riporta solo
- * quello che il fornitore dice.
- */
 function usageOf(usage: {
   inputTokens?: number | undefined;
   outputTokens?: number | undefined;
@@ -152,6 +147,11 @@ function usageOf(usage: {
   };
 }
 
+/**
+ * Traduce l'errore del fornitore in un codice di §4.10, perché è il codice che decide se si
+ * riprova e cosa legge l'utente. Il messaggio non contiene mai la chiave (D25): si riporta solo
+ * quello che il fornitore dice.
+ */
 function toProviderError(error: unknown, req: LlmRequest, options: AdapterOptions): ProviderError {
   const details = {
     role: req.role,

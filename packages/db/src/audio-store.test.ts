@@ -50,6 +50,22 @@ describe('le tracce di un film', () => {
   });
 });
 
+describe('muto e volume di una traccia', () => {
+  it('si cambiano uno alla volta, e solo sulla traccia di quel film', () => {
+    const music_ = store.tracks('film-1').find((track) => track.kind === 'music');
+    if (music_ === undefined) throw new Error('doveva esserci la traccia');
+
+    expect(store.updateTrack('film-1', music_.id, { volume: 0.5 })).toBe(true);
+    expect(store.updateTrack('film-1', music_.id, { muted: true })).toBe(true);
+    expect(store.updateTrack('film-2', music_.id, { volume: 0 })).toBe(false);
+
+    expect(store.tracks('film-1').find((track) => track.id === music_.id)).toMatchObject({
+      muted: true,
+      volume: 0.5,
+    });
+  });
+});
+
 describe('le clip', () => {
   it('una clip nasce sulla traccia del suo tipo, senza varianti', () => {
     const clip = store.createClip(music);
@@ -91,6 +107,20 @@ describe('le clip', () => {
     store.createClip({ ...music, projectId: 'film-2' });
 
     expect(store.clips('film-1').map((clip) => clip.id)).toEqual([first.id, second.id]);
+  });
+
+  it('una clip si modifica, e l’atmosfera si può togliere', () => {
+    const clip = store.createClip(music);
+
+    store.updateClip(clip.id, { description: 'Un violino.', durationS: 12 });
+    expect(store.getClip(clip.id)?.clip).toMatchObject({
+      description: 'Un violino.',
+      durationS: 12,
+      mood: 'bittersweet',
+    });
+
+    store.updateClip(clip.id, { mood: null });
+    expect(store.getClip(clip.id)?.clip.mood).toBeUndefined();
   });
 
   it('una clip che non c’è non si trova', () => {
@@ -155,6 +185,22 @@ describe('le varianti', () => {
     expect(variant).toMatchObject({ status: 'succeeded', assetId: 'a-1' });
     expect(variant?.modelId).toBeUndefined();
     expect(store.getClip(clip.id)?.clip).toEqual(clip);
+  });
+
+  it('un file caricato su una clip che c’è già è una variante, subito in uso', () => {
+    const clip = store.createClip(music);
+    const generated = store.startVariant(clip.id, stable);
+    store.chooseVariant(clip.id, generated.id);
+    tick();
+
+    store.addUploadedVariant(clip.id, 'a-mio');
+
+    const updated = store.getClip(clip.id)?.clip;
+    const [latest] = updated?.variants ?? [];
+    expect(latest).toMatchObject({ status: 'succeeded', assetId: 'a-mio' });
+    expect(latest?.modelId).toBeUndefined();
+    expect(updated?.chosenVariantId).toBe(latest?.id);
+    expect(updated?.variants).toHaveLength(2);
   });
 
   it('una variante data per persa che poi riesce non resta con il suo errore', () => {

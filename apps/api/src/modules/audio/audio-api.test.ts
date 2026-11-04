@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   audioClipSchema,
   audioOverviewSchema,
+  audioTimelineSchema,
   domainErrorSchema,
   draftViewSchema,
   projectOptionsSchema,
@@ -101,6 +102,121 @@ describe('le tracce di un film', () => {
 
   it('un film che non c’è è 404', async () => {
     expect((await client.call('GET', audioOf('inventato'))).status).toBe(404);
+  });
+});
+
+describe('muto e volume', () => {
+  it('si cambiano sulla traccia, e una traccia di un altro film non si trova', async () => {
+    const { film } = await filmWithFinal(client);
+    const { film: other } = await filmWithFinal(client);
+    const audio = audioOf(film.id);
+    const { tracks } = audioOverviewSchema.parse((await client.call('GET', audio)).body);
+    const track = tracks.find(({ kind }) => kind === 'music');
+    if (track === undefined) throw new Error('doveva esserci la traccia');
+
+    const reply = await client.call('PUT', `${audio}/tracks/${track.id}`, {
+      muted: true,
+      volume: 0.4,
+    });
+
+    expect(audioOverviewSchema.parse(reply.body).tracks).toContainEqual({
+      ...track,
+      muted: true,
+      volume: 0.4,
+    });
+    expect((await client.call('PUT', `${audio}/tracks/${track.id}`, {})).status).toBe(400);
+    expect((await client.call('PUT', `${audio}/tracks/${track.id}`, { volume: 2 })).status).toBe(
+      400,
+    );
+    expect(
+      failure(await client.call('PUT', `${audioOf(other.id)}/tracks/${track.id}`, { muted: true })),
+    ).toMatchObject({ status: 404, details: { field: 'trackId' } });
+  });
+});
+
+describe('la linea del tempo', () => {
+  it('senza la stesura finale non c’è: lo dice con «non trovato»', async () => {
+    const options = projectOptionsSchema.parse(
+      (await client.call('GET', '/projects/options')).body,
+    );
+    const film = projectSchema.parse(
+      (
+        await client.call('POST', '/projects', {
+          idea: 'Una storia ancora da scrivere.',
+          genre: options.defaults.genre,
+          tone: options.defaults.tone,
+          style: options.defaults.style,
+          cinematography: options.defaults.cinematography,
+          durationS: 60,
+        })
+      ).body,
+    );
+
+    expect((await client.call('GET', `${audioOf(film.id)}/timeline`)).status).toBe(404);
+  });
+
+  it('mette in fila le inquadrature e dice dove cade ogni suono', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio, { ...musicBody, durationS: 2 });
+
+    const timeline = audioTimelineSchema.parse(
+      (await client.call('GET', `${audio}/timeline`)).body,
+    );
+
+    expect(timeline.shots[0]).toMatchObject({ shotId: shot.id, startS: 0, nativeAudio: false });
+    expect(timeline.placements[clip.id]).toEqual({ startS: 0, durationS: 2 });
+    expect(timeline.durationS).toBeGreaterThan(0);
+  });
+});
+
+describe('il pannello del blocco', () => {
+  it('cambia com’è il suono e dove parte; le varianti già fatte restano', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio, {
+      ...musicBody,
+      kind: 'sfx',
+      shotId: shot.id,
+      durationS: 2,
+    });
+    const done = await generate(client, audio, clip.id);
+
+    const reply = await client.call('PUT', `${audio}/clips/${clip.id}`, {
+      description: 'Un altro rumore.',
+      startS: 0.5,
+      durationS: 3,
+    });
+
+    expect(audioClipSchema.parse(reply.body)).toMatchObject({
+      description: 'Un altro rumore.',
+      startS: 0.5,
+      durationS: 3,
+      chosenVariantId: done.chosenVariantId,
+    });
+  });
+
+  it('il secondo di partenza si controlla, e la musica parte con la scena', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const effect = await clipOf(client, audio, {
+      ...musicBody,
+      kind: 'sfx',
+      shotId: shot.id,
+      durationS: 2,
+    });
+    const music = await clipOf(client, audio);
+
+    expect(
+      failure(await client.call('PUT', `${audio}/clips/${effect.id}`, { startS: 9999 })),
+    ).toMatchObject({ status: 400, details: { field: 'startS' } });
+    expect(
+      failure(await client.call('PUT', `${audio}/clips/${music.id}`, { startS: 1 })),
+    ).toMatchObject({ status: 400, details: { field: 'startS' } });
+    expect((await client.call('PUT', `${audio}/clips/${music.id}`, {})).status).toBe(400);
+    expect(
+      failure(await client.call('PUT', `${audio}/clips/inventata`, { description: 'x' })),
+    ).toMatchObject({ status: 404, details: { field: 'clipId' } });
   });
 });
 

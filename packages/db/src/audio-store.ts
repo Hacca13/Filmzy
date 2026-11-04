@@ -11,7 +11,7 @@ import {
   type AudioVariant,
   type SheetImageStatus,
 } from '@filmzy/contracts';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import {
@@ -34,6 +34,20 @@ export interface NewAudioClip {
   description: string;
   mood?: string;
   source: AudioClipSource;
+}
+
+/** Cosa cambia di una clip: quello che manca resta com'è; `mood: null` toglie l'atmosfera. */
+export interface AudioClipPatch {
+  description?: string;
+  mood?: string | null;
+  startS?: number;
+  durationS?: number;
+}
+
+/** Cosa cambia di una traccia: quello che manca resta com'è. */
+export interface AudioTrackPatch {
+  muted?: boolean;
+  volume?: number;
 }
 
 /** Il servizio che farà una variante, scelto dall'utente (D36). Manca per un file caricato (D27). */
@@ -66,7 +80,12 @@ export interface StoredAudioClip {
 export interface AudioStore {
   /** Le tracce del film, nell'ordine di `AUDIO_TRACK_KINDS`; quelle che mancano si creano. */
   tracks: (projectId: string) => AudioTrack[];
+  /** Muto e volume; `false` se la traccia non è di quel film. */
+  updateTrack: (projectId: string, trackId: string, patch: AudioTrackPatch) => boolean;
   createClip: (clip: NewAudioClip) => AudioClip;
+  updateClip: (clipId: string, patch: AudioClipPatch) => void;
+  /** Un file dell'utente su una clip che c'è già: diventa una variante, subito in uso (D27). */
+  addUploadedVariant: (clipId: string, assetId: string) => void;
   /** Una clip con il file dell'utente, già pronta e in uso: o tutto o niente (D27). */
   createUploadedClip: (clip: NewAudioClip, assetId: string) => AudioClip;
   getClip: (clipId: string) => StoredAudioClip | undefined;
@@ -204,6 +223,43 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
 
   return {
     tracks,
+
+    updateTrack(projectId, trackId, patch) {
+      const { changes } = db
+        .update(audioTracks)
+        .set(patch)
+        .where(and(eq(audioTracks.id, trackId), eq(audioTracks.projectId, projectId)))
+        .run();
+      return changes > 0;
+    },
+
+    updateClip(clipId, patch) {
+      db.update(audioClips)
+        .set({ ...patch, updatedAt: now().getTime() })
+        .where(eq(audioClips.id, clipId))
+        .run();
+    },
+
+    addUploadedVariant(clipId, assetId) {
+      const at = now().getTime();
+      const variantId = randomUUID();
+      db.transaction((tx) => {
+        tx.insert(audioVariants)
+          .values({
+            id: variantId,
+            clipId,
+            status: 'succeeded',
+            assetId,
+            createdAt: at,
+            updatedAt: at,
+          })
+          .run();
+        tx.update(audioClips)
+          .set({ chosenVariantId: variantId, updatedAt: at })
+          .where(eq(audioClips.id, clipId))
+          .run();
+      });
+    },
 
     createClip(clip) {
       const row = db

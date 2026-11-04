@@ -183,6 +183,13 @@
       "when": 1793809926066,
       "tag": "0025_tracce_audio",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793835699791,
+      "tag": "0026_audio_originale_take",
+      "breakpoints": true
     }
   ]
 }

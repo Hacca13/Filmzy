@@ -1,11 +1,15 @@
 import {
   chooseAudioVariantBodySchema,
   createAudioClipBodySchema,
+  setTakeNativeAudioBodySchema,
   startSheetBodySchema,
   suggestSoundsBodySchema,
+  updateAudioClipBodySchema,
+  updateAudioTrackBodySchema,
   uploadAudioQuerySchema,
   type AudioClip,
   type AudioOverview,
+  type AudioTimeline,
   type SheetOptions,
   type SoundSuggestions,
   type SoundSuggestionsEstimate,
@@ -46,6 +50,35 @@ class AudioController {
     return this.audio.overview(projectId);
   }
 
+  /** La linea del tempo del film: dove cade ogni inquadratura e ogni suono (T5.6). */
+  @Get('timeline')
+  timeline(@Param('projectId') projectId: string): Promise<AudioTimeline> {
+    return this.audio.timeline(projectId);
+  }
+
+  @Put('tracks/:trackId')
+  updateTrack(
+    @Param('projectId') projectId: string,
+    @Param('trackId') trackId: string,
+    @Body() body: unknown,
+  ): AudioOverview {
+    return this.audio.updateTrack(projectId, trackId, parseBody(updateAudioTrackBodySchema, body));
+  }
+
+  /** L'audio originale di un take: si accende e si spegne senza rigenerare niente (D43). */
+  @Put('takes/:takeId/native')
+  setNativeAudio(
+    @Param('projectId') projectId: string,
+    @Param('takeId') takeId: string,
+    @Body() body: unknown,
+  ): Promise<AudioOverview> {
+    return this.audio.setNativeAudio(
+      projectId,
+      takeId,
+      parseBody(setTakeNativeAudioBodySchema, body),
+    );
+  }
+
   @Get('suggestions/estimate')
   estimateSuggestions(@Param('projectId') projectId: string): Promise<SoundSuggestionsEstimate> {
     return this.audio.estimateSuggestions(projectId);
@@ -70,6 +103,25 @@ class AudioController {
     @Body() body: unknown,
   ): Promise<AudioClip> {
     return this.audio.upload(projectId, parseBody(uploadAudioQuerySchema, query), body);
+  }
+
+  @Put('clips/:clipId')
+  updateClip(
+    @Param('projectId') projectId: string,
+    @Param('clipId') clipId: string,
+    @Body() body: unknown,
+  ): AudioClip {
+    return this.audio.updateClip(projectId, clipId, parseBody(updateAudioClipBodySchema, body));
+  }
+
+  /** «Carica un file» su un blocco che c'è già: il file resta qui, e non va a nessun fornitore (D27). */
+  @Post('clips/:clipId/uploads')
+  uploadVariant(
+    @Param('projectId') projectId: string,
+    @Param('clipId') clipId: string,
+    @Body() body: unknown,
+  ): Promise<AudioClip> {
+    return this.audio.uploadVariant(projectId, clipId, body);
   }
 
   @Delete('clips/:clipId')

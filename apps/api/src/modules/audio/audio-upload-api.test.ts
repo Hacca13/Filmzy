@@ -1,18 +1,25 @@
-import { readdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import {
   audioClipSchema,
   audioOverviewSchema,
+  audioTimelineSchema,
   domainErrorSchema,
   type AudioClip,
 } from '@filmzy/contracts';
-import type { ReceiptStore } from '@filmzy/db';
+import type { ReceiptStore, SheetStore, TakeStore } from '@filmzy/db';
+import { ffmpegPath } from '@filmzy/media';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startApp, type Client } from '../../test-support/app-client.js';
 import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.js';
+import { SHEET_STORE } from '../cast/tokens.js';
+import { TAKE_STORE } from '../shots/tokens.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
 
 /**
@@ -140,6 +147,141 @@ describe('caricare un file audio', () => {
 
     expect(audioOverviewSchema.parse(removed.body).clips).toEqual([]);
     expect((await upload(film.id, { ...music, sceneId: 'scene-99' }, wavFile())).status).toBe(404);
+  });
+});
+
+describe('caricare un file su un blocco che c’è già (T5.6)', () => {
+  async function uploadOn(filmId: string, clipId: string, body: Buffer) {
+    const response = await fetch(`${base}/api/projects/${filmId}/audio/clips/${clipId}/uploads`, {
+      method: 'POST',
+      headers: { 'content-type': 'audio/wav' },
+      body,
+    });
+    const parsed: unknown = await response.json();
+    return { status: response.status, body: parsed };
+  }
+
+  it('diventa una variante in uso, non esce dal computer e si può ancora generare', async () => {
+    const { film } = await filmWithFinal(client);
+    const created = await client.call('POST', `/projects/${film.id}/audio/clips`, {
+      ...music,
+      durationS: 20,
+    });
+    const clip = audioClipSchema.parse(created.body);
+    const count = () => receipts.list().filter((r) => r.projectId === film.id).length;
+    const before = count();
+
+    const reply = await uploadOn(film.id, clip.id, wavFile(2));
+
+    expect(reply.status).toBe(201);
+    const updated = audioClipSchema.parse(reply.body);
+    expect(updated.source).toBe('generated');
+    expect(updated.durationS).toBe(20);
+    expect(updated.chosenVariantId).toBe(updated.variants[0]?.id);
+    expect(updated.variants[0]?.modelId).toBeUndefined();
+    expect(count()).toBe(before);
+    expect(
+      (await client.call('GET', `/projects/${film.id}/audio/clips/${clip.id}/options`)).status,
+    ).toBe(200);
+  });
+
+  it('un file che non è audio non aggiunge niente, e una clip che non c’è è 404', async () => {
+    const { film } = await filmWithFinal(client);
+    const clip = await uploaded(film.id);
+
+    expect((await uploadOn(film.id, clip.id, Buffer.from('non sono musica'))).status).toBe(400);
+    expect((await uploadOn(film.id, 'inventata', wavFile())).status).toBe(404);
+    const { clips } = audioOverviewSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio`)).body,
+    );
+    expect(clips[0]?.variants).toHaveLength(1);
+  });
+});
+
+describe('l’audio originale di un take (T5.6)', () => {
+  const run = promisify(execFile);
+
+  /** Un take riuscito con questo file: il fornitore finto non fa video veri, e qui il suono conta. */
+  async function takeWith(filmId: string, shotId: string, file: string) {
+    const bytes = await readFile(file);
+    const takes = app.get<TakeStore>(TAKE_STORE, { strict: false });
+    const files = app.get<SheetStore>(SHEET_STORE, { strict: false });
+    const assetId = createHash('sha256').update(file).digest('hex');
+    files.registerAsset({
+      id: assetId,
+      projectId: filmId,
+      path: path.relative(dataDir, file).replaceAll(path.sep, '/'),
+      contentType: 'video/mp4',
+      bytes: bytes.byteLength,
+    });
+    const take = takes.start(shotId, { modelId: 'video', modelLabel: 'Video' });
+    takes.finish(take.id, { status: 'succeeded', assetId });
+    return take.id;
+  }
+
+  async function videoFile(withSound: boolean): Promise<string> {
+    const dir = await mkdtemp(path.join(dataDir, 'prova-'));
+    const file = path.join(dir, 'clip.mp4');
+    await run(ffmpegPath(), [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc=duration=1:size=64x36:rate=10',
+      ...(withSound ? ['-f', 'lavfi', '-i', 'sine=duration=1'] : []),
+      '-pix_fmt',
+      'yuv420p',
+      '-shortest',
+      file,
+    ]);
+    return file;
+  }
+
+  it('accenderlo si vede sulla linea del tempo e riapre la traccia, che parte muta', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const takeId = await takeWith(film.id, shot.id, await videoFile(true));
+    const audio = `/projects/${film.id}/audio`;
+
+    const on = await client.call('PUT', `${audio}/takes/${takeId}/native`, { on: true });
+
+    expect(on.status).toBe(200);
+    expect(
+      audioOverviewSchema.parse(on.body).tracks.find(({ kind }) => kind === 'native')?.muted,
+    ).toBe(false);
+    const timeline = audioTimelineSchema.parse(
+      (await client.call('GET', `${audio}/timeline`)).body,
+    );
+    expect(timeline.shots[0]).toMatchObject({ takeId, nativeAudio: true });
+
+    await client.call('PUT', `${audio}/takes/${takeId}/native`, { on: false });
+    const after = audioTimelineSchema.parse((await client.call('GET', `${audio}/timeline`)).body);
+    expect(after.shots[0]?.nativeAudio).toBe(false);
+  });
+
+  it('su una clip senza suono non si accende, e lo dice', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const takeId = await takeWith(film.id, shot.id, await videoFile(false));
+
+    const reply = await client.call('PUT', `/projects/${film.id}/audio/takes/${takeId}/native`, {
+      on: true,
+    });
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('nativeAudio');
+  });
+
+  it('un take di un altro film non si trova', async () => {
+    const { film, shot } = await filmWithShot(client);
+    const { film: other } = await filmWithFinal(client);
+    const takeId = await takeWith(film.id, shot.id, await videoFile(true));
+
+    const reply = await client.call('PUT', `/projects/${other.id}/audio/takes/${takeId}/native`, {
+      on: true,
+    });
+
+    expect(reply.status).toBe(404);
   });
 });
 

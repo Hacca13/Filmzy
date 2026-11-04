@@ -592,6 +592,8 @@ export const takes = sqliteTable(
     receiptId: text('receipt_id'),
     costUsd: real('cost_usd'),
     errorCode: text('error_code'),
+    /** L'audio originale del take è acceso (T5.6): parte spento, e si cambia senza rigenerare (D43). */
+    nativeAudio: integer('native_audio', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },

@@ -14,15 +14,11 @@ const WORK_TEXT: Record<ShotWork, string> = {
 };
 
 /**
- * Il chip di un giallo: «Da rivedere» per un luogo cambiato (R6), un avviso leggero (R9, il moodboard
- * cambiato dopo il video) con un tono più calmo. Sempre con parole, mai solo colore.
+ * Il chip di un giallo: «Da rivedere», oppure «Avviso leggero» con un tono più calmo quando il server
+ * dice che è leggero (R4, R9). Sempre con parole, mai solo colore.
  */
-function FlagChip({ code }: { code: string }) {
-  return code === 'R9' ? (
-    <Chip tone="info">Avviso leggero</Chip>
-  ) : (
-    <Chip tone="warning">Da rivedere</Chip>
-  );
+function FlagChip({ light }: { light: boolean }) {
+  return light ? <Chip tone="info">Avviso leggero</Chip> : <Chip tone="warning">Da rivedere</Chip>;
 }
 
 interface Props {
@@ -37,7 +33,7 @@ interface Props {
   clipAssetId?: string | undefined;
   /** Cosa si sta facendo adesso per questa inquadratura (T4.4): la card lo dice e, finito, mostra il risultato. */
   working?: ShotWork | undefined;
-  /** I gialli di questa inquadratura (T4.9): per ora un luogo cambiato dopo che l'inquadratura era stata fatta (R6). */
+  /** I gialli di questa inquadratura (T4.9, T5.1): una regola di continuità che non torna, con il motivo. */
   flags?: readonly ContinuityFlag[] | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
@@ -94,7 +90,7 @@ export function ShotCard({
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
         <div key={flag.code} className="shot-flag">
-          <FlagChip code={flag.code} />
+          <FlagChip light={flag.light} />
           <p className="hint">{flag.reason}</p>
         </div>
       ))}

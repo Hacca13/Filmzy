@@ -130,14 +130,28 @@ describe('ShotCard', () => {
 
   it('un’inquadratura con un giallo lo dice con il motivo; senza gialli non c’è niente (T4.9, R6)', () => {
     const flagged = render(shot, false, {
-      flags: [{ code: 'R6', reason: 'Il luogo è cambiato. Rifai lo storyboard.', origin: 'rule' }],
+      flags: [
+        {
+          code: 'R6',
+          reason: 'Il luogo è cambiato. Rifai lo storyboard.',
+          origin: 'rule',
+          light: false,
+        },
+      ],
     });
 
     expect(flagged).toContain('Da rivedere');
     expect(flagged).toContain('Il luogo è cambiato. Rifai lo storyboard.');
     expect(render()).not.toContain('Da rivedere');
     const light = render(shot, false, {
-      flags: [{ code: 'R9', reason: 'Il moodboard è cambiato. Rigiralo.', origin: 'rule' }],
+      flags: [
+        {
+          code: 'R9',
+          reason: 'Il moodboard è cambiato. Rigiralo.',
+          origin: 'rule',
+          light: true,
+        },
+      ],
     });
     expect(light).toContain('Avviso leggero');
     expect(light).toContain('Il moodboard è cambiato. Rigiralo.');

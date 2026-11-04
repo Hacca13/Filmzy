@@ -434,7 +434,7 @@ ShotSpec {
   images: ShotImage[]                                       // scelte dell'utente (D20); vuoto = decide l'aiuto regista
   dialogue: { characterId, text, voiceId?, language }[]     // vuoto nell'MVP
   cinematography: 'inherit' | CinematographyOverride
-  continuity: { entry: ContinuityState, exit: ContinuityState }
+  continuity: { entry: ContinuityState, exit: ContinuityState, change?: string }   // change: un cambiamento voluto rispetto all'uscita prima (R1, R2)
 }
 
 ContinuityState { locationId, timeOfDay, present: CharacterId[], costumes: Record<CharacterId, string>, props: string[] }
@@ -628,8 +628,8 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 
 - Ogni inquadratura ha uno stato di **entrata** e uno di **uscita**: luogo, ora, chi c'è, costumi, oggetti.
 - **Regole deterministiche**, immediate e gratuite:
-  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato;
-  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono;
+  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato (`continuity.change`); luogo, ora, persone, abiti e oggetti si confrontano, il testo libero senza badare a maiuscole e punteggiatura (D74);
+  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono: la prima inquadratura di una scena dipende dall'uscita della scena pensata subito prima, e diventa gialla se quella è stata ripensata dopo e ora non combacia più (D74);
   - **R3:** se la scheda di un personaggio cambia dopo un take (anche per un ritocco che tocca volto o abiti), diventano gialli i take con quel personaggio;
   - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero;
   - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli;
@@ -639,7 +639,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
   - **R9:** se cambiano la palette o i consigli del moodboard (del film o di una scena), i take girati prima ricevono un avviso leggero, come per R4 (D37).
 - **Cosa queste regole non coprono, ed è noto:** la continuità **tra scene diverse**. R1 vale dentro una scena, perché tra due scene può passare del tempo e un cambio d'abito o di luce è legittimo. Ma se due scene consecutive stanno nello stesso luogo e alla stessa ora, una giacca che ricompare senza che nessuno l'abbia rimessa è un errore che nessuna regola segnala: resta alla segretaria di edizione, che è un LLM e quindi meno affidabile di una regola. Da misurare con i test (T6.6) e da risolvere insieme all'autore: la candidata più semplice è una regola per scene consecutive con lo stesso luogo e la stessa ora (§13).
 - **Segretaria di edizione** (LLM): incoerenze di trama tra le scene ("Marco parla di una lettera che non ha ancora ricevuto").
-- Ogni segnalazione ha un codice, un motivo in italiano e un'origine (`rule`, `llm`, più avanti `vision`). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
+- Ogni segnalazione ha un codice, un motivo in italiano, un'origine (`rule`, `llm`, più avanti `vision`) e un peso (`light`: falso per un giallo vero, vero per un avviso leggero come R4, R8, R9; lo decide il server, D74). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
 
 ## 9. Montaggio ed esportazione
 

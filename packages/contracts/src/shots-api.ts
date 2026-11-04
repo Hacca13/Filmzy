@@ -31,6 +31,8 @@ export const continuityFlagSchema = z.object({
   code: z.string().min(1),
   reason: z.string().min(1),
   origin: z.enum(['rule', 'llm', 'vision']),
+  /** Un avviso leggero (R4, R8, R9): l'inquadratura va bene com'è, ma conviene dargli un'occhiata. Altrimenti è un giallo vero. */
+  light: z.boolean(),
 });
 
 export type ContinuityFlag = z.infer<typeof continuityFlagSchema>;

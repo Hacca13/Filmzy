@@ -77,14 +77,27 @@ export class BibleService {
   }
 
   /**
-   * Gli id dei personaggi e dei luoghi che il film ha adesso, senza il resto della Bibbia (e senza
-   * la configurazione): basta per sapere se qualcosa di già pensato cita ancora ciò che esiste.
+   * Gli id dei personaggi e dei luoghi che il film ha adesso, con i loro nomi, senza il resto della
+   * Bibbia (e senza la configurazione): basta per sapere se qualcosa di già pensato cita ancora ciò che
+   * esiste, e per parlarne all'utente.
    */
-  knownIds(projectId: string): { characters: Set<string>; locations: Set<string> } {
+  knownIds(projectId: string): {
+    characters: Set<string>;
+    locations: Set<string>;
+    names: { characters: Record<string, string>; locations: Record<string, string> };
+  } {
     this.projects.get(projectId);
+    const characters = this.characters.list(projectId);
+    const locations = this.locations.list(projectId);
     return {
-      characters: new Set(this.characters.list(projectId).map((character) => character.id)),
-      locations: new Set(this.locations.list(projectId).map((location) => location.id)),
+      characters: new Set(characters.map((character) => character.id)),
+      locations: new Set(locations.map((location) => location.id)),
+      names: {
+        characters: Object.fromEntries(
+          characters.map((character) => [character.id, character.name]),
+        ),
+        locations: Object.fromEntries(locations.map((location) => [location.id, location.name])),
+      },
     };
   }
 

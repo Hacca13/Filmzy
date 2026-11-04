@@ -83,13 +83,15 @@ let estimates: ShotPlannerInput[];
 let reached: string[];
 let clips: Record<string, string>;
 let videoInProgress: string[];
+/** Ciò che l'aiuto regista propone alla prossima chiamata. */
+let planned: typeof proposal;
 
 function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {}) {
   const troupe = {
     run: (_role: string, input: ShotPlannerInput, ctx: GenerationContext) => {
       runs.push({ input, ctx });
       return Promise.resolve({
-        data: { ...proposal, notes: 'Fotografia come il film.' },
+        data: { ...planned, notes: 'Fotografia come il film.' },
         receipt: { id: `scontrino-${String(runs.length)}` },
       });
     },
@@ -119,6 +121,14 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     knownIds: () => ({
       characters: new Set(current.characters.map((character) => character.id)),
       locations: new Set(current.locations.map((location) => location.id)),
+      names: {
+        characters: Object.fromEntries(
+          current.characters.map((character) => [character.id, character.name]),
+        ),
+        locations: Object.fromEntries(
+          current.locations.map((location) => [location.id, location.name]),
+        ),
+      },
     }),
   } as unknown as BibleService;
   const projects = {
@@ -173,6 +183,7 @@ beforeEach(async () => {
   reached = [];
   clips = {};
   videoInProgress = [];
+  planned = proposal;
   final = {
     id: 'stesura-1',
     projectId: film.id,
@@ -351,6 +362,97 @@ describe('le scene e le loro inquadrature', () => {
       ),
     ).toEqual({ status: 409, code: 'invalid_request' });
     expect(runs).toEqual([]);
+  });
+});
+
+/** Un'altra ora del giorno per l'entrata o l'uscita di un'inquadratura proposta. */
+const withTime = (
+  shot: (typeof proposal.shots)[number],
+  patch: { entry?: string; exit?: string },
+): (typeof proposal.shots)[number] => ({
+  ...shot,
+  continuity: {
+    ...shot.continuity,
+    entry: { ...shot.continuity.entry, timeOfDay: patch.entry ?? shot.continuity.entry.timeOfDay },
+    exit: { ...shot.continuity.exit, timeOfDay: patch.exit ?? shot.continuity.exit.timeOfDay },
+  },
+});
+
+const pause = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+describe('la continuità fra le inquadrature (T5.1)', () => {
+  it('R1: un’inquadratura che comincia in modo diverso da come finisce la prima è gialla, con il motivo', async () => {
+    const [shot] = proposal.shots;
+    if (shot === undefined) throw new Error("serve un esempio con un'inquadratura");
+    planned = {
+      ...proposal,
+      shots: [
+        withTime(shot, { exit: 'tramonto' }),
+        { ...withTime(shot, { entry: 'alba' }), order: 1 },
+      ],
+    };
+    const service = build();
+    await service.plan(film.id, { sceneNumber: 1 });
+
+    const scene = (await service.plans(film.id)).scenes[0];
+
+    const [first, second] = scene?.shots ?? [];
+    expect(scene?.flags[first?.id ?? '']).toBeUndefined();
+    expect(scene?.flags[second?.id ?? '']).toEqual([
+      expect.objectContaining({ code: 'R1', light: false, origin: 'rule' }),
+    ]);
+    expect(scene?.flags[second?.id ?? '']?.[0]?.reason).toContain('«tramonto» a «alba»');
+  });
+
+  it('R2: ripensare la scena prima con un’altra uscita ingiallisce la prima inquadratura della scena dopo, finché non la si ripensa', async () => {
+    const [shot] = proposal.shots;
+    if (shot === undefined) throw new Error("serve un esempio con un'inquadratura");
+    const service = build();
+    await service.plan(film.id, { sceneNumber: 1 });
+    await pause();
+    await service.plan(film.id, { sceneNumber: 2 });
+    const codesOf = async (sceneIndex: number) =>
+      Object.values((await service.plans(film.id)).scenes[sceneIndex]?.flags ?? {})
+        .flat()
+        .map((flag) => flag.code);
+    expect(await codesOf(1)).toEqual([]);
+
+    // La scena 1 viene ripensata e ora finisce di notte: la scena 2, fatta prima, non combacia più.
+    await pause();
+    planned = { ...proposal, shots: [withTime(shot, { exit: 'notte' })] };
+    await service.plan(film.id, { sceneNumber: 1 });
+    expect(await codesOf(1)).toEqual(['R2']);
+    expect(await codesOf(0)).toEqual([]);
+
+    // Ripensata anche la scena 2, è di nuovo allineata alla scena prima.
+    await pause();
+    await service.plan(film.id, { sceneNumber: 2 });
+    expect(await codesOf(1)).toEqual([]);
+  });
+
+  it('una scena da rifare, o ripensata, non dà gialli di continuità né fa da punto di partenza', async () => {
+    const [shot] = proposal.shots;
+    if (shot === undefined) throw new Error("serve un esempio con un'inquadratura");
+    const service = build();
+    await service.plan(film.id, { sceneNumber: 1 });
+    await pause();
+    await service.plan(film.id, { sceneNumber: 2 });
+    const [first, second] = final.screenplay.scenes;
+    if (first === undefined || second === undefined) throw new Error('servono due scene');
+    await pause();
+    planned = { ...proposal, shots: [withTime(shot, { exit: 'notte' })] };
+    await service.plan(film.id, { sceneNumber: 1 });
+    // La scena 1 viene riscritta: il suo piano è vecchio e la scena 2 non ha più un punto di partenza.
+    final = {
+      ...final,
+      screenplay: { ...final.screenplay, scenes: [{ ...first, summary: 'Anna parte.' }, second] },
+    };
+
+    const plans = await service.plans(film.id);
+
+    expect(plans.scenes[0]?.stale).toBe(true);
+    expect(Object.keys(plans.scenes[0]?.flags ?? {})).toEqual([]);
+    expect(Object.keys(plans.scenes[1]?.flags ?? {})).toEqual([]);
   });
 });
 

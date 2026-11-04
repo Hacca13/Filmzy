@@ -2,7 +2,7 @@ import type { ContinuityFlag, ShotSpec } from '@filmzy/contracts';
 
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
- * c'è solo R6 (T4.9, D21); le altre regole (T5.1) arrivano con il montaggio. Sono funzioni pure, così
+ * ci sono R6 (T4.9, D21) e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
  * si provano a parte: i dati li leggono i servizi.
  */
 
@@ -52,7 +52,9 @@ export function moodboardChangeFlags(
     const changed = Math.max(input.changes.film ?? 0, input.changes.scenes[shot.sceneId] ?? 0);
     const shot_take = input.takeAt[shot.id];
     if (changed === 0 || shot_take === undefined || shot_take >= changed) continue;
-    flags[shot.id] = [{ code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule' }];
+    flags[shot.id] = [
+      { code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule', light: true },
+    ];
   }
   return flags;
 }
@@ -90,7 +92,9 @@ export function locationChangeFlags(input: LocationChangeInput): Record<string, 
     const changed = input.changedAt[shot.location.locationId];
     const worked = input.workedAt[shot.id];
     if (changed === undefined || worked === undefined || worked >= changed) continue;
-    flags[shot.id] = [{ code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule' }];
+    flags[shot.id] = [
+      { code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule', light: false },
+    ];
   }
   return flags;
 }

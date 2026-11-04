@@ -42,17 +42,26 @@ describe('scenePlanSchema', () => {
 });
 
 describe('flags (T4.9)', () => {
-  it('un’inquadratura può avere dei gialli, con codice, motivo e origine; senza il campo la scena non vale', () => {
+  it('un’inquadratura può avere dei gialli, con codice, motivo, origine e peso; senza il campo la scena non vale', () => {
     const flagged = {
       ...scene,
-      flags: { 'shot-1': [{ code: 'R6', reason: 'Il luogo è cambiato.', origin: 'rule' }] },
+      flags: {
+        'shot-1': [{ code: 'R6', reason: 'Il luogo è cambiato.', origin: 'rule', light: false }],
+      },
     };
 
     expect(scenePlanSchema.parse(flagged).flags['shot-1']?.[0]?.code).toBe('R6');
     expect(
       scenePlanSchema.safeParse({
         ...scene,
-        flags: { 'shot-1': [{ code: 'R6', reason: 'x', origin: 'a caso' }] },
+        flags: { 'shot-1': [{ code: 'R6', reason: 'x', origin: 'a caso', light: false }] },
+      }).success,
+    ).toBe(false);
+    // Senza il peso il giallo non vale: il server lo dice sempre.
+    expect(
+      scenePlanSchema.safeParse({
+        ...scene,
+        flags: { 'shot-1': [{ code: 'R6', reason: 'x', origin: 'rule' }] },
       }).success,
     ).toBe(false);
     expect(scenePlanSchema.safeParse({ ...scene, flags: undefined }).success).toBe(false);

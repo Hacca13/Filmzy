@@ -30,6 +30,7 @@ import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
+import { chainFlags, type PreviousScene } from './chain-flags.js';
 import { locationChangeFlags, mergeFlags, moodboardChangeFlags, oldestWork } from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
@@ -79,11 +80,32 @@ export class ShotsService {
       takeAt: this.takes.lastTakeAt(projectId),
     };
 
+    // R2 guarda la scena pensata subito prima: si tiene a mano mentre si scorrono le scene in ordine.
+    let before: PreviousScene | undefined;
+    const scenes = final.screenplay.scenes.map((scene) => {
+      const plan = stored.get(scene.number);
+      const current = scenePlan(scene, plan, known, extras);
+      if (plan === undefined) return current;
+      const plannedAt = Date.parse(plan.createdAt);
+      const chained = current.stale
+        ? current
+        : {
+            ...current,
+            flags: mergeFlags(
+              chainFlags({ shots: plan.shots, plannedAt, before, names: known.names }),
+              current.flags,
+            ),
+          };
+      // Un piano vecchio non vale come punto di partenza (lo stesso criterio di `exitBefore`).
+      const last = plan.shots.at(-1);
+      before =
+        current.stale || last === undefined ? undefined : { exit: last.continuity.exit, plannedAt };
+      return chained;
+    });
+
     return {
       finalVersionId: final.id,
-      scenes: final.screenplay.scenes.map((scene) =>
-        scenePlan(scene, stored.get(scene.number), known, extras),
-      ),
+      scenes,
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
         label,

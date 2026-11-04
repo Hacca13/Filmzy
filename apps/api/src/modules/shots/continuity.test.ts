@@ -28,7 +28,9 @@ describe('R6: un luogo cambiato ingiallisce le inquadrature già fatte (D21)', (
     });
 
     expect(Object.keys(flags).sort()).toEqual(['s1', 's2']);
-    expect(flags['s1']).toEqual([{ code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule' }]);
+    expect(flags['s1']).toEqual([
+      { code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule', light: false },
+    ]);
   });
 
   it('un’inquadratura mai fatta non ha niente da rifare, e una rifatta dopo il cambiamento è allineata', () => {
@@ -104,7 +106,9 @@ describe('R9: il moodboard cambiato avvisa i take girati prima, in modo leggero 
     });
 
     expect(Object.keys(flags)).toEqual(['s1']);
-    expect(flags['s1']).toEqual([{ code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule' }]);
+    expect(flags['s1']).toEqual([
+      { code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule', light: true },
+    ]);
     expect(
       moodboardChangeFlags({ shots, changes: { film: 1000, scenes: {} }, takeAt: { s1: 1500 } }),
     ).toEqual({});
@@ -136,8 +140,8 @@ describe('R9: il moodboard cambiato avvisa i take girati prima, in modo leggero 
 });
 
 describe('mergeFlags', () => {
-  const r6 = { code: 'R6', reason: 'x', origin: 'rule' as const };
-  const r9 = { code: 'R9', reason: 'y', origin: 'rule' as const };
+  const r6 = { code: 'R6', reason: 'x', origin: 'rule' as const, light: false };
+  const r9 = { code: 'R9', reason: 'y', origin: 'rule' as const, light: true };
 
   it("ogni inquadratura ha i gialli di tutte le regole, nell'ordine dato", () => {
     expect(mergeFlags({ s1: [r6], s2: [r6] }, { s1: [r9] })).toEqual({ s1: [r6, r9], s2: [r6] });

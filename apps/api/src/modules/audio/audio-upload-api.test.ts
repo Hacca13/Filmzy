@@ -294,7 +294,7 @@ describe('cosa non si accetta', () => {
     const reply = await upload(film.id, music, Buffer.from('non sono musica'));
 
     expect(reply.status).toBe(400);
-    expect(fieldOf(reply)).toBe('file');
+    expect(fieldOf(reply)).toBe('audioFile');
   });
 
   it('un file rovinato non resta sul disco e non lascia clip', async () => {

@@ -1,5 +1,5 @@
 import type { Project, ProjectOptions } from '@filmzy/contracts';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { fetchProject, fetchProjectOptions } from '../api/projects';
 import { Notice } from '../components/ui';
@@ -10,6 +10,7 @@ import { choiceLabel, formatDuration } from './model';
 import { CastPanel } from './cast/CastPanel';
 import { FinalPanel } from './final/FinalPanel';
 import { ShotsPanel } from './shots/ShotsPanel';
+import { SoundPanel } from './sound/SoundPanel';
 import { LocationsPanel } from './locations/LocationsPanel';
 import { MoodboardPanel } from './moodboard/MoodboardPanel';
 import { StoryPanel } from './story/StoryPanel';
@@ -40,6 +41,11 @@ export function FilmPage({ filmId }: { filmId: string }) {
 }
 
 function FilmView({ film, options }: { film: Project; options: ProjectOptions | undefined }) {
+  // Quando il piano delle inquadrature si rilegge, anche la linea del tempo del suono può essere cambiata.
+  const [plansStamp, setPlansStamp] = useState(0);
+  const onPlansRead = useCallback(() => {
+    setPlansStamp((stamp) => stamp + 1);
+  }, []);
   const details: [string, string | undefined][] = [
     ['Genere', choiceLabel(options?.genres, film.genre)],
     ['Tono', choiceLabel(options?.tones, film.tone)],
@@ -85,7 +91,8 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       <CastPanel filmId={film.id} />
       <LocationsPanel filmId={film.id} />
       <FinalPanel key={film.id} filmId={film.id} />
-      <ShotsPanel key={film.id} filmId={film.id} />
+      <ShotsPanel key={film.id} filmId={film.id} onPlansRead={onPlansRead} />
+      <SoundPanel key={`suono-${film.id}`} filmId={film.id} plansStamp={plansStamp} />
     </section>
   );
 }

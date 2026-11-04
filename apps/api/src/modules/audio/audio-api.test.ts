@@ -282,7 +282,7 @@ describe('creare una clip', () => {
       failure(
         await client.call('POST', `${audio}/clips`, { ...musicBody, description: 'Un’altra.' }),
       ),
-    ).toMatchObject({ status: 409, details: { field: 'sceneId' } });
+    ).toMatchObject({ status: 409, details: { field: 'music' } });
 
     await client.call('DELETE', `${audio}/clips/${clip.id}`);
     await clipOf(client, audio);

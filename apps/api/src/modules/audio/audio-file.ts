@@ -23,15 +23,15 @@ export function detectAudioType(bytes: Uint8Array): AudioContentType | undefined
 
 /**
  * Il corpo di una richiesta che porta un file audio (T5.5, D27): deve essere un file, non vuoto, non
- * troppo grande e di un tipo che accettiamo. Altrimenti `invalid_request` sul campo `file`.
+ * troppo grande e di un tipo che accettiamo. Altrimenti `invalid_request` sul campo `audioFile`.
  */
 export function readAudioBody(body: unknown): { bytes: Buffer; contentType: AudioContentType } {
   if (!Buffer.isBuffer(body) || body.length === 0 || body.length > AUDIO_UPLOAD_MAX_BYTES) {
-    throw domainError(400, 'invalid_request', { details: { field: 'file' } });
+    throw domainError(400, 'invalid_request', { details: { field: 'audioFile' } });
   }
   const contentType = detectAudioType(body);
   if (contentType === undefined) {
-    throw domainError(400, 'invalid_request', { details: { field: 'file' } });
+    throw domainError(400, 'invalid_request', { details: { field: 'audioFile' } });
   }
   return { bytes: body, contentType };
 }

@@ -280,7 +280,7 @@ export class AudioService implements OnModuleInit {
     try {
       const durationS = await mediaStep(() => audioDurationS(stored.path));
       if (durationS === undefined || durationS <= 0) {
-        throw domainError(400, 'invalid_request', { details: { field: 'file' } });
+        throw domainError(400, 'invalid_request', { details: { field: 'audioFile' } });
       }
       registerAssets(this.files, { dataDir: this.dataDir, projectId }, [stored]);
       const clip = save(stored.assetId, durationS);
@@ -554,7 +554,7 @@ export class AudioService implements OnModuleInit {
     const taken = this.store
       .clips(projectId)
       .some((clip) => clip.kind === 'music' && clip.sceneId === sceneId);
-    if (taken) throw domainError(409, 'invalid_request', { details: { field: 'sceneId' } });
+    if (taken) throw domainError(409, 'invalid_request', { details: { field: 'music' } });
   }
 
   /**

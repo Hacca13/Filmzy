@@ -5,6 +5,7 @@ import {
   shotSpecSchema,
   type ChangeShotBody,
   type PlanSceneBody,
+  type SetFlagIgnoredBody,
 } from '@filmzy/contracts';
 
 import { getJson, sendJson } from './client';
@@ -31,6 +32,11 @@ export function estimateScenePlan(filmId: string, sceneNumber: number, signal?: 
 
 export function planScene(filmId: string, body: PlanSceneBody) {
   return sendJson('POST', base(filmId), scenePlanSchema, body);
+}
+
+/** «Ignora» un giallo o lo rimette (T5.3). */
+export function setFlagIgnored(filmId: string, body: SetFlagIgnoredBody) {
+  return sendJson('PUT', `${base(filmId)}/flags`, shotPlansSchema, body);
 }
 
 export function changeShotMovement(filmId: string, shotId: string, body: ChangeShotBody) {

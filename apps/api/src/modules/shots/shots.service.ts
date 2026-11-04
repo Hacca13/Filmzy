@@ -7,6 +7,7 @@ import type {
   ScenePlan,
   ScreenplayScene,
   ScreenplayVersion,
+  SetFlagIgnoredBody,
   ShotPlannerInput,
   ShotPlans,
   ShotSpec,
@@ -33,7 +34,7 @@ import { LOCATION_STORE } from '../locations/tokens.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
-import { addScriptFlags } from '../script-check/script-check.js';
+import { addScriptFlags, issueKeys } from '../script-check/script-check.js';
 import { SCRIPT_CHECK_STORE } from '../script-check/tokens.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { chainFlags, type Names } from './chain-flags.js';
@@ -44,6 +45,7 @@ import {
   locationChangeFlags,
   mergeFlags,
   moodboardChangeFlags,
+  markIgnored,
   oldestWork,
   removedCharacterFlags,
 } from './continuity.js';
@@ -114,10 +116,13 @@ export class ShotsService {
 
     return {
       finalVersionId: final.id,
-      scenes: addScriptFlags(
-        addChainFlags(scenes, stored, known.names),
-        this.scriptChecks.latest(projectId),
-        final.id,
+      scenes: markIgnored(
+        addScriptFlags(
+          addChainFlags(scenes, stored, known.names),
+          this.scriptChecks.latest(projectId),
+          final.id,
+        ),
+        this.store.ignoredFlags(projectId),
       ),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
@@ -125,6 +130,32 @@ export class ShotsService {
         description,
       })),
     };
+  }
+
+  /** Le chiavi dei gialli che l'utente ha scelto di ignorare (T5.3). */
+  ignoredFlags(projectId: string): ReadonlySet<string> {
+    return this.store.ignoredFlags(projectId);
+  }
+
+  /**
+   * «Ignora» un giallo, o lo rimette (T5.3): cambia solo cosa si segnala, nessun lavoro. Si può ignorare
+   * solo un giallo che c'è adesso; rimetterlo è sempre possibile, anche se nel frattempo è passato.
+   */
+  async setFlagIgnored(projectId: string, body: SetFlagIgnoredBody): Promise<ShotPlans> {
+    const plans = await this.plans(projectId);
+    if (body.ignored) {
+      const known = new Set([
+        ...plans.scenes
+          .flatMap((scene) => [...Object.values(scene.flags).flat(), ...scene.sceneFlags])
+          .map((flag) => flag.key),
+        ...issueKeys(this.scriptChecks.latest(projectId)),
+      ]);
+      if (!known.has(body.key)) {
+        throw domainError(409, 'invalid_request', { details: { field: 'flag' } });
+      }
+    }
+    this.store.setFlagIgnored(projectId, body.key, body.ignored);
+    return this.plans(projectId);
   }
 
   /** Quando è partito il lavoro riuscito più vecchio di ogni inquadratura (ms): immagini o video. */

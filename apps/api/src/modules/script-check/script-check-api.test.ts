@@ -173,6 +173,30 @@ describe('controllare la storia', () => {
     expect((await view(finds, film.id)).state).toBe('current');
   }, 90_000);
 
+  it('una segnalazione si ignora, anche quella del film intero, e si rimette (T5.3)', async () => {
+    const { film, shots } = await filmWithShot(finds.client);
+    const checked = scriptCheckViewSchema.parse(
+      (await finds.client.call('POST', `/projects/${film.id}/script-check`, {})).body,
+    );
+    const [onScene, onFilm] = checked.issues;
+    if (onScene === undefined || onFilm === undefined) throw new Error('servono due segnalazioni');
+
+    await finds.client.call('PUT', `${shots}/flags`, { key: onScene.key, ignored: true });
+    const film_ = await finds.client.call('PUT', `${shots}/flags`, {
+      key: onFilm.key,
+      ignored: true,
+    });
+    expect(film_.status).toBe(200);
+
+    const after = await view(finds, film.id);
+    expect(after.issues.slice(0, 2).map((issue) => issue.ignored)).toEqual([true, true]);
+    const scene = shotPlansSchema.parse((await finds.client.call('GET', shots)).body).scenes[0];
+    expect(scene?.sceneFlags.find((flag) => flag.key === onScene.key)?.ignored).toBe(true);
+
+    await finds.client.call('PUT', `${shots}/flags`, { key: onScene.key, ignored: false });
+    expect((await view(finds, film.id)).issues[0]?.ignored).toBe(false);
+  }, 60_000);
+
   it('un doppio clic costa una volta sola', async () => {
     const { film } = await filmWithShot(finds.client);
     const before = supervisorCalls(finds);

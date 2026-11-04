@@ -1,4 +1,8 @@
+import { createHash } from 'node:crypto';
+
 import type { ContinuityFlag, ContinuityState, ShotSpec } from '@filmzy/contracts';
+
+import { ruleFlag } from './continuity.js';
 
 /**
  * R1 e R2 (architettura §8): la continuità fra un'inquadratura e la successiva, calcolata dal piano
@@ -97,13 +101,6 @@ export function continuityDifferences(
   return differences;
 }
 
-const flag = (code: 'R1' | 'R2', reason: string): ContinuityFlag => ({
-  code,
-  reason,
-  origin: 'rule',
-  light: false,
-});
-
 /**
  * R1: nella stessa scena l'entrata di un'inquadratura combacia con l'uscita della precedente, salvo un
  * cambiamento dichiarato (`continuity.change`).
@@ -128,10 +125,13 @@ export function chainFlags(input: ChainInput): Record<string, ContinuityFlag[]> 
       );
       if (differences.length > 0) {
         flags[shot.id] = [
-          flag(
-            'R1',
-            `Questa inquadratura comincia in modo diverso da come finisce quella prima: ${differences.join('; ')}. Se non è voluto, rifai il piano della scena.`,
-          ),
+          ruleFlag({
+            code: 'R1',
+            // Entrata e uscita non cambiano senza un piano nuovo, che ha id nuovi: basta l'inquadratura.
+            key: `R1:${shot.id}`,
+            reason: `Questa inquadratura comincia in modo diverso da come finisce quella prima: ${differences.join('; ')}. Se non è voluto, rifai il piano della scena.`,
+            fix: 'replan',
+          }),
         ];
       }
     } else if (
@@ -142,10 +142,13 @@ export function chainFlags(input: ChainInput): Record<string, ContinuityFlag[]> 
       const differences = continuityDifferences(input.before, shot.continuity.entry, input.names);
       if (differences.length > 0) {
         flags[shot.id] = [
-          flag(
-            'R2',
-            `La scena prima è stata ripensata e ora finisce in modo diverso da come questa comincia: ${differences.join('; ')}. Rifai il piano di questa scena per tenerle allineate.`,
-          ),
+          ruleFlag({
+            code: 'R2',
+            // Se la scena prima cambia ancora, è un'altra situazione.
+            key: `R2:${shot.id}:${createHash('sha256').update(JSON.stringify(input.before)).digest('hex').slice(0, 12)}`,
+            reason: `La scena prima è stata ripensata e ora finisce in modo diverso da come questa comincia: ${differences.join('; ')}. Rifai il piano di questa scena per tenerle allineate.`,
+            fix: 'replan',
+          }),
         ];
       }
     }

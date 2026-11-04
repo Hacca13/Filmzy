@@ -2,12 +2,14 @@ import type { ScriptCheckIssue, ScriptCheckView } from '@filmzy/contracts';
 import { useCallback } from 'react';
 
 import { estimateScriptCheck, fetchScriptCheck, runScriptCheck } from '../../api/script-check';
+import { setFlagIgnored } from '../../api/shots';
 import { Chip, Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
 import { useLastReady } from '../../lib/use-last-ready';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../../settings/messages';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
+import { useAction } from '../../settings/use-action';
 import { WriteOutcome } from '../WriteOutcome';
 import { FlagNote } from './FlagNote';
 
@@ -28,9 +30,11 @@ export function checkSummary(check: ScriptCheckView): {
 } {
   if (check.state === 'outdated') return { tone: 'info', text: 'Da rifare: la storia è cambiata' };
   if (check.issues.length === 0) return { tone: 'confirmed', text: 'Tutto torna' };
-  const count = check.issues.length;
+  const open = check.issues.filter((issue) => !issue.ignored);
+  if (open.length === 0) return { tone: 'info', text: 'Segnalazioni ignorate' };
+  const count = open.length;
   return {
-    tone: check.issues.every((issue) => issue.light) ? 'info' : 'warning',
+    tone: open.every((issue) => issue.light) ? 'info' : 'warning',
     text: count === 1 ? 'Una cosa da guardare' : `${String(count)} cose da guardare`,
   };
 }
@@ -62,6 +66,7 @@ export function ScriptCheckSection({ filmId, stamp, onChecked }: Props) {
     [filmId, stamp],
   );
   const estimate = useResource(loadEstimate);
+  const action = useAction();
   const written = useGuardedRun<ScriptCheckView>((result) => {
     check.setData(result);
     onChecked();
@@ -100,7 +105,23 @@ export function ScriptCheckSection({ filmId, stamp, onChecked }: Props) {
             <li key={issue.id}>
               {issuePlace(issue) === '' ? null : <p className="shot-number">{issuePlace(issue)}</p>}
               <FlagNote
-                flag={{ code: issue.code, reason: issue.reason, origin: 'llm', light: issue.light }}
+                flag={{
+                  code: issue.code,
+                  key: issue.key,
+                  reason: issue.reason,
+                  origin: 'llm',
+                  light: issue.light,
+                  fix: 'none',
+                  ignored: issue.ignored,
+                }}
+                busy={action.busy}
+                onIgnored={(ignored) => {
+                  action.run(async () => {
+                    await setFlagIgnored(filmId, { key: issue.key, ignored });
+                    check.reload();
+                    onChecked();
+                  });
+                }}
               />
             </li>
           ))}
@@ -123,6 +144,7 @@ export function ScriptCheckSection({ filmId, stamp, onChecked }: Props) {
               : `${label} · circa ${formatEstimate(estimateUsd)}`}
         </button>
       </div>
+      {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       <WriteOutcome written={written} />
     </section>
   );

@@ -108,11 +108,23 @@ export function checkState(
   return check.fingerprint === fingerprintOf(finalId, scenes) ? 'current' : 'outdated';
 }
 
-const toFlag = (issue: { code: string; light: boolean; reason: string }): ContinuityFlag => ({
+/** La chiave di una segnalazione: ogni controllo è una lettura nuova, con segnalazioni nuove. */
+const issueKey = (issueId: string): string => `llm:${issueId}`;
+
+const toFlag = (issue: {
+  id: string;
+  code: string;
+  light: boolean;
+  reason: string;
+}): ContinuityFlag => ({
   code: issue.code,
+  key: issueKey(issue.id),
   reason: issue.reason,
   origin: 'llm',
   light: issue.light,
+  // La trama non si aggiusta rifacendo un video: come rispondere lo decide l'utente.
+  fix: 'none',
+  ignored: false,
 });
 
 /**
@@ -142,10 +154,15 @@ export function addScriptFlags(
   });
 }
 
+/** Le chiavi di tutte le segnalazioni, anche di quelle che non stanno su una scena (T5.3). */
+export const issueKeys = (check: StoredScriptCheck | undefined): string[] =>
+  (check?.issues ?? []).map((issue) => issueKey(issue.id));
+
 /** Le segnalazioni come le vede l'utente: con scena e inquadratura numerate da 1. */
 export function issuesView(
   check: StoredScriptCheck,
   scenes: readonly ScenePlan[],
+  ignored: ReadonlySet<string>,
 ): ScriptCheckIssue[] {
   const sceneNumbers = new Map(
     scenes.map((scene) => [sceneIdOf(scene.sceneNumber), scene.sceneNumber]),
@@ -161,6 +178,8 @@ export function issuesView(
       code: issue.code,
       light: issue.light,
       reason: issue.reason,
+      key: issueKey(issue.id),
+      ignored: ignored.has(issueKey(issue.id)),
       ...(sceneNumber === undefined ? {} : { sceneNumber }),
       ...(shotNumber === undefined ? {} : { shotNumber }),
     };

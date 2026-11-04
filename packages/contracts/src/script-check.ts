@@ -17,6 +17,9 @@ export const scriptCheckIssueSchema = z.object({
   /** Un avviso leggero: conviene un'occhiata, ma l'inquadratura va bene com'è. */
   light: z.boolean(),
   reason: z.string().min(1),
+  /** La chiave del giallo (T5.3), e se l'utente ha scelto di ignorarlo. */
+  key: z.string().min(1),
+  ignored: z.boolean(),
   sceneNumber: z.number().int().positive().optional(),
   shotNumber: z.number().int().positive().optional(),
 });

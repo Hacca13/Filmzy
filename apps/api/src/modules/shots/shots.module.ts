@@ -4,6 +4,7 @@ import {
   chooseTakeBodySchema,
   planSceneBodySchema,
   planSceneEstimateBodySchema,
+  setFlagIgnoredBodySchema,
   setShotImagesBodySchema,
   startSheetBodySchema,
   takeFrameBodySchema,
@@ -61,6 +62,12 @@ class ShotsController {
   @Get()
   plans(@Param('projectId') projectId: string): Promise<ShotPlans> {
     return this.shots.plans(projectId);
+  }
+
+  /** «Ignora» un giallo o lo rimette (T5.3). */
+  @Put('flags')
+  setFlagIgnored(@Param('projectId') projectId: string, @Body() body: unknown): Promise<ShotPlans> {
+    return this.shots.setFlagIgnored(projectId, parseBody(setFlagIgnoredBodySchema, body));
   }
 
   // Prima di `:shotId`, perché «estimate» non sia preso per l'id di un'inquadratura.

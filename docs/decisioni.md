@@ -835,3 +835,17 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 10. **CI su `main`.** Un test dell'interfaccia superava i 5 secondi sul Windows di GitHub (il calcolatore, non il codice): il limite è ora 20 secondi.
 **Verificati e lasciati:** una stima che non arriva non blocca il pulsante (come negli altri pulsanti); nessuna chiave esterna sulle nuove tabelle (come nelle altre del film; i film non si possono ancora cancellare); il controllo in corso è tenuto in memoria (un solo processo).
 **Conseguenze:** `NewShotPlan.previousExit`; `lastTakeAt` e `lastDrawnAt` dicono quando il lavoro è **partito**.
+
+## D77 · Le azioni sul giallo: «Rigenera» apre, non spende; «Ignora» vale per quella situazione — 04/11/2026
+
+**Realizza** T5.3 (architettura §8; D30, D74, D75).
+**Decisione:**
+1. **Ogni giallo dice cosa si può fare** (`ContinuityFlag.fix`, lo decide il server): `regenerate` (R3, R4, R5, R6, R9) mostra «Rigenera», `replan` (R1, R2) mostra «Rifai le inquadrature» con la stima, `none` (R7 e le segnalazioni della segretaria) nessun pulsante, perché il rimedio sta nella stesura e il motivo lo dice.
+2. **«Rigenera» non spende.** Apre il riquadro dell'inquadratura, dove storyboard e video si rifanno con servizio e stima in vista (D30, D36): niente rigenerazioni con un clic né automatiche. «Rifai le inquadrature» è lo stesso pulsante della scena, con la stima nell'etichetta e il limite di spesa.
+3. **«Ignora» vale per quella situazione.** Ogni giallo ha una chiave (`key`): codice, inquadratura o scena e cosa è cambiato (la data del cambiamento, per R3, R4, R5, R6, R9; l'uscita della scena prima, per R2; i personaggi mancanti, per R7; la segnalazione, per la segretaria). La scelta si salva per chiave (`ignored_flags`, migrazione `0024`; `PUT /api/projects/:id/shots/flags`): se il luogo cambia di nuovo la chiave è un'altra e il giallo torna. Ripensare una scena dà inquadrature nuove: anche lì il giallo torna, se c'è ancora.
+4. **Reversibile.** Un giallo ignorato resta visibile, segnato «Ignorato» con il suo motivo e «Rimetti»; il riepilogo del controllo non lo conta. Si può ignorare solo un giallo che c'è adesso (`invalid_request`, campo `flag`, altrimenti); rimetterlo è sempre possibile. Niente di generato cambia.
+5. Le segnalazioni del film intero, che non stanno su una scena, si ignorano dall'elenco di «Controlla la storia». Ripetere il controllo è una lettura nuova: le segnalazioni hanno chiavi nuove e tornano.
+
+**Perché:** senza «Ignora» un falso giallo restava per sempre; con il confronto del testo reso più stretto (D76) serve ancora di più. Una chiave costa meno di salvare i gialli, che restano calcolati.
+**Scartate:** «Rigenera» che parte da solo (spesa senza stima, contro D30); ignorare per codice o per inquadratura (nasconderebbe un cambiamento nuovo); nascondere del tutto i gialli ignorati (l'utente non potrebbe ripensarci).
+**Conseguenze:** `ContinuityFlag.key`, `.fix`, `.ignored`; `ScriptCheckIssue.key`, `.ignored`; `setFlagIgnoredBodySchema`; le chiavi di inquadrature e controlli passati restano in tabella, senza effetto. **Non fatto:** un rimedio guidato per R7 e per le segnalazioni della segretaria (per esempio aprire la stesura alla scena giusta); un elenco di tutti i gialli del film; il confronto con i disegni (`21-le-scene`, `28-stati-di-base`) col prossimo prompt Figma.

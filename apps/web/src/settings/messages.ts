@@ -77,6 +77,8 @@ const BY_INVALID_FIELD: Record<string, string> = {
   shots:
     'Non c’è ancora niente da controllare: pensa le inquadrature di almeno una scena (o rifai quelle da rifare).',
   check: 'Il controllo della storia è già in corso. Aspetta che finisca.',
+  // «Ignora» (T5.3): il giallo è passato nel frattempo.
+  flag: 'Questa segnalazione non c’è più. Aggiorna la pagina.',
   mask: 'Dipingi prima la zona da ritoccare.',
   sceneId: 'Questa scena non c’è più nella storia. Aggiorna la pagina e riprova.',
   image: 'Questa immagine non si può ritoccare qui. Aggiorna la pagina e riprova.',

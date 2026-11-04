@@ -28,6 +28,13 @@ interface Props {
   working?: ShotWork | undefined;
   /** I gialli di questa inquadratura (T4.9, T5.1): una regola di continuità che non torna, con il motivo. */
   flags?: readonly ContinuityFlag[] | undefined;
+  /** «Ignora» o «Rimetti» un giallo (T5.3). */
+  onFlagIgnored?: ((key: string, ignored: boolean) => void) | undefined;
+  /** Apre il riquadro dell'inquadratura, dove si rifà il lavoro. */
+  onOpen?: (() => void) | undefined;
+  /** Ripensa la scena: costa, quindi il pulsante porta la stima. */
+  onReplan?: (() => void) | undefined;
+  replanLabel?: string | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
   /** Senza, la card non offre lo storyboard: il piano è da rifare e il server lo rifiuterebbe. */
@@ -50,6 +57,10 @@ export function ShotCard({
   clipAssetId,
   working,
   flags = [],
+  onFlagIgnored,
+  onOpen,
+  onReplan,
+  replanLabel,
   storyboardOpen,
   canStoryboard,
   onStoryboard,
@@ -82,7 +93,29 @@ export function ShotCard({
       )}
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
-        <FlagNote key={`${flag.code}:${flag.reason}`} flag={flag} />
+        <FlagNote
+          key={flag.key}
+          flag={flag}
+          busy={busy}
+          // Rifare il lavoro si fa dal riquadro dell'inquadratura, con servizio e stima in vista (D30).
+          fixLabel={
+            flag.fix === 'regenerate' && canStoryboard
+              ? 'Rigenera'
+              : flag.fix === 'replan'
+                ? replanLabel
+                : undefined
+          }
+          onFix={
+            flag.fix === 'regenerate' && canStoryboard
+              ? onOpen
+              : flag.fix === 'replan'
+                ? onReplan
+                : undefined
+          }
+          onIgnored={(ignored) => {
+            onFlagIgnored?.(flag.key, ignored);
+          }}
+        />
       ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>

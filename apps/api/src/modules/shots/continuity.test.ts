@@ -10,10 +10,12 @@ import {
   cinematographyChangeFlags,
   frameChangeFlags,
   locationChangeFlags,
+  markIgnored,
   mergeFlags,
   moodboardChangeFlags,
   oldestWork,
   removedCharacterFlags,
+  ruleFlag,
 } from './continuity.js';
 
 const example = cinematographerInputSchema.parse(ROLE_INPUT_EXAMPLES.cinematographer).shot;
@@ -35,7 +37,14 @@ describe('R6: un luogo cambiato ingiallisce le inquadrature già fatte (D21)', (
 
     expect(Object.keys(flags).sort()).toEqual(['s1', 's2']);
     expect(flags['s1']).toEqual([
-      { code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule', light: false },
+      expect.objectContaining({
+        code: 'R6',
+        reason: LOCATION_CHANGED_REASON,
+        origin: 'rule',
+        light: false,
+        fix: 'regenerate',
+        ignored: false,
+      }),
     ]);
   });
 
@@ -171,7 +180,13 @@ describe('R5: il primo o l’ultimo fotogramma cambiato ingiallisce i take girat
 
     expect(Object.keys(flags)).toEqual(['s1']);
     expect(flags['s1']).toEqual([
-      { code: 'R5', reason: FRAMES_CHANGED_REASON, origin: 'rule', light: false },
+      expect.objectContaining({
+        code: 'R5',
+        reason: FRAMES_CHANGED_REASON,
+        origin: 'rule',
+        light: false,
+        fix: 'regenerate',
+      }),
     ]);
   });
 });
@@ -189,7 +204,13 @@ describe('R4: la fotografia del film cambiata avvisa i take girati prima, in mod
 
     expect(Object.keys(flags)).toEqual(['s1']);
     expect(flags['s1']).toEqual([
-      { code: 'R4', reason: CINEMATOGRAPHY_CHANGED_REASON, origin: 'rule', light: true },
+      expect.objectContaining({
+        code: 'R4',
+        reason: CINEMATOGRAPHY_CHANGED_REASON,
+        origin: 'rule',
+        light: true,
+        fix: 'regenerate',
+      }),
     ]);
   });
 
@@ -201,6 +222,45 @@ describe('R4: la fotografia del film cambiata avvisa i take girati prima, in mod
         takeAt: { s1: 100 },
       }),
     ).toEqual({});
+  });
+});
+
+describe('la chiave di un giallo (T5.3)', () => {
+  it('cambia se la situazione cambia: ignorarlo non vale per il cambiamento dopo', () => {
+    const shots = [shotIn('s1', 'piazza')];
+    const keyAt = (changedAt: number) =>
+      locationChangeFlags({ shots, changedAt: { piazza: changedAt }, workedAt: { s1: 1 } })[
+        's1'
+      ]?.[0]?.key;
+
+    expect(keyAt(500)).toBe(keyAt(500));
+    expect(keyAt(500)).not.toBe(keyAt(600));
+  });
+
+  it('markIgnored segna solo le chiavi scelte, sulle inquadrature e sulla scena', () => {
+    const seen = ruleFlag({ code: 'R6', key: 'a', reason: 'x', fix: 'regenerate' });
+    const other = ruleFlag({ code: 'R9', key: 'b', reason: 'y', light: true, fix: 'regenerate' });
+    const onScene = ruleFlag({ code: 'R7', key: 'c', reason: 'z', fix: 'none' });
+    const scene = {
+      sceneNumber: 1,
+      heading: 'SCENA',
+      summary: 'Niente.',
+      durationS: 10,
+      planned: true,
+      stale: false,
+      shots: [],
+      chosenStoryboards: {},
+      clips: {},
+      working: {},
+      flags: { s1: [seen, other] },
+      sceneFlags: [onScene],
+    };
+
+    const [marked] = markIgnored([scene], new Set(['a', 'c']));
+
+    expect(marked?.flags['s1']?.map((flag) => flag.ignored)).toEqual([true, false]);
+    expect(marked?.sceneFlags[0]?.ignored).toBe(true);
+    expect(seen.ignored).toBe(false);
   });
 });
 
@@ -240,7 +300,13 @@ describe('R9: il moodboard cambiato avvisa i take girati prima, in modo leggero 
 
     expect(Object.keys(flags)).toEqual(['s1']);
     expect(flags['s1']).toEqual([
-      { code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule', light: true },
+      expect.objectContaining({
+        code: 'R9',
+        reason: MOODBOARD_CHANGED_REASON,
+        origin: 'rule',
+        light: true,
+        fix: 'regenerate',
+      }),
     ]);
     expect(
       moodboardChangeFlags({ shots, changes: { film: 1000, scenes: {} }, takeAt: { s1: 1500 } }),
@@ -273,8 +339,8 @@ describe('R9: il moodboard cambiato avvisa i take girati prima, in modo leggero 
 });
 
 describe('mergeFlags', () => {
-  const r6 = { code: 'R6', reason: 'x', origin: 'rule' as const, light: false };
-  const r9 = { code: 'R9', reason: 'y', origin: 'rule' as const, light: true };
+  const r6 = ruleFlag({ code: 'R6', key: 'k6', reason: 'x', fix: 'regenerate' });
+  const r9 = ruleFlag({ code: 'R9', key: 'k9', reason: 'y', light: true, fix: 'regenerate' });
 
   it("ogni inquadratura ha i gialli di tutte le regole, nell'ordine dato", () => {
     expect(mergeFlags({ s1: [r6], s2: [r6] }, { s1: [r9] })).toEqual({ s1: [r6, r9], s2: [r6] });

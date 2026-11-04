@@ -60,7 +60,7 @@ export class ScriptCheckService {
     return {
       state: checkState(check, plans.finalVersionId, plans.scenes),
       checkedAt: check.createdAt,
-      issues: issuesView(check, plans.scenes),
+      issues: issuesView(check, plans.scenes, this.shots.ignoredFlags(projectId)),
     };
   }
 

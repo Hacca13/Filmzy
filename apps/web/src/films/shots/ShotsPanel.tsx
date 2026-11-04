@@ -4,7 +4,13 @@ import { useCallback, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { fetchCast } from '../../api/cast';
 import { fetchLocations } from '../../api/locations';
-import { changeShotMovement, estimateScenePlan, fetchShotPlans, planScene } from '../../api/shots';
+import {
+  changeShotMovement,
+  estimateScenePlan,
+  fetchShotPlans,
+  planScene,
+  setFlagIgnored,
+} from '../../api/shots';
 import { Chip, Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
 import { useLastReady } from '../../lib/use-last-ready';
@@ -165,6 +171,14 @@ function SceneSection({
   const chip = sceneChip(scene);
   // Se il piano è rifatto l'inquadratura aperta sparisce, e con lei il suo storyboard.
   const storyboardShot = scene.shots.find((shot) => shot.id === storyboardShotId);
+  const planLabel =
+    estimateUsd === undefined ? verb : `${verb} · circa ${formatEstimate(estimateUsd)}`;
+  const setIgnored = (key: string) => (ignored: boolean) => {
+    action.run(async () => {
+      await setFlagIgnored(filmId, { key, ignored });
+      reload();
+    });
+  };
 
   return (
     <section className="scene-shots">
@@ -181,7 +195,7 @@ function SceneSection({
       )}
       {working ? <Chip tone="info">L&apos;aiuto regista sta pensando</Chip> : null}
       {scene.sceneFlags.map((flag) => (
-        <FlagNote key={`${flag.code}:${flag.reason}`} flag={flag} />
+        <FlagNote key={flag.key} flag={flag} busy={action.busy} onIgnored={setIgnored(flag.key)} />
       ))}
       {scene.stale ? (
         <Notice tone="info" title="Informazione">
@@ -208,6 +222,14 @@ function SceneSection({
               clipAssetId={scene.clips[shot.id]}
               working={scene.working[shot.id]}
               flags={scene.flags[shot.id]}
+              onFlagIgnored={(key, ignored) => {
+                setIgnored(key)(ignored);
+              }}
+              onOpen={() => {
+                setStoryboardShotId(shot.id);
+              }}
+              onReplan={onPlan}
+              replanLabel={planLabel}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}
               onStoryboard={() => {
@@ -237,11 +259,7 @@ function SceneSection({
           disabled={written.running}
           onClick={onPlan}
         >
-          {working
-            ? 'Sto pensando…'
-            : estimateUsd === undefined
-              ? verb
-              : `${verb} · circa ${formatEstimate(estimateUsd)}`}
+          {working ? 'Sto pensando…' : planLabel}
         </button>
       </div>
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}

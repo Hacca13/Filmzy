@@ -190,6 +190,9 @@ describe('errori e tentativi (§4.10)', () => {
 
     // retries.invalid_output = 1 nel seme: un tentativo più una riparazione.
     expect(receipts.last()?.attempts).toBe(2);
+    // Ogni chiamata si paga, anche quelle da rifare: lo scontrino le conta tutte.
+    expect(receipts.last()?.usage?.outputTokens).toBe(128);
+    expect(receipts.last()?.actualCostUsd).toBeGreaterThan(0);
   });
 });
 

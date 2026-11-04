@@ -11,7 +11,7 @@ import {
 import type { z } from 'zod';
 
 import { llmAdapterFor } from './adapters/index.js';
-import type { LlmImage, LlmRequest, LlmResponse } from './adapters/types.js';
+import type { LlmImage, LlmRequest, LlmResponse, LlmUsage } from './adapters/types.js';
 import type { ConfigSource } from './config/source.js';
 import type { SecretSources } from './config/secrets.js';
 import { configHash, hashRoleConfig } from './config/hash.js';
@@ -178,11 +178,11 @@ export function createTroupe(options: TroupeOptions): Troupe {
       const closed: GenerationReceipt = {
         ...running,
         attempts: attempt.attempts,
-        usage: attempt.response?.usage,
+        usage: attempt.usage,
         actualCostUsd:
-          attempt.response === undefined
+          attempt.usage === undefined
             ? undefined
-            : llmCostUsd(resolved.model.pricing, attempt.response.usage),
+            : llmCostUsd(resolved.model.pricing, attempt.usage),
         durationMs: now().getTime() - started.getTime(),
         status: attempt.error === undefined ? 'succeeded' : 'failed',
         errorCode: attempt.error?.code,
@@ -391,9 +391,18 @@ interface CallWithRetriesInput {
 
 interface AttemptResult {
   data?: unknown;
-  response?: LlmResponse;
+  /** I consumi di **tutte** le chiamate: una riparazione si paga come la prima. */
+  usage?: LlmUsage;
   error?: ProviderError;
   attempts: number;
+}
+
+function addUsage(total: LlmUsage | undefined, more: LlmUsage | undefined): LlmUsage | undefined {
+  if (more === undefined) return total;
+  return {
+    inputTokens: (total?.inputTokens ?? 0) + (more.inputTokens ?? 0),
+    outputTokens: (total?.outputTokens ?? 0) + (more.outputTokens ?? 0),
+  };
 }
 
 /**
@@ -408,20 +417,22 @@ async function callWithRetries(input: CallWithRetriesInput): Promise<AttemptResu
   let technicalLeft = retries.technical_error;
   let repairsLeft = retries.invalid_output;
   let attempts = 0;
+  let usage: LlmUsage | undefined;
 
   for (;;) {
     attempts += 1;
     try {
       const response = await adapter(request);
+      usage = addUsage(usage, response.usage);
       const parsed = outputSchema.safeParse(response.data);
-      if (parsed.success) return { data: parsed.data, response, attempts };
+      if (parsed.success) return { data: parsed.data, usage, attempts };
 
       const reason = parsed.error.issues
         .map((issue) => `${issue.path.join('.')} ${issue.message}`)
         .join('; ');
       if (repairsLeft <= 0) {
         return {
-          response,
+          usage,
           attempts,
           error: new ProviderError(
             'invalid_output',
@@ -440,6 +451,7 @@ async function callWithRetries(input: CallWithRetriesInput): Promise<AttemptResu
       continue;
     } catch (error) {
       if (!(error instanceof ProviderError)) throw error;
+      usage = addUsage(usage, error.usage);
 
       // Una risposta fuori schema si ripara anche quando l'ha vista l'adapter (§4.9).
       if (error.code === 'invalid_output' && repairsLeft > 0) {
@@ -449,7 +461,7 @@ async function callWithRetries(input: CallWithRetriesInput): Promise<AttemptResu
       }
 
       if (!RETRYABLE_CODES.has(error.code) || technicalLeft <= 0) {
-        return { attempts, error };
+        return { usage, attempts, error };
       }
 
       technicalLeft -= 1;

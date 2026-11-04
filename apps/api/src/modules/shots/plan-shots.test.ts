@@ -124,6 +124,24 @@ describe('il cambiamento dichiarato', () => {
     expect(declared?.continuity.change).toBe(change);
     expect(plain?.continuity).not.toHaveProperty('change');
   });
+
+  it.each(['nessuno', 'Nessun cambiamento.', 'nessuna modifica', 'N/A', '-', 'none'])(
+    '«%s» non dichiara niente: R1 resta acceso',
+    (note) => {
+      const base = proposed();
+      const [settled] = settle([{ ...base, continuity: { ...base.continuity, change: note } }]);
+
+      expect(settled?.continuity).not.toHaveProperty('change');
+    },
+  );
+
+  it('una nota che comincia allo stesso modo ma dice qualcosa resta', () => {
+    const base = proposed();
+    const change = 'Nessuno si accorge che è passato un anno.';
+    const [settled] = settle([{ ...base, continuity: { ...base.continuity, change } }]);
+
+    expect(settled?.continuity.change).toBe(change);
+  });
 });
 
 describe('hashScene', () => {

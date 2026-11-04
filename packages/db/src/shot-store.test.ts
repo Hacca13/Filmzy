@@ -209,6 +209,42 @@ describe('quando è partita l’ultima immagine (regole di continuità)', () => 
 
     expect(store.lastDrawnAt('film-1')).toEqual({ a1: startedAt });
   });
+
+  const drawn = (mode: 'storyboard' | 'end_frame', assetId: string): number => {
+    const attempt = store.startStoryboard('a1', mode);
+    const startedAt = clock.getTime();
+    store.finishStoryboard('a1', mode, attempt, { status: 'succeeded', assetIds: [assetId] });
+    clock = new Date(clock.getTime() + 60_000);
+    return startedAt;
+  };
+
+  it('conta la variante scelta: un tentativo nuovo tenuto da parte non rifà quello che la card mostra', () => {
+    store.replaceScene(plan(1, ['a1']));
+    const first = drawn('storyboard', 'vecchia');
+    store.chooseStoryboard('a1', 'vecchia');
+    const second = drawn('storyboard', 'nuova');
+
+    expect(store.lastDrawnAt('film-1')).toEqual({ a1: first });
+
+    store.chooseStoryboard('a1', 'nuova');
+    expect(store.lastDrawnAt('film-1')).toEqual({ a1: second });
+  });
+
+  it('senza una scelta conta il tentativo più recente', () => {
+    store.replaceScene(plan(1, ['a1']));
+    drawn('storyboard', 'prima');
+    const latest = drawn('storyboard', 'dopo');
+
+    expect(store.lastDrawnAt('film-1')).toEqual({ a1: latest });
+  });
+
+  it('fra storyboard e ultimo fotogramma conta il più vecchio: il giallo passa quando è rifatto tutto', () => {
+    store.replaceScene(plan(1, ['a1']));
+    const storyboard = drawn('storyboard', 'prima');
+    drawn('end_frame', 'fine');
+
+    expect(store.lastDrawnAt('film-1')).toEqual({ a1: storyboard });
+  });
 });
 
 describe('lo storyboard di un’inquadratura', () => {

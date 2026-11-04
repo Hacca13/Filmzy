@@ -9,6 +9,22 @@ import {
 /** Le piccole decisioni delle pagine dei fornitori, fuori dai componenti così si provano a parte. */
 
 /**
+ * Da dove parte la scelta nella procedura guidata: dai servizi già attivati o, se non ce n'è, da quelli
+ * che si possono usare e non sono in prova. Mai da uno con termini da conoscere: lo accende l'utente (D79).
+ */
+export function preselectedServices(provider: ProviderState): string[] {
+  const already = provider.services.filter((service) => service.enabled);
+  const start =
+    already.length > 0
+      ? already
+      : provider.services.filter(
+          (service) =>
+            service.usable && service.status === 'active' && service.termsNotice === undefined,
+        );
+  return start.map((service) => service.modelId);
+}
+
+/**
  * I servizi attivati di un fornitore, in **tutti** i gruppi in cui compare. Il server chiede
  * l'elenco intero dei servizi attivati del fornitore: la scheda di un gruppo ne mostra solo una
  * parte, e cambiandone uno non si devono spegnere gli altri.

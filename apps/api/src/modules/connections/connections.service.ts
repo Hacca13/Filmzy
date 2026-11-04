@@ -45,7 +45,7 @@ type Connection = TroupeConfig['connections'][string];
 @Injectable()
 export class ConnectionsService {
   private readonly log = new Logger(ConnectionsService.name);
-  private policy: Promise<ServicePolicyFile | undefined> | undefined;
+  private policy: ServicePolicyFile | undefined;
 
   constructor(
     @Inject(CONFIG_DIR) private readonly configDir: string,
@@ -82,6 +82,7 @@ export class ConnectionsService {
   ): Promise<ConnectionsOverview> {
     const { config } = await this.effective();
     const own = this.modelsOf(config, connectionId);
+    const policy = await this.servicePolicy();
 
     const unknown = modelIds.find((id) => !own.has(id));
     if (unknown !== undefined) {
@@ -94,6 +95,9 @@ export class ConnectionsService {
       const wasEnabled = new Set(settings.enabledModelIds);
       for (const id of modelIds.filter((candidate) => !wasEnabled.has(candidate))) {
         this.assertCanEnable(config, connectionId, id, own.get(id));
+        if (policy === undefined && own.get(id)?.off_by_default === true) {
+          throw domainError(409, 'no_eligible_model', { details: { connectionId, modelId: id } });
+        }
       }
 
       const wanted = new Set(modelIds);
@@ -209,15 +213,16 @@ export class ConnectionsService {
   }
 
   /**
-   * Il file non cambia mentre il programma gira: si legge una volta. Se manca, la pubblicazione si ferma
-   * e lo spiega (D79); qui si registra soltanto, perché la pagina deve restare usabile.
+   * Il file non cambia mentre il programma gira: una volta letto si tiene. Se manca o è rotto la pagina
+   * resta usabile, ma ci si riprova alla prossima richiesta e i servizi spenti di partenza non si accendono:
+   * l'utente non avrebbe davanti la loro scritta (D79).
    */
-  private servicePolicy(): Promise<ServicePolicyFile | undefined> {
-    this.policy ??= loadServicePolicy(this.configDir).then(({ data, issues }) => {
-      for (const issue of issues) this.log.warn(issue.message);
-      return data;
-    });
-    return this.policy;
+  private async servicePolicy(): Promise<ServicePolicyFile | undefined> {
+    if (this.policy !== undefined) return this.policy;
+    const { data, issues } = await loadServicePolicy(this.configDir);
+    for (const issue of issues) this.log.warn(issue.message);
+    this.policy = data;
+    return data;
   }
 
   private async effective() {

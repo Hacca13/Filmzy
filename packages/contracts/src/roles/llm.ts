@@ -222,11 +222,12 @@ export type ScriptSupervisorInput = z.infer<typeof scriptSupervisorInputSchema>;
  * merita solo un'occhiata (diventa un avviso leggero).
  */
 export const scriptSupervisorIssueSchema = z.object({
-  sceneId: sceneIdSchema.optional(),
-  shotId: shotIdSchema.optional(),
+  // Un id nullo o un motivo vuoto non valgono una riparazione a pagamento: li sistema `settleIssues`.
+  sceneId: sceneIdSchema.nullish(),
+  shotId: shotIdSchema.nullish(),
   code: z.string().min(1),
   severity: z.enum(['warning', 'notice']),
-  reason: z.string().min(1),
+  reason: z.string(),
 });
 
 export type ScriptSupervisorIssue = z.infer<typeof scriptSupervisorIssueSchema>;

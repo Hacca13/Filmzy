@@ -254,6 +254,7 @@ describe('la chiave di un giallo (T5.3)', () => {
       working: {},
       flags: { s1: [seen, other] },
       sceneFlags: [onScene],
+      hasWork: false,
     };
 
     const [marked] = markIgnored([scene], new Set(['a', 'c']));

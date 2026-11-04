@@ -69,6 +69,8 @@ export const scenePlanSchema = z.object({
   flags: z.record(shotIdSchema, z.array(continuityFlagSchema)),
   /** I gialli della scena stessa (T5.1): R7, la scena nomina un personaggio che non c'è più nel film. */
   sceneFlags: z.array(continuityFlagSchema),
+  /** C'è qualcosa che rifare il piano toglierebbe: tentativi, video, immagini, anche un lavoro in corso. */
+  hasWork: z.boolean(),
 });
 
 export type ScenePlan = z.infer<typeof scenePlanSchema>;

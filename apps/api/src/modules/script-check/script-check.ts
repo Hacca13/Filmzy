@@ -75,13 +75,13 @@ export function settleIssues(
   for (const issue of issues) {
     const reason = issue.reason.trim();
     if (reason === '') continue;
-    const shotScene = issue.shotId === undefined ? undefined : known.shotScenes.get(issue.shotId);
+    const wantedShot = issue.shotId ?? undefined;
+    const wantedScene = issue.sceneId ?? undefined;
+    const shotScene = wantedShot === undefined ? undefined : known.shotScenes.get(wantedShot);
     const sceneId =
       shotScene ??
-      (issue.sceneId !== undefined && known.sceneIds.has(issue.sceneId)
-        ? issue.sceneId
-        : undefined);
-    const shotId = shotScene === undefined ? undefined : issue.shotId;
+      (wantedScene !== undefined && known.sceneIds.has(wantedScene) ? wantedScene : undefined);
+    const shotId = shotScene === undefined ? undefined : wantedShot;
 
     const key = JSON.stringify([issue.code, reason, sceneId, shotId]);
     if (seen.has(key)) continue;

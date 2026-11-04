@@ -117,9 +117,10 @@ export const videoCapabilitiesSchema = z.object({
   minors: z.boolean(),
 });
 
-/** Capacità di musica, effetti e voci. `max_duration_s`: una richiesta più lunga si porta dentro il limite. */
+/** Capacità di musica, effetti e voci. Una durata fuori dai limiti rende il servizio non adatto (regola 6). */
 export const audioCapabilitiesSchema = z.object({
   commercial_use: z.boolean().optional(),
+  min_duration_s: z.number().positive().optional(),
   max_duration_s: z.number().positive().optional(),
 });
 

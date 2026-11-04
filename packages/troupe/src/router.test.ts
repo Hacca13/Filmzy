@@ -254,3 +254,33 @@ describe("«Cambia servizio»: l'elenco per l'utente (D36)", () => {
     expect(route(input({ settings })).modelId).toBe('kling-o3-standard');
   });
 });
+
+describe('il costo di una clip a tempo (D79, D80)', () => {
+  const clip: Omit<TranslateInput, 'modelId'> = {
+    role: 'composer',
+    prompt: 'sparse piano, bittersweet',
+    inputs: [],
+    characterIds: [],
+    durationS: 30,
+    params: {},
+    idempotencyKey: 'clip-1',
+  };
+  const settings: UserSettings = {
+    ...noSettings,
+    enabledModelIds: ['music-stable-audio-3', 'music-elevenlabs'],
+  };
+
+  it('un minuto cominciato si stima intero: non è gratis, e i limiti di spesa lo vedono', () => {
+    const chosen = route(
+      input({ roleId: 'composer', request: clip, chosenModelId: 'music-elevenlabs', settings }),
+    );
+
+    expect(chosen.estimatedCostUsd).toBeCloseTo(0.6);
+  });
+
+  it('non passa davanti al servizio che costa meno', () => {
+    const chosen = route(input({ roleId: 'composer', request: clip, settings }));
+
+    expect(chosen.modelId).toBe('music-stable-audio-3');
+  });
+});

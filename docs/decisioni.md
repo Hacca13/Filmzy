@@ -867,7 +867,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 1. **Musica ed effetti con Stable Audio 3 su fal** (`music-stable-audio-3`, `sfx-stable-audio-3`; famiglia `stable_audio`): è l'unico con un testo del fornitore che non pone limiti per tipo di opera e dichiara dati con licenza. Costa pochissimo e passa dalla stessa connessione e chiave dei video: nessun adapter, nessuna chiave in più per l'utente. Compaiono in Connessioni, sotto «Musica ed effetti».
 2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta per le voci di Fase 2; la voce del catalogo è uscita con D79.
 3. **Prezzo a clip.** Nuova unità `per_audio`. La pagina dice «per audio» senza dire se dipende dalla durata: lo dirà il primo scontrino vero.
-4. **Limiti di durata nel catalogo** (`max_duration_s`): 120 s per la musica (dalla pagina), 30 s per gli effetti (valore prudente: la pagina non lo dà). Una richiesta più lunga si porta dentro il limite.
+4. **Limiti di durata nel catalogo** (`max_duration_s`): 120 s per la musica (dalla pagina), 30 s per gli effetti (valore prudente: la pagina non lo dà). Una richiesta fuori dai limiti rende il servizio non adatto (`no_eligible_model`): la prima versione la tagliava in silenzio, corretta con D80.
 5. Compositore e rumorista sono accesi; le funzioni `music` e `sound_effects` restano spente fino a T5.5, che porta le tracce.
 
 **Perché:** «musica solo da fornitori con licenza chiara» (ricerca del 13/10). Il prezzo qui è secondario: una clip costa centesimi con tutti.
@@ -898,3 +898,26 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Rischio da non dimenticare:** la scritta informa l'utente e mette su di lui il modo in cui usa il film, ma **non è detto che sposti tutta la responsabilità**. Il divieto di offrire i modelli tramite altri programmi riguarda il programma: può ricadere su chi distribuisce Filmzy, e ElevenLabs o fal possono chiudere l'accesso. Non cambia quello che i termini permettono, e una scritta non vincola nessuno come un contratto. Passare da fal può spostare il problema, ma le pagine di fal dicono solo «Commercial use», senza condizioni. Per questo c'è una voce in «Fuori dal codice»: da far leggere a un legale prima del rilascio. **Non è un parere legale.**
 **Scartate:** l'errore che impediva di aggiungerli (la prima versione di questa decisione, cambiata lo stesso giorno); ElevenLabs acceso di partenza.
 **Conseguenze:** `servicePolicyFileSchema`, `off_by_default`, `ServiceState.termsNotice`, `per_started_minute`, `duration_ms`, famiglia `elevenlabs_music`, `readConfigFile` condiviso.
+
+## D80 · Controllo di T5.1–T5.4 con Opus xhigh: cosa si è corretto e cosa no — 04/11/2026
+
+**Realizza** la richiesta dell'autore di far rileggere a Opus xhigh il lavoro fatto con effort medium. Sono uscite 15 segnalazioni, verificate una per una sul codice.
+**Corrette:**
+1. **La stima di una clip a tempo era 0 $** (errore di D79): il calcolo passava i secondi solo ai video, quindi ElevenLabs Music non contava per i limiti di spesa e passava davanti a Stable Audio. Ora si guarda l'unità del prezzo. Il costo vero segue la stima, come per i video: fal non dice la durata.
+2. **Una riparazione non si contava** (da T1.x, tutti i ruoli di testo): lo scontrino teneva i consumi dell'ultima chiamata, e una risposta fuori schema vista dall'adapter non ne aveva. Ora si sommano tutte, anche quelle finite male.
+3. **Rifare il piano senza avviso** (T5.3): la conferma guardava solo video e storyboard scelti, ma si perdono anche i tentativi non scelti, le immagini e i lavori in corso. Lo decide il server (`ScenePlan.hasWork`), il testo lo dice e il riquadro si porta in vista.
+4. **R2 tornava dopo «Ignora»** (T5.1): la chiave dipendeva dalle parole. Ora dipende da cosa è diverso: id e testo normalizzato. Riscrivere la stessa uscita o rinominare un luogo non la cambia.
+5. **R3 e R6 passavano senza aver rifatto niente** (T5.1, D76.4 l'aveva corretto solo per i take): contava l'ultimo tentativo riuscito. Ora conta la variante scelta, o l'ultimo tentativo se non ce n'è, e fra storyboard e ultimo fotogramma il più vecchio.
+6. **Una nota «nessuno» spegneva R1, e ogni nota spegneva R2** (T5.1): le note che non dichiarano niente non si tengono, e R2 non guarda la nota, scritta pensando all'uscita di prima. Può dare un giallo in più: si ignora.
+7. **Una durata audio fuori dai limiti si tagliava in silenzio** (D78): contro la regola 6. Ora il servizio non è adatto (`no_eligible_model`). Nuovo `min_duration_s`.
+8. **Una scena da rifare dava gialli** (contro D74.7), con «Ignora» come sola azione.
+9. **Senza `policy.yaml` la scritta spariva e il servizio si accendeva** (D79): ora un servizio spento di partenza non si accende, e rimesso il file non serve riavviare. La procedura guidata non propone un servizio con la scritta, e un ruolo che ne usa uno spento avvisa.
+10. **Il controllo della storia ripagava per poco** (T5.2): un id nullo o un motivo vuoto non chiedono più una riparazione: li sistema `settleIssues`.
+
+**Non corrette, con il perché:**
+- Le cinque funzioni dei gialli «cambiato dopo il lavoro» si somigliano, ma non c'è la differenza di comportamento segnalata: `changed > worked` e `worked >= changed → salta` dicono la stessa cosa. Si tengono: sono corte e leggibili, e R3 è diversa.
+- `resolveRole` senza impostazioni usa un servizio spento di partenza se il ruolo lo dichiara: è una scelta esplicita nelle impostazioni avanzate, che ora avvisa.
+- Letture ripetute nel percorso di «Ignora» e del controllo: poco lavoro su SQLite locale. Si è tolta solo quella doppia in `plans`.
+- `severity` del controllo resta chiusa: un valore sconosciuto merita la riparazione.
+
+**Da ricordare:** i test non provano la conferma nel browser né il suo scorrimento; nessuna chiamata vera.

@@ -6,6 +6,7 @@ import {
   hasLinkedProvider,
   mergedProviders,
   parseUsd,
+  preselectedServices,
   serviceGroups,
   usdToField,
   withServiceToggled,
@@ -172,5 +173,28 @@ describe('hasLinkedProvider', () => {
 
   it('un fornitore che non vuole la chiave (il finto) è collegato con un servizio attivato', () => {
     expect(hasLinkedProvider(linked({ keyRequired: false }))).toBe(true);
+  });
+});
+
+describe('da dove parte la procedura guidata', () => {
+  const providerWith = (services: ServiceState[]): ProviderState =>
+    ({ services }) as unknown as ProviderState;
+
+  it('propone chi si può usare, ma non un servizio con termini da conoscere (D79)', () => {
+    const provider = providerWith([
+      service('normale', false),
+      { ...service('con-la-scritta', false), termsNotice: 'Da leggere.' },
+    ]);
+
+    expect(preselectedServices(provider)).toEqual(['normale']);
+  });
+
+  it('se ce ne sono di già attivati parte da quelli, anche con la scritta: li ha scelti l’utente', () => {
+    const provider = providerWith([
+      service('normale', false),
+      { ...service('con-la-scritta', true), termsNotice: 'Da leggere.' },
+    ]);
+
+    expect(preselectedServices(provider)).toEqual(['con-la-scritta']);
   });
 });

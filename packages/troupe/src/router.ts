@@ -224,7 +224,7 @@ function qualityOf(model: ModelEntry): number | undefined {
 
 /** Il costo previsto di questa richiesta su questo servizio (architettura §4.1). */
 function estimate(request: Omit<TranslateInput, 'modelId'>, model: ModelEntry): number | undefined {
-  if (model.kind === 'video') {
+  if (model.pricing.unit === 'per_second' || model.pricing.unit === 'per_started_minute') {
     const seconds = allowedDuration(model, request.durationS);
     return mediaCostUsd(model.pricing, { ...(seconds === undefined ? {} : { seconds }) });
   }

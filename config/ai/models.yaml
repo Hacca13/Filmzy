@@ -277,7 +277,8 @@ models:
     off_by_default: true
     capabilities:
       commercial_use: false                   # per i film serve il piano Enterprise Music
-      max_duration_s: 600                     # music_length_ms: da 3000 a 600000
+      min_duration_s: 3                       # music_length_ms: da 3000 a 600000
+      max_duration_s: 600
     request_fields: { prompt: prompt, duration_ms: music_length_ms }
     pricing: { unit: per_started_minute, value: 0.6, note: "0,60 $ al minuto; un minuto cominciato si paga intero", checked: 2026-11-04 }
     status: testing

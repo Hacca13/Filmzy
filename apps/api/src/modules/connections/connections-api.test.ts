@@ -7,7 +7,7 @@ import {
   type ProviderState,
 } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { appendFile, cp, mkdtemp } from 'node:fs/promises';
+import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -368,4 +368,36 @@ describe('i servizi con termini da conoscere (D79)', () => {
 
     expect(stable?.termsNotice).toBeUndefined();
   });
+});
+
+describe('senza il file delle scritte (D79)', () => {
+  it('un servizio spento di partenza non si accende; rimesso il file, si accende senza riavviare', async () => {
+    const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
+    await cp(CONFIG_DIR, configDir, { recursive: true });
+    // Una prova più su toglie le chiavi: senza, al primo avvio non si pubblica niente.
+    Object.assign(process.env, KEYS);
+    const started = await startApp(fakeCipher, 'none', configDir);
+    const policy = path.join(configDir, 'ai', 'policy.yaml');
+    const kept = await readFile(policy, 'utf8');
+
+    try {
+      await rm(policy);
+      const refused = await started.client.call('PUT', '/connections/fal/services', {
+        modelIds: ['music-elevenlabs'],
+      });
+      expect(refused.status).toBe(409);
+      expect(errorOf(refused)).toMatchObject({
+        code: 'no_eligible_model',
+        details: { modelId: 'music-elevenlabs' },
+      });
+
+      await writeFile(policy, kept);
+      const accepted = await started.client.call('PUT', '/connections/fal/services', {
+        modelIds: ['music-elevenlabs'],
+      });
+      expect(accepted.status).toBe(200);
+    } finally {
+      await started.app.close();
+    }
+  }, 60_000);
 });

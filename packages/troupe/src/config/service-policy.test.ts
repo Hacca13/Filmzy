@@ -6,7 +6,7 @@ import type { ModelEntry } from '@filmzy/contracts';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { TroupeConfig } from './load-files.js';
-import { loadSeedConfig, modelOf, SEED_CONFIG_DIR } from './seed.fixtures.js';
+import { loadSeedConfig, modelOf, roleOf, SEED_CONFIG_DIR } from './seed.fixtures.js';
 import { validateServicePolicy } from './service-policy.js';
 
 let seed: TroupeConfig;
@@ -63,6 +63,17 @@ describe('i servizi con termini da conoscere (D79)', () => {
     expect(issues[0]?.message).toContain('«La mia musica»');
     expect(issues[0]?.message).toContain('escludono i film');
     expect(issues[0]?.message).toContain('una tua responsabilità');
+  });
+
+  it('avvisa di un servizio spento di partenza se un ruolo lo usa: non ha davanti l’interruttore', async () => {
+    const config = structuredClone(seed);
+    config.roles.composer = { ...roleOf(config, 'composer'), model: 'music-elevenlabs' };
+
+    const issues = await validateServicePolicy(config, SEED_CONFIG_DIR);
+
+    expect(issues).toEqual([
+      expect.objectContaining({ severity: 'warning', modelId: 'music-elevenlabs' }),
+    ]);
   });
 
   it('riconosce ElevenLabs Music anche se passa da un altro fornitore', async () => {

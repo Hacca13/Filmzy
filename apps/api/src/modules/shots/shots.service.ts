@@ -94,6 +94,8 @@ export class ShotsService {
     const config = await this.config();
     const known = this.bible.knownIds(projectId);
     const stored = new Map(this.store.plans(projectId).map((plan) => [plan.sceneNumber, plan]));
+    const drawnAt = this.store.lastDrawnAt(projectId);
+    const takeAt = this.takes.lastTakeAt(projectId);
     const extras = {
       chosen: this.store.chosenStoryboards(projectId),
       clips: this.takes.latestClips(projectId),
@@ -103,11 +105,12 @@ export class ShotsService {
       framesChanges: this.store.framesChanges(projectId),
       cinematographyChangedAt: this.projects.cinematographyChangedAt(projectId),
       characterNames: known.names.characters,
-      workedAt: this.workedAt(projectId),
+      drawnAt,
+      workedAt: oldestWork(drawnAt, takeAt),
       moodboardChanges: config.features.moodboard
         ? this.moodboards.changes(projectId)
         : { scenes: {} },
-      takeAt: this.takes.lastTakeAt(projectId),
+      takeAt,
     };
 
     const scenes = final.screenplay.scenes.map((scene) =>
@@ -163,11 +166,6 @@ export class ShotsService {
       checkState(check, plans.finalVersionId, plans.scenes) === 'current' &&
       issueKeys(check).includes(key)
     );
-  }
-
-  /** Quando è partito il lavoro riuscito più vecchio di ogni inquadratura (ms): immagini o video. */
-  private workedAt(projectId: string): Record<string, number> {
-    return oldestWork(this.store.lastDrawnAt(projectId), this.takes.lastTakeAt(projectId));
   }
 
   /** Cosa si sta facendo adesso per ogni inquadratura del film (T4.4): il video vince sulle immagini. */
@@ -321,6 +319,8 @@ interface PerShot {
   /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è partito il lavoro più vecchio di ogni inquadratura (ms): servono ai gialli (R6). */
   locationChanges: Readonly<Record<string, number>>;
   workedAt: Readonly<Record<string, number>>;
+  /** Quando è partito lo storyboard che la card fa vedere (ms). */
+  drawnAt: Readonly<Record<string, number>>;
   /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
   sheetChanges: Readonly<Record<string, number>>;
   framesChanges: Readonly<Record<string, number>>;
@@ -382,38 +382,49 @@ function scenePlan(
   extras: PerShot,
 ): ScenePlan {
   const shots = plan?.shots ?? [];
+  const stale = plan !== undefined && isStale(scene, plan, known);
   return {
     sceneNumber: scene.number,
     heading: scene.heading,
     summary: scene.summary,
     durationS: scene.durationS,
     planned: plan !== undefined,
-    stale: plan !== undefined && isStale(scene, plan, known),
+    stale,
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots,
     sceneFlags: removedCharacterFlags(scene, known.characters),
     chosenStoryboards: forShots(shots, extras.chosen),
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
-    flags: mergeFlags(
-      characterSheetFlags({
-        shots,
-        changedAt: extras.sheetChanges,
-        workedAt: extras.workedAt,
-        names: extras.characterNames,
-      }),
-      frameChangeFlags({ shots, changedAt: extras.framesChanges, takeAt: extras.takeAt }),
-      cinematographyChangeFlags({
-        shots,
-        changedAt: extras.cinematographyChangedAt,
-        takeAt: extras.takeAt,
-      }),
-      locationChangeFlags({
-        shots,
-        changedAt: extras.locationChanges,
-        workedAt: extras.workedAt,
-      }),
-      moodboardChangeFlags({ shots, changes: extras.moodboardChanges, takeAt: extras.takeAt }),
+    hasWork: shots.some(
+      (shot) =>
+        extras.drawnAt[shot.id] !== undefined ||
+        extras.takeAt[shot.id] !== undefined ||
+        extras.working[shot.id] !== undefined ||
+        shot.images.length > 0,
     ),
+    // Una scena da rifare non dà gialli di continuità (D74.7): la cosa da fare è rifarla.
+    flags: stale
+      ? {}
+      : mergeFlags(
+          characterSheetFlags({
+            shots,
+            changedAt: extras.sheetChanges,
+            workedAt: extras.workedAt,
+            names: extras.characterNames,
+          }),
+          frameChangeFlags({ shots, changedAt: extras.framesChanges, takeAt: extras.takeAt }),
+          cinematographyChangeFlags({
+            shots,
+            changedAt: extras.cinematographyChangedAt,
+            takeAt: extras.takeAt,
+          }),
+          locationChangeFlags({
+            shots,
+            changedAt: extras.locationChanges,
+            workedAt: extras.workedAt,
+          }),
+          moodboardChangeFlags({ shots, changes: extras.moodboardChanges, takeAt: extras.takeAt }),
+        ),
   };
 }

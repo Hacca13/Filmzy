@@ -158,6 +158,32 @@ describe('il volto bloccato', () => {
     expect(sheets.lockedAssetIds(characterId)).toEqual([]);
   });
 
+  it('si ricorda quando la scheda è cambiata: bloccare, cambiare tentativo o sbloccare sì, ripetere lo stesso no (R3)', () => {
+    const first = sheets.startAttempt(characterId);
+    succeed(first, 'uno');
+    const second = sheets.startAttempt(characterId);
+    succeed(second, 'due');
+    expect(sheets.sheetChanges('film-1')).toEqual({});
+
+    clock = new Date('2026-10-28T11:00:00.000Z');
+    sheets.lock(characterId, first);
+    expect(sheets.sheetChanges('film-1')).toEqual({ [characterId]: clock.getTime() });
+
+    // Lo stesso tentativo un'altra volta non è un cambiamento.
+    const firstLockedAt = clock.getTime();
+    clock = new Date('2026-10-28T12:00:00.000Z');
+    sheets.lock(characterId, first);
+    expect(sheets.sheetChanges('film-1')[characterId]).toBe(firstLockedAt);
+
+    sheets.lock(characterId, second);
+    expect(sheets.sheetChanges('film-1')[characterId]).toBe(clock.getTime());
+
+    clock = new Date('2026-10-28T13:00:00.000Z');
+    sheets.lock(characterId, undefined);
+    expect(sheets.sheetChanges('film-1')[characterId]).toBe(clock.getTime());
+    expect(sheets.sheetChanges('film-2')).toEqual({});
+  });
+
   it('togliere la scheda cancella i tentativi', () => {
     sheets.startAttempt(characterId);
 

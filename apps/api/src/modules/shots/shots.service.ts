@@ -15,6 +15,7 @@ import type {
   LocationStore,
   MoodboardChanges,
   MoodboardStore,
+  SheetStore,
   ShotStore,
   StoredShotPlan,
   TakeStore,
@@ -25,13 +26,21 @@ import { Inject, Injectable } from '@nestjs/common';
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { withoutImages } from '../bible/without-images.js';
+import { SHEET_STORE } from '../cast/tokens.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { chainFlags, type PreviousScene } from './chain-flags.js';
-import { locationChangeFlags, mergeFlags, moodboardChangeFlags, oldestWork } from './continuity.js';
+import {
+  characterSheetFlags,
+  frameChangeFlags,
+  locationChangeFlags,
+  mergeFlags,
+  moodboardChangeFlags,
+  oldestWork,
+} from './continuity.js';
 import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
@@ -59,6 +68,7 @@ export class ShotsService {
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(LOCATION_STORE) private readonly locations: LocationStore,
     @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
+    @Inject(SHEET_STORE) private readonly sheets: SheetStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -73,6 +83,9 @@ export class ShotsService {
       clips: this.takes.latestClips(projectId),
       working: this.workingNow(projectId),
       locationChanges: this.locations.referenceChanges(projectId),
+      sheetChanges: this.sheets.sheetChanges(projectId),
+      framesChanges: this.store.framesChanges(projectId),
+      characterNames: known.names.characters,
       workedAt: this.workedAt(projectId),
       moodboardChanges: config.features.moodboard
         ? this.moodboards.changes(projectId)
@@ -160,16 +173,13 @@ export class ShotsService {
       shots,
     });
     this.projects.reach(projectId, 'shots');
-    // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante né un take.
-    return scenePlan(scene, saved, this.bible.knownIds(projectId), {
-      chosen: {},
-      clips: {},
-      working: {},
-      locationChanges: {},
-      workedAt: {},
-      moodboardChanges: { scenes: {} },
-      takeAt: {},
-    });
+    // Il piano è appena stato rifatto: la scheda della scena è quella di `plans`, con i suoi gialli (R1 e R2 compresi).
+    const scenePlanned = (await this.plans(projectId)).scenes.find(
+      (item) => item.sceneNumber === saved.sceneNumber,
+    );
+    if (scenePlanned === undefined)
+      throw domainError(404, 'not_found', { details: { field: 'sceneNumber' } });
+    return scenePlanned;
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
@@ -273,6 +283,10 @@ interface PerShot {
   /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è finito l'ultimo lavoro di ogni inquadratura (ms): servono ai gialli (R6). */
   locationChanges: Readonly<Record<string, number>>;
   workedAt: Readonly<Record<string, number>>;
+  /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
+  sheetChanges: Readonly<Record<string, number>>;
+  framesChanges: Readonly<Record<string, number>>;
+  characterNames: Readonly<Record<string, string>>;
   /** Quando sono cambiati palette e consigli del moodboard, e quando è finito l'ultimo take di ogni inquadratura (ms): servono ai gialli leggeri (R9). */
   moodboardChanges: MoodboardChanges;
   takeAt: Readonly<Record<string, number>>;
@@ -313,6 +327,13 @@ function scenePlan(
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
     flags: mergeFlags(
+      characterSheetFlags({
+        shots,
+        changedAt: extras.sheetChanges,
+        workedAt: extras.workedAt,
+        names: extras.characterNames,
+      }),
+      frameChangeFlags({ shots, changedAt: extras.framesChanges, takeAt: extras.takeAt }),
       locationChangeFlags({
         shots,
         changedAt: extras.locationChanges,

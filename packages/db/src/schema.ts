@@ -246,6 +246,8 @@ export const characters = sqliteTable(
     proposalId: text('proposal_id'),
     /** Il tentativo della scheda su cui il volto è bloccato (T3.6); vuoto se non lo è. */
     lockedAttempt: integer('locked_attempt'),
+    /** Quando la scheda è cambiata l'ultima volta, cioè il volto bloccato o sbloccato (T5.1, R3). */
+    sheetChangedAt: integer('sheet_changed_at'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -479,6 +481,8 @@ export const shots = sqliteTable(
     chosenAssetId: text('chosen_asset_id'),
     /** Il take che l'utente ha scelto di tenere (T4.6): quello che la card fa vedere. */
     chosenTakeId: text('chosen_take_id'),
+    /** Quando il primo o l'ultimo fotogramma (o la scelta tra generarlo e caricarlo) è cambiato l'ultima volta (T5.1, R5). */
+    framesChangedAt: integer('frames_changed_at'),
   },
   (table) => [index('shots_per_scena').on(table.projectId, table.sceneNumber, table.position)],
 );

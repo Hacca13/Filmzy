@@ -2,7 +2,7 @@ import type { ContinuityFlag, ShotSpec } from '@filmzy/contracts';
 
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
- * ci sono R6 (T4.9, D21) e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
+ * ci sono R3, R5, R6 (T4.9, D21) e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
  * si provano a parte: i dati li leggono i servizi.
  */
 
@@ -55,6 +55,74 @@ export function moodboardChangeFlags(
     flags[shot.id] = [
       { code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule', light: true },
     ];
+  }
+  return flags;
+}
+
+/** Un elenco a voce: «Anna», «Anna e Marco», «Anna, Marco e Luca». */
+const spoken = (items: readonly string[]): string =>
+  items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} e ${items.at(-1) ?? ''}`;
+
+export interface SheetChangeInput {
+  shots: readonly ShotSpec[];
+  /** Quando è cambiata la scheda di ogni personaggio che l'ha cambiata (ms). */
+  changedAt: Readonly<Record<string, number>>;
+  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
+  workedAt: Readonly<Record<string, number>>;
+  /** I nomi dei personaggi, per dire di chi è la scheda. */
+  names: Readonly<Record<string, string>>;
+}
+
+/**
+ * R3: se la scheda di un personaggio cambia (il volto bloccato su un altro tentativo, o sbloccato) dopo
+ * che l'inquadratura era stata fatta, diventano gialle le inquadrature in cui c'è. Come per R6 conta il
+ * lavoro più vecchio fra immagini e video: il giallo passa quando tutto è stato rifatto.
+ */
+export function characterSheetFlags(input: SheetChangeInput): Record<string, ContinuityFlag[]> {
+  const flags: Record<string, ContinuityFlag[]> = {};
+  for (const shot of input.shots) {
+    const worked = input.workedAt[shot.id];
+    if (worked === undefined) continue;
+    const changed = shot.characters
+      .filter(({ characterId }) => (input.changedAt[characterId] ?? 0) > worked)
+      .map(({ characterId }) => input.names[characterId] ?? 'un personaggio');
+    if (changed.length === 0) continue;
+    flags[shot.id] = [
+      {
+        code: 'R3',
+        reason: `La scheda di ${spoken(changed)} è cambiata dopo che hai fatto questa inquadratura. Rifai lo storyboard e il video per tenerla allineata.`,
+        origin: 'rule',
+        light: false,
+      },
+    ];
+  }
+  return flags;
+}
+
+/** Cosa vede l'utente quando il primo o l'ultimo fotogramma è cambiato dopo il video (R5). */
+export const FRAMES_CHANGED_REASON =
+  "Hai cambiato il primo o l'ultimo fotogramma dopo che hai girato questo video. Rigiralo per tenerlo allineato.";
+
+export interface FrameChangeInput {
+  shots: readonly ShotSpec[];
+  /** Quando è cambiato il primo o l'ultimo fotogramma di ogni inquadratura che l'ha cambiato (ms). */
+  changedAt: Readonly<Record<string, number>>;
+  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura (ms). */
+  takeAt: Readonly<Record<string, number>>;
+}
+
+/**
+ * R5: se il primo o l'ultimo fotogramma di un'inquadratura cambia (o cambia la scelta tra generarlo e
+ * caricarlo) dopo il video, il video non parte più da lì: diventa giallo. Un'inquadratura senza video non
+ * ha niente da rigirare, e un video rifatto dopo il cambiamento è allineato.
+ */
+export function frameChangeFlags(input: FrameChangeInput): Record<string, ContinuityFlag[]> {
+  const flags: Record<string, ContinuityFlag[]> = {};
+  for (const shot of input.shots) {
+    const changed = input.changedAt[shot.id];
+    const take = input.takeAt[shot.id];
+    if (changed === undefined || take === undefined || take >= changed) continue;
+    flags[shot.id] = [{ code: 'R5', reason: FRAMES_CHANGED_REASON, origin: 'rule', light: false }];
   }
   return flags;
 }

@@ -17,6 +17,7 @@ import {
   openFilmzyDatabase,
   type LocationStore,
   type MoodboardStore,
+  type SheetStore,
   type ShotStore,
   type TakeStore,
 } from '@filmzy/db';
@@ -85,6 +86,8 @@ let clips: Record<string, string>;
 let videoInProgress: string[];
 /** Ciò che l'aiuto regista propone alla prossima chiamata. */
 let planned: typeof proposal;
+/** Quando è cambiata la scheda di ogni personaggio (ms). */
+let sheetChanges: Record<string, number>;
 
 function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {}) {
   const troupe = {
@@ -147,6 +150,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
   } as unknown as TakeStore;
   const locations = { referenceChanges: () => ({}) } as unknown as LocationStore;
   const moodboards = { changes: () => ({ scenes: {} }) } as unknown as MoodboardStore;
+  const sheets = { sheetChanges: () => sheetChanges } as unknown as SheetStore;
   return new ShotsService(
     store,
     troupe,
@@ -157,6 +161,7 @@ function build(options: { bible?: StoryBible; movements?: CameraMovement[] } = {
     takes,
     locations,
     moodboards,
+    sheets,
   );
 }
 
@@ -184,6 +189,7 @@ beforeEach(async () => {
   clips = {};
   videoInProgress = [];
   planned = proposal;
+  sheetChanges = {};
   final = {
     id: 'stesura-1',
     projectId: film.id,
@@ -453,6 +459,28 @@ describe('la continuità fra le inquadrature (T5.1)', () => {
     expect(plans.scenes[0]?.stale).toBe(true);
     expect(Object.keys(plans.scenes[0]?.flags ?? {})).toEqual([]);
     expect(Object.keys(plans.scenes[1]?.flags ?? {})).toEqual([]);
+  });
+});
+
+describe('R3 nel piano (T5.1)', () => {
+  it('R3: una scheda cambiata dopo il lavoro ingiallisce, con il nome del personaggio', async () => {
+    const service = build();
+    const planned1 = await service.plan(film.id, { sceneNumber: 1 });
+    const shot = planned1.shots[0];
+    if (shot === undefined) throw new Error("doveva esserci un'inquadratura");
+    const characterId = shot.characters[0]?.characterId;
+    if (characterId === undefined) throw new Error("l'esempio ha un personaggio");
+    // Un lavoro già fatto: uno storyboard riuscito.
+    store.startStoryboard(shot.id, 'storyboard');
+    store.finishStoryboard(shot.id, 'storyboard', 1, { status: 'succeeded', assetIds: ['a'] });
+    expect(Object.keys((await service.plans(film.id)).scenes[0]?.flags ?? {})).toEqual([]);
+
+    await pause();
+    sheetChanges = { [characterId]: Date.now() };
+    const flagged = (await service.plans(film.id)).scenes[0]?.flags[shot.id];
+
+    expect(flagged).toEqual([expect.objectContaining({ code: 'R3', light: false })]);
+    expect(flagged?.[0]?.reason).toContain('La scheda di');
   });
 });
 

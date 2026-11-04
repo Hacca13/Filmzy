@@ -2,8 +2,11 @@ import { ROLE_INPUT_EXAMPLES, cinematographerInputSchema, type ShotSpec } from '
 import { describe, expect, it } from 'vitest';
 
 import {
+  FRAMES_CHANGED_REASON,
   LOCATION_CHANGED_REASON,
   MOODBOARD_CHANGED_REASON,
+  characterSheetFlags,
+  frameChangeFlags,
   locationChangeFlags,
   mergeFlags,
   moodboardChangeFlags,
@@ -92,6 +95,81 @@ describe('oldestWork: rifare solo una parte non toglie il giallo', () => {
         workedAt: oldestWork({ s1: 3000 }, { s1: 2000 }),
       }),
     ).toEqual({});
+  });
+});
+
+describe('R3: la scheda di un personaggio cambiata ingiallisce le inquadrature in cui c’è', () => {
+  const withCharacters = (id: string, ...characterIds: string[]): ShotSpec => ({
+    ...example,
+    id,
+    characters: characterIds.map((characterId) => ({
+      characterId,
+      costume: 'giacca',
+      references: [],
+    })),
+  });
+  const names = { anna: 'Anna', marco: 'Marco', luca: 'Luca' };
+
+  it('solo chi ha già un lavoro prima del cambiamento, solo dove c’è quel personaggio, con i nomi nel motivo', () => {
+    const shots = [
+      withCharacters('s1', 'anna'),
+      withCharacters('s2', 'marco'),
+      withCharacters('s3', 'anna', 'marco', 'luca'),
+      withCharacters('s4', 'anna'),
+    ];
+
+    const flags = characterSheetFlags({
+      shots,
+      changedAt: { anna: 500, marco: 500, luca: 50 },
+      // s4 non ha ancora niente da rifare; s3 ha lavoro dopo il cambiamento di Luca ma prima degli altri.
+      workedAt: { s1: 100, s2: 600, s3: 100 },
+      names,
+    });
+
+    expect(Object.keys(flags)).toEqual(['s1', 's3']);
+    expect(flags['s1']).toEqual([
+      expect.objectContaining({ code: 'R3', origin: 'rule', light: false }),
+    ]);
+    expect(flags['s1']?.[0]?.reason).toContain('La scheda di Anna è cambiata');
+    expect(flags['s3']?.[0]?.reason).toContain('La scheda di Anna e Marco è cambiata');
+  });
+
+  it('un personaggio sconosciuto ha parole semplici, e rifatto tutto dopo il cambiamento passa', () => {
+    const shot = withCharacters('s1', 'ignoto');
+
+    expect(
+      characterSheetFlags({
+        shots: [shot],
+        changedAt: { ignoto: 500 },
+        workedAt: { s1: 100 },
+        names,
+      }).s1?.[0]?.reason,
+    ).toContain('La scheda di un personaggio');
+    expect(
+      characterSheetFlags({
+        shots: [shot],
+        changedAt: { ignoto: 500 },
+        workedAt: { s1: 500 },
+        names,
+      }),
+    ).toEqual({});
+  });
+});
+
+describe('R5: il primo o l’ultimo fotogramma cambiato ingiallisce i take girati prima', () => {
+  it('solo se c’è un take prima del cambiamento; un take rifatto dopo lo fa passare', () => {
+    const shots = [shotIn('s1', 'piazza'), shotIn('s2', 'piazza'), shotIn('s3', 'piazza')];
+
+    const flags = frameChangeFlags({
+      shots,
+      changedAt: { s1: 500, s2: 500 },
+      takeAt: { s1: 100, s2: 600 },
+    });
+
+    expect(Object.keys(flags)).toEqual(['s1']);
+    expect(flags['s1']).toEqual([
+      { code: 'R5', reason: FRAMES_CHANGED_REASON, origin: 'rule', light: false },
+    ]);
   });
 });
 

@@ -106,6 +106,40 @@ describe('il piano delle inquadrature di una scena', () => {
     expect(store.get('a2')?.spec.intent.cameraMovement).toBe(example.intent.cameraMovement);
   });
 
+  it('si ricorda quando è cambiato il primo o l’ultimo fotogramma; l’ispirazione e il resto della scheda no (R5)', () => {
+    store.replaceScene(plan(1, ['a1', 'a2']));
+    expect(store.framesChanges('film-1')).toEqual({});
+
+    // Cambia solo il movimento e si aggiunge un'ispirazione: i fotogrammi non cambiano.
+    store.updateSpec('a1', {
+      ...shot('a1', 1),
+      intent: { ...example.intent, cameraMovement: 'static' },
+      images: [{ use: 'reference', from: 'generate', assetId: 'ispirazione' }],
+    });
+    expect(store.framesChanges('film-1')).toEqual({});
+
+    clock = new Date('2026-11-02T11:00:00.000Z');
+    const withFirst: ShotSpec = {
+      ...shot('a1', 1),
+      images: [{ use: 'first_frame', from: 'generate', assetId: 'uno' }],
+    };
+    store.updateSpec('a1', withFirst);
+    expect(store.framesChanges('film-1')).toEqual({ a1: clock.getTime() });
+
+    // Lo stesso fotogramma di nuovo non è un cambiamento; generarlo o caricarlo sì.
+    clock = new Date('2026-11-02T12:00:00.000Z');
+    store.updateSpec('a1', withFirst);
+    expect(store.framesChanges('film-1')['a1']).toBe(
+      new Date('2026-11-02T11:00:00.000Z').getTime(),
+    );
+    store.updateSpec('a1', {
+      ...shot('a1', 1),
+      images: [{ use: 'first_frame', from: 'upload', assetId: 'uno' }],
+    });
+    expect(store.framesChanges('film-1')['a1']).toBe(clock.getTime());
+    expect(store.framesChanges('film-2')).toEqual({});
+  });
+
   it('il piano della scena pensata più vicina prima di questa, saltando quelle non pensate', () => {
     store.replaceScene(plan(1, ['a1']));
     store.replaceScene(plan(3, ['c1', 'c2']));

@@ -7,9 +7,12 @@ import {
   type ProviderState,
 } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { appendFile, cp, mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { fakeCipher, startApp, type Client } from '../../test-support/app-client.js';
+import { CONFIG_DIR, fakeCipher, startApp, type Client } from '../../test-support/app-client.js';
 
 /**
  * Senza `TROUPE_ENV`: le connessioni sono quelle vere del seme (fal, Anthropic…) con le loro chiavi.
@@ -24,7 +27,7 @@ let client: Client;
 
 beforeAll(async () => {
   Object.assign(process.env, KEYS);
-  ({ app, client } = await startApp(fakeCipher, 'none'));
+  ({ app, client } = await startApp(fakeCipher, 'none', await configWithDisabledProvider()));
 });
 
 afterAll(async () => {
@@ -34,6 +37,28 @@ afterAll(async () => {
     else process.env[name] = value;
   }
 });
+
+/** Nel seme nessun fornitore spento ha servizi: qui si dà una voce a ElevenLabs, in una copia. */
+async function configWithDisabledProvider(): Promise<string> {
+  const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
+  await cp(CONFIG_DIR, configDir, { recursive: true });
+  await appendFile(
+    path.join(configDir, 'ai', 'models.yaml'),
+    [
+      '',
+      '  voce-prova:',
+      '    label: Voce di prova',
+      '    kind: voice',
+      '    connection: elevenlabs',
+      '    provider_model: voce',
+      '    capabilities: {}',
+      '    pricing: { unit: per_second, value: 0.01, note: prova, checked: 2026-11-04 }',
+      '    status: active',
+      '',
+    ].join('\n'),
+  );
+  return configDir;
+}
 
 async function overview() {
   const reply = await client.call('GET', '/connections');
@@ -95,7 +120,7 @@ describe('fornitori e servizi (T2.7)', () => {
   });
 
   it('un fornitore spento nella release si vede, ma i suoi servizi non si possono usare', async () => {
-    const elevenlabs = provider(await overview(), 'audio', 'elevenlabs');
+    const elevenlabs = provider(await overview(), 'voice', 'elevenlabs');
 
     expect(elevenlabs.enabled).toBe(false);
     expect(elevenlabs.services[0]).toMatchObject({
@@ -109,17 +134,20 @@ describe('fornitori e servizi (T2.7)', () => {
     const fal = provider(await overview(), 'audio', 'fal');
 
     expect(fal.services.map((service) => service.modelId).sort()).toEqual([
+      'music-elevenlabs',
       'music-stable-audio-3',
       'sfx-stable-audio-3',
     ]);
-    expect(fal.services[0]?.price.unit).toBe('per_audio');
+    expect(fal.services.find((s) => s.modelId === 'music-stable-audio-3')?.price.unit).toBe(
+      'per_audio',
+    );
     expect(fal.usedBy.map((role) => role.roleId)).toEqual(
       expect.arrayContaining(['composer', 'sfx_artist']),
     );
   });
 
   it('attivarne uno spento è rifiutato, e non salva niente', async () => {
-    const reply = await put('/connections/elevenlabs/services', { modelIds: ['music-elevenlabs'] });
+    const reply = await put('/connections/elevenlabs/services', { modelIds: ['voce-prova'] });
 
     expect(reply.status).toBe(400);
     expect(errorOf(reply).code).toBe('invalid_request');
@@ -311,5 +339,33 @@ describe('prova della connessione con il fornitore finto', () => {
     expect(fal.keyRequired).toBe(false);
     expect(fal.key).toBeUndefined();
     expect(fal.services.every((service) => service.usable)).toBe(true);
+  });
+});
+
+describe('i servizi con termini da conoscere (D79)', () => {
+  it('ElevenLabs Music parte spento, ha la scritta, e accendendolo l’utente lo può usare', async () => {
+    const service = (state: Awaited<ReturnType<typeof overview>>) =>
+      provider(state, 'audio', 'fal').services.find((s) => s.modelId === 'music-elevenlabs');
+
+    const before = service(await overview());
+    expect(before?.enabled).toBe(false);
+    expect(before?.termsNotice).toContain('una tua responsabilità');
+
+    const reply = await put('/connections/fal/services', { modelIds: ['music-elevenlabs'] });
+
+    expect(reply.status).toBe(200);
+    expect(service(connectionsOverviewSchema.parse(reply.body))).toMatchObject({
+      enabled: true,
+      usable: true,
+      termsNotice: expect.stringContaining('escludono i film') as string,
+    });
+  });
+
+  it('gli altri servizi non hanno nessuna scritta', async () => {
+    const stable = provider(await overview(), 'audio', 'fal').services.find(
+      (s) => s.modelId === 'music-stable-audio-3',
+    );
+
+    expect(stable?.termsNotice).toBeUndefined();
   });
 });

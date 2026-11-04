@@ -61,6 +61,17 @@ describe('musica ed effetti (T5.4, D78)', () => {
     });
   });
 
+  it('ElevenLabs Music vuole la durata in millisecondi, come dice la pagina del fornitore (D79)', () => {
+    const model = modelOf(seed, 'music-elevenlabs');
+    const input = clip('music-elevenlabs', 30);
+
+    expect(translator('elevenlabs_music').check(input, model)).toEqual([]);
+    expect(translator('elevenlabs_music').build(input, model).providerInput).toEqual({
+      prompt: 'sparse piano, bittersweet',
+      music_length_ms: 30_000,
+    });
+  });
+
   it('oltre il limite la durata si porta dentro: musica fino a 2 minuti, effetti fino a 30 secondi', () => {
     const music = modelOf(seed, 'music-stable-audio-3');
     const sfx = modelOf(seed, 'sfx-stable-audio-3');
@@ -75,13 +86,15 @@ describe('musica ed effetti (T5.4, D78)', () => {
 });
 
 describe('il seme di musica ed effetti (D78)', () => {
-  it('compositore e rumorista passano da fal; ElevenLabs Music resta spento e non vale per i film', () => {
+  it('compositore e rumorista passano da fal; ElevenLabs è spento e senza servizi', () => {
     expect(seed.roles.composer).toMatchObject({ model: 'music-stable-audio-3' });
     expect(seed.roles.sfx_artist).toMatchObject({ model: 'sfx-stable-audio-3' });
     expect(modelOf(seed, 'music-stable-audio-3').connection).toBe('fal');
     expect(modelOf(seed, 'sfx-stable-audio-3').connection).toBe('fal');
     expect(seed.connections.elevenlabs?.enabled).toBe(false);
-    expect(modelOf(seed, 'music-elevenlabs').capabilities).toMatchObject({ commercial_use: false });
+    expect(Object.values(seed.models).filter((model) => model.connection === 'elevenlabs')).toEqual(
+      [],
+    );
   });
 });
 

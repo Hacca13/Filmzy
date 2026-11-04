@@ -1,0 +1,14 @@
+# I servizi con termini che l'utente deve conoscere prima di usarli: si possono usare, ma con questa scritta (D79).
+# La scritta compare in Connessioni, accanto all'interruttore del servizio, e nelle impostazioni avanzate
+# se qualcuno aggiunge il servizio a mano.
+#
+# `match`: basta una parola che comincia così, senza badare alle maiuscole, in id, nome e id presso il
+# fornitore del servizio, o in id, nome, adapter e indirizzo della connessione («suno» trova «sunoapi.org»,
+# non «nessuno»). `kinds`: senza, vale per ogni tipo di servizio.
+version: 1
+restricted_services:
+  - kinds: [music]                # le voci no: non stanno sotto questi termini e serviranno in Fase 2
+    match: [eleven]
+    notice: I termini di ElevenLabs Music escludono i film su tutti i piani tranne Enterprise Music e vietano di offrirlo tramite altri programmi. Filmzy non controlla come usi il tuo film. Se attivi questo servizio, rispettare quei termini è una tua responsabilità. Leggili prima di usarlo.
+  - match: [suno]
+    notice: I termini di Suno limitano l'uso in base al piano (solo personale su quello gratuito) e vietano di ottenere i brani fuori dai suoi canali. Filmzy non controlla come usi il tuo film. Se attivi questo servizio, rispettare quei termini è una tua responsabilità. Leggili prima di usarlo.

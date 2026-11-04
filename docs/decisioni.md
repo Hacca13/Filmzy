@@ -865,7 +865,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Decisione:**
 1. **Musica ed effetti con Stable Audio 3 su fal** (`music-stable-audio-3`, `sfx-stable-audio-3`; famiglia `stable_audio`): è l'unico con un testo del fornitore che non pone limiti per tipo di opera e dichiara dati con licenza. Costa pochissimo e passa dalla stessa connessione e chiave dei video: nessun adapter, nessuna chiave in più per l'utente. Compaiono in Connessioni, sotto «Musica ed effetti».
-2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta nel catalogo per le voci di Fase 2.
+2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta per le voci di Fase 2; la voce del catalogo è uscita con D79.
 3. **Prezzo a clip.** Nuova unità `per_audio`. La pagina dice «per audio» senza dire se dipende dalla durata: lo dirà il primo scontrino vero.
 4. **Limiti di durata nel catalogo** (`max_duration_s`): 120 s per la musica (dalla pagina), 30 s per gli effetti (valore prudente: la pagina non lo dà). Una richiesta più lunga si porta dentro il limite.
 5. Compositore e rumorista sono accesi; le funzioni `music` e `sound_effects` restano spente fino a T5.5, che porta le tracce.
@@ -877,3 +877,24 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 - La qualità è ignota: **nessuna prova d'ascolto**. Va fatta con T4.0, costa pochi centesimi. Il modello Small è il più piccolo; se non basta si valuta Medium o Large (380 s).
 **Scartate:** ElevenLabs Enterprise (contratto, non adatto a un programma con le chiavi dell'utente); Sonilo come predefinito (film su un piano che via fal non si può verificare); Suno (cause aperte, nessuna API). Un secondo servizio in «Cambia servizio» si aggiunge dopo la prova d'ascolto, se la licenza regge.
 **Conseguenze:** `pricing.unit: per_audio`; `capabilities.max_duration_s` per musica ed effetti; famiglia `stable_audio`. **Non fatto:** prova d'ascolto; il collegamento vero (tracce, lavori in coda, R8) è T5.5.
+
+## D79 · ElevenLabs Music e Suno: si possono usare, spenti e con una scritta che lascia la scelta all'utente — 04/11/2026
+
+**Cambia** D78: ElevenLabs Music non è più escluso. **Decisione dell'autore**, dopo aver letto i rischi qui sotto: «se con la scritta sposto la responsabilità all'utente, lo metterei».
+**Decisione:**
+1. `config/ai/policy.yaml` elenca i servizi con termini da conoscere: tipi, testo da cercare, scritta. È un dato (regola d'oro 2) e non sta nella release, così non si perde pubblicando una bozza né ripristinandone una vecchia.
+2. La scritta compare in Connessioni, accanto all'interruttore («Da sapere prima di attivarlo»). «Chi fa cosa» e gli altri elenchi mostrano solo i servizi attivati, quindi non si arriva a usarne uno senza averla avuta davanti. Chi aggiunge il servizio a mano nelle impostazioni avanzate vede un avviso (`service_terms_notice`), che non ferma la pubblicazione. Senza il file, o con un file rotto, non si pubblica: la scritta sparirebbe senza dirlo.
+3. **Spento di partenza** (`off_by_default`): lo accende l'utente. Resta la regola delle impostazioni prudenti (D19, D28): si cambiano, ma con un'avvertenza.
+4. **ElevenLabs Music passa da fal** (`fal-ai/elevenlabs/music`): stessa chiave dei video, nessun adapter nuovo. Costa 0,60 $ al minuto e un minuto cominciato si paga intero (nuova unità `per_started_minute`), contro 0,03 $ a clip di Stable Audio. Il modo diretto (0,15 $/min) chiederebbe un adapter e una chiave in più. La durata va in millisecondi (`duration_ms`). Non è mai stato provato.
+5. **Suno non è nel catalogo:** la scritta è pronta, ma collegarlo chiede un adapter, e per scriverlo servono le istruzioni della sua API ufficiale, che stanno dietro il login. L'autore dice di averla usata: resta da capire se era quella ufficiale. I rivenditori non si collegano: i termini di Suno vietano copie ottenute fuori dai suoi canali.
+6. Il testo si cerca all'inizio delle parole di id, nome e id presso il fornitore del servizio e di id, nome, adapter e indirizzo della connessione: trova anche chi passa da un rivenditore e non scambia «nessuno» per Suno. Un nome inventato passa: serve a informare, non a sorvegliare.
+7. ElevenLabs ha la scritta per la **sola musica**: voci ed effetti non stanno sotto i termini di Eleven Music. I termini degli effetti non si sono letti in dettaglio: vanno letti prima di aggiungerli.
+8. Caricare un brano fatto altrove resta possibile (D27, con T5.5) e senza scritta: Filmzy non vede da dove viene un file.
+
+**Cosa dicono i termini (4/11):**
+- **ElevenLabs:** non ha una clausola per l'uso personale; l'esclusione di film, TV e radio sta nella riga dell'uso commerciale. §4.3 e §4.8(e) vietano di mettere i modelli a disposizione tramite applicazioni proprie o di terzi, salvo permesso scritto.
+- **Suno:** ammette l'uso personale e non commerciale sul piano gratuito e quello commerciale sui piani a pagamento. Non parla di API né di film.
+
+**Rischio da non dimenticare:** la scritta informa l'utente e mette su di lui il modo in cui usa il film, ma **non è detto che sposti tutta la responsabilità**. Il divieto di offrire i modelli tramite altri programmi riguarda il programma: può ricadere su chi distribuisce Filmzy, e ElevenLabs o fal possono chiudere l'accesso. Non cambia quello che i termini permettono, e una scritta non vincola nessuno come un contratto. Passare da fal può spostare il problema, ma le pagine di fal dicono solo «Commercial use», senza condizioni. Per questo c'è una voce in «Fuori dal codice»: da far leggere a un legale prima del rilascio. **Non è un parere legale.**
+**Scartate:** l'errore che impediva di aggiungerli (la prima versione di questa decisione, cambiata lo stesso giorno); ElevenLabs acceso di partenza.
+**Conseguenze:** `servicePolicyFileSchema`, `off_by_default`, `ServiceState.termsNotice`, `per_started_minute`, `duration_ms`, famiglia `elevenlabs_music`, `readConfigFile` condiviso.

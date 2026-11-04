@@ -11,6 +11,7 @@ import {
 import { validateInstructions } from '../config/instructions.js';
 import { hasErrors, type ConfigIssue } from '../config/issues.js';
 import { loadConfigFiles } from '../config/load-files.js';
+import { validateServicePolicy } from '../config/service-policy.js';
 import { validateConfig } from '../config/validate.js';
 
 const USAGE = `Uso: pnpm troupe check [cartella] [--env <ambiente>]
@@ -43,6 +44,7 @@ export async function runCheck(
 
   all.push(...validateConfig(effective, { environment, secrets: { env: process.env } }));
   all.push(...(await validateInstructions(effective, path.join(configDir, 'ai', 'instructions'))));
+  all.push(...(await validateServicePolicy(effective, configDir)));
 
   return all;
 }

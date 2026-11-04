@@ -1,5 +1,6 @@
 import type { ProviderState, ServiceState } from '@filmzy/contracts';
 
+import { Notice } from '../../components/ui';
 import { formatPrice, unusableText } from './labels';
 
 interface Props {
@@ -60,6 +61,11 @@ export function ServiceList({ provider, disabled, isChecked, onToggle, onChooseD
             </div>
             {service.unusableReason === undefined ? null : (
               <p className="hint">Non si può usare: {unusableText(service.unusableReason)}.</p>
+            )}
+            {service.termsNotice === undefined ? null : (
+              <Notice tone="info" title="Da sapere prima di attivarlo">
+                {service.termsNotice}
+              </Notice>
             )}
           </div>
         );

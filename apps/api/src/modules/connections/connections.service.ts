@@ -7,24 +7,27 @@ import {
   type ModelEntry,
   type ModelGroup,
   type ProviderState,
+  type ServicePolicyFile,
   type ServiceState,
   type UnusableReason,
   type UserSettings,
 } from '@filmzy/contracts';
 import {
   adapterCanTest,
+  loadServicePolicy,
   parseSecretRef,
+  serviceTermsNotices,
   testConnection,
   type ConfigSource,
   type SecretSources,
   type TroupeConfig,
 } from '@filmzy/troupe';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
 import { SecretsService } from '../secrets/secrets.service.js';
 import { SECRET_SOURCES } from '../secrets/tokens.js';
-import { CONFIG_SOURCE } from '../troupe/tokens.js';
+import { CONFIG_DIR, CONFIG_SOURCE } from '../troupe/tokens.js';
 import { UserSettingsService } from '../troupe/user-settings.service.js';
 
 type Connection = TroupeConfig['connections'][string];
@@ -41,7 +44,11 @@ type Connection = TroupeConfig['connections'][string];
  */
 @Injectable()
 export class ConnectionsService {
+  private readonly log = new Logger(ConnectionsService.name);
+  private policy: Promise<ServicePolicyFile | undefined> | undefined;
+
   constructor(
+    @Inject(CONFIG_DIR) private readonly configDir: string,
     @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
     @Inject(SECRET_SOURCES) private readonly secretSources: SecretSources,
     private readonly secrets: SecretsService,
@@ -51,9 +58,12 @@ export class ConnectionsService {
   async overview(): Promise<ConnectionsOverview> {
     const { config, settings } = await this.effective();
     const { settings: current, explicit } = this.userSettings.read(config);
+    const policy = await this.servicePolicy();
+    const notices =
+      policy === undefined ? new Map<string, string>() : serviceTermsNotices(config, policy);
 
     return {
-      groups: MODEL_GROUPS.map((group) => this.groupState(group, config, current)),
+      groups: MODEL_GROUPS.map((group) => this.groupState(group, config, current, notices)),
       hasChoices: explicit && settings !== undefined,
       limits: {
         ...(current.spendCaps.filmBudgetUsd === undefined
@@ -198,6 +208,18 @@ export class ConnectionsService {
     });
   }
 
+  /**
+   * Il file non cambia mentre il programma gira: si legge una volta. Se manca, la pubblicazione si ferma
+   * e lo spiega (D79); qui si registra soltanto, perché la pagina deve restare usabile.
+   */
+  private servicePolicy(): Promise<ServicePolicyFile | undefined> {
+    this.policy ??= loadServicePolicy(this.configDir).then(({ data, issues }) => {
+      for (const issue of issues) this.log.warn(issue.message);
+      return data;
+    });
+    return this.policy;
+  }
+
   private async effective() {
     const loaded = await this.configSource.load();
     if (loaded.config === undefined) throw domainError(404, 'not_found');
@@ -265,11 +287,18 @@ export class ConnectionsService {
     return this.secrets.presence(connection.api_key) !== undefined || parsed.optional;
   }
 
-  private groupState(group: ModelGroup, config: TroupeConfig, settings: UserSettings): GroupState {
+  private groupState(
+    group: ModelGroup,
+    config: TroupeConfig,
+    settings: UserSettings,
+    notices: ReadonlyMap<string, string>,
+  ): GroupState {
     const providers = Object.entries(config.connections).flatMap(([connectionId, connection]) => {
       const services = Object.entries(config.models)
         .filter(([, model]) => model.connection === connectionId && groupsOf(model).includes(group))
-        .map(([modelId, model]) => this.serviceState(modelId, model, connection, settings));
+        .map(([modelId, model]) =>
+          this.serviceState(modelId, model, connection, settings, notices.get(modelId)),
+        );
       return services.length === 0
         ? []
         : [this.providerState(connectionId, connection, services, config, settings)];
@@ -333,6 +362,7 @@ export class ConnectionsService {
     model: ModelEntry,
     connection: Connection,
     settings: UserSettings,
+    termsNotice: string | undefined,
   ): ServiceState {
     const unusableReason = this.unusableReason(connection, model);
     return {
@@ -343,6 +373,7 @@ export class ConnectionsService {
       price: model.pricing,
       vision: isVisionModel(model),
       enabled: settings.enabledModelIds.includes(modelId),
+      ...(termsNotice === undefined ? {} : { termsNotice }),
       usable: unusableReason === undefined,
       ...(unusableReason === undefined ? {} : { unusableReason }),
       isProviderDefault: settings.defaultModelByConnection[model.connection] === modelId,

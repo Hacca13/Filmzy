@@ -115,6 +115,32 @@ export function parseConfigFile<Schema extends z.ZodType>(
   return { data: result.data, issues: [] };
 }
 
+/** Come `parseConfigFile`, ma legge anche il file: se non si riesce, è un problema come gli altri. */
+export async function readConfigFile<Schema extends z.ZodType>(
+  schema: Schema,
+  configDir: string,
+  file: string,
+  section: ConfigIssue['section'],
+): Promise<{ data?: z.output<Schema>; issues: ConfigIssue[] }> {
+  let raw: string;
+  try {
+    raw = await readFile(path.join(configDir, file), 'utf8');
+  } catch (error) {
+    return {
+      issues: [
+        {
+          severity: 'error',
+          code: 'file_unreadable',
+          message: `${file}: non si riesce a leggere il file (${messageOf(error)}).`,
+          file,
+          section,
+        },
+      ],
+    };
+  }
+  return parseConfigFile(schema, file, raw, section);
+}
+
 /** Legge i file di seme della cartella `config/` indicata (architettura §4.5). */
 export async function loadConfigFiles(configDir: string): Promise<LoadFilesResult> {
   const issues: ConfigIssue[] = [];
@@ -124,21 +150,7 @@ export async function loadConfigFiles(configDir: string): Promise<LoadFilesResul
     file: string,
     section: ConfigIssue['section'],
   ): Promise<z.output<Schema> | undefined> => {
-    const filePath = path.join(configDir, file);
-    let raw: string;
-    try {
-      raw = await readFile(filePath, 'utf8');
-    } catch (error) {
-      issues.push({
-        severity: 'error',
-        code: 'file_unreadable',
-        message: `${file}: non si riesce a leggere il file (${messageOf(error)}).`,
-        file,
-        section,
-      });
-      return undefined;
-    }
-    const parsed = parseConfigFile(schema, file, raw, section);
+    const parsed = await readConfigFile(schema, configDir, file, section);
     issues.push(...parsed.issues);
     return parsed.data;
   };

@@ -80,6 +80,11 @@ export type {
 export { FileConfigSource } from './config/source.js';
 export type { ConfigSource, LoadedConfig } from './config/source.js';
 export { runCheck, main as runCheckCli } from './cli/main.js';
+export {
+  loadServicePolicy,
+  serviceTermsNotices,
+  validateServicePolicy,
+} from './config/service-policy.js';
 export { validateConfig } from './config/validate.js';
 export type { ValidateOptions } from './config/validate.js';
 export { llmCostUsd, mediaCostUsd } from './cost.js';

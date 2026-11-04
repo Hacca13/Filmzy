@@ -66,6 +66,8 @@ export const modelPricingSchema = z.discriminatedUnion('unit', [
   pricingPerUnitSchema('per_image'),
   pricingPerUnitSchema('per_second'),
   pricingPerUnitSchema('per_audio'),
+  // Un minuto cominciato si paga intero: una clip di 30 s costa come una di 60.
+  pricingPerUnitSchema('per_started_minute'),
 ]);
 
 export type ModelPricing = z.infer<typeof modelPricingSchema>;
@@ -144,6 +146,8 @@ function modelEntryFields<Kind extends string, Capabilities extends z.ZodType>(
     pricing: modelPricingSchema,
     quality: z.record(z.string(), z.unknown()).optional(),
     status: modelStatusSchema,
+    /** Non si attiva da solo: lo accende l'utente, che accanto all'interruttore legge la scritta (D79). */
+    off_by_default: z.boolean().optional(),
     monthly_cap_usd: z.number().positive().optional(),
   };
 }

@@ -164,11 +164,11 @@ function candidateIds(
     : declared;
 }
 
-/** I servizi attivati. Senza impostazioni valgono tutte le voci `active` o `testing` (§4.3). */
+/** I servizi attivati. Senza impostazioni valgono le voci `active` o `testing`, tranne quelle spente di partenza (§4.3, D79). */
 function enabledModelIds(config: TroupeConfig, settings: UserSettings | undefined): string[] {
   if (settings !== undefined) return [...settings.enabledModelIds];
   return Object.entries(config.models)
-    .filter(([, model]) => model.status !== 'retired')
+    .filter(([, model]) => model.status !== 'retired' && model.off_by_default !== true)
     .map(([id]) => id);
 }
 

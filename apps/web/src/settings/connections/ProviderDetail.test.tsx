@@ -88,6 +88,20 @@ describe('ProviderDetail', () => {
     expect(html).toContain('Non si può usare: manca la chiave.');
   });
 
+  it('un servizio con termini da conoscere ha la scritta accanto all’interruttore, gli altri no (D79)', () => {
+    const plain = provider();
+    const [first, second] = plain.services;
+    if (first === undefined || second === undefined) throw new Error('mancano i servizi di prova');
+    const html = renderDetail({
+      ...plain,
+      services: [{ ...first, termsNotice: 'Se lo attivi, ne rispondi tu.' }, second],
+    });
+
+    expect(html).toContain('Da sapere prima di attivarlo');
+    expect(html).toContain('Se lo attivi, ne rispondi tu.');
+    expect(renderDetail(plain)).not.toContain('Da sapere prima di attivarlo');
+  });
+
   it('con il portachiavi si può incollare una chiave, ma il valore non compare mai', () => {
     const html = renderDetail(provider());
 

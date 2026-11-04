@@ -126,7 +126,7 @@ describe('modelEntrySchema', () => {
     expect(modelEntrySchema.parse(entry).kind).toBe('video');
   });
 
-  it('accetta musica senza params (music-elevenlabs)', () => {
+  it('accetta musica senza params', () => {
     const entry = {
       label: 'ElevenLabs Music',
       kind: 'music' as const,

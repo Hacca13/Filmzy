@@ -181,6 +181,17 @@ describe('cosa non si accetta', () => {
     expect((await upload(film.id, { ...music, kind: 'sfx' }, wavFile())).status).toBe(400);
     expect((await upload(film.id, { ...music, kind: 'native' }, wavFile())).status).toBe(400);
     expect((await upload(film.id, { ...music, description: ' ' }, wavFile())).status).toBe(400);
+    expect((await upload(film.id, { ...music, startS: '1' }, wavFile())).status).toBe(400);
+    expect(
+      (await upload(film.id, { ...music, kind: 'dialogue', startS: '99999' }, wavFile())).status,
+    ).toBe(400);
+  });
+
+  it('una seconda musica sulla stessa scena: un blocco per scena (D24)', async () => {
+    const { film } = await filmWithFinal(client);
+    await uploaded(film.id);
+
+    expect((await upload(film.id, music, wavFile())).status).toBe(409);
   });
 
   it('un film che non c’è è 404', async () => {

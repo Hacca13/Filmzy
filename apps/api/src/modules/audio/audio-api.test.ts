@@ -6,6 +6,7 @@ import {
   audioClipSchema,
   audioOverviewSchema,
   domainErrorSchema,
+  draftViewSchema,
   projectOptionsSchema,
   projectSchema,
   sheetOptionsSchema,
@@ -15,8 +16,9 @@ import {
   soundSuggestionsSchema,
   type AudioClip,
 } from '@filmzy/contracts';
+import type { AudioStore, ReceiptStore } from '@filmzy/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   CONFIG_DIR,
@@ -26,6 +28,11 @@ import {
   type Reply,
 } from '../../test-support/app-client.js';
 import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.js';
+import { JobRunner } from '../jobs/job-runner.service.js';
+import { ModerationService } from '../moderation/moderation.service.js';
+import { RECEIPT_STORE } from '../troupe/tokens.js';
+import { AUDIO_JOB_KIND } from './audio.service.js';
+import { AUDIO_STORE } from './tokens.js';
 
 /** Musica ed effetti col server vero, la coda e il fornitore finto: nessuna spesa (regola 5). */
 let app: NestExpressApplication;
@@ -150,6 +157,45 @@ describe('creare una clip', () => {
     expect((await client.call('POST', clips, { ...musicBody, durationS: -1 })).status).toBe(400);
   });
 
+  it('un solo blocco di musica per scena: per cambiarla si cambia la variante o si toglie la clip', async () => {
+    const { film } = await filmWithFinal(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio);
+
+    expect(
+      failure(
+        await client.call('POST', `${audio}/clips`, { ...musicBody, description: 'Un’altra.' }),
+      ),
+    ).toMatchObject({ status: 409, details: { field: 'sceneId' } });
+
+    await client.call('DELETE', `${audio}/clips/${clip.id}`);
+    await clipOf(client, audio);
+  });
+
+  it('un’inquadratura il cui piano è da rifare non prende effetti: rifarlo li toglierebbe', async () => {
+    const { film, final, shot } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const effect = { ...musicBody, kind: 'sfx', shotId: shot.id, durationS: 2 };
+    const placed = await clipOf(client, audio, effect);
+    await client.call('PUT', `/projects/${film.id}/screenplay/final`, {
+      screenplay: {
+        ...final.screenplay,
+        scenes: final.screenplay.scenes.map((scene) => ({
+          ...scene,
+          summary: 'Riscritta a mano.',
+        })),
+      },
+    });
+
+    expect(failure(await client.call('POST', `${audio}/clips`, effect))).toMatchObject({
+      status: 409,
+      details: { field: 'plan' },
+    });
+    expect(
+      failure(await client.call('POST', `${audio}/clips/${placed.id}/variants`, {})),
+    ).toMatchObject({ status: 409, details: { field: 'plan' } });
+  });
+
   it('senza la funzione accesa non si crea', async () => {
     const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
     await cp(CONFIG_DIR, configDir, { recursive: true });
@@ -176,18 +222,20 @@ describe('i servizi tra cui scegliere', () => {
     const { film } = await filmWithFinal(client);
     const audio = audioOf(film.id);
     const clip = await clipOf(client, audio);
-    const tooLong = await clipOf(client, audio, { ...musicBody, durationS: 500 });
-    const optionsOf = async (id: string) =>
-      sheetOptionsSchema.parse((await client.call('GET', `${audio}/clips/${id}/options`)).body)
+    const other = await filmWithFinal(client);
+    const otherAudio = audioOf(other.film.id);
+    const tooLong = await clipOf(client, otherAudio, { ...musicBody, durationS: 500 });
+    const optionsOf = async (place: string, id: string) =>
+      sheetOptionsSchema.parse((await client.call('GET', `${place}/clips/${id}/options`)).body)
         .options;
 
-    const [first] = await optionsOf(clip.id);
+    const [first] = await optionsOf(audio, clip.id);
     expect(first?.modelId).toBe('music-stable-audio-3');
     expect(first?.estimatedCostUsd).toBeGreaterThan(0);
-    expect(await optionsOf(tooLong.id)).toEqual([]);
+    expect(await optionsOf(otherAudio, tooLong.id)).toEqual([]);
 
     expect(
-      failure(await client.call('POST', `${audio}/clips/${tooLong.id}/variants`, {})),
+      failure(await client.call('POST', `${otherAudio}/clips/${tooLong.id}/variants`, {})),
     ).toMatchObject({ status: 409, code: 'no_eligible_model' });
   });
 
@@ -282,6 +330,110 @@ describe('generare e cambiare', () => {
     expect((await client.call('POST', `${elsewhere}/variants`, {})).status).toBe(404);
     expect((await client.call('DELETE', elsewhere)).status).toBe(404);
   });
+});
+
+describe('prima di spendere', () => {
+  it('il moderatore legge descrizione e atmosfera, e rispetta la conferma del limite di spesa', async () => {
+    const { film } = await filmWithFinal(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio);
+    const moderation = app.get(ModerationService, { strict: false });
+    const spy = vi.spyOn(moderation, 'assertAllowed');
+
+    try {
+      await client.call('POST', `${audio}/clips/${clip.id}/variants`, { spendConfirmed: true });
+      await settled(client, audio, clip.id);
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: expect.stringContaining('bittersweet') as string,
+          spendConfirmed: true,
+        }),
+      );
+      expect(spy.mock.calls[0]?.[0].text).toContain('Un piano');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('se il lavoro non entra in coda la clip non resta bloccata', async () => {
+    const { film } = await filmWithFinal(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio);
+    const runner = app.get(JobRunner, { strict: false });
+    const spy = vi.spyOn(runner, 'enqueue').mockImplementationOnce(() => {
+      throw new Error('coda piena');
+    });
+
+    try {
+      const refused = await client.call('POST', `${audio}/clips/${clip.id}/variants`, {});
+
+      expect(refused.status).toBeGreaterThanOrEqual(500);
+      expect((await settled(client, audio, clip.id)).variants[0]).toMatchObject({
+        status: 'failed',
+        errorCode: 'unknown',
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await generate(client, audio, clip.id)).chosenVariantId).toBeDefined();
+  });
+
+  it('una variante interrotta da un riavvio non si rimanda da sola: si pagherebbe due volte', async () => {
+    const { film } = await filmWithFinal(client);
+    const audio = audioOf(film.id);
+    const clip = await clipOf(client, audio);
+    const store = app.get<AudioStore>(AUDIO_STORE, { strict: false });
+    const receipts = app.get<ReceiptStore>(RECEIPT_STORE, { strict: false });
+    const variant = store.startVariant(clip.id, { modelId: 'music-stable-audio-3' });
+    store.finishVariant(variant.id, { status: 'running' });
+    const before = receipts.list().filter((r) => r.projectId === film.id).length;
+
+    app.get(JobRunner, { strict: false }).enqueue({
+      kind: AUDIO_JOB_KIND,
+      payload: {
+        projectId: film.id,
+        clipId: clip.id,
+        variantId: variant.id,
+        modelId: 'music-stable-audio-3',
+      },
+      projectId: film.id,
+      idempotencyKey: `prova:${variant.id}`,
+    });
+
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      if (store.getVariant(variant.id)?.variant.status === 'failed') break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(store.getVariant(variant.id)?.variant).toMatchObject({
+      status: 'failed',
+      errorCode: 'timeout',
+    });
+    expect(receipts.list().filter((r) => r.projectId === film.id)).toHaveLength(before);
+  });
+
+  it('una funzione spenta dopo aver creato la clip non spende', async () => {
+    const started = await startApp();
+
+    try {
+      const { film } = await filmWithFinal(started.client);
+      const audio = audioOf(film.id);
+      const clip = await clipOf(started.client, audio);
+      const { config } = draftViewSchema.parse(
+        (await started.client.call('GET', '/troupe/draft')).body,
+      );
+      await started.client.call('PUT', '/troupe/draft', {
+        config: { ...config, features: { ...config.features, music: false } },
+      });
+      await started.client.call('POST', '/troupe/publish', { note: 'senza musica' });
+
+      expect(
+        failure(await started.client.call('POST', `${audio}/clips/${clip.id}/variants`, {})),
+      ).toMatchObject({ status: 409, details: { field: 'feature' } });
+    } finally {
+      await started.app.close();
+    }
+  }, 60_000);
 });
 
 describe('togliere il suono non tocca il video', () => {

@@ -14,9 +14,11 @@ export function settleCues(
   cues: readonly SoundCue[],
   scenes: readonly ScenePlan[],
   allowed: { music: boolean; sfx: boolean },
+  /** Le scene che hanno già la musica: una per scena (D24). */
+  scenesWithMusic: readonly string[] = [],
 ): CreateAudioClipBody[] {
   const sceneById = new Map(scenes.map((scene) => [sceneIdOf(scene.sceneNumber), scene]));
-  const withMusic = new Set<string>();
+  const withMusic = new Set(scenesWithMusic);
   const effects = new Map<string, number>();
   const settled: CreateAudioClipBody[] = [];
 

@@ -147,10 +147,24 @@ describe('le varianti', () => {
     expect(store.finishVariant('inventata', { status: 'failed' })).toBe(false);
   });
 
-  it('un file caricato ha una variante senza servizio', () => {
-    const clip = store.createClip({ ...music, source: 'uploaded' });
+  it('un file caricato è una clip già pronta e in uso, con una variante senza servizio', () => {
+    const clip = store.createUploadedClip({ ...music, source: 'uploaded' }, 'a-1');
+    const [variant] = clip.variants;
 
-    expect(store.startVariant(clip.id, {}).modelId).toBeUndefined();
+    expect(clip.chosenVariantId).toBe(variant?.id);
+    expect(variant).toMatchObject({ status: 'succeeded', assetId: 'a-1' });
+    expect(variant?.modelId).toBeUndefined();
+    expect(store.getClip(clip.id)?.clip).toEqual(clip);
+  });
+
+  it('una variante data per persa che poi riesce non resta con il suo errore', () => {
+    const clip = store.createClip(music);
+    const variant = store.startVariant(clip.id, stable);
+
+    store.finishVariant(variant.id, { status: 'failed', errorCode: 'timeout' });
+    store.finishVariant(variant.id, { status: 'succeeded', assetId: 'a-1' });
+
+    expect(store.getVariant(variant.id)?.variant.errorCode).toBeUndefined();
   });
 
   it('si sceglie la variante in uso, e si può togliere la scelta', () => {

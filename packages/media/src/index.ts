@@ -1,5 +1,6 @@
 export {
   MediaError,
+  audioDurationS,
   dominantColors,
   dominantFromRgb,
   extractFrame,

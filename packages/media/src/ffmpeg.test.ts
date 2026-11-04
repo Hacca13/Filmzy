@@ -12,6 +12,7 @@ import {
   dominantFromRgb,
   extractFrame,
   ffmpegPath,
+  audioDurationS,
   markArea,
   maskHasPaint,
   shrinkImage,
@@ -83,6 +84,37 @@ describe('videoDurationS', () => {
     expect((await failure(() => videoDurationS(path.join(dir, 'non-c-e.mp4')))).code).toBe(
       'ffmpeg_failed',
     );
+  });
+});
+
+describe('audioDurationS', () => {
+  it('dà la durata di un file che ha un suono', async () => {
+    const sound = path.join(dir, 'suono.wav');
+    await run(ffmpegPath(), [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      'anullsrc=r=8000:cl=mono',
+      '-t',
+      '1',
+      sound,
+    ]);
+
+    expect(await audioDurationS(sound)).toBeCloseTo(1, 1);
+  });
+
+  it('un video muto non è un file audio, anche se ha una durata', async () => {
+    expect(await audioDurationS(video)).toBeUndefined();
+  });
+
+  it('un file che non si legge non ha una durata', async () => {
+    const text = path.join(dir, 'testo.wav');
+    await writeFile(text, 'non sono un suono');
+
+    expect(await audioDurationS(text)).toBeUndefined();
   });
 });
 

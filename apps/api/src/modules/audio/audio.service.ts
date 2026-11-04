@@ -20,7 +20,7 @@ import {
   type UploadAudioQuery,
 } from '@filmzy/contracts';
 import { projectsDir, type AudioStore, type SheetStore, type ShotStore } from '@filmzy/db';
-import { videoDurationS } from '@filmzy/media';
+import { audioDurationS } from '@filmzy/media';
 import {
   LocalAssetStore,
   ProviderError,
@@ -34,6 +34,7 @@ import {
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
+import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { INSTRUCTIONS_SOURCE } from '../instructions/tokens.js';
@@ -50,7 +51,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
-import { shotOf } from '../shots/shot-access.js';
+import { assertPlanCurrent, shotOf } from '../shots/shot-access.js';
 import { SHOT_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
@@ -102,6 +103,7 @@ export class AudioService implements OnModuleInit {
     private readonly screenplays: ScreenplayService,
     private readonly moderation: ModerationService,
     private readonly plans: ShotsService,
+    private readonly bible: BibleService,
   ) {}
 
   onModuleInit(): void {
@@ -123,6 +125,7 @@ export class AudioService implements OnModuleInit {
       throw domainError(409, 'invalid_request', { details: { field: 'feature' } });
     }
     this.assertPlace(projectId, body);
+    if (body.kind === 'music') this.assertNoMusicYet(projectId, body.sceneId);
 
     const clip = this.store.createClip({
       projectId,
@@ -148,6 +151,7 @@ export class AudioService implements OnModuleInit {
   async upload(projectId: string, query: UploadAudioQuery, body: unknown): Promise<AudioClip> {
     this.projects.get(projectId);
     this.assertPlace(projectId, query);
+    if (query.kind === 'music') this.assertNoMusicYet(projectId, query.sceneId);
     const { bytes, contentType } = readAudioBody(body);
 
     const stored = await new LocalAssetStore(
@@ -155,29 +159,34 @@ export class AudioService implements OnModuleInit {
     ).put({ fileName: 'audio', contentType, bytes });
     const existed = this.files.getAsset(stored.assetId) !== undefined;
     try {
-      const durationS = await mediaStep(() => videoDurationS(stored.path));
+      const durationS = await mediaStep(() => audioDurationS(stored.path));
       if (durationS === undefined || durationS <= 0) {
         throw domainError(400, 'invalid_request', { details: { field: 'file' } });
       }
       registerAssets(this.files, { dataDir: this.dataDir, projectId }, [stored]);
-      const clip = this.store.createClip({
-        projectId,
-        kind: query.kind,
-        sceneId: query.sceneId,
-        ...(query.shotId === undefined ? {} : { shotId: query.shotId }),
-        ...(query.startS === undefined ? {} : { startS: query.startS }),
-        durationS,
-        description: query.description,
-        source: 'uploaded',
-      });
-      const variant = this.store.startVariant(clip.id, {});
-      this.store.finishVariant(variant.id, { status: 'succeeded', assetId: stored.assetId });
-      this.store.chooseVariant(clip.id, variant.id);
+      const clip = this.store.createUploadedClip(
+        {
+          projectId,
+          kind: query.kind,
+          sceneId: query.sceneId,
+          ...(query.shotId === undefined ? {} : { shotId: query.shotId }),
+          ...(query.startS === undefined ? {} : { startS: query.startS }),
+          durationS,
+          description: query.description,
+          source: 'uploaded',
+        },
+        stored.assetId,
+      );
       this.projects.reach(projectId, 'sound');
-      return this.clipOf(projectId, clip.id);
+      return clip;
     } catch (error) {
-      // Senza il suo record il file non serve a nessuno; se era già di un'altra clip, resta.
-      if (!existed) await rm(stored.path, { force: true });
+      // Senza il suo record il file non serve a nessuno; se era già di un'altra clip, resta. Se non si
+      // riesce a toglierlo l'utente deve comunque leggere il motivo vero, non questo.
+      if (!existed) {
+        await rm(stored.path, { force: true }).catch(() => {
+          this.log.warn('Un file caricato non si è potuto togliere dal disco.');
+        });
+      }
       throw error;
     }
   }
@@ -193,6 +202,11 @@ export class AudioService implements OnModuleInit {
     const project = this.projects.get(projectId);
     const { clip, kind } = this.generatedClip(projectId, clipId);
     const config = await this.config();
+    if (!config.features[GENERATED[kind].feature]) {
+      throw domainError(409, 'invalid_request', { details: { field: 'feature' } });
+    }
+    // La stesura può essere cambiata da quando la clip è nata: non si paga per un posto che non c'è più.
+    this.assertPlace(projectId, clip);
     const chosen = await chooseMediaService({
       role: GENERATED[kind].role,
       options: await this.pricedOptions(clip, kind),
@@ -201,11 +215,13 @@ export class AudioService implements OnModuleInit {
       spend: this.spend,
       projectId,
     });
+    // Anche l'atmosfera la scrive l'utente, e finisce nel prompt.
     await this.moderation.assertAllowed({
-      text: clip.description,
+      text: clip.mood === undefined ? clip.description : `${clip.description}\n${clip.mood}`,
       context: 'sound',
       language: project.language,
       projectId,
+      ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     });
 
     // Due richieste insieme (un doppio clic) si pagherebbero due volte. Il controllo sta qui, dopo le
@@ -224,12 +240,18 @@ export class AudioService implements OnModuleInit {
       modelId: chosen.modelId,
       ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
     };
-    this.runner.enqueue({
-      kind: AUDIO_JOB_KIND,
-      payload,
-      projectId,
-      idempotencyKey: `${AUDIO_JOB_KIND}:${variant.id}`,
-    });
+    try {
+      this.runner.enqueue({
+        kind: AUDIO_JOB_KIND,
+        payload,
+        projectId,
+        idempotencyKey: `${AUDIO_JOB_KIND}:${variant.id}`,
+      });
+    } catch (error) {
+      // Senza un lavoro la variante resterebbe in coda e bloccherebbe la clip.
+      this.store.finishVariant(variant.id, { status: 'failed', errorCode: 'unknown' });
+      throw error;
+    }
     return this.clipOf(projectId, clipId);
   }
 
@@ -275,7 +297,11 @@ export class AudioService implements OnModuleInit {
         projectId,
         ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
       });
-      return { suggestions: settleCues(data.cues, scenes, allowed) };
+      const withMusic = this.store
+        .clips(projectId)
+        .filter((clip) => clip.kind === 'music')
+        .map((clip) => clip.sceneId);
+      return { suggestions: settleCues(data.cues, scenes, allowed, withMusic) };
     } finally {
       this.suggesting.delete(projectId);
     }
@@ -316,6 +342,13 @@ export class AudioService implements OnModuleInit {
       return;
     }
     if (variant.status === 'succeeded' || variant.status === 'failed') return;
+    // Già partita e il programma si è chiuso: il servizio può aver già lavorato, e il suo lavoro è perso.
+    // Rimandarla si pagherebbe due volte (regola 10): si chiude, e un'altra la chiede l'utente.
+    if (variant.status === 'running') {
+      this.log.warn('Variante interrotta da un riavvio: non si rimanda da sola.');
+      this.store.finishVariant(variantId, { status: 'failed', errorCode: 'timeout' });
+      return;
+    }
     if (!isGenerated(stored.clip.kind)) return;
     const role = GENERATED[stored.clip.kind].role;
 
@@ -409,24 +442,49 @@ export class AudioService implements OnModuleInit {
     });
   }
 
-  /** La scena c'è nella stesura finale; un effetto sta su un'inquadratura di quella scena, entro la sua durata. */
+  /** Un blocco di musica per scena (D24): per cambiarla si cambia la variante, o si toglie la clip. */
+  private assertNoMusicYet(projectId: string, sceneId: string): void {
+    const taken = this.store
+      .clips(projectId)
+      .some((clip) => clip.kind === 'music' && clip.sceneId === sceneId);
+    if (taken) throw domainError(409, 'invalid_request', { details: { field: 'sceneId' } });
+  }
+
+  /**
+   * Il posto di una clip: la scena c'è nella stesura finale e si parte dentro la sua durata; un'inquadratura
+   * è di quella scena, con un piano che vale ancora, perché rifarlo toglierebbe l'effetto già pagato.
+   */
   private assertPlace(
     projectId: string,
     body: Pick<CreateAudioClipBody, 'sceneId' | 'shotId' | 'startS'>,
   ): void {
     const final = this.screenplays.latest(projectId, 'final');
-    if (!final.screenplay.scenes.some((scene) => sceneIdOf(scene.number) === body.sceneId)) {
+    const scene = final.screenplay.scenes.find(({ number }) => sceneIdOf(number) === body.sceneId);
+    if (scene === undefined) {
       throw domainError(404, 'not_found', { details: { field: 'sceneId' } });
     }
-    if (body.shotId === undefined) return;
+    const startS = body.startS ?? 0;
+    if (body.shotId === undefined) {
+      if (startS >= scene.durationS) {
+        throw domainError(400, 'invalid_request', { details: { field: 'startS' } });
+      }
+      return;
+    }
 
-    const { spec } = shotOf(this.shots, projectId, body.shotId);
-    if (spec.sceneId !== body.sceneId) {
+    const stored = shotOf(this.shots, projectId, body.shotId);
+    if (stored.spec.sceneId !== body.sceneId) {
       throw domainError(400, 'invalid_request', { details: { field: 'shotId' } });
     }
-    if ((body.startS ?? 0) >= spec.intent.durationS) {
+    if (startS >= stored.spec.intent.durationS) {
       throw domainError(400, 'invalid_request', { details: { field: 'startS' } });
     }
+    assertPlanCurrent({
+      store: this.shots,
+      screenplays: this.screenplays,
+      known: this.bible.knownIds(projectId),
+      projectId,
+      stored,
+    });
   }
 
   private clipOf(projectId: string, clipId: string): AudioClip {

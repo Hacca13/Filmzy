@@ -290,9 +290,9 @@ function SceneSection({
       {confirmingPlan ? (
         <div ref={confirmRef}>
           <Notice tone="info" title="Prima di rifarle">
-            Rifare le inquadrature di questa scena toglie storyboard, immagini, video ed effetti già
-            fatti, anche quelli ancora in lavorazione: non tornano, e quello che hai speso non si
-            recupera.
+            Rifare le inquadrature di questa scena toglie storyboard, immagini, video, effetti e
+            registrazioni già fatti, anche quelli ancora in lavorazione: non tornano, e quello che
+            hai speso non si recupera.
           </Notice>
           <div className="actions">
             <button

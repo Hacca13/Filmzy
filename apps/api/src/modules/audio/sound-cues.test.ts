@@ -93,6 +93,12 @@ describe('cosa si tiene delle proposte', () => {
     expect(settled[0]?.durationS).toBe(20);
   });
 
+  it('non propone musica dove c’è già', () => {
+    expect(settleCues([music, effect], [scene()], all, ['scene-1']).map((c) => c.kind)).toEqual([
+      'sfx',
+    ]);
+  });
+
   it('al massimo tre effetti per scena', () => {
     expect(settleCues([effect, effect, effect, effect], [scene()], all)).toHaveLength(3);
   });

@@ -67,6 +67,8 @@ export interface AudioStore {
   /** Le tracce del film, nell'ordine di `AUDIO_TRACK_KINDS`; quelle che mancano si creano. */
   tracks: (projectId: string) => AudioTrack[];
   createClip: (clip: NewAudioClip) => AudioClip;
+  /** Una clip con il file dell'utente, già pronta e in uso: o tutto o niente (D27). */
+  createUploadedClip: (clip: NewAudioClip, assetId: string) => AudioClip;
   getClip: (clipId: string) => StoredAudioClip | undefined;
   /** Le clip del film con le loro varianti, nell'ordine in cui sono nate. */
   clips: (projectId: string) => AudioClip[];
@@ -169,6 +171,34 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
     return grouped;
   };
 
+  const trackIdOf = (clip: NewAudioClip): string => {
+    const track = tracks(clip.projectId).find((candidate) => candidate.kind === clip.kind);
+    if (track === undefined) throw new Error(`Manca la traccia «${clip.kind}» del film.`);
+    return track.id;
+  };
+
+  const clipValues = (clip: NewAudioClip, trackId: string) => {
+    const at = now().getTime();
+    return {
+      id: randomUUID(),
+      projectId: clip.projectId,
+      trackId,
+      sceneId: clip.sceneId,
+      shotId: clip.shotId ?? null,
+      startS: clip.startS ?? 0,
+      durationS: clip.durationS,
+      volume: 1,
+      fadeInS: 0,
+      fadeOutS: 0,
+      description: clip.description,
+      mood: clip.mood ?? null,
+      chosenVariantId: null,
+      source: clip.source,
+      createdAt: at,
+      updatedAt: at,
+    };
+  };
+
   const kindOfTrack = (projectId: string): Map<string, string> =>
     new Map(tracks(projectId).map((track) => [track.id, track.kind]));
 
@@ -176,32 +206,37 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
     tracks,
 
     createClip(clip) {
-      const track = tracks(clip.projectId).find((candidate) => candidate.kind === clip.kind);
-      if (track === undefined) throw new Error(`Manca la traccia «${clip.kind}» del film.`);
-      const at = now().getTime();
       const row = db
         .insert(audioClips)
-        .values({
-          id: randomUUID(),
-          projectId: clip.projectId,
-          trackId: track.id,
-          sceneId: clip.sceneId,
-          shotId: clip.shotId ?? null,
-          startS: clip.startS ?? 0,
-          durationS: clip.durationS,
-          volume: 1,
-          fadeInS: 0,
-          fadeOutS: 0,
-          description: clip.description,
-          mood: clip.mood ?? null,
-          chosenVariantId: null,
-          source: clip.source,
-          createdAt: at,
-          updatedAt: at,
-        })
+        .values(clipValues(clip, trackIdOf(clip)))
         .returning()
         .get();
       return toClip(row, clip.kind, []);
+    },
+
+    createUploadedClip(clip, assetId) {
+      const trackId = trackIdOf(clip);
+      const at = now().getTime();
+      const variantId = randomUUID();
+      const row = db.transaction((tx) => {
+        const created = tx
+          .insert(audioClips)
+          .values({ ...clipValues(clip, trackId), chosenVariantId: variantId })
+          .returning()
+          .get();
+        tx.insert(audioVariants)
+          .values({
+            id: variantId,
+            clipId: created.id,
+            status: 'succeeded',
+            assetId,
+            createdAt: at,
+            updatedAt: at,
+          })
+          .run();
+        return created;
+      });
+      return toClip(row, clip.kind, variantsOf([row.id]).get(row.id) ?? []);
     },
 
     getClip(clipId) {
@@ -262,7 +297,8 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
           ...(patch.assetId === undefined ? {} : { assetId: patch.assetId }),
           ...(patch.receiptId === undefined ? {} : { receiptId: patch.receiptId }),
           ...(patch.costUsd === undefined ? {} : { costUsd: patch.costUsd }),
-          ...(patch.errorCode === undefined ? {} : { errorCode: patch.errorCode }),
+          // Un lavoro dato per perso che poi riesce non deve restare con il suo errore.
+          errorCode: patch.errorCode ?? null,
           ...(patch.modelId === undefined ? {} : { modelId: patch.modelId }),
           ...(patch.modelLabel === undefined ? {} : { modelLabel: patch.modelLabel }),
           updatedAt: now().getTime(),

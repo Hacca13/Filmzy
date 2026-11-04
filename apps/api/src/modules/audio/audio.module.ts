@@ -25,6 +25,7 @@ import {
 
 import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
+import { BibleModule } from '../bible/bible.module.js';
 import { CastModule } from '../cast/cast.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { ModerationModule } from '../moderation/moderation.module.js';
@@ -113,6 +114,7 @@ class AudioController {
 @Module({
   imports: [
     AudioStoreModule,
+    BibleModule,
     CastModule,
     JobsModule,
     ModerationModule,

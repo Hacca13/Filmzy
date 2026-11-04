@@ -100,6 +100,10 @@ export const createAudioClipBodySchema = z
   .refine((body) => (body.kind === 'sfx') === (body.shotId !== undefined), {
     message: 'Un effetto sta su un’inquadratura, la musica sulla scena.',
     path: ['shotId'],
+  })
+  .refine((body) => body.kind !== 'music' || body.startS === undefined, {
+    message: 'La musica parte con la scena.',
+    path: ['startS'],
   });
 
 export type CreateAudioClipBody = z.infer<typeof createAudioClipBodySchema>;
@@ -160,6 +164,10 @@ export const uploadAudioQuerySchema = z
   .refine((query) => query.kind !== 'sfx' || query.shotId !== undefined, {
     message: 'Un effetto sta su un’inquadratura.',
     path: ['shotId'],
+  })
+  .refine((query) => query.kind !== 'music' || query.startS === undefined, {
+    message: 'La musica parte con la scena.',
+    path: ['startS'],
   });
 
 export type UploadAudioQuery = z.infer<typeof uploadAudioQuerySchema>;

@@ -181,8 +181,8 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
           eq(shots.projectId, plan.projectId),
           eq(shots.sceneNumber, plan.sceneNumber),
         );
-        // Le inquadrature di prima spariscono con i loro tentativi di storyboard, i take e gli effetti
-        // agganciati (la musica sta sulla scena, e resta): i file restano.
+        // Le inquadrature di prima spariscono con i loro tentativi di storyboard, i take e i suoni
+        // agganciati, effetti e registrazioni (la musica sta sulla scena, e resta): i file restano.
         const removed = tx
           .select({ id: shots.id })
           .from(shots)

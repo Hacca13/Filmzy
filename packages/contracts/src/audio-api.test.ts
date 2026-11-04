@@ -61,6 +61,7 @@ describe('createAudioClipBodySchema', () => {
     ).toBe(true);
     expect(createAudioClipBodySchema.safeParse({ ...body, kind: 'sfx' }).success).toBe(false);
     expect(createAudioClipBodySchema.safeParse({ ...body, shotId: 's-1' }).success).toBe(false);
+    expect(createAudioClipBodySchema.safeParse({ ...body, startS: 5 }).success).toBe(false);
   });
 
   it('rifiuta una durata che non c’è, una descrizione vuota e i campi in più', () => {

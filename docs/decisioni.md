@@ -933,7 +933,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 7. **R8** è un avviso leggero senza pulsante: il video è più recente dell'effetto in uso. Conta quando è partito il take, come R4 e R9, quindi tornare a un take più vecchio non si nota: limite noto.
 8. Il moderatore ha un contesto nuovo, `sound`, legge anche l'atmosfera, e rispetta la conferma del limite di spesa (valeva anche per il ritocco, corretto: con la conferma si restava bloccati).
 9. **Un blocco di musica per scena** (D24), vale anche per un file caricato: per cambiarla si cambia variante o si toglie la clip. La musica parte con la scena.
-10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). I take video hanno ancora questo limite (T4.3): da correggere a parte.
+10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). Dal 5/11 vale anche per i take video, che costano dollari. Le immagini (storyboard, luoghi, schede, moodboard, ritocco) non sono state toccate e possono ancora ripartire: costano centesimi, da correggere a parte.
 
 **Limiti noti, segnalati dalla rilettura e tenuti:** una stesura riscritta che rinumera le scene lascia la musica sulla scena con quel numero, senza avviso (se la scena non c'è più non si genera: T5.6 deve mostrarlo); lo stesso file caricato in due film resta nella cartella del primo, come le foto (T4.8); R8 non vede un take partito prima dell'effetto e finito dopo.
 

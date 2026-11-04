@@ -581,6 +581,17 @@ describe('il lavoro in coda', () => {
     expect(only()).toMatchObject({ status: 'succeeded', assetId: 'clip-1' });
   });
 
+  it('un take interrotto da un riavvio non si rimanda da solo: si pagherebbe due volte', async () => {
+    await build().start(film.id, 'shot-1', {});
+    takes.finish(only().id, { status: 'running' });
+
+    await runQueued();
+
+    expect(written).toEqual([]);
+    expect(submitted).toEqual([]);
+    expect(only()).toMatchObject({ status: 'failed', errorCode: 'timeout' });
+  });
+
   it('se il piano è stato rifatto mentre il lavoro aspettava, non c’è più niente da fare', async () => {
     await build().start(film.id, 'shot-1', {});
     store.replaceScene({

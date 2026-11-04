@@ -201,6 +201,13 @@ export class TakesService implements OnModuleInit {
     // Un lavoro ripetuto (per esempio dopo un riavvio) su un take già chiuso non rifà niente: non si
     // paga due volte (regola 10) e non si cancella la clip già pronta.
     if (current.take.status === 'succeeded' || current.take.status === 'failed') return;
+    // Già partito e il programma si è chiuso: il servizio può aver già lavorato, e il suo lavoro è perso.
+    // Rimandarlo si pagherebbe due volte, e un video costa dollari: si chiude e decide l'utente.
+    if (current.take.status === 'running') {
+      this.log.warn('Take interrotto da un riavvio: non si rimanda da solo.');
+      this.takes.finish(takeId, { status: 'failed', errorCode: 'timeout' });
+      return;
+    }
 
     try {
       this.takes.finish(takeId, { status: 'running' });

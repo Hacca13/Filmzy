@@ -1,0 +1,1 @@
+ALTER TABLE `takes` ADD `native_audio` integer DEFAULT false NOT NULL;

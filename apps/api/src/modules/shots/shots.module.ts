@@ -266,7 +266,7 @@ class ShotsController {
     UploadStoreModule,
   ],
   controllers: [ShotsController],
-  exports: [ShotsService, SHOT_STORE],
+  exports: [ShotsService, SHOT_STORE, TAKE_STORE],
   providers: [
     ShotsService,
     StoryboardService,

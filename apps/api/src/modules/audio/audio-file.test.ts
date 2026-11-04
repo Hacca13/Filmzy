@@ -46,7 +46,7 @@ describe('il corpo della richiesta', () => {
       } catch (error) {
         expect((error as HttpException).getResponse()).toMatchObject({
           code: 'invalid_request',
-          details: { field: 'file' },
+          details: { field: 'audioFile' },
         });
       }
     }

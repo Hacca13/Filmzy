@@ -8,6 +8,7 @@ import {
   type AudioClip,
   type AudioJobPayload,
   type AudioOverview,
+  type AudioTimeline,
   type ChooseAudioVariantBody,
   type CreateAudioClipBody,
   type Project,
@@ -15,12 +16,21 @@ import {
   type SoundSuggestions,
   type SoundSuggestionsEstimate,
   type SoundPlannerInput,
+  type SetTakeNativeAudioBody,
   type SuggestSoundsBody,
   type StartSheetBody,
+  type UpdateAudioClipBody,
+  type UpdateAudioTrackBody,
   type UploadAudioQuery,
 } from '@filmzy/contracts';
-import { projectsDir, type AudioStore, type SheetStore, type ShotStore } from '@filmzy/db';
-import { audioDurationS } from '@filmzy/media';
+import {
+  projectsDir,
+  type AudioStore,
+  type SheetStore,
+  type ShotStore,
+  type TakeStore,
+} from '@filmzy/db';
+import { audioDurationS, hasAudioStream } from '@filmzy/media';
 import {
   LocalAssetStore,
   ProviderError,
@@ -46,17 +56,19 @@ import {
   waitForMedia,
 } from '../media/image-jobs.js';
 import { mediaStep } from '../media/media-step.js';
+import { assetFile } from '../media/references.js';
 import { ModerationService } from '../moderation/moderation.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { assertPlanCurrent, shotOf } from '../shots/shot-access.js';
-import { SHOT_STORE } from '../shots/tokens.js';
+import { SHOT_STORE, TAKE_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
 import { settleCues } from './sound-cues.js';
+import { buildTimeline, sceneLengthS } from './timeline.js';
 import { AUDIO_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che genera una variante. */
@@ -91,6 +103,7 @@ export class AudioService implements OnModuleInit {
   constructor(
     @Inject(AUDIO_STORE) private readonly store: AudioStore,
     @Inject(SHOT_STORE) private readonly shots: ShotStore,
+    @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(TROUPE) private readonly troupe: Troupe,
     @Inject(CONFIG_SOURCE) private readonly configSource: ConfigSource,
@@ -115,6 +128,74 @@ export class AudioService implements OnModuleInit {
     const clips = this.store.clips(projectId);
     for (const clip of clips) this.closeLost(clip);
     return { tracks: this.store.tracks(projectId), clips: this.store.clips(projectId) };
+  }
+
+  /** La linea del tempo del film (T5.6): le inquadrature in fila, con il take che finirà nel film. */
+  async timeline(projectId: string): Promise<AudioTimeline> {
+    const { scenes } = await this.plans.plans(projectId);
+    return buildTimeline(scenes, this.takes.keptTakes(projectId), this.store.clips(projectId));
+  }
+
+  updateTrack(projectId: string, trackId: string, body: UpdateAudioTrackBody): AudioOverview {
+    this.projects.get(projectId);
+    if (!this.store.updateTrack(projectId, trackId, body)) {
+      throw domainError(404, 'not_found', { details: { field: 'trackId' } });
+    }
+    return this.overview(projectId);
+  }
+
+  /**
+   * L'audio originale di un take (D24, D43). Accenderlo su una clip senza suono non servirebbe a niente:
+   * lo si dice subito. Chi lo accende vuole sentirlo, quindi si riapre anche la traccia, che parte muta.
+   */
+  async setNativeAudio(
+    projectId: string,
+    takeId: string,
+    body: SetTakeNativeAudioBody,
+  ): Promise<AudioOverview> {
+    this.projects.get(projectId);
+    const found = this.takes.get(takeId);
+    const shot = found === undefined ? undefined : this.shots.get(found.shotId);
+    if (found === undefined || shot?.projectId !== projectId) {
+      throw domainError(404, 'not_found', { details: { field: 'takeId' } });
+    }
+    if (body.on) {
+      const { assetId } = found.take;
+      const clip = assetId === undefined ? undefined : assetFile(this.files, this.dataDir, assetId);
+      if (clip === undefined) throw domainError(404, 'not_found', { details: { field: 'takeId' } });
+      if (!(await mediaStep(() => hasAudioStream(clip.file)))) {
+        throw domainError(409, 'invalid_request', { details: { field: 'nativeAudio' } });
+      }
+    }
+    // Mentre ffmpeg leggeva, il piano può essere stato rifatto: il take non c'è più.
+    if (!this.takes.setNativeAudio(takeId, body.on)) {
+      throw domainError(404, 'not_found', { details: { field: 'takeId' } });
+    }
+    if (body.on) {
+      const native = this.store.tracks(projectId).find((track) => track.kind === 'native');
+      if (native?.muted === true) this.store.updateTrack(projectId, native.id, { muted: false });
+    }
+    return this.overview(projectId);
+  }
+
+  /**
+   * Il pannello del blocco (T5.6): com'è il suono e dove parte. Non tocca le varianti già fatte: valgono
+   * dal prossimo «Genera». La musica parte con la scena, e un file caricato dura quanto il file.
+   */
+  updateClip(projectId: string, clipId: string, body: UpdateAudioClipBody): AudioClip {
+    this.projects.get(projectId);
+    const clip = this.clipOf(projectId, clipId);
+    if (body.startS !== undefined) {
+      if (clip.kind === 'music') {
+        throw domainError(400, 'invalid_request', { details: { field: 'startS' } });
+      }
+      this.assertPlace(projectId, { ...clip, startS: body.startS });
+    }
+    if (body.durationS !== undefined && clip.source !== 'generated') {
+      throw domainError(409, 'invalid_request', { details: { field: 'source' } });
+    }
+    this.store.updateClip(clipId, body);
+    return this.clipOf(projectId, clipId);
   }
 
   /** Una clip nuova, ancora senza file: «Genera» è un passo a parte, perché costa. */
@@ -152,19 +233,8 @@ export class AudioService implements OnModuleInit {
     this.projects.get(projectId);
     this.assertPlace(projectId, query);
     if (query.kind === 'music') this.assertNoMusicYet(projectId, query.sceneId);
-    const { bytes, contentType } = readAudioBody(body);
-
-    const stored = await new LocalAssetStore(
-      path.join(projectsDir(this.dataDir), projectId, 'caricate'),
-    ).put({ fileName: 'audio', contentType, bytes });
-    const existed = this.files.getAsset(stored.assetId) !== undefined;
-    try {
-      const durationS = await mediaStep(() => audioDurationS(stored.path));
-      if (durationS === undefined || durationS <= 0) {
-        throw domainError(400, 'invalid_request', { details: { field: 'file' } });
-      }
-      registerAssets(this.files, { dataDir: this.dataDir, projectId }, [stored]);
-      const clip = this.store.createUploadedClip(
+    return this.keepFile(projectId, body, (assetId, durationS) =>
+      this.store.createUploadedClip(
         {
           projectId,
           kind: query.kind,
@@ -175,8 +245,47 @@ export class AudioService implements OnModuleInit {
           description: query.description,
           source: 'uploaded',
         },
-        stored.assetId,
-      );
+        assetId,
+      ),
+    );
+  }
+
+  /**
+   * «Carica un file» su un blocco che c'è già (T5.6): è una variante come le altre, subito in uso, e il
+   * blocco dura quanto il file. Vale la regola di sempre, il file resta qui (D27), e le varianti generate
+   * restano da scegliere. Su un blocco che ha perso il suo posto non servirebbe: non si sentirebbe.
+   */
+  async uploadVariant(projectId: string, clipId: string, body: unknown): Promise<AudioClip> {
+    this.projects.get(projectId);
+    this.assertPlace(projectId, this.clipOf(projectId, clipId));
+    return this.keepFile(projectId, body, (assetId, durationS) => {
+      this.store.addUploadedVariant(clipId, assetId, durationS);
+      return this.clipOf(projectId, clipId);
+    });
+  }
+
+  /**
+   * Salva un file dell'utente e lo legge: se non c'è un suono o qualcosa va storto, non resta sul disco
+   * (a meno che fosse già di un'altra clip). Il nome sul disco è il checksum.
+   */
+  private async keepFile(
+    projectId: string,
+    body: unknown,
+    save: (assetId: string, durationS: number) => AudioClip,
+  ): Promise<AudioClip> {
+    const { bytes, contentType } = readAudioBody(body);
+
+    const stored = await new LocalAssetStore(
+      path.join(projectsDir(this.dataDir), projectId, 'caricate'),
+    ).put({ fileName: 'audio', contentType, bytes });
+    const existed = this.files.getAsset(stored.assetId) !== undefined;
+    try {
+      const durationS = await mediaStep(() => audioDurationS(stored.path));
+      if (durationS === undefined || durationS <= 0) {
+        throw domainError(400, 'invalid_request', { details: { field: 'audioFile' } });
+      }
+      registerAssets(this.files, { dataDir: this.dataDir, projectId }, [stored]);
+      const clip = save(stored.assetId, durationS);
       this.projects.reach(projectId, 'sound');
       return clip;
     } catch (error) {
@@ -447,7 +556,7 @@ export class AudioService implements OnModuleInit {
     const taken = this.store
       .clips(projectId)
       .some((clip) => clip.kind === 'music' && clip.sceneId === sceneId);
-    if (taken) throw domainError(409, 'invalid_request', { details: { field: 'sceneId' } });
+    if (taken) throw domainError(409, 'invalid_request', { details: { field: 'music' } });
   }
 
   /**
@@ -465,7 +574,9 @@ export class AudioService implements OnModuleInit {
     }
     const startS = body.startS ?? 0;
     if (body.shotId === undefined) {
-      if (startS >= scene.durationS) {
+      // Lo stesso criterio della linea del tempo: altrimenti una voce accettata qui finirebbe fuori scena.
+      const planned = this.shots.plan(projectId, scene.number)?.shots ?? [];
+      if (startS >= sceneLengthS(planned, scene.durationS)) {
         throw domainError(400, 'invalid_request', { details: { field: 'startS' } });
       }
       return;

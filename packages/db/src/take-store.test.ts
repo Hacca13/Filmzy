@@ -234,6 +234,41 @@ describe('la clip che la card fa vedere, con la scelta (T4.6)', () => {
   });
 });
 
+describe('il take che finisce nel film e il suo audio originale (T5.6)', () => {
+  it('vale lo stesso criterio della card: quello scelto, altrimenti il più recente riuscito', () => {
+    const first = store.start('a1', kling);
+    store.finish(first.id, { status: 'succeeded', assetId: 'clip-1' });
+    tick();
+    const second = store.start('a1', seedance);
+    store.finish(second.id, { status: 'succeeded', assetId: 'clip-2' });
+
+    expect(store.keptTakes('film-1')['a1']).toEqual({
+      takeId: second.id,
+      assetId: 'clip-2',
+      nativeAudio: false,
+    });
+
+    store.choose('a1', first.id);
+    expect(store.keptTakes('film-1')['a1']?.takeId).toBe(first.id);
+    expect(store.latestClips('film-1')['a1']).toBe('clip-1');
+  });
+
+  it('l’audio originale parte spento, si accende per quel take e non per gli altri', () => {
+    const first = store.start('a1', kling);
+    store.finish(first.id, { status: 'succeeded', assetId: 'clip-1' });
+    tick();
+    const second = store.start('a1', seedance);
+    store.finish(second.id, { status: 'succeeded', assetId: 'clip-2' });
+
+    expect(store.setNativeAudio(second.id, true)).toBe(true);
+    expect(store.keptTakes('film-1')['a1']?.nativeAudio).toBe(true);
+
+    store.choose('a1', first.id);
+    expect(store.keptTakes('film-1')['a1']?.nativeAudio).toBe(false);
+    expect(store.setNativeAudio('inventato', true)).toBe(false);
+  });
+});
+
 describe('i fotogrammi presi da un take (T4.6)', () => {
   it('si salvano col take e il momento, e si leggono dal più recente, solo dell’inquadratura', () => {
     const take = store.start('a1', kling);

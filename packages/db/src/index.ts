@@ -38,6 +38,8 @@ export type {
   NewAudioClip,
   NewAudioVariant,
   StoredAudioClip,
+  AudioClipPatch,
+  AudioTrackPatch,
 } from './audio-store.js';
 export { createScriptCheckStore } from './script-check-store.js';
 export type {
@@ -49,7 +51,7 @@ export type {
 } from './script-check-store.js';
 export { createTakeStore } from './take-store.js';
 export type { NewShotPlan, ShotStore, StoredShot, StoredShotPlan } from './shot-store.js';
-export type { NewTake, StoredTake, TakePatch, TakeStore } from './take-store.js';
+export type { KeptTake, NewTake, StoredTake, TakePatch, TakeStore } from './take-store.js';
 export { createSheetStore } from './sheet-store.js';
 export type { AssetRecord, SheetImagePatch, SheetStore } from './sheet-store.js';
 export type { NewScreenplayVersion, ScreenplayStore } from './screenplay-store.js';

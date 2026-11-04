@@ -4,6 +4,7 @@ export {
   dominantColors,
   dominantFromRgb,
   extractFrame,
+  hasAudioStream,
   ffmpegPath,
   markArea,
   maskHasPaint,

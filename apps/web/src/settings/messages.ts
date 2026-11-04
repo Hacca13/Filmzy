@@ -86,6 +86,17 @@ const BY_INVALID_FIELD: Record<string, string> = {
     'Questa foto è stata caricata senza controllo e non si può ritoccare. Riaccendi il controllo delle foto in Prudenza e caricala di nuovo.',
   instruction:
     'Il campo di testo serve per «Sostituisci» e «Cambia colore», non per «Togli». Controlla cosa hai scritto.',
+  // Le tracce audio (T5.5, T5.6).
+  audioFile:
+    'Questo file non è un suono che posso usare. Vanno bene WAV, MP3 o M4A, fino a 100 MB, e dentro deve esserci un suono.',
+  music: 'Questa scena ha già la sua musica: per cambiarla apri il suo blocco.',
+  variants: 'Questo suono è già in lavorazione. Aspetta che finisca.',
+  variantId: 'Questa versione del suono non è pronta. Aggiorna la pagina e riprova.',
+  suggestions: 'Le proposte stanno già arrivando. Aspetta che finiscano.',
+  nativeAudio: 'Questa clip è stata generata senza audio.',
+  startS: 'Questo secondo è oltre la fine. Scegline uno prima.',
+  shotId: 'Questa inquadratura non c’è più. Aggiorna la pagina e riprova.',
+  source: 'Questo suono è un file tuo: non si genera, e dura quanto il file.',
 };
 
 /** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */

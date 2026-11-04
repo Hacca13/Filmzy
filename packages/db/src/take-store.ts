@@ -74,8 +74,19 @@ export interface TakeStore {
    * gira non è nel video.
    */
   lastTakeAt: (projectId: string) => Record<string, number>;
+  /** Il take che finirà nel film per ogni inquadratura che ne ha uno: lo stesso criterio di `latestClips`. */
+  keptTakes: (projectId: string) => Record<string, KeptTake>;
+  /** Accende o spegne l'audio originale di un take (T5.6); `false` se il take non c'è più. */
+  setNativeAudio: (takeId: string, on: boolean) => boolean;
   /** Le inquadrature del film con un take in coda o in lavorazione adesso (non più vecchio di `since`: uno più vecchio si è perso). */
   inProgress: (projectId: string, since: Date) => string[];
+}
+
+/** Il take di un'inquadratura che va nel film. */
+export interface KeptTake {
+  takeId: string;
+  assetId: string;
+  nativeAudio: boolean;
 }
 
 export interface TakeStoreOptions {
@@ -132,6 +143,36 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
       .all()
       .map((shot) => shot.id);
 
+  const keptTakes = (projectId: string): Record<string, KeptTake> => {
+    const shotIds = shotIdsOf(projectId);
+    if (shotIds.length === 0) return {};
+
+    const rows = db
+      .select()
+      .from(takes)
+      .where(
+        and(
+          inArray(takes.shotId, shotIds),
+          eq(takes.status, 'succeeded'),
+          isNotNull(takes.assetId),
+        ),
+      )
+      .orderBy(desc(takes.createdAt), desc(takes.id))
+      .all();
+    // Dal più recente: il primo take incontrato per un'inquadratura è il suo più recente. Ma se
+    // l'utente ne ha scelto un altro (e riuscito) vale quello.
+    const chosenIds = chosenTakesOf(shotIds);
+    const latest: Record<string, KeptTake> = {};
+    const chosen: Record<string, KeptTake> = {};
+    for (const row of rows) {
+      if (row.assetId === null) continue;
+      const kept = { takeId: row.id, assetId: row.assetId, nativeAudio: row.nativeAudio };
+      latest[row.shotId] ??= kept;
+      if (chosenIds.get(row.shotId) === row.id) chosen[row.shotId] = kept;
+    }
+    return { ...latest, ...chosen };
+  };
+
   return {
     start(shotId, service) {
       const at = now().getTime();
@@ -145,6 +186,7 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         receiptId: null,
         costUsd: null,
         errorCode: null,
+        nativeAudio: false,
         createdAt: at,
         updatedAt: at,
       };
@@ -248,32 +290,20 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
     },
 
     latestClips(projectId) {
-      const shotIds = shotIdsOf(projectId);
-      if (shotIds.length === 0) return {};
+      return Object.fromEntries(
+        Object.entries(keptTakes(projectId)).map(([shotId, take]) => [shotId, take.assetId]),
+      );
+    },
 
-      const rows = db
-        .select()
-        .from(takes)
-        .where(
-          and(
-            inArray(takes.shotId, shotIds),
-            eq(takes.status, 'succeeded'),
-            isNotNull(takes.assetId),
-          ),
-        )
-        .orderBy(desc(takes.createdAt), desc(takes.id))
-        .all();
-      // Dal più recente: la prima clip incontrata per un'inquadratura è la sua più recente. Ma se
-      // l'utente ne ha scelto un'altra (e riuscita) vale quella.
-      const chosenIds = chosenTakesOf(shotIds);
-      const latest: Record<string, string> = {};
-      const chosen: Record<string, string> = {};
-      for (const row of rows) {
-        if (row.assetId === null) continue;
-        if (latest[row.shotId] === undefined) latest[row.shotId] = row.assetId;
-        if (chosenIds.get(row.shotId) === row.id) chosen[row.shotId] = row.assetId;
-      }
-      return { ...latest, ...chosen };
+    keptTakes,
+
+    setNativeAudio(takeId, on) {
+      const { changes } = db
+        .update(takes)
+        .set({ nativeAudio: on, updatedAt: now().getTime() })
+        .where(eq(takes.id, takeId))
+        .run();
+      return changes > 0;
     },
   };
 }

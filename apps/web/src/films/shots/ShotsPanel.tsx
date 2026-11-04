@@ -38,7 +38,14 @@ const isNotFound = (error: unknown) =>
  * movimento di macchina. Pensarle costa: la stima si vede prima e un limite di spesa si chiede
  * come ovunque (D30).
  */
-export function ShotsPanel({ filmId }: { filmId: string }) {
+export function ShotsPanel({
+  filmId,
+  onPlansRead,
+}: {
+  filmId: string;
+  /** Il piano è stato riletto: chi mostra la linea del tempo del film sa che può essere cambiato. */
+  onPlansRead?: () => void;
+}) {
   const load = useCallback((signal: AbortSignal) => fetchShotPlans(filmId, signal), [filmId]);
   const plans = useResource(load);
   // Mentre si ricarica resta il piano di prima: la striscia non si smonta.
@@ -46,6 +53,9 @@ export function ShotsPanel({ filmId }: { filmId: string }) {
   // Quando un video o uno storyboard di questo film cambia stato (T4.4) la striscia si aggiorna da sola:
   // la card passa da «in lavorazione» a «pronto» anche con il riquadro dell'inquadratura chiuso.
   useLiveJobs({ kinds: LIVE_KINDS, projectId: filmId }, plans.reload);
+  useEffect(() => {
+    if (data !== undefined) onPlansRead?.();
+  }, [data, onPlansRead]);
 
   return (
     <section className="panel shots" id="le-inquadrature">

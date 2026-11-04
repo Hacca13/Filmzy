@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-import { assetIdSchema, idSchema, modelIdSchema, sceneIdSchema, shotIdSchema } from './ids.js';
+import {
+  assetIdSchema,
+  idSchema,
+  modelIdSchema,
+  sceneIdSchema,
+  shotIdSchema,
+  takeIdSchema,
+} from './ids.js';
 import { sheetImageStatusSchema } from './sheet-api.js';
 import { estimateSchema } from './spend.js';
 
@@ -171,6 +178,89 @@ export const uploadAudioQuerySchema = z
   });
 
 export type UploadAudioQuery = z.infer<typeof uploadAudioQuerySchema>;
+
+/** Muto e volume di una traccia (T5.6): quello che manca resta com'è. */
+export const updateAudioTrackBodySchema = z
+  .strictObject({
+    muted: z.boolean().optional(),
+    volume: z.number().min(0).max(1).optional(),
+  })
+  .refine((body) => body.muted !== undefined || body.volume !== undefined, {
+    message: 'Niente da cambiare.',
+  });
+
+export type UpdateAudioTrackBody = z.infer<typeof updateAudioTrackBodySchema>;
+
+/**
+ * Il pannello del blocco (T5.6): com'è il suono e dove parte. Quello che manca resta com'è; `mood: null`
+ * toglie l'atmosfera. La durata di un file caricato è quella del file, e la musica parte con la scena.
+ */
+export const updateAudioClipBodySchema = z
+  .strictObject({
+    description: z.string().trim().min(1).optional(),
+    mood: z.string().trim().min(1).nullable().optional(),
+    startS: z.number().nonnegative().optional(),
+    durationS: z.number().positive().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Niente da cambiare.',
+  });
+
+export type UpdateAudioClipBody = z.infer<typeof updateAudioClipBodySchema>;
+
+/** L'audio originale di un take, che parte spento (D24, D43): lo si accende o lo si rispegne. */
+export const setTakeNativeAudioBodySchema = z.strictObject({ on: z.boolean() });
+
+export type SetTakeNativeAudioBody = z.infer<typeof setTakeNativeAudioBodySchema>;
+
+/** Una scena sulla linea del tempo del film. */
+export const audioTimelineSceneSchema = z.object({
+  sceneId: sceneIdSchema,
+  sceneNumber: z.number().int().positive(),
+  heading: z.string().min(1),
+  startS: z.number().nonnegative(),
+  durationS: z.number().positive(),
+  /** Il piano è da rifare: le sue inquadrature spariranno, e con loro i suoni agganciati. */
+  stale: z.boolean(),
+});
+
+export type AudioTimelineScene = z.infer<typeof audioTimelineSceneSchema>;
+
+/** Un'inquadratura sulla linea del tempo, con il take che finirà nel film, se ce n'è uno. */
+export const audioTimelineShotSchema = z.object({
+  shotId: shotIdSchema,
+  sceneId: sceneIdSchema,
+  startS: z.number().nonnegative(),
+  durationS: z.number().positive(),
+  action: z.string().min(1),
+  takeId: takeIdSchema.optional(),
+  assetId: assetIdSchema.optional(),
+  /** L'audio originale di quel take è acceso. */
+  nativeAudio: z.boolean(),
+});
+
+export type AudioTimelineShot = z.infer<typeof audioTimelineShotSchema>;
+
+/** Dove si sente una clip, in secondi dall'inizio del film. */
+export const audioPlacementSchema = z.object({
+  startS: z.number().nonnegative(),
+  durationS: z.number().positive(),
+});
+
+export type AudioPlacement = z.infer<typeof audioPlacementSchema>;
+
+/**
+ * La linea del tempo del film (T5.6): tutte le posizioni le calcola il server (regola 8). Una clip senza
+ * posizione in `placements` ha perso il suo posto (la scena o l'inquadratura non c'è più).
+ */
+export const audioTimelineSchema = z.object({
+  durationS: z.number().nonnegative(),
+  scenes: z.array(audioTimelineSceneSchema),
+  shots: z.array(audioTimelineShotSchema),
+  placements: z.record(idSchema, audioPlacementSchema),
+});
+
+export type AudioTimeline = z.infer<typeof audioTimelineSchema>;
 
 /** «Cambia»: la variante da usare. */
 export const chooseAudioVariantBodySchema = z.strictObject({

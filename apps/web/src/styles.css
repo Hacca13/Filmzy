@@ -1344,3 +1344,185 @@ a.button {
   font-weight: 600;
   color: var(--text);
 }
+
+/* L'editor delle tracce (T5.6): quattro tracce sotto un solo righello, e il pannello del blocco a destra.
+   Ha bisogno di più spazio delle altre sezioni: esce dalla colonna della pagina, come nel disegno. */
+.panel.sound {
+  margin-inline: calc((100% - min(1360px, 100vw - 64px)) / 2);
+}
+
+.sound-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.sound-editor[data-open='true'] {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.sound-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sound-ruler {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 192px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sound-lane {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.sound-lane-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sound-lane-controls .toggle-row {
+  padding: 0;
+  border: 0;
+}
+
+.sound-volume {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.sound-lane-blocks {
+  position: relative;
+  min-width: 0;
+  min-height: 112px;
+  padding: 8px;
+  background: var(--background);
+  border-radius: 10px;
+}
+
+.sound-block {
+  position: absolute;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 28px;
+  padding: 6px;
+  overflow: hidden;
+  background: var(--row);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+button.sound-block {
+  cursor: pointer;
+}
+
+.sound-block[aria-pressed='true'] {
+  z-index: 1;
+  border: 2px solid var(--accent);
+}
+
+.sound-block[data-kind='video'] {
+  top: 8px;
+  bottom: 8px;
+  height: auto;
+}
+
+.sound-block[data-kind='music'] {
+  background: var(--accent-soft);
+}
+
+.sound-block[data-kind='video'][data-ready='false'],
+.sound-block[data-state='empty'],
+.sound-block[data-state='failed'] {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.sound-block[data-state='failed'] {
+  border-color: var(--error-ink);
+}
+
+.sound-block-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sound-block-note {
+  color: var(--muted);
+}
+
+.sound-speaker {
+  align-self: flex-start;
+  display: inline-flex;
+  padding: 2px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sound-speaker[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.sound-speaker svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sound-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sound-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--row);
+  border-radius: 12px;
+}
+
+.sound-panel h4 {
+  margin: 0;
+}
+
+.sound-panel audio {
+  width: 100%;
+}
+
+.sound-upload,
+.sound-remove,
+.sound-generate,
+.sound-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sound-orphans {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}

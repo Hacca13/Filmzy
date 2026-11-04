@@ -125,6 +125,21 @@ export async function audioDurationS(
   return /Stream #[^\n]*: Audio:/.test(stderr) ? durationIn(stderr) : undefined;
 }
 
+/**
+ * Dentro il file c'è un suono? Basta che ci sia, anche se il formato non dice quanto dura. Un file che
+ * ffmpeg non riesce ad aprire è un errore, non un video muto.
+ */
+export async function hasAudioStream(
+  input: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<boolean> {
+  const { stderr } = await run(['-hide_banner', '-i', input], env);
+  if (!stderr.includes('Input #0')) {
+    throw new MediaError('ffmpeg_failed', `Non riesco a leggere il file: ${tail(stderr)}`);
+  }
+  return /Stream #[^\n]*: Audio:/.test(stderr);
+}
+
 function durationIn(stderr: string): number | undefined {
   const found = /Duration:\s*(?:(\d+):(\d{2}):(\d{2}(?:\.\d+)?)|N\/A)/.exec(stderr);
   if (found === null) {

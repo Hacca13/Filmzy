@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { assetIdSchema, idSchema, modelIdSchema, sceneIdSchema, shotIdSchema } from './ids.js';
 import { sheetImageStatusSchema } from './sheet-api.js';
+import { estimateSchema } from './spend.js';
 
 /**
  * Le tracce audio di un film (T5.5, D24, D27, architettura §5.5): il suono sta su tracce separate dal
@@ -102,6 +103,28 @@ export const createAudioClipBodySchema = z
   });
 
 export type CreateAudioClipBody = z.infer<typeof createAudioClipBodySchema>;
+
+/** «Suggerisci i suoni»: la conferma del limite di spesa, se serve. */
+export const suggestSoundsBodySchema = z.strictObject({
+  spendConfirmed: z.boolean().optional(),
+});
+
+export type SuggestSoundsBody = z.infer<typeof suggestSoundsBodySchema>;
+
+/**
+ * Le proposte del sound designer: non si salvano, l'utente accetta o scarta ognuna (D24). Hanno già la
+ * forma di una clip da creare, così accettarne una è la stessa richiesta di sempre.
+ */
+export const soundSuggestionsSchema = z.object({
+  suggestions: z.array(createAudioClipBodySchema),
+});
+
+export type SoundSuggestions = z.infer<typeof soundSuggestionsSchema>;
+
+/** Quanto costerebbe chiedere le proposte, senza chiamare nessuno (D30). */
+export const soundSuggestionsEstimateSchema = z.object({ estimate: estimateSchema });
+
+export type SoundSuggestionsEstimate = z.infer<typeof soundSuggestionsEstimateSchema>;
 
 /** I tipi che si possono dichiarare per un file audio: il tipo vero si legge poi dai primi byte. */
 export const AUDIO_UPLOAD_CONTENT_TYPES = [

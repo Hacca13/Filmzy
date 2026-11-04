@@ -1,10 +1,16 @@
-import type { ContinuityFlag, ScenePlan, ScreenplayScene, ShotSpec } from '@filmzy/contracts';
+import type {
+  AudioClip,
+  ContinuityFlag,
+  ScenePlan,
+  ScreenplayScene,
+  ShotSpec,
+} from '@filmzy/contracts';
 
 import { hashScene } from './plan-shots.js';
 
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
- * ci sono R3, R4, R5, R6 (T4.9, D21), R7 e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
+ * ci sono R3, R4, R5, R6 (T4.9, D21), R7, R8 (T5.5, D24) e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
  * si provano a parte: i dati li leggono i servizi.
  */
 
@@ -220,6 +226,57 @@ export function frameChangeFlags(input: FrameChangeInput): Record<string, Contin
         key: `R5:${shot.id}:${String(changed)}`,
         reason: FRAMES_CHANGED_REASON,
         fix: 'regenerate',
+      }),
+    ];
+  }
+  return flags;
+}
+
+/** Cosa vede l'utente quando il video è cambiato dopo l'effetto agganciato all'inquadratura (R8, avviso leggero). */
+export const EFFECT_MAY_NOT_MATCH_REASON =
+  'Il video è cambiato dopo che hai messo un effetto su questa inquadratura: potrebbe non coincidere più. Riascoltalo.';
+
+/**
+ * Quando è partita la variante in uso dell'effetto più vecchio di ogni inquadratura (ms). Un effetto senza
+ * una variante in uso non suona ancora: non conta.
+ */
+export function effectTimes(clips: readonly AudioClip[]): Record<string, number> {
+  const times: Record<string, number> = {};
+  for (const clip of clips) {
+    const variant = clip.variants.find(({ id }) => id === clip.chosenVariantId);
+    if (clip.shotId === undefined || variant === undefined) continue;
+    const at = Date.parse(variant.createdAt);
+    times[clip.shotId] = Math.min(times[clip.shotId] ?? at, at);
+  }
+  return times;
+}
+
+export interface EffectChangeInput {
+  shots: readonly ShotSpec[];
+  /** Quando è partito l'effetto più vecchio di ogni inquadratura che ne ha uno (ms), da `effectTimes`. */
+  effectAt: Readonly<Record<string, number>>;
+  /** Quando è partito il take che la card fa vedere (ms). */
+  takeAt: Readonly<Record<string, number>>;
+}
+
+/**
+ * R8: se il video di un'inquadratura è più recente di un suo effetto, l'effetto potrebbe non coincidere più.
+ * È un avviso leggero e non ha un pulsante: si riascolta, e se va bene si ignora. Il suono non cambia il
+ * video, quindi il contrario non conta. Tornare a un take più vecchio non si nota: conta quando è partito.
+ */
+export function effectChangeFlags(input: EffectChangeInput): Record<string, ContinuityFlag[]> {
+  const flags: Record<string, ContinuityFlag[]> = {};
+  for (const shot of input.shots) {
+    const effect = input.effectAt[shot.id];
+    const take = input.takeAt[shot.id];
+    if (effect === undefined || take === undefined || take <= effect) continue;
+    flags[shot.id] = [
+      ruleFlag({
+        code: 'R8',
+        key: `R8:${shot.id}:${String(take)}`,
+        reason: EFFECT_MAY_NOT_MATCH_REASON,
+        light: true,
+        fix: 'none',
       }),
     ];
   }

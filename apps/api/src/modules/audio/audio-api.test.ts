@@ -6,9 +6,13 @@ import {
   audioClipSchema,
   audioOverviewSchema,
   domainErrorSchema,
+  projectOptionsSchema,
   projectSchema,
   sheetOptionsSchema,
   shotPlansSchema,
+  shotTakesSchema,
+  soundSuggestionsEstimateSchema,
+  soundSuggestionsSchema,
   type AudioClip,
 } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -363,4 +367,122 @@ describe('quando qualcosa non va', () => {
       await started.app.close();
     }
   }, 60_000);
+});
+
+describe('«Suggerisci i suoni»', () => {
+  it('propone clip da accettare, non salva niente, e accettarne una è una richiesta come le altre', async () => {
+    const { film } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const estimate = soundSuggestionsEstimateSchema.parse(
+      (await client.call('GET', `${audio}/suggestions/estimate`)).body,
+    );
+    expect(estimate.estimate.estimatedCostUsd).toBeGreaterThan(0);
+
+    const reply = await client.call('POST', `${audio}/suggestions`, {});
+
+    expect(reply.status).toBe(201);
+    const { suggestions } = soundSuggestionsSchema.parse(reply.body);
+    const music = suggestions.find((suggestion) => suggestion.kind === 'music');
+    expect(music?.sceneId).toBe('scene-1');
+    // L'esempio del fornitore finto parla di un'inquadratura che in questo film non c'è: si scarta.
+    expect(suggestions.map((suggestion) => suggestion.kind)).toEqual(['music']);
+    const { clips } = audioOverviewSchema.parse((await client.call('GET', audio)).body);
+    expect(clips).toEqual([]);
+
+    expect((await client.call('POST', `${audio}/clips`, music)).status).toBe(201);
+  });
+
+  it('senza stesura finale non si può chiedere', async () => {
+    const options = projectOptionsSchema.parse(
+      (await client.call('GET', '/projects/options')).body,
+    );
+    const film = projectSchema.parse(
+      (
+        await client.call('POST', '/projects', {
+          idea: 'Una bobina dimenticata sull’ultimo treno della sera.',
+          genre: options.defaults.genre,
+          tone: options.defaults.tone,
+          style: options.defaults.style,
+          cinematography: options.defaults.cinematography,
+          durationS: 60,
+        })
+      ).body,
+    );
+
+    const reply = await client.call('POST', `${audioOf(film.id)}/suggestions`, {});
+
+    expect(reply.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('due richieste insieme non pagano due volte', async () => {
+    const { film } = await filmWithFinal(client);
+    const suggestions = `${audioOf(film.id)}/suggestions`;
+
+    const [one, two] = await Promise.all([
+      client.call('POST', suggestions, {}),
+      client.call('POST', suggestions, {}),
+    ]);
+
+    expect([one.status, two.status].sort()).toEqual([201, 409]);
+  });
+});
+
+describe('R8: il video cambia dopo l’effetto', () => {
+  const shoot = async (shotPath: string) => {
+    await client.call('POST', `${shotPath}/takes`, {});
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      const { takes } = shotTakesSchema.parse((await client.call('GET', `${shotPath}/takes`)).body);
+      if (takes.every((take) => take.status === 'succeeded' || take.status === 'failed')) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error('il take non è arrivato in tempo');
+  };
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  it('un video rifatto dopo l’effetto dà un avviso leggero, senza pulsante; un nuovo effetto lo toglie', async () => {
+    const { film, shot, shots } = await filmWithShot(client);
+    const audio = audioOf(film.id);
+    const shotPath = `${shots}/${shot.id}`;
+    const flags = async () =>
+      shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0]?.flags[shot.id] ?? [];
+    await shoot(shotPath);
+    await tick();
+    const effect = await clipOf(client, audio, {
+      ...musicBody,
+      kind: 'sfx',
+      shotId: shot.id,
+      durationS: 2,
+    });
+    await generate(client, audio, effect.id);
+    expect(await flags()).toEqual([]);
+
+    await tick();
+    await shoot(shotPath);
+
+    expect(await flags()).toEqual([
+      expect.objectContaining({ code: 'R8', light: true, fix: 'none' }),
+    ]);
+
+    await tick();
+    const again = await generate(client, audio, effect.id);
+    await client.call('PUT', `${audio}/clips/${effect.id}/variant`, {
+      variantId: again.variants[0]?.id,
+    });
+    expect(await flags()).toEqual([]);
+  });
+
+  it('un effetto senza una variante in uso non conta', async () => {
+    const { film, shot, shots } = await filmWithShot(client);
+    await clipOf(client, audioOf(film.id), {
+      ...musicBody,
+      kind: 'sfx',
+      shotId: shot.id,
+      durationS: 2,
+    });
+    await tick();
+    await shoot(`${shots}/${shot.id}`);
+
+    const scene = shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0];
+    expect(scene?.flags[shot.id] ?? []).toEqual([]);
+  });
 });

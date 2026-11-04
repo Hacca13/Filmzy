@@ -147,8 +147,8 @@ troupe.options(role, request)     // i servizi tra cui l'utente può scegliere p
 | `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
 | `script_supervisor` | Segretaria di edizione | LLM | scene e inquadrature → incoerenze con motivo | MVP |
-| `composer` | Compositore | musica | atmosfera e durata di una scena → musica | MVP: Stable Audio 3 su fal (D78); la funzione `music` si accende con T5.5 |
-| `sfx_artist` | Rumorista | effetti sonori | descrizione e durata → 2–3 varianti | MVP: Stable Audio 3 su fal, una clip a richiesta: le varianti sono più richieste (D78); la funzione `sound_effects` si accende con T5.5 |
+| `composer` | Compositore | musica | atmosfera e durata di una scena → musica | MVP: Stable Audio 3 su fal (D78) |
+| `sfx_artist` | Rumorista | effetti sonori | descrizione e durata → 2–3 varianti | MVP: Stable Audio 3 su fal, una clip a richiesta: le varianti sono più richieste (D78) |
 | `sound_planner` | Sound designer | LLM | copione, scene e inquadrature → proposte di musica ed effetti | MVP |
 | `voice_actor` | Doppiatore | voce | battuta + voce del personaggio → audio | Fase 2 |
 | `lip_sync` | Sincronizzatore | video | take + audio → take sincronizzato | Fase 2 |
@@ -496,7 +496,10 @@ AudioClip  { id, trackId, sceneId, shotId?, startS, durationS, volume, fadeInS, 
 - **Generare l'audio è una scelta di spesa; mutarlo è un ripensamento (D43).** Tutti i modelli video dell'MVP generano audio (`capabilities.native_audio`), e su alcuni costa di più (Kling O3: 0,112 $/s invece di 0,084). Perciò **quando si genera** una clip si scegli con o senza audio, accanto al servizio e alla stima, col consiglio di farne a meno (la voce di un personaggio cambia da una generazione all'altra, e l'audio del film lo fa il nostro mix); chi non ha l'interruttore (Gemini Omni) lo manda comunque. **Nel montaggio**, invece, l'audio originale di ogni clip si muta e si smuta quando si vuole e parte muto: un audio che non piace si spegne senza rigenerare niente. La scelta viaggia nella richiesta (`audio`), non nei `params` del ruolo (§4.6 punto 3).
 - Una clip di musica sta su una scena (`shotId` vuoto); una clip di effetto sta su un'inquadratura e `startS` conta dall'inizio di quell'inquadratura. Niente timeline libera nell'MVP.
 - Ogni clip generata ha delle varianti, come i take: `chosenVariantId` è quella in uso. Cambiare una variante non tocca i video. Una clip caricata ha un solo file (D27).
-- Il mix si rifà a ogni esportazione (§9). Il testo di `description` passa dal moderatore.
+- Il mix si rifà a ogni esportazione (§9). Il testo di `description` passa dal moderatore prima di ogni generazione; quello di un file caricato resta qui.
+- Una durata fuori dai limiti del servizio non si taglia: il servizio non è adatto (`no_eligible_model`, D80). Rifare il piano di una scena toglie gli effetti delle sue inquadrature e chiede conferma; la musica sta sulla scena e resta.
+- «Suggerisci i suoni» non salva niente: le proposte hanno la forma di una clip da creare, e l'utente accetta o scarta ognuna.
+- Rotte: `GET /projects/:id/audio`, `POST .../audio/clips`, `POST .../audio/uploads` (il file è il corpo), `GET .../audio/clips/:id/options`, `POST .../audio/clips/:id/variants`, `PUT .../audio/clips/:id/variant`, `DELETE .../audio/clips/:id`, `GET .../audio/suggestions/estimate`, `POST .../audio/suggestions`.
 
 **Dialoghi e labiale: come funzionerà.** Nell'MVP i personaggi **non parlano**: lo sceneggiatore riceve `dialogueEnabled: false`, le voci non si generano e le labbra non si muovono a tempo. Chi vuole una voce la registra e la carica sulla traccia `dialogue` (una voce fuori campo, un narratore): parte al secondo che l'utente sceglie dentro l'inquadratura, e nessuno finge che le labbra la seguano. In Fase 2 ci sono due strade, e la scelta resta aperta (§13):
 

@@ -2,10 +2,13 @@ import {
   chooseAudioVariantBodySchema,
   createAudioClipBodySchema,
   startSheetBodySchema,
+  suggestSoundsBodySchema,
   uploadAudioQuerySchema,
   type AudioClip,
   type AudioOverview,
   type SheetOptions,
+  type SoundSuggestions,
+  type SoundSuggestionsEstimate,
 } from '@filmzy/contracts';
 import {
   Body,
@@ -40,6 +43,17 @@ class AudioController {
   @Get()
   overview(@Param('projectId') projectId: string): AudioOverview {
     return this.audio.overview(projectId);
+  }
+
+  @Get('suggestions/estimate')
+  estimateSuggestions(@Param('projectId') projectId: string): Promise<SoundSuggestionsEstimate> {
+    return this.audio.estimateSuggestions(projectId);
+  }
+
+  /** «Suggerisci i suoni»: proposte da accettare o scartare, che non si salvano. */
+  @Post('suggestions')
+  suggest(@Param('projectId') projectId: string, @Body() body: unknown): Promise<SoundSuggestions> {
+    return this.audio.suggest(projectId, parseBody(suggestSoundsBodySchema, body ?? {}));
   }
 
   @Post('clips')

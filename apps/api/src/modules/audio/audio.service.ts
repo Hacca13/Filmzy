@@ -12,6 +12,10 @@ import {
   type CreateAudioClipBody,
   type Project,
   type SheetOptions,
+  type SoundSuggestions,
+  type SoundSuggestionsEstimate,
+  type SoundPlannerInput,
+  type SuggestSoundsBody,
   type StartSheetBody,
   type UploadAudioQuery,
 } from '@filmzy/contracts';
@@ -45,11 +49,13 @@ import { ModerationService } from '../moderation/moderation.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { sceneIdOf } from '../shots/plan-shots.js';
+import { ShotsService } from '../shots/shots.service.js';
 import { shotOf } from '../shots/shot-access.js';
 import { SHOT_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
+import { settleCues } from './sound-cues.js';
 import { AUDIO_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che genera una variante. */
@@ -78,6 +84,8 @@ const isGenerated = (kind: string): kind is GeneratedKind => kind in GENERATED;
 @Injectable()
 export class AudioService implements OnModuleInit {
   private readonly log = new Logger('Audio');
+  /** I film per cui il sound designer sta scrivendo: un doppio clic non paga due volte. */
+  private readonly suggesting = new Set<string>();
 
   constructor(
     @Inject(AUDIO_STORE) private readonly store: AudioStore,
@@ -93,6 +101,7 @@ export class AudioService implements OnModuleInit {
     private readonly projects: ProjectsService,
     private readonly screenplays: ScreenplayService,
     private readonly moderation: ModerationService,
+    private readonly plans: ShotsService,
   ) {}
 
   onModuleInit(): void {
@@ -242,6 +251,54 @@ export class AudioService implements OnModuleInit {
     this.clipOf(projectId, clipId);
     this.store.removeClip(clipId);
     return this.overview(projectId);
+  }
+
+  /** Quanto costerebbe chiedere le proposte, senza chiamare nessuno (D30). */
+  async estimateSuggestions(projectId: string): Promise<SoundSuggestionsEstimate> {
+    const { input } = await this.plannerInput(projectId);
+    return { estimate: await this.troupe.estimate('sound_planner', input) };
+  }
+
+  /**
+   * «Suggerisci i suoni» (D24): il sound designer legge la stesura e le inquadrature e propone. Non si
+   * salva niente: l'utente accetta o scarta ogni proposta, e accettarla crea una clip da generare.
+   */
+  async suggest(projectId: string, body: SuggestSoundsBody): Promise<SoundSuggestions> {
+    if (this.suggesting.has(projectId)) {
+      throw domainError(409, 'invalid_request', { details: { field: 'suggestions' } });
+    }
+    this.suggesting.add(projectId);
+    try {
+      const { input, scenes, allowed } = await this.plannerInput(projectId);
+      const { data } = await this.troupe.run('sound_planner', input, {
+        purpose: 'product',
+        projectId,
+        ...(body.spendConfirmed === true ? { spendConfirmed: true } : {}),
+      });
+      return { suggestions: settleCues(data.cues, scenes, allowed) };
+    } finally {
+      this.suggesting.delete(projectId);
+    }
+  }
+
+  private async plannerInput(projectId: string) {
+    const project = this.projects.get(projectId);
+    const config = await this.config();
+    const allowed = { music: config.features.music, sfx: config.features.sound_effects };
+    if (!allowed.music && !allowed.sfx) {
+      throw domainError(409, 'invalid_request', { details: { field: 'feature' } });
+    }
+    const { scenes } = await this.plans.plans(projectId);
+    const final = this.screenplays.latest(projectId, 'final');
+    const input: SoundPlannerInput = {
+      screenplay: final.screenplay,
+      scenes: final.screenplay.scenes.map((scene) => ({ ...scene, id: sceneIdOf(scene.number) })),
+      // Solo le inquadrature di un piano che vale: quelle di una scena da rifare spariranno.
+      shots: scenes.filter((scene) => !scene.stale).flatMap((scene) => scene.shots),
+      ...filmPresets(project, config),
+      language: project.language,
+    };
+    return { input, scenes, allowed };
   }
 
   /**
@@ -419,18 +476,13 @@ export class AudioService implements OnModuleInit {
   }
 }
 
-/** Cosa legge il compositore: senza un'atmosfera scritta, vale il tono del film. */
-function musicInput(clip: AudioClip, project: Project, config: TroupeConfig) {
+/** Genere, tono e stile del film come li leggono i ruoli: un genere o un tono tolto dal catalogo resta col suo id. */
+function filmPresets(project: Project, config: TroupeConfig) {
   const style = config.presets.styles.find((preset) => preset.id === project.style);
   if (style === undefined) {
     throw new ProviderError('config_invalid', false, 'Lo stile del film non è nel catalogo.');
   }
-  return composerInputSchema.parse({
-    cue: {
-      description: clip.description,
-      mood: clip.mood ?? project.tone,
-      durationS: clip.durationS,
-    },
+  return {
     genre: config.presets.genres.find((genre) => genre.id === project.genre) ?? {
       id: project.genre,
       label: project.genre,
@@ -440,5 +492,17 @@ function musicInput(clip: AudioClip, project: Project, config: TroupeConfig) {
       label: project.tone,
     },
     style,
+  };
+}
+
+/** Cosa legge il compositore: senza un'atmosfera scritta, vale il tono del film. */
+function musicInput(clip: AudioClip, project: Project, config: TroupeConfig) {
+  return composerInputSchema.parse({
+    cue: {
+      description: clip.description,
+      mood: clip.mood ?? project.tone,
+      durationS: clip.durationS,
+    },
+    ...filmPresets(project, config),
   });
 }

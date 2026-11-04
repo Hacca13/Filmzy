@@ -5,6 +5,7 @@ import {
   audioOverviewSchema,
   audioTrackSchema,
   createAudioClipBodySchema,
+  uploadAudioQuerySchema,
 } from './audio-api.js';
 
 const clip = {
@@ -72,5 +73,24 @@ describe('createAudioClipBodySchema', () => {
 
   it('non si crea così una clip di dialoghi: quelle si caricano', () => {
     expect(createAudioClipBodySchema.safeParse({ ...body, kind: 'dialogue' }).success).toBe(false);
+  });
+});
+
+describe('uploadAudioQuerySchema', () => {
+  const query = { kind: 'dialogue', sceneId: 'scene-1', description: 'Una voce fuori campo.' };
+
+  it('un dialogo può stare sulla scena o su un’inquadratura; il secondo arriva come testo', () => {
+    expect(uploadAudioQuerySchema.safeParse(query).success).toBe(true);
+    expect(uploadAudioQuerySchema.parse({ ...query, shotId: 's-1', startS: '1.5' }).startS).toBe(
+      1.5,
+    );
+  });
+
+  it('la musica sta sulla scena, un effetto su un’inquadratura, e l’audio dei take non si carica', () => {
+    expect(
+      uploadAudioQuerySchema.safeParse({ ...query, kind: 'music', shotId: 's-1' }).success,
+    ).toBe(false);
+    expect(uploadAudioQuerySchema.safeParse({ ...query, kind: 'sfx' }).success).toBe(false);
+    expect(uploadAudioQuerySchema.safeParse({ ...query, kind: 'native' }).success).toBe(false);
   });
 });

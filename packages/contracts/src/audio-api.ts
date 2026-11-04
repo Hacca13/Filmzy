@@ -103,6 +103,44 @@ export const createAudioClipBodySchema = z
 
 export type CreateAudioClipBody = z.infer<typeof createAudioClipBodySchema>;
 
+/** I tipi che si possono dichiarare per un file audio: il tipo vero si legge poi dai primi byte. */
+export const AUDIO_UPLOAD_CONTENT_TYPES = [
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+] as const;
+
+/** Quanto può pesare un file audio (byte): abbastanza per la musica di un corto. */
+export const AUDIO_UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
+
+/**
+ * Un file audio dell'utente (D27): dove va e che cos'è. La durata la legge il server dal file. Il file è
+ * il corpo della richiesta, e non va mai a un fornitore AI.
+ */
+export const uploadAudioQuerySchema = z
+  .strictObject({
+    kind: z.enum(['dialogue', 'music', 'sfx']),
+    sceneId: sceneIdSchema,
+    shotId: shotIdSchema.optional(),
+    startS: z.coerce.number().nonnegative().optional(),
+    description: z.string().trim().min(1),
+  })
+  .refine((query) => query.kind !== 'music' || query.shotId === undefined, {
+    message: 'La musica sta sulla scena.',
+    path: ['shotId'],
+  })
+  .refine((query) => query.kind !== 'sfx' || query.shotId !== undefined, {
+    message: 'Un effetto sta su un’inquadratura.',
+    path: ['shotId'],
+  });
+
+export type UploadAudioQuery = z.infer<typeof uploadAudioQuerySchema>;
+
 /** «Cambia»: la variante da usare. */
 export const chooseAudioVariantBodySchema = z.strictObject({
   variantId: idSchema,

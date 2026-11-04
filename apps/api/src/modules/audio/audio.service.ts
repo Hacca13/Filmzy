@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -12,9 +13,12 @@ import {
   type Project,
   type SheetOptions,
   type StartSheetBody,
+  type UploadAudioQuery,
 } from '@filmzy/contracts';
 import { projectsDir, type AudioStore, type SheetStore, type ShotStore } from '@filmzy/db';
+import { videoDurationS } from '@filmzy/media';
 import {
+  LocalAssetStore,
   ProviderError,
   type ConfigSource,
   type InstructionsSource,
@@ -36,6 +40,7 @@ import {
   renderImagePrompt,
   waitForMedia,
 } from '../media/image-jobs.js';
+import { mediaStep } from '../media/media-step.js';
 import { ModerationService } from '../moderation/moderation.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
@@ -44,6 +49,7 @@ import { shotOf } from '../shots/shot-access.js';
 import { SHOT_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
+import { readAudioBody } from './audio-file.js';
 import { AUDIO_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che genera una variante. */
@@ -122,6 +128,49 @@ export class AudioService implements OnModuleInit {
     });
     this.projects.reach(projectId, 'sound');
     return clip;
+  }
+
+  /**
+   * Un file dell'utente (D27): diventa una clip con una variante sola, già in uso. La durata la legge
+   * ffmpeg dal file. Non chiama nessun servizio: la clip non si può nemmeno generare, e la descrizione
+   * resta qui. Il nome sul disco lo decide il codice (il checksum). Un file che non si riesce a leggere
+   * non resta sul disco.
+   */
+  async upload(projectId: string, query: UploadAudioQuery, body: unknown): Promise<AudioClip> {
+    this.projects.get(projectId);
+    this.assertPlace(projectId, query);
+    const { bytes, contentType } = readAudioBody(body);
+
+    const stored = await new LocalAssetStore(
+      path.join(projectsDir(this.dataDir), projectId, 'caricate'),
+    ).put({ fileName: 'audio', contentType, bytes });
+    const existed = this.files.getAsset(stored.assetId) !== undefined;
+    try {
+      const durationS = await mediaStep(() => videoDurationS(stored.path));
+      if (durationS === undefined || durationS <= 0) {
+        throw domainError(400, 'invalid_request', { details: { field: 'file' } });
+      }
+      registerAssets(this.files, { dataDir: this.dataDir, projectId }, [stored]);
+      const clip = this.store.createClip({
+        projectId,
+        kind: query.kind,
+        sceneId: query.sceneId,
+        ...(query.shotId === undefined ? {} : { shotId: query.shotId }),
+        ...(query.startS === undefined ? {} : { startS: query.startS }),
+        durationS,
+        description: query.description,
+        source: 'uploaded',
+      });
+      const variant = this.store.startVariant(clip.id, {});
+      this.store.finishVariant(variant.id, { status: 'succeeded', assetId: stored.assetId });
+      this.store.chooseVariant(clip.id, variant.id);
+      this.projects.reach(projectId, 'sound');
+      return this.clipOf(projectId, clip.id);
+    } catch (error) {
+      // Senza il suo record il file non serve a nessuno; se era già di un'altra clip, resta.
+      if (!existed) await rm(stored.path, { force: true });
+      throw error;
+    }
   }
 
   /** I servizi tra cui scegliere, con la stima. Una durata che nessuno regge dà un elenco vuoto. */
@@ -304,7 +353,10 @@ export class AudioService implements OnModuleInit {
   }
 
   /** La scena c'è nella stesura finale; un effetto sta su un'inquadratura di quella scena, entro la sua durata. */
-  private assertPlace(projectId: string, body: CreateAudioClipBody): void {
+  private assertPlace(
+    projectId: string,
+    body: Pick<CreateAudioClipBody, 'sceneId' | 'shotId' | 'startS'>,
+  ): void {
     const final = this.screenplays.latest(projectId, 'final');
     if (!final.screenplay.scenes.some((scene) => sceneIdOf(scene.number) === body.sceneId)) {
       throw domainError(404, 'not_found', { details: { field: 'sceneId' } });

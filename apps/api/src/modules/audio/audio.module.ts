@@ -2,6 +2,7 @@ import {
   chooseAudioVariantBodySchema,
   createAudioClipBodySchema,
   startSheetBodySchema,
+  uploadAudioQuerySchema,
   type AudioClip,
   type AudioOverview,
   type SheetOptions,
@@ -15,6 +16,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseFilters,
 } from '@nestjs/common';
 
@@ -43,6 +45,16 @@ class AudioController {
   @Post('clips')
   createClip(@Param('projectId') projectId: string, @Body() body: unknown): Promise<AudioClip> {
     return this.audio.createClip(projectId, parseBody(createAudioClipBodySchema, body));
+  }
+
+  /** Un file dell'utente: il file è il corpo della richiesta, e non va mai a un fornitore AI (D27). */
+  @Post('uploads')
+  upload(
+    @Param('projectId') projectId: string,
+    @Query() query: unknown,
+    @Body() body: unknown,
+  ): Promise<AudioClip> {
+    return this.audio.upload(projectId, parseBody(uploadAudioQuerySchema, query), body);
   }
 
   @Delete('clips/:clipId')

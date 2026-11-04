@@ -135,6 +135,7 @@ export class RetouchService implements OnModuleInit {
           context: 'retouch',
           language: project.language,
           projectId,
+          ...(query.spendConfirmed === 'true' ? { spendConfirmed: true } : {}),
         });
       }
 

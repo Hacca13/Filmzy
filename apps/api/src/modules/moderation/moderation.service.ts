@@ -14,6 +14,8 @@ export interface ModerationRequest {
   context: ModeratorInput['context'];
   language: string;
   projectId?: string;
+  /** L'utente ha confermato di superare un limite di spesa: vale anche per questo controllo (D30). */
+  spendConfirmed?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export class ModerationService {
       {
         purpose: 'product',
         ...(request.projectId === undefined ? {} : { projectId: request.projectId }),
+        ...(request.spendConfirmed === true ? { spendConfirmed: true } : {}),
       },
     );
     if (verdict.allowed) return;

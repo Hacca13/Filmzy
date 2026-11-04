@@ -14,6 +14,7 @@ import type {
 } from '@filmzy/contracts';
 import { SHOT_DURATION_RANGE_S } from '@filmzy/contracts';
 import type {
+  AudioStore,
   LocationStore,
   MoodboardChanges,
   MoodboardStore,
@@ -27,6 +28,7 @@ import type { ConfigSource, Troupe, TroupeConfig } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
+import { AUDIO_STORE } from '../audio/tokens.js';
 import { BibleService } from '../bible/bible.service.js';
 import { withoutImages } from '../bible/without-images.js';
 import { SHEET_STORE } from '../cast/tokens.js';
@@ -40,6 +42,8 @@ import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { chainFlags, type Names } from './chain-flags.js';
 import {
   characterSheetFlags,
+  effectChangeFlags,
+  effectTimes,
   cinematographyChangeFlags,
   frameChangeFlags,
   locationChangeFlags,
@@ -85,6 +89,7 @@ export class ShotsService {
     @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     @Inject(SHEET_STORE) private readonly sheets: SheetStore,
     @Inject(SCRIPT_CHECK_STORE) private readonly scriptChecks: ScriptCheckStore,
+    @Inject(AUDIO_STORE) private readonly audio: AudioStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -96,6 +101,7 @@ export class ShotsService {
     const stored = new Map(this.store.plans(projectId).map((plan) => [plan.sceneNumber, plan]));
     const drawnAt = this.store.lastDrawnAt(projectId);
     const takeAt = this.takes.lastTakeAt(projectId);
+    const clips = this.audio.clips(projectId);
     const extras = {
       chosen: this.store.chosenStoryboards(projectId),
       clips: this.takes.latestClips(projectId),
@@ -106,6 +112,8 @@ export class ShotsService {
       cinematographyChangedAt: this.projects.cinematographyChangedAt(projectId),
       characterNames: known.names.characters,
       drawnAt,
+      effectShots: new Set(clips.map((clip) => clip.shotId)),
+      effectAt: effectTimes(clips),
       workedAt: oldestWork(drawnAt, takeAt),
       moodboardChanges: config.features.moodboard
         ? this.moodboards.changes(projectId)
@@ -321,6 +329,9 @@ interface PerShot {
   workedAt: Readonly<Record<string, number>>;
   /** Quando è partito lo storyboard che la card fa vedere (ms). */
   drawnAt: Readonly<Record<string, number>>;
+  /** Le inquadrature con un effetto agganciato, e quando è partito quello più vecchio in uso (R8). */
+  effectShots: ReadonlySet<string | undefined>;
+  effectAt: Readonly<Record<string, number>>;
   /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
   sheetChanges: Readonly<Record<string, number>>;
   framesChanges: Readonly<Record<string, number>>;
@@ -401,6 +412,7 @@ function scenePlan(
         extras.drawnAt[shot.id] !== undefined ||
         extras.takeAt[shot.id] !== undefined ||
         extras.working[shot.id] !== undefined ||
+        extras.effectShots.has(shot.id) ||
         shot.images.length > 0,
     ),
     // Una scena da rifare non dà gialli di continuità (D74.7): la cosa da fare è rifarla.
@@ -425,6 +437,7 @@ function scenePlan(
             workedAt: extras.workedAt,
           }),
           moodboardChangeFlags({ shots, changes: extras.moodboardChanges, takeAt: extras.takeAt }),
+          effectChangeFlags({ shots, effectAt: extras.effectAt, takeAt: extras.takeAt }),
         ),
   };
 }

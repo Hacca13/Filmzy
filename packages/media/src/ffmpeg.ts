@@ -110,6 +110,22 @@ export async function videoDurationS(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<number | undefined> {
   const { stderr } = await run(['-hide_banner', '-i', input], env);
+  return durationIn(stderr);
+}
+
+/**
+ * La durata di un file audio, in secondi. `undefined` se dentro non c'è nessun suono (un video muto con
+ * l'estensione giusta) o se il formato non la dice: per il mix non servirebbe a niente.
+ */
+export async function audioDurationS(
+  input: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<number | undefined> {
+  const { stderr } = await run(['-hide_banner', '-i', input], env);
+  return /Stream #[^\n]*: Audio:/.test(stderr) ? durationIn(stderr) : undefined;
+}
+
+function durationIn(stderr: string): number | undefined {
   const found = /Duration:\s*(?:(\d+):(\d{2}):(\d{2}(?:\.\d+)?)|N\/A)/.exec(stderr);
   if (found === null) {
     throw new MediaError('ffmpeg_failed', `Non riesco a leggere la durata: ${tail(stderr)}`);

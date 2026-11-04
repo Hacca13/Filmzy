@@ -30,6 +30,15 @@ export type { NewProject, ProjectChanges, ProjectStore } from './project-store.j
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
 export { createShotStore } from './shot-store.js';
+export { createAudioStore } from './audio-store.js';
+export type {
+  AudioStore,
+  AudioStoreOptions,
+  AudioVariantPatch,
+  NewAudioClip,
+  NewAudioVariant,
+  StoredAudioClip,
+} from './audio-store.js';
 export { createScriptCheckStore } from './script-check-store.js';
 export type {
   NewScriptCheck,

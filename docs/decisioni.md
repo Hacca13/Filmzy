@@ -919,3 +919,22 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 - `severity` del controllo resta chiusa: un valore sconosciuto merita la riparazione.
 
 **Da ricordare:** i test non provano la conferma nel browser né il suo scorrimento; nessuna chiamata vera.
+
+## D81 · Tracce audio sul server: una variante per «Genera», proposte non salvate, R8 — 04/11/2026
+
+**Realizza** T5.5 (D24, D27, D78). L'interfaccia è T5.6, il mix T5.7.
+**Decisione:**
+1. **Una variante per «Genera»,** come un take. Stable Audio dà una clip a richiesta (D78), quindi le «2–3 varianti» dell'effetto sono più richieste. La prima riuscita diventa quella in uso; le altre si scelgono a mano, perché il suono scelto non deve cambiare da solo.
+2. **Clip e «Genera» sono due passi:** la clip non costa niente e la si può creare da una proposta; generare costa, con stima, limiti e moderatore prima di mettere in coda.
+3. **Una traccia per tipo in ogni film,** nate alla prima lettura; l'audio originale parte muto (D24). Muto e volume ci sono già nei dati, si cambiano con T5.6.
+4. **Rifare il piano toglie effetti e registrazioni delle inquadrature che spariscono** (hanno id nuovi): la conferma lo dice e `hasWork` li conta. Perciò un'inquadratura con il piano da rifare non prende suoni e non se ne generano. La musica sta sulla scena e resta, anche se la scena cambia durata: il mix la taglierà (T5.7).
+5. **I file caricati** (D27): il tipo si legge dai primi byte, la durata la legge ffmpeg e dentro deve esserci un suono (un video muto si rifiuta), il nome sul disco è il checksum; un file illeggibile non resta sul disco. Clip e variante si salvano insieme. Non chiamano nessun servizio e non passano dal moderatore, perché la descrizione non esce dal computer. WAV, MP3 e M4A, fino a 100 MB.
+6. **«Suggerisci i suoni» non salva niente:** le proposte hanno la forma di una clip da creare. Si scarta ciò che non esiste, un solo blocco di musica per scena e non più lungo di essa, al massimo tre effetti per scena, e nessun effetto su una scena da rifare.
+7. **R8** è un avviso leggero senza pulsante: il video è più recente dell'effetto in uso. Conta quando è partito il take, come R4 e R9, quindi tornare a un take più vecchio non si nota: limite noto.
+8. Il moderatore ha un contesto nuovo, `sound`, legge anche l'atmosfera, e rispetta la conferma del limite di spesa (valeva anche per il ritocco, corretto: con la conferma si restava bloccati).
+9. **Un blocco di musica per scena** (D24), vale anche per un file caricato: per cambiarla si cambia variante o si toglie la clip. La musica parte con la scena.
+10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). I take video hanno ancora questo limite (T4.3): da correggere a parte.
+
+**Limiti noti, segnalati dalla rilettura e tenuti:** una stesura riscritta che rinumera le scene lascia la musica sulla scena con quel numero, senza avviso (se la scena non c'è più non si genera: T5.6 deve mostrarlo); lo stesso file caricato in due film resta nella cartella del primo, come le foto (T4.8); R8 non vede un take partito prima dell'effetto e finito dopo.
+
+**Non fatto:** interfaccia (T5.6), mix (T5.7), cambiare muto e volume (T5.6); nessuna prova con i servizi veri (T4.0).

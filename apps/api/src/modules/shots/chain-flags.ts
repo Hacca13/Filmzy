@@ -11,18 +11,13 @@ export interface Names {
   locations: Readonly<Record<string, string>>;
 }
 
-/** Come finiva la scena pensata subito prima, e quando è stata pensata (ms): serve a R2. */
-export interface PreviousScene {
-  exit: ContinuityState;
-  plannedAt: number;
-}
-
 export interface ChainInput {
   /** Le inquadrature di una scena, in qualunque ordine. */
   shots: readonly ShotSpec[];
-  /** Quando è stato pensato il piano di questa scena (ms). */
-  plannedAt: number;
-  before: PreviousScene | undefined;
+  /** L'uscita della scena prima da cui è partito questo piano, se c'era. */
+  basedOn: ContinuityState | undefined;
+  /** Come finisce adesso la scena pensata subito prima, se il suo piano vale ancora. */
+  before: ContinuityState | undefined;
   names: Names;
 }
 
@@ -47,17 +42,16 @@ const wordsOf = (text: string): Set<string> =>
   );
 
 /**
- * Il testo libero lo scrive un modello, e non lo ripete sempre uguale: due testi dicono la stessa cosa se
- * le parole di uno stanno tutte nell'altro, senza badare a maiuscole, accenti, punteggiatura e
- * articoli («sera», «Sera.» e «tarda sera»; «giacca blu» e «giacca blu scura»), ma «sera» e «notte», o
- * «giacca blu» e «giacca rossa», no.
+ * Il testo libero lo scrive un modello: due testi dicono la stessa cosa se hanno le stesse parole, senza
+ * badare a maiuscole, accenti, punteggiatura, articoli e preposizioni («sera», «Sera.» e «di sera»). Una
+ * parola in più cambia il senso («giacca blu» e «senza giacca blu», «bicchiere» e «bicchiere rotto»): meglio
+ * un giallo in più, che si ignora, di un errore che nessuno vede.
  */
 const sameText = (a: string, b: string): boolean => {
   const first = wordsOf(a);
   const second = wordsOf(b);
   if (first.size === 0 || second.size === 0) return plain(a) === plain(b);
-  const [fewer, more] = first.size <= second.size ? [first, second] : [second, first];
-  return [...fewer].every((word) => more.has(word));
+  return first.size === second.size && [...first].every((word) => second.has(word));
 };
 
 const quoted = (text: string): string => `«${text}»`;
@@ -114,10 +108,10 @@ const flag = (code: 'R1' | 'R2', reason: string): ContinuityFlag => ({
  * R1: nella stessa scena l'entrata di un'inquadratura combacia con l'uscita della precedente, salvo un
  * cambiamento dichiarato (`continuity.change`).
  *
- * R2: se la scena prima è stata pensata di nuovo **dopo** questa, la sua uscita può essere cambiata: la
- * prima inquadratura di questa scena, che ne dipende, diventa gialla se ora non combacia più. Tra due
- * scene può passare del tempo, quindi senza questo cambiamento una differenza non è un errore. Il giallo
- * passa da solo quando si rifà il piano della scena.
+ * R2: se l'uscita della scena prima è **cambiata** rispetto a quella da cui questo piano è partito, la
+ * prima inquadratura di questa scena, che ne dipendeva, diventa gialla se ora non combacia. Tra due scene
+ * può passare del tempo: una differenza che c'era già, o un piano nato senza una scena prima, non è un
+ * errore. Il giallo passa da solo quando si rifà il piano della scena.
  */
 export function chainFlags(input: ChainInput): Record<string, ContinuityFlag[]> {
   const shots = [...input.shots].sort((a, b) => a.order - b.order);
@@ -140,17 +134,17 @@ export function chainFlags(input: ChainInput): Record<string, ContinuityFlag[]> 
           ),
         ];
       }
-    } else if (input.before !== undefined && input.before.plannedAt > input.plannedAt) {
-      const differences = continuityDifferences(
-        input.before.exit,
-        shot.continuity.entry,
-        input.names,
-      );
+    } else if (
+      input.before !== undefined &&
+      input.basedOn !== undefined &&
+      continuityDifferences(input.basedOn, input.before, input.names).length > 0
+    ) {
+      const differences = continuityDifferences(input.before, shot.continuity.entry, input.names);
       if (differences.length > 0) {
         flags[shot.id] = [
           flag(
             'R2',
-            `La scena prima è stata pensata di nuovo dopo questa e ora finisce in modo diverso da come questa comincia: ${differences.join('; ')}. Rifai il piano di questa scena per tenerle allineate.`,
+            `La scena prima è stata ripensata e ora finisce in modo diverso da come questa comincia: ${differences.join('; ')}. Rifai il piano di questa scena per tenerle allineate.`,
           ),
         ];
       }

@@ -267,7 +267,7 @@ const MIN_VISIBLE_ALPHA = 32;
 const MIN_COLOR_DISTANCE = 56;
 
 /**
- * I colori dominanti di una serie di pixel RGB (3 byte l'uno), dal più frequente. I colori si
+ * I colori dominanti di una serie di pixel RGB (3 byte l'uno) o RGBA (4), dal più frequente. I colori si
  * raggruppano a 16 livelli per canale e di ogni gruppo si fa la media; poi si prendono i gruppi più
  * numerosi saltando quelli troppo simili a uno già scelto, perché una palette di sette sfumature dello
  * stesso blu non serve a nessuno. Tutto è esatto e non costa niente (D37).

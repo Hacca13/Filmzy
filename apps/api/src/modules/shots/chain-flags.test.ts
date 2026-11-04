@@ -49,20 +49,28 @@ describe('cosa è diverso fra uscita ed entrata', () => {
     expect(continuityDifferences(state(), same, names)).toEqual([]);
   });
 
-  it("il testo libero detto in modo un po' diverso è lo stesso: «sera» e «di sera», «giacca blu» e «giacca blu scura»", () => {
+  it('articoli e preposizioni non contano: «sera» e «di sera» sono la stessa cosa', () => {
     const worded = state({
       timeOfDay: 'di sera',
-      costumes: { anna: 'giacca blu scura' },
+      costumes: { anna: 'la giacca blu' },
       props: ['la valigia'],
     });
 
     expect(continuityDifferences(state(), worded, names)).toEqual([]);
     expect(continuityDifferences(worded, state(), names)).toEqual([]);
-    // Ma un’ora o un colore diversi no.
-    expect(
-      continuityDifferences(state(), state({ costumes: { anna: 'giacca rossa' } }), names),
-    ).toHaveLength(1);
+  });
+
+  it('una parola in più cambia il senso: si segnala', () => {
+    for (const costume of ['giacca rossa', 'senza giacca blu', 'giacca blu strappata']) {
+      expect(
+        continuityDifferences(state(), state({ costumes: { anna: costume } }), names),
+      ).toHaveLength(1);
+    }
     expect(continuityDifferences(state(), state({ timeOfDay: 'di notte' }), names)).toHaveLength(1);
+    // Un oggetto diverso è uno che sparisce e uno che compare.
+    expect(continuityDifferences(state(), state({ props: ['valigia rotta'] }), names)).toHaveLength(
+      2,
+    );
   });
 
   it('luogo, ora, persone, abiti e oggetti che cambiano sono detti con i nomi', () => {
@@ -93,7 +101,7 @@ describe('cosa è diverso fra uscita ed entrata', () => {
 });
 
 describe('R1: dentro la scena l’entrata combacia con l’uscita di prima', () => {
-  const none = { plannedAt: 1000, before: undefined, names };
+  const none = { basedOn: undefined, before: undefined, names };
 
   it('un’inquadratura che comincia dove l’altra finisce non ha niente', () => {
     const shots = [
@@ -145,16 +153,13 @@ describe('R1: dentro la scena l’entrata combacia con l’uscita di prima', () 
   });
 });
 
-describe('R2: la scena prima è stata pensata di nuovo dopo questa', () => {
+describe('R2: l’uscita della scena prima è cambiata rispetto a quella da cui si è partiti', () => {
   const first = shot('s1', 0, state({ locationId: 'stazione' }));
+  const oldExit = state({ locationId: 'stazione' });
+  const newExit = state();
 
-  it('se ora finisce in modo diverso da come questa comincia, la prima inquadratura è gialla', () => {
-    const flags = chainFlags({
-      shots: [first],
-      plannedAt: 1000,
-      before: { exit: state(), plannedAt: 2000 },
-      names,
-    });
+  it('se è cambiata e ora non combacia, la prima inquadratura è gialla', () => {
+    const flags = chainFlags({ shots: [first], basedOn: oldExit, before: newExit, names });
 
     expect(flags['s1']).toEqual([
       {
@@ -166,42 +171,33 @@ describe('R2: la scena prima è stata pensata di nuovo dopo questa', () => {
     ]);
   });
 
-  it('se la scena prima è più vecchia, o combacia, o è dichiarato, non c’è niente', () => {
-    const before = { exit: state(), plannedAt: 2000 };
+  it('una differenza che c’era già non è un errore: è un taglio fra due scene', () => {
+    // La scena prima finisce in piazza e questa comincia in stazione, da sempre.
+    expect(chainFlags({ shots: [first], basedOn: newExit, before: newExit, names })).toEqual({});
+  });
 
-    // Pensata prima di questa: tra due scene può passare del tempo, e non è un errore.
-    expect(chainFlags({ shots: [first], plannedAt: 3000, before, names })).toEqual({});
-    // Combacia.
+  it('senza un’uscita di partenza, se combacia, se è dichiarato o senza scena prima non c’è niente', () => {
+    // Pensata prima della scena che la precede: non ne dipendeva.
+    expect(chainFlags({ shots: [first], basedOn: undefined, before: newExit, names })).toEqual({});
+    // È cambiata, ma ora combacia.
     expect(
-      chainFlags({
-        shots: [shot('s1', 0, state())],
-        plannedAt: 1000,
-        before,
-        names,
-      }),
+      chainFlags({ shots: [shot('s1', 0, newExit)], basedOn: oldExit, before: newExit, names }),
     ).toEqual({});
-    // Cambiamento dichiarato.
     expect(
       chainFlags({
         shots: [shot('s1', 0, state({ locationId: 'stazione' }), undefined, 'Un anno dopo.')],
-        plannedAt: 1000,
-        before,
+        basedOn: oldExit,
+        before: newExit,
         names,
       }),
     ).toEqual({});
-    // Nessuna scena prima.
-    expect(chainFlags({ shots: [first], plannedAt: 1000, before: undefined, names })).toEqual({});
+    expect(chainFlags({ shots: [first], basedOn: oldExit, before: undefined, names })).toEqual({});
   });
 
   it('solo la prima inquadratura dipende dalla scena prima; le altre dalla precedente (R1)', () => {
     const shots = [first, shot('s2', 1, state({ locationId: 'stazione' }))];
 
-    const flags = chainFlags({
-      shots,
-      plannedAt: 1000,
-      before: { exit: state(), plannedAt: 2000 },
-      names,
-    });
+    const flags = chainFlags({ shots, basedOn: oldExit, before: newExit, names });
 
     expect(Object.keys(flags)).toEqual(['s1']);
   });

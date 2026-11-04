@@ -498,6 +498,8 @@ export const shotPlans = sqliteTable(
     screenplayId: text('screenplay_id').notNull(),
     generationId: text('generation_id'),
     notes: text('notes'),
+    /** L'uscita della scena prima da cui è partito (JSON), se c'era: se poi cambia, la prima inquadratura è gialla (R2). */
+    previousExit: text('previous_exit'),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [primaryKey({ columns: [table.projectId, table.sceneNumber] })],

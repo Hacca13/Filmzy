@@ -78,11 +78,14 @@ function ShotsView({ filmId, plans, reload }: ViewProps) {
   const [active, setActive] = useState<number>();
   const written = useGuardedRun<ScenePlan>(reload);
   const names = useNames(filmId);
-  // Le scene che la segretaria di edizione può leggere: pensate, e con un piano che vale ancora.
-  const plannedScenes = plans.scenes.filter((scene) => scene.planned && !scene.stale);
+  // Il controllo della storia si offre appena c'è una scena pensata; se non si può fare lo dice il server.
+  const plannedScenes = plans.scenes.filter((scene) => scene.planned);
   const checkStamp = [
     plans.finalVersionId,
-    ...plannedScenes.flatMap((scene) => scene.shots.map((shot) => shot.id)),
+    ...plannedScenes.flatMap((scene) => [
+      String(scene.stale),
+      ...scene.shots.map((shot) => shot.id),
+    ]),
   ].join(',');
 
   return (

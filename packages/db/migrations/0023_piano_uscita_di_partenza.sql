@@ -1,0 +1,1 @@
+ALTER TABLE `shot_plans` ADD `previous_exit` text;

@@ -140,6 +140,16 @@ describe('il piano delle inquadrature di una scena', () => {
     expect(store.framesChanges('film-2')).toEqual({});
   });
 
+  it('ricorda l’uscita della scena prima da cui è partito, se c’era (R2)', () => {
+    const previousExit = example.continuity.exit;
+
+    store.replaceScene(plan(1, ['a1']));
+    store.replaceScene(plan(2, ['b1'], { previousExit }));
+
+    expect(store.plan('film-1', 1)).not.toHaveProperty('previousExit');
+    expect(store.plan('film-1', 2)?.previousExit).toEqual(previousExit);
+  });
+
   it('il piano della scena pensata più vicina prima di questa, saltando quelle non pensate', () => {
     store.replaceScene(plan(1, ['a1']));
     store.replaceScene(plan(3, ['c1', 'c2']));
@@ -170,6 +180,18 @@ describe('il piano delle inquadrature di una scena', () => {
 
     expect(saved).not.toHaveProperty('generationId');
     expect(saved).not.toHaveProperty('notes');
+  });
+});
+
+describe('quando è partita l’ultima immagine (regole di continuità)', () => {
+  it('conta la partenza, non l’arrivo', () => {
+    store.replaceScene(plan(1, ['a1']));
+    const attempt = store.startStoryboard('a1', 'storyboard');
+    const startedAt = clock.getTime();
+    clock = new Date(clock.getTime() + 60_000);
+    store.finishStoryboard('a1', 'storyboard', attempt, { status: 'succeeded', assetIds: ['x'] });
+
+    expect(store.lastDrawnAt('film-1')).toEqual({ a1: startedAt });
   });
 });
 

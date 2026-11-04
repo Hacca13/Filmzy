@@ -68,7 +68,11 @@ export interface TakeStore {
   frames: (shotId: string) => TakeFrame[];
   /** La clip che la card fa vedere per ogni inquadratura del film che ne ha una: quella del take scelto, o del più recente riuscito. */
   latestClips: (projectId: string) => Record<string, string>;
-  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura del film che ne ha uno (ms). */
+  /**
+   * Quando è **partito** il take che la card fa vedere (quello scelto, o il più recente riuscito), per ogni
+   * inquadratura del film che ne ha uno (ms). Un take legge i suoi ingressi all'inizio: ciò che cambia mentre
+   * gira non è nel video.
+   */
   lastTakeAt: (projectId: string) => Record<string, number>;
   /** Le inquadrature del film con un take in coda o in lavorazione adesso (non più vecchio di `since`: uno più vecchio si è perso). */
   inProgress: (projectId: string, since: Date) => string[];
@@ -108,6 +112,17 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
   const chosenOf = (shotId: string): string | undefined =>
     db.select({ id: shots.chosenTakeId }).from(shots).where(eq(shots.id, shotId)).get()?.id ??
     undefined;
+
+  /** Il take scelto di ogni inquadratura che ne ha uno. */
+  const chosenTakesOf = (shotIds: string[]): Map<string, string> =>
+    new Map(
+      db
+        .select({ id: shots.id, take: shots.chosenTakeId })
+        .from(shots)
+        .where(inArray(shots.id, shotIds))
+        .all()
+        .flatMap((shot) => (shot.take === null ? [] : [[shot.id, shot.take] as const])),
+    );
 
   const shotIdsOf = (projectId: string): string[] =>
     db
@@ -218,15 +233,18 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
       const shotIds = shotIdsOf(projectId);
       if (shotIds.length === 0) return {};
 
+      const chosenIds = chosenTakesOf(shotIds);
       const latest: Record<string, number> = {};
+      const chosen: Record<string, number> = {};
       for (const row of db
-        .select({ shotId: takes.shotId, at: takes.updatedAt })
+        .select({ id: takes.id, shotId: takes.shotId, at: takes.createdAt })
         .from(takes)
         .where(and(inArray(takes.shotId, shotIds), eq(takes.status, 'succeeded')))
         .all()) {
         latest[row.shotId] = Math.max(latest[row.shotId] ?? 0, row.at);
+        if (chosenIds.get(row.shotId) === row.id) chosen[row.shotId] = row.at;
       }
-      return latest;
+      return { ...latest, ...chosen };
     },
 
     latestClips(projectId) {
@@ -247,14 +265,7 @@ export function createTakeStore(db: FilmzyDb, options: TakeStoreOptions = {}): T
         .all();
       // Dal più recente: la prima clip incontrata per un'inquadratura è la sua più recente. Ma se
       // l'utente ne ha scelto un'altra (e riuscita) vale quella.
-      const chosenIds = new Map(
-        db
-          .select({ id: shots.id, take: shots.chosenTakeId })
-          .from(shots)
-          .where(inArray(shots.id, shotIds))
-          .all()
-          .flatMap((shot) => (shot.take === null ? [] : [[shot.id, shot.take] as const])),
-      );
+      const chosenIds = chosenTakesOf(shotIds);
       const latest: Record<string, string> = {};
       const chosen: Record<string, string> = {};
       for (const row of rows) {

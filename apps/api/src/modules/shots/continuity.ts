@@ -34,7 +34,7 @@ export interface MoodboardChangeInput {
   shots: readonly ShotSpec[];
   /** Quando sono cambiati palette e consigli del film e di ogni scena che ha una parte sua (ms). */
   changes: { film?: number | undefined; scenes: Readonly<Record<string, number>> };
-  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura (ms). */
+  /** Quando è partito il take che la card fa vedere, di ogni inquadratura (ms). */
   takeAt: Readonly<Record<string, number>>;
 }
 
@@ -67,7 +67,7 @@ export interface CinematographyChangeInput {
   shots: readonly ShotSpec[];
   /** Quando è cambiata la fotografia del film (ms), se è cambiata. */
   changedAt: number | undefined;
-  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura (ms). */
+  /** Quando è partito il take che la card fa vedere, di ogni inquadratura (ms). */
   takeAt: Readonly<Record<string, number>>;
 }
 
@@ -124,7 +124,7 @@ export interface SheetChangeInput {
   shots: readonly ShotSpec[];
   /** Quando è cambiata la scheda di ogni personaggio che l'ha cambiata (ms). */
   changedAt: Readonly<Record<string, number>>;
-  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
+  /** Quando è partito il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
   workedAt: Readonly<Record<string, number>>;
   /** I nomi dei personaggi, per dire di chi è la scheda. */
   names: Readonly<Record<string, string>>;
@@ -164,7 +164,7 @@ export interface FrameChangeInput {
   shots: readonly ShotSpec[];
   /** Quando è cambiato il primo o l'ultimo fotogramma di ogni inquadratura che l'ha cambiato (ms). */
   changedAt: Readonly<Record<string, number>>;
-  /** Quando è arrivato l'ultimo take riuscito di ogni inquadratura (ms). */
+  /** Quando è partito il take che la card fa vedere, di ogni inquadratura (ms). */
   takeAt: Readonly<Record<string, number>>;
 }
 
@@ -202,7 +202,7 @@ export interface LocationChangeInput {
   shots: readonly ShotSpec[];
   /** Quando è cambiato il riferimento di ogni luogo che l'ha cambiato (ms). */
   changedAt: Readonly<Record<string, number>>;
-  /** Quando è arrivato il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
+  /** Quando è partito il lavoro riuscito più vecchio di ogni inquadratura (ms), da `oldestWork`. */
   workedAt: Readonly<Record<string, number>>;
 }
 

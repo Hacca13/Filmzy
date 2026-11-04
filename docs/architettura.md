@@ -305,7 +305,7 @@ interface MediaAdapter {
 - `anthropic`, `openai_compatible` e `google` usano AI SDK. `baseURL`, `headers` e `fetch` personalizzati coprono gateway e proxy di rete. Con `openai_compatible` entrano OpenRouter, i modelli locali (Ollama, vLLM) e qualunque gateway compatibile.
 - `fal` usa la coda di fal e, in locale, il polling: fal non consegna webhook a indirizzi privati o locali. La verifica dei webhook firmati (Ed25519, chiavi pubbliche in JWKS) non si implementa finché non esiste una modalità server (D29). Il polling è idempotente: un lavoro già raccolto non si raccoglie e non si conta due volte.
 - `fake` restituisce risposte registrate o generate dallo schema: zero rete, zero costi.
-- Musica ed effetti passano da fal con Stable Audio 3 (D78), con la stessa interfaccia `MediaAdapter` dei video: invio, attesa, risultato. I servizi vietati dai loro termini stanno in `config/ai/policy.yaml`: fermano `pnpm troupe check` e la pubblicazione (D79).
+- Musica ed effetti passano da fal con Stable Audio 3 (D78), con la stessa interfaccia `MediaAdapter` dei video: invio, attesa, risultato. I servizi con termini che l'utente deve conoscere stanno in `config/ai/policy.yaml`: si possono usare, ma con una scritta in Connessioni e nelle impostazioni avanzate (D79).
 - Più avanti: `http_service` per i nostri servizi (per esempio il controllo dei volti in Python), `elevenlabs` anche per le voci, `sync` per il labiale.
 
 **Traduttori: come si scrive una richiesta per una famiglia di modelli.** Servono ai ruoli immagine e video.

@@ -26,6 +26,7 @@ function withService(service: {
   provider_model?: string;
   connection?: string;
   kind?: 'music' | 'voice';
+  off_by_default?: boolean;
 }): TroupeConfig {
   const copy = structuredClone(seed);
   copy.models.nuovo = { ...modelOf(seed, 'music-stable-audio-3'), ...service } as ModelEntry;
@@ -38,51 +39,52 @@ async function tempConfigDir(): Promise<string> {
   return dir;
 }
 
-describe('i servizi vietati dai loro termini (D79)', () => {
-  it('il seme non ne usa nessuno', async () => {
+describe('i servizi con termini da conoscere (D79)', () => {
+  it('il seme non avvisa: ElevenLabs Music è spento e ha la scritta accanto all’interruttore', async () => {
+    expect(modelOf(seed, 'music-elevenlabs').off_by_default).toBe(true);
     expect(await validateServicePolicy(seed, SEED_CONFIG_DIR)).toEqual([]);
   });
 
-  it('ferma ElevenLabs Music dalla sua connessione, anche con un altro nome, e dice perché', async () => {
+  it('avvisa di ElevenLabs Music aggiunto a mano, anche con un altro nome, senza fermare niente', async () => {
     const issues = await validateServicePolicy(
-      withService({ label: 'La mia musica', provider_model: 'music_v2_5', connection: 'elevenlabs' }),
+      withService({ label: 'La mia musica', provider_model: 'x', connection: 'elevenlabs' }),
       SEED_CONFIG_DIR,
     );
 
     expect(issues).toEqual([
       expect.objectContaining({
-        severity: 'error',
-        code: 'service_blocked_by_policy',
+        severity: 'warning',
+        code: 'service_terms_notice',
         section: 'models',
         key: 'nuovo',
         modelId: 'nuovo',
       }),
     ]);
-    expect(issues[0]?.message).toContain('Per policy di Filmzy non si può usare «La mia musica»');
+    expect(issues[0]?.message).toContain('«La mia musica»');
     expect(issues[0]?.message).toContain('escludono i film');
-    expect(issues[0]?.message).toContain('caricarlo come file audio');
+    expect(issues[0]?.message).toContain('una tua responsabilità');
   });
 
-  it('ferma ElevenLabs Music anche se passa da un altro fornitore', async () => {
+  it('riconosce ElevenLabs Music anche se passa da un altro fornitore', async () => {
     const issues = await validateServicePolicy(
       withService({ provider_model: 'fornitore/elevenlabs/music' }),
       SEED_CONFIG_DIR,
     );
 
-    expect(issues.map((issue) => issue.code)).toEqual(['service_blocked_by_policy']);
+    expect(issues.map((issue) => issue.code)).toEqual(['service_terms_notice']);
   });
 
   it.each([
     ['nel nome, con le maiuscole', { label: 'SUNO v5' }],
     ['nel servizio di un rivenditore', { provider_model: 'rivenditore/suno-v5' }],
     ['attaccato al resto della parola', { provider_model: 'sunoapi/genera' }],
-  ])('ferma Suno %s', async (_where, service) => {
+  ])('riconosce Suno %s', async (_where, service) => {
     const issues = await validateServicePolicy(withService(service), SEED_CONFIG_DIR);
 
     expect(issues[0]?.message).toContain('I termini di Suno');
   });
 
-  it('ferma Suno anche dall’indirizzo della connessione', async () => {
+  it('riconosce Suno anche dall’indirizzo della connessione', async () => {
     const config = withService({ connection: 'rivenditore' });
     config.connections.rivenditore = {
       adapter: 'fal',
@@ -107,7 +109,7 @@ describe('i servizi vietati dai loro termini (D79)', () => {
     expect(issues).toEqual([]);
   });
 
-  it('lascia passare le voci di ElevenLabs: i termini della musica non le riguardano', async () => {
+  it('lascia in pace le voci di ElevenLabs: i termini della musica non le riguardano', async () => {
     const issues = await validateServicePolicy(
       withService({ kind: 'voice', label: 'Voci', provider_model: 'voce', connection: 'elevenlabs' }),
       SEED_CONFIG_DIR,
@@ -116,7 +118,7 @@ describe('i servizi vietati dai loro termini (D79)', () => {
     expect(issues).toEqual([]);
   });
 
-  it('senza il file non passa niente', async () => {
+  it('senza il file non si pubblica: la scritta sparirebbe senza dirlo', async () => {
     const issues = await validateServicePolicy(seed, await tempConfigDir());
 
     expect(issues).toEqual([
@@ -124,7 +126,7 @@ describe('i servizi vietati dai loro termini (D79)', () => {
     ]);
   });
 
-  it('con un file fuori schema non passa niente', async () => {
+  it('con un file fuori schema nemmeno', async () => {
     const dir = await tempConfigDir();
     await mkdir(path.join(dir, 'ai'));
     await writeFile(path.join(dir, 'ai', 'policy.yaml'), 'version: 1\n');

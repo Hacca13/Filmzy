@@ -21,6 +21,7 @@ export type RequestFieldName =
   | 'mask'
   | 'variants'
   | 'duration_s'
+  | 'duration_ms'
   | 'resolution'
   | 'aspect_ratio'
   | 'audio';

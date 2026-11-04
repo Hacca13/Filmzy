@@ -32,6 +32,8 @@ export const serviceStateSchema = z.object({
   /** Si può usare adesso. Se non si può, `unusableReason` dice perché. */
   usable: z.boolean(),
   unusableReason: unusableReasonSchema.optional(),
+  /** Termini che l'utente deve conoscere prima di usarlo (D79). */
+  termsNotice: z.string().min(1).optional(),
   /** È il servizio predefinito di questo fornitore. */
   isProviderDefault: z.boolean(),
 });

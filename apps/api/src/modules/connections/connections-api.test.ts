@@ -134,10 +134,13 @@ describe('fornitori e servizi (T2.7)', () => {
     const fal = provider(await overview(), 'audio', 'fal');
 
     expect(fal.services.map((service) => service.modelId).sort()).toEqual([
+      'music-elevenlabs',
       'music-stable-audio-3',
       'sfx-stable-audio-3',
     ]);
-    expect(fal.services[0]?.price.unit).toBe('per_audio');
+    expect(fal.services.find((s) => s.modelId === 'music-stable-audio-3')?.price.unit).toBe(
+      'per_audio',
+    );
     expect(fal.usedBy.map((role) => role.roleId)).toEqual(
       expect.arrayContaining(['composer', 'sfx_artist']),
     );
@@ -336,5 +339,33 @@ describe('prova della connessione con il fornitore finto', () => {
     expect(fal.keyRequired).toBe(false);
     expect(fal.key).toBeUndefined();
     expect(fal.services.every((service) => service.usable)).toBe(true);
+  });
+});
+
+describe('i servizi con termini da conoscere (D79)', () => {
+  it('ElevenLabs Music parte spento, ha la scritta, e accendendolo l’utente lo può usare', async () => {
+    const service = (state: Awaited<ReturnType<typeof overview>>) =>
+      provider(state, 'audio', 'fal').services.find((s) => s.modelId === 'music-elevenlabs');
+
+    const before = service(await overview());
+    expect(before?.enabled).toBe(false);
+    expect(before?.termsNotice).toContain('una tua responsabilità');
+
+    const reply = await put('/connections/fal/services', { modelIds: ['music-elevenlabs'] });
+
+    expect(reply.status).toBe(200);
+    expect(service(connectionsOverviewSchema.parse(reply.body))).toMatchObject({
+      enabled: true,
+      usable: true,
+      termsNotice: expect.stringContaining('escludono i film') as string,
+    });
+  });
+
+  it('gli altri servizi non hanno nessuna scritta', async () => {
+    const stable = provider(await overview(), 'audio', 'fal').services.find(
+      (s) => s.modelId === 'music-stable-audio-3',
+    );
+
+    expect(stable?.termsNotice).toBeUndefined();
   });
 });

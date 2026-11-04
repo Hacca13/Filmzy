@@ -101,8 +101,8 @@ describe('impostazioni avanzate (T2.3)', () => {
       expect((await client.draft()).activeRelease?.id).toBe(activeRelease?.id);
     });
 
-    it('un servizio vietato dai suoi termini si ferma con il motivo, e non si pubblica (D79)', async () => {
-      const { config, activeRelease } = await client.draft();
+    it('un servizio con termini da conoscere avvisa, ma la scelta è dell’utente e si pubblica (D79)', async () => {
+      const { config } = await client.draft();
       const music = config.models['music-stable-audio-3'];
       if (music === undefined) throw new Error('il seme non ha la musica');
 
@@ -116,17 +116,16 @@ describe('impostazioni avanzate (T2.3)', () => {
         },
       });
 
-      const blocked = draftViewSchema
+      const notice = draftViewSchema
         .parse(saved.body)
-        .issues.find((issue) => issue.code === 'service_blocked_by_policy');
-      expect(blocked).toMatchObject({ severity: 'error', modelId: 'la-mia-musica' });
-      expect(blocked?.message).toContain('Per policy di Filmzy non si può usare «Suno»');
+        .issues.find((issue) => issue.code === 'service_terms_notice');
+      expect(notice).toMatchObject({ severity: 'warning', modelId: 'la-mia-musica' });
+      expect(notice?.message).toContain('una tua responsabilità');
 
       const published = publishResponseSchema.parse(
-        (await client.call('POST', '/troupe/publish', { note: 'vietata' })).body,
+        (await client.call('POST', '/troupe/publish', { note: 'con la scritta' })).body,
       );
-      expect(published.release).toBeUndefined();
-      expect((await client.draft()).activeRelease?.id).toBe(activeRelease?.id);
+      expect(published.release).toBeDefined();
     });
 
     it('la nota è obbligatoria', async () => {

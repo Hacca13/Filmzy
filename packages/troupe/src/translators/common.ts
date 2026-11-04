@@ -21,7 +21,6 @@ export type RequestFieldName =
   | 'mask'
   | 'variants'
   | 'duration_s'
-  | 'duration_ms'
   | 'resolution'
   | 'aspect_ratio'
   | 'audio';
@@ -52,6 +51,16 @@ export function inputModeOf(inputs: readonly MediaInput[]): string {
  */
 export function commonIssues(input: TranslateInput, model: ModelEntry): TranslateIssue[] {
   const issues: TranslateIssue[] = [];
+  if ((model.kind === 'music' || model.kind === 'sfx') && input.durationS !== undefined) {
+    const max = model.capabilities.max_duration_s;
+    if (max !== undefined && input.durationS > max) {
+      issues.push({
+        reason: `fa clip fino a ${String(max)} secondi, qui ne servono ${String(input.durationS)}`,
+        field: 'capabilities.max_duration_s',
+      });
+    }
+  }
+
   if (model.kind !== 'video' && model.kind !== 'image') return issues;
 
   const references = input.inputs.filter((item) => item.use === 'reference');
@@ -123,10 +132,7 @@ export function allowedValue(
 /** La durata portata nei limiti del servizio (architettura §4.7 punto 2). */
 export function allowedDuration(model: ModelEntry, wanted: number | undefined): number | undefined {
   if (wanted === undefined) return undefined;
-  if (model.kind === 'music' || model.kind === 'sfx') {
-    const max = model.capabilities.max_duration_s;
-    return max === undefined ? wanted : Math.min(wanted, max);
-  }
+  if (model.kind === 'music' || model.kind === 'sfx') return wanted;
   if (model.kind !== 'video') return undefined;
   const { min, max } = model.capabilities.durations_s;
   return Math.min(Math.max(wanted, min ?? wanted), max);

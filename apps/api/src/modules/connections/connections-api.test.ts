@@ -1,13 +1,14 @@
 import {
   connectionsOverviewSchema,
   connectionTestResultSchema,
+  type ConnectionsOverview,
   domainErrorSchema,
   type GroupState,
   type ModelGroup,
   type ProviderState,
 } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { appendFile, cp, mkdtemp } from 'node:fs/promises';
+import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -38,7 +39,7 @@ afterAll(async () => {
   }
 });
 
-/** Nel seme nessun fornitore spento ha servizi: qui si dà una voce a ElevenLabs, in una copia. */
+/** Nel seme nessun fornitore spento ha servizi: qui ElevenLabs ne ha due, in una copia, come se li avesse aggiunti l’utente. */
 async function configWithDisabledProvider(): Promise<string> {
   const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
   await cp(CONFIG_DIR, configDir, { recursive: true });
@@ -51,6 +52,15 @@ async function configWithDisabledProvider(): Promise<string> {
       '    kind: voice',
       '    connection: elevenlabs',
       '    provider_model: voce',
+      '    capabilities: {}',
+      '    pricing: { unit: per_second, value: 0.01, note: prova, checked: 2026-11-04 }',
+      '    status: active',
+      '',
+      '  musica-aggiunta:',
+      '    label: Musica aggiunta a mano',
+      '    kind: music',
+      '    connection: elevenlabs',
+      '    provider_model: musica',
       '    capabilities: {}',
       '    pricing: { unit: per_second, value: 0.01, note: prova, checked: 2026-11-04 }',
       '    status: active',
@@ -134,7 +144,6 @@ describe('fornitori e servizi (T2.7)', () => {
     const fal = provider(await overview(), 'audio', 'fal');
 
     expect(fal.services.map((service) => service.modelId).sort()).toEqual([
-      'music-elevenlabs',
       'music-stable-audio-3',
       'sfx-stable-audio-3',
     ]);
@@ -342,30 +351,38 @@ describe('prova della connessione con il fornitore finto', () => {
   });
 });
 
-describe('i servizi con termini da conoscere (D79)', () => {
-  it('ElevenLabs Music parte spento, ha la scritta, e accendendolo l’utente lo può usare', async () => {
-    const service = (state: Awaited<ReturnType<typeof overview>>) =>
-      provider(state, 'audio', 'fal').services.find((s) => s.modelId === 'music-elevenlabs');
+describe('un servizio che Filmzy non offre, aggiunto a mano (D79)', () => {
+  const added = (state: ConnectionsOverview) =>
+    provider(state, 'audio', 'elevenlabs').services.find((s) => s.modelId === 'musica-aggiunta');
 
-    const before = service(await overview());
-    expect(before?.enabled).toBe(false);
-    expect(before?.termsNotice).toContain('una tua responsabilità');
+  it('ha la scritta accanto all’interruttore; gli altri no', async () => {
+    const state = await overview();
 
-    const reply = await put('/connections/fal/services', { modelIds: ['music-elevenlabs'] });
-
-    expect(reply.status).toBe(200);
-    expect(service(connectionsOverviewSchema.parse(reply.body))).toMatchObject({
-      enabled: true,
-      usable: true,
-      termsNotice: expect.stringContaining('escludono i film') as string,
-    });
+    expect(added(state)?.termsNotice).toContain('una tua responsabilità');
+    expect(
+      provider(state, 'audio', 'fal').services.find((s) => s.modelId === 'music-stable-audio-3')
+        ?.termsNotice,
+    ).toBeUndefined();
   });
 
-  it('gli altri servizi non hanno nessuna scritta', async () => {
-    const stable = provider(await overview(), 'audio', 'fal').services.find(
-      (s) => s.modelId === 'music-stable-audio-3',
-    );
+  it('senza il file la pagina resta usabile, e rimesso il file la scritta torna senza riavviare', async () => {
+    const configDir = await configWithDisabledProvider();
+    // Una prova più su toglie le chiavi: senza, al primo avvio non si pubblica niente.
+    Object.assign(process.env, KEYS);
+    const started = await startApp(fakeCipher, 'none', configDir);
+    const policy = path.join(configDir, 'ai', 'policy.yaml');
+    const kept = await readFile(policy, 'utf8');
+    const read = async () =>
+      connectionsOverviewSchema.parse((await started.client.call('GET', '/connections')).body);
 
-    expect(stable?.termsNotice).toBeUndefined();
-  });
+    try {
+      await rm(policy);
+      expect(added(await read())?.termsNotice).toBeUndefined();
+
+      await writeFile(policy, kept);
+      expect(added(await read())?.termsNotice).toContain('Filmzy non offre');
+    } finally {
+      await started.app.close();
+    }
+  }, 60_000);
 });

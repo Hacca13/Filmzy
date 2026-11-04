@@ -1,5 +1,7 @@
 import type { DomainErrorCode, SpendBreach } from '@filmzy/contracts';
 
+import type { LlmUsage } from './adapters/types.js';
+
 export interface ProviderErrorDetails {
   role?: string;
   modelId?: string;
@@ -23,6 +25,8 @@ export class ProviderError extends Error {
     readonly retryable: boolean,
     message: string,
     readonly details: ProviderErrorDetails = {},
+    /** Quanto ha consumato la chiamata, se è arrivata al modello: una risposta fuori schema si paga lo stesso. */
+    readonly usage?: LlmUsage,
   ) {
     super(message);
     this.name = 'ProviderError';

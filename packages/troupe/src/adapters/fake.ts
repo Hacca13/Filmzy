@@ -170,6 +170,7 @@ export class FakeProvider implements LlmAdapter, MediaAdapter {
             .map((issue) => `${issue.path.join('.')} ${issue.message}`)
             .join('; ')}.`,
           { role: req.role, modelId: req.modelId },
+          fakeUsage(req),
         );
       }
       return { data: parsed.data, usage: fakeUsage(req) };

@@ -99,7 +99,6 @@ function translatorFor(family: string): Translator {
           'duration_s',
           duration === undefined || !DURATION_AS_TEXT.has(family) ? duration : String(duration),
         )
-        .set('duration_ms', duration === undefined ? undefined : Math.round(duration * 1000))
         .set('resolution', allowedValue(model, 'resolution', input.params.resolution))
         .set('aspect_ratio', allowedValue(model, 'aspect_ratio', input.params.aspect_ratio))
         .set('audio', allowedValue(model, 'audio', input.params.audio))
@@ -172,14 +171,7 @@ export function replacePlaceholders(
     .trim();
 }
 
-const FAMILIES = [
-  'kling',
-  'seedance',
-  'gemini_omni',
-  'image_generic',
-  'stable_audio',
-  'elevenlabs_music',
-] as const;
+const FAMILIES = ['kling', 'seedance', 'gemini_omni', 'image_generic', 'stable_audio'] as const;
 
 const TRANSLATORS = new Map<string, Translator>(
   FAMILIES.map((family) => [family, translatorFor(family)]),

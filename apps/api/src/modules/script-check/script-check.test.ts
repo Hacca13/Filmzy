@@ -1,6 +1,7 @@
 import {
   ROLE_INPUT_EXAMPLES,
   cinematographerInputSchema,
+  scriptSupervisorOutputSchema,
   type ScenePlan,
   type ScriptSupervisorIssue,
   type ShotSpec,
@@ -44,6 +45,7 @@ const scene = (
   working: {},
   flags: {},
   sceneFlags: [],
+  hasWork: false,
   ...patch,
 });
 
@@ -97,6 +99,25 @@ describe('quali scene legge la segretaria', () => {
 
 describe('cosa si tiene di ciò che risponde', () => {
   const known = placesOf(scenes);
+
+  it('un id nullo o un motivo vuoto non fanno ripagare tutto: si sistema quello che c’è', () => {
+    const { issues } = scriptSupervisorOutputSchema.parse({
+      issues: [
+        {
+          sceneId: null,
+          shotId: null,
+          code: 'plot',
+          severity: 'warning',
+          reason: 'Una cosa vera.',
+        },
+        { code: 'plot', severity: 'warning', reason: '' },
+      ],
+    });
+
+    expect(settleIssues(issues, known)).toEqual([
+      { code: 'plot', light: false, reason: 'Una cosa vera.' },
+    ]);
+  });
 
   it('un’inquadratura porta la sua scena; il peso diventa quello del giallo', () => {
     const [kept] = settleIssues(

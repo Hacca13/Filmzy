@@ -164,11 +164,11 @@ function candidateIds(
     : declared;
 }
 
-/** I servizi attivati. Senza impostazioni valgono le voci `active` o `testing`, tranne quelle spente di partenza (§4.3, D79). */
+/** I servizi attivati. Senza impostazioni valgono tutte le voci `active` o `testing` (§4.3). */
 function enabledModelIds(config: TroupeConfig, settings: UserSettings | undefined): string[] {
   if (settings !== undefined) return [...settings.enabledModelIds];
   return Object.entries(config.models)
-    .filter(([, model]) => model.status !== 'retired' && model.off_by_default !== true)
+    .filter(([, model]) => model.status !== 'retired')
     .map(([id]) => id);
 }
 
@@ -224,7 +224,7 @@ function qualityOf(model: ModelEntry): number | undefined {
 
 /** Il costo previsto di questa richiesta su questo servizio (architettura §4.1). */
 function estimate(request: Omit<TranslateInput, 'modelId'>, model: ModelEntry): number | undefined {
-  if (model.kind === 'video') {
+  if (model.pricing.unit === 'per_second') {
     const seconds = allowedDuration(model, request.durationS);
     return mediaCostUsd(model.pricing, { ...(seconds === undefined ? {} : { seconds }) });
   }

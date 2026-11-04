@@ -178,22 +178,58 @@ describe('R2: l’uscita della scena prima è cambiata rispetto a quella da cui 
     expect(chainFlags({ shots: [first], basedOn: newExit, before: newExit, names })).toEqual({});
   });
 
-  it('senza un’uscita di partenza, se combacia, se è dichiarato o senza scena prima non c’è niente', () => {
+  it('senza un’uscita di partenza, se combacia o senza scena prima non c’è niente', () => {
     // Pensata prima della scena che la precede: non ne dipendeva.
     expect(chainFlags({ shots: [first], basedOn: undefined, before: newExit, names })).toEqual({});
     // È cambiata, ma ora combacia.
     expect(
       chainFlags({ shots: [shot('s1', 0, newExit)], basedOn: oldExit, before: newExit, names }),
     ).toEqual({});
-    expect(
-      chainFlags({
-        shots: [shot('s1', 0, state({ locationId: 'stazione' }), undefined, 'Un anno dopo.')],
-        basedOn: oldExit,
-        before: newExit,
-        names,
-      }),
-    ).toEqual({});
     expect(chainFlags({ shots: [first], basedOn: oldExit, before: undefined, names })).toEqual({});
+  });
+
+  it('un cambiamento dichiarato non salva: era scritto pensando all’uscita di prima', () => {
+    const flags = chainFlags({
+      shots: [shot('s1', 0, state({ locationId: 'stazione' }), undefined, 'Un anno dopo.')],
+      basedOn: oldExit,
+      before: newExit,
+      names,
+    });
+
+    expect(flags['s1']?.[0]?.code).toBe('R2');
+  });
+
+  describe('la chiave, per ricordare che l’utente l’ha ignorato', () => {
+    const keyOf = (before: ContinuityState, usedNames: Names = names): string | undefined =>
+      chainFlags({
+        shots: [shot('s1', 0, state({ timeOfDay: 'notte' }))],
+        basedOn: state({ timeOfDay: 'notte' }),
+        before,
+        names: usedNames,
+      })['s1']?.[0]?.key;
+
+    it('non cambia se il modello riscrive la stessa uscita con altre parole', () => {
+      expect(keyOf(state({ timeOfDay: 'sera' }))).toBeDefined();
+      expect(keyOf(state({ timeOfDay: 'Di sera.' }))).toBe(keyOf(state({ timeOfDay: 'sera' })));
+    });
+
+    it('non cambia se si rinomina un luogo', () => {
+      const keyAfterMove = (usedNames: Names) =>
+        chainFlags({
+          shots: [shot('s1', 0, state({ locationId: 'stazione' }))],
+          basedOn: state({ locationId: 'stazione' }),
+          before: state(),
+          names: usedNames,
+        })['s1']?.[0]?.key;
+
+      expect(
+        keyAfterMove({ ...names, locations: { piazza: 'La piazzetta', stazione: 'Il binario' } }),
+      ).toBe(keyAfterMove(names));
+    });
+
+    it('cambia se la scena prima finisce in un altro modo: è un’altra situazione', () => {
+      expect(keyOf(state({ timeOfDay: 'alba' }))).not.toBe(keyOf(state({ timeOfDay: 'sera' })));
+    });
   });
 
   it('solo la prima inquadratura dipende dalla scena prima; le altre dalla precedente (R1)', () => {

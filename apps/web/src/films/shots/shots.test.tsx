@@ -62,6 +62,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   clips: {},
   flags: {},
   sceneFlags: [],
+  hasWork: false,
   working: {},
   ...patch,
 });

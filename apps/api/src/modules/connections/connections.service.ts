@@ -45,7 +45,7 @@ type Connection = TroupeConfig['connections'][string];
 @Injectable()
 export class ConnectionsService {
   private readonly log = new Logger(ConnectionsService.name);
-  private policy: Promise<ServicePolicyFile | undefined> | undefined;
+  private policy: ServicePolicyFile | undefined;
 
   constructor(
     @Inject(CONFIG_DIR) private readonly configDir: string,
@@ -209,15 +209,15 @@ export class ConnectionsService {
   }
 
   /**
-   * Il file non cambia mentre il programma gira: si legge una volta. Se manca, la pubblicazione si ferma
-   * e lo spiega (D79); qui si registra soltanto, perché la pagina deve restare usabile.
+   * Il file non cambia mentre il programma gira: una volta letto si tiene. Se manca o è rotto la pagina
+   * resta usabile e ci si riprova alla prossima richiesta; la pubblicazione si ferma e lo spiega (D79).
    */
-  private servicePolicy(): Promise<ServicePolicyFile | undefined> {
-    this.policy ??= loadServicePolicy(this.configDir).then(({ data, issues }) => {
-      for (const issue of issues) this.log.warn(issue.message);
-      return data;
-    });
-    return this.policy;
+  private async servicePolicy(): Promise<ServicePolicyFile | undefined> {
+    if (this.policy !== undefined) return this.policy;
+    const { data, issues } = await loadServicePolicy(this.configDir);
+    for (const issue of issues) this.log.warn(issue.message);
+    this.policy = data;
+    return data;
   }
 
   private async effective() {

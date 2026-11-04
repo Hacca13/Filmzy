@@ -417,27 +417,59 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
     },
 
     lastDrawnAt(projectId) {
-      const shotIds = db
-        .select({ id: shots.id })
+      const rows = db
+        .select({ id: shots.id, chosen: shots.chosenAssetId })
         .from(shots)
         .where(eq(shots.projectId, projectId))
-        .all()
-        .map((shot) => shot.id);
-      if (shotIds.length === 0) return {};
+        .all();
+      if (rows.length === 0) return {};
+      const chosenOf = new Map(rows.map((row) => [row.id, row.chosen]));
 
       const done = db
-        .select({ shotId: storyboardAttempts.shotId, at: storyboardAttempts.createdAt })
+        .select({
+          shotId: storyboardAttempts.shotId,
+          mode: storyboardAttempts.mode,
+          assetIds: storyboardAttempts.assetIds,
+          at: storyboardAttempts.createdAt,
+        })
         .from(storyboardAttempts)
         .where(
           and(
-            inArray(storyboardAttempts.shotId, shotIds),
+            inArray(
+              storyboardAttempts.shotId,
+              rows.map((row) => row.id),
+            ),
             eq(storyboardAttempts.status, 'succeeded'),
           ),
         )
         .all();
-      const latest: Record<string, number> = {};
-      for (const { shotId, at } of done) latest[shotId] = Math.max(latest[shotId] ?? 0, at);
-      return latest;
+
+      const drawn = new Map<string, { latest?: number; chosen?: number; endFrame?: number }>();
+      for (const { shotId, mode, assetIds, at } of done) {
+        const entry = drawn.get(shotId) ?? {};
+        if (mode === 'end_frame') {
+          entry.endFrame = Math.max(entry.endFrame ?? 0, at);
+        } else {
+          entry.latest = Math.max(entry.latest ?? 0, at);
+          const chosen = chosenOf.get(shotId);
+          if (
+            chosen !== null &&
+            chosen !== undefined &&
+            (JSON.parse(assetIds) as string[]).includes(chosen)
+          ) {
+            entry.chosen = at;
+          }
+        }
+        drawn.set(shotId, entry);
+      }
+      // Il più vecchio fra lo storyboard che la card fa vedere e l'ultimo fotogramma: il giallo passa quando
+      // tutto è stato rifatto, non appena parte un tentativo qualunque.
+      return Object.fromEntries(
+        [...drawn].map(([shotId, { latest, chosen, endFrame }]) => [
+          shotId,
+          Math.min(chosen ?? latest ?? Infinity, endFrame ?? Infinity),
+        ]),
+      );
     },
 
     chosenStoryboards(projectId) {

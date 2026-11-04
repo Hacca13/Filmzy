@@ -165,8 +165,19 @@ export function settleShots(args: SettleArgs): ShotSpec[] {
       continuity: {
         entry: state(shot.continuity.entry),
         exit: state(shot.continuity.exit),
-        ...(shot.continuity.change === undefined ? {} : { change: shot.continuity.change }),
+        ...(declaresChange(shot.continuity.change) ? { change: shot.continuity.change } : {}),
       },
     };
   });
+}
+
+const NO_CHANGE =
+  /^(no|none|n\/?a|-+|niente|nulla|nessun[oa]?)(\s+(cambiament[oi]|modific[ah]e?|variazion[ei]))?[.!]?$/i;
+
+/**
+ * Il modello a volte riempie il campo anche quando non cambia niente («nessuno»): una nota così non
+ * dichiara un cambiamento, e non deve spegnere R1 su quell'inquadratura.
+ */
+function declaresChange(change: string | undefined): change is string {
+  return change !== undefined && !NO_CHANGE.test(change.trim());
 }

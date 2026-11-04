@@ -34,9 +34,6 @@ export function mediaCostUsd(
   if (pricing.unit === 'per_second') {
     return usage?.seconds === undefined ? undefined : usage.seconds * pricing.value;
   }
-  if (pricing.unit === 'per_started_minute') {
-    return usage?.seconds === undefined ? undefined : Math.ceil(usage.seconds / 60) * pricing.value;
-  }
   if (pricing.unit === 'per_image' || pricing.unit === 'per_audio') {
     return usage?.images === undefined ? undefined : usage.images * pricing.value;
   }

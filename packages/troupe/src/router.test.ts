@@ -254,3 +254,48 @@ describe("«Cambia servizio»: l'elenco per l'utente (D36)", () => {
     expect(route(input({ settings })).modelId).toBe('kling-o3-standard');
   });
 });
+
+describe('il costo di una clip che si paga a tempo (D80)', () => {
+  const clip: Omit<TranslateInput, 'modelId'> = {
+    role: 'composer',
+    prompt: 'sparse piano, bittersweet',
+    inputs: [],
+    characterIds: [],
+    durationS: 30,
+    params: {},
+    idempotencyKey: 'clip-1',
+  };
+  const settings: UserSettings = {
+    ...noSettings,
+    enabledModelIds: ['music-stable-audio-3', 'musica-al-secondo'],
+  };
+  const withPricedBySecond = () =>
+    withSeed((config) => {
+      config.models['musica-al-secondo'] = {
+        ...modelOf(config, 'music-stable-audio-3'),
+        pricing: { unit: 'per_second', value: 0.01, checked: '2026-11-04' },
+      };
+    });
+
+  it('si stima dalla durata: non è gratis, e i limiti di spesa lo vedono', () => {
+    const chosen = route(
+      input({
+        roleId: 'composer',
+        config: withPricedBySecond(),
+        request: clip,
+        chosenModelId: 'musica-al-secondo',
+        settings,
+      }),
+    );
+
+    expect(chosen.estimatedCostUsd).toBeCloseTo(0.3);
+  });
+
+  it('non passa davanti al servizio che costa meno', () => {
+    const chosen = route(
+      input({ roleId: 'composer', config: withPricedBySecond(), request: clip, settings }),
+    );
+
+    expect(chosen.modelId).toBe('music-stable-audio-3');
+  });
+});

@@ -26,7 +26,6 @@ function withService(service: {
   provider_model?: string;
   connection?: string;
   kind?: 'music' | 'voice';
-  off_by_default?: boolean;
 }): TroupeConfig {
   const copy = structuredClone(seed);
   copy.models.nuovo = { ...modelOf(seed, 'music-stable-audio-3'), ...service } as ModelEntry;
@@ -39,9 +38,8 @@ async function tempConfigDir(): Promise<string> {
   return dir;
 }
 
-describe('i servizi con termini da conoscere (D79)', () => {
-  it('il seme non avvisa: ElevenLabs Music è spento e ha la scritta accanto all’interruttore', async () => {
-    expect(modelOf(seed, 'music-elevenlabs').off_by_default).toBe(true);
+describe('i servizi che Filmzy non offre (D79)', () => {
+  it('il seme non ne offre nessuno', async () => {
     expect(await validateServicePolicy(seed, SEED_CONFIG_DIR)).toEqual([]);
   });
 

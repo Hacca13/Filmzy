@@ -20,6 +20,7 @@ import type {
   LlmAdapter,
   LlmRequest,
   LlmResponse,
+  LlmUsage,
 } from './types.js';
 
 /**
@@ -99,14 +100,7 @@ export function aiSdkLlmAdapter(options: AdapterOptions, model: ModelFactory): L
 
         return {
           data: result.output,
-          usage: {
-            ...(result.usage.inputTokens === undefined
-              ? {}
-              : { inputTokens: result.usage.inputTokens }),
-            ...(result.usage.outputTokens === undefined
-              ? {}
-              : { outputTokens: result.usage.outputTokens }),
-          },
+          usage: usageOf(result.usage),
         };
       } catch (error) {
         if (error instanceof ProviderError) throw error;
@@ -143,6 +137,16 @@ function numberParam(value: string | number | boolean | undefined): number | und
   return typeof value === 'number' ? value : undefined;
 }
 
+function usageOf(usage: {
+  inputTokens?: number | undefined;
+  outputTokens?: number | undefined;
+}): LlmUsage {
+  return {
+    ...(usage.inputTokens === undefined ? {} : { inputTokens: usage.inputTokens }),
+    ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens }),
+  };
+}
+
 /**
  * Traduce l'errore del fornitore in un codice di §4.10, perché è il codice che decide se si
  * riprova e cosa legge l'utente. Il messaggio non contiene mai la chiave (D25): si riporta solo
@@ -161,6 +165,9 @@ function toProviderError(error: unknown, req: LlmRequest, options: AdapterOption
       false,
       'Il servizio non ha risposto nella forma richiesta.',
       details,
+      NoObjectGeneratedError.isInstance(error) && error.usage !== undefined
+        ? usageOf(error.usage)
+        : undefined,
     );
   }
 

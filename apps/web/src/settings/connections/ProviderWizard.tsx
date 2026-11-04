@@ -7,7 +7,7 @@ import { useAction } from '../use-action';
 import { CapBox } from './CapBox';
 import { KeyBox } from './KeyBox';
 import { GROUP_LABELS, providerStatus } from './labels';
-import { enabledServiceIds, serviceGroups } from './model';
+import { enabledServiceIds, preselectedServices, serviceGroups } from './model';
 import { ServiceList } from './ServiceList';
 
 export type WizardStep = 'provider' | 'key' | 'services' | 'cap';
@@ -213,15 +213,7 @@ export function ServicesStep({
   onNext: () => void;
   onCancel: () => void;
 }) {
-  // Si parte da quelli già attivati; se non ce n'è nessuno, da quelli che si possono usare e non sono in prova.
-  const [selected, setSelected] = useState<string[]>(() => {
-    const already = provider.services.filter((service) => service.enabled).map((s) => s.modelId);
-    return already.length > 0
-      ? already
-      : provider.services
-          .filter((service) => service.usable && service.status === 'active')
-          .map((service) => service.modelId);
-  });
+  const [selected, setSelected] = useState<string[]>(() => preselectedServices(provider));
   const [defaultId, setDefaultId] = useState<string | undefined>(
     () => provider.services.find((service) => service.isProviderDefault)?.modelId,
   );

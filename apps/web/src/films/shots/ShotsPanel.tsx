@@ -176,12 +176,15 @@ function SceneSection({
   const chip = sceneChip(scene);
   // Se il piano è rifatto l'inquadratura aperta sparisce, e con lei il suo storyboard.
   const storyboardShot = scene.shots.find((shot) => shot.id === storyboardShotId);
-  // Rifare il piano toglie storyboard e video di tutta la scena: se ce ne sono, prima lo si dice.
+  // Rifare il piano toglie il lavoro di tutta la scena: se ce n'è, prima lo si dice, e in un punto che si vede.
   const [confirmingPlan, setConfirmingPlan] = useState(false);
-  const hasWork =
-    Object.keys(scene.clips).length > 0 || Object.keys(scene.chosenStoryboards).length > 0;
+  const confirmRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (confirmingPlan)
+      confirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [confirmingPlan]);
   const requestPlan = () => {
-    if (hasWork) setConfirmingPlan(true);
+    if (scene.hasWork) setConfirmingPlan(true);
     else onPlan();
   };
   // «Rigenera» apre il riquadro sotto la striscia, magari fuori dallo schermo: lo si porta in vista.
@@ -285,10 +288,10 @@ function SceneSection({
         </button>
       </div>
       {confirmingPlan ? (
-        <>
+        <div ref={confirmRef}>
           <Notice tone="info" title="Prima di rifarle">
-            Rifare le inquadrature di questa scena toglie gli storyboard e i video già fatti: non
-            tornano, e quello che hai speso non si recupera.
+            Rifare le inquadrature di questa scena toglie storyboard, immagini e video già fatti,
+            anche quelli ancora in lavorazione: non tornano, e quello che hai speso non si recupera.
           </Notice>
           <div className="actions">
             <button
@@ -313,7 +316,7 @@ function SceneSection({
               Annulla
             </button>
           </div>
-        </>
+        </div>
       ) : null}
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       {showOutcome ? <WriteOutcome written={written} /> : null}

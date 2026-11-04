@@ -264,20 +264,3 @@ models:
     request_fields: { prompt: prompt, negative_prompt: negative_prompt, duration_s: duration }
     pricing: { unit: per_audio, value: 0.0283, note: "a clip, come dice la pagina; se dipende dalla durata lo dirà la prova d'ascolto", checked: 2026-11-04 }
     status: active
-
-  # Spento di partenza e con la scritta di policy.yaml (D79): i termini di Eleven Music escludono i film su tutti
-  # i piani tranne Enterprise Music e vietano di offrirlo tramite altri programmi. Lo accende l'utente, se vuole.
-  # Passa da fal: stessa chiave dei video. Id, campi e prezzo dalle pagine del punto d'accesso; mai provato.
-  music-elevenlabs:
-    label: ElevenLabs Music
-    kind: music
-    connection: fal
-    provider_model: fal-ai/elevenlabs/music
-    family: elevenlabs_music
-    off_by_default: true
-    capabilities:
-      commercial_use: false                   # per i film serve il piano Enterprise Music
-      max_duration_s: 600                     # music_length_ms: da 3000 a 600000
-    request_fields: { prompt: prompt, duration_ms: music_length_ms }
-    pricing: { unit: per_started_minute, value: 0.6, note: "0,60 $ al minuto; un minuto cominciato si paga intero", checked: 2026-11-04 }
-    status: testing

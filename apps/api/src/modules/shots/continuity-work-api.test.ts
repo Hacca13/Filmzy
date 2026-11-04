@@ -101,3 +101,41 @@ describe('i gialli che nascono da un cambiamento a monte', () => {
     ]);
   }, 120_000);
 });
+
+describe('cosa dice la scena del lavoro già fatto', () => {
+  const sceneOf = async (shots: string) =>
+    shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0];
+
+  it('«c’è del lavoro» conta anche un tentativo non scelto, perché rifare il piano lo toglie', async () => {
+    const { shot, shots } = await filmWithShot(client);
+    expect((await sceneOf(shots))?.hasWork).toBe(false);
+
+    await draw(`${shots}/${shot.id}`);
+
+    const scene = await sceneOf(shots);
+    expect(scene?.chosenStoryboards).toEqual({});
+    expect(scene?.hasWork).toBe(true);
+  });
+
+  it('una scena da rifare non dà gialli: la cosa da fare è rifarla (D74.7)', async () => {
+    const { film, final, shot, shots } = await filmWithShot(client);
+    const shotPath = `${shots}/${shot.id}`;
+    const assetId = await draw(shotPath);
+    await shoot(shotPath);
+    await tick();
+    await client.call('PUT', `${shotPath}/images`, { images: [{ use: 'first_frame', assetId }] });
+    expect((await sceneOf(shots))?.flags[shot.id]?.map((flag) => flag.code)).toEqual(['R5']);
+
+    const rewritten = final.screenplay.scenes.map((scene) =>
+      scene.number === 1 ? { ...scene, summary: 'Una scena riscritta a mano.' } : scene,
+    );
+    await client.call('PUT', `/projects/${film.id}/screenplay/final`, {
+      screenplay: { ...final.screenplay, scenes: rewritten },
+    });
+
+    const stale = await sceneOf(shots);
+    expect(stale?.stale).toBe(true);
+    expect(stale?.flags).toEqual({});
+    expect(stale?.hasWork).toBe(true);
+  });
+});

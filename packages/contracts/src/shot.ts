@@ -41,6 +41,19 @@ export const continuityStateSchema = z.object({
 
 export type ContinuityState = z.infer<typeof continuityStateSchema>;
 
+/**
+ * Come comincia e come finisce un'inquadratura. `change` dichiara un cambiamento voluto rispetto a
+ * come finisce l'inquadratura prima (un salto nel tempo, un cambio d'abito): senza, una differenza è un
+ * errore di continuità (R1, R2).
+ */
+export const shotContinuitySchema = z.object({
+  entry: continuityStateSchema,
+  exit: continuityStateSchema,
+  change: z.string().min(1).optional(),
+});
+
+export type ShotContinuity = z.infer<typeof shotContinuitySchema>;
+
 /** Un personaggio presente nell'inquadratura, con il costume di quella scena. */
 export const shotCharacterSchema = z.object({
   characterId: characterIdSchema,
@@ -98,10 +111,7 @@ export const shotSpecSchema = z.object({
     }),
   ),
   cinematography: z.union([z.literal('inherit'), cinematographyOverrideSchema]),
-  continuity: z.object({
-    entry: continuityStateSchema,
-    exit: continuityStateSchema,
-  }),
+  continuity: shotContinuitySchema,
 });
 
 export type ShotSpec = z.infer<typeof shotSpecSchema>;

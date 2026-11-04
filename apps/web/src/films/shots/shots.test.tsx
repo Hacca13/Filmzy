@@ -8,6 +8,7 @@ import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import { FlagNote } from './FlagNote';
 import { ShotCard } from './ShotCard';
 import { continuityLine, humanize, sceneChip, sceneStatus, type Names } from './model';
 
@@ -59,6 +60,7 @@ const scene = (patch: Partial<ScenePlan> = {}): ScenePlan => ({
   chosenStoryboards: {},
   clips: {},
   flags: {},
+  sceneFlags: [],
   working: {},
   ...patch,
 });
@@ -104,6 +106,31 @@ describe('continuityLine', () => {
   });
 });
 
+describe('FlagNote', () => {
+  it('un giallo vero dice «Da rivedere», uno leggero «Avviso leggero», sempre con il motivo (anche per una scena, R7)', () => {
+    const strong = renderToStaticMarkup(
+      <FlagNote
+        flag={{
+          code: 'R7',
+          reason: 'La scena nomina un personaggio tolto.',
+          origin: 'rule',
+          light: false,
+        }}
+      />,
+    );
+    const light = renderToStaticMarkup(
+      <FlagNote
+        flag={{ code: 'R4', reason: 'La fotografia è cambiata.', origin: 'rule', light: true }}
+      />,
+    );
+
+    expect(strong).toContain('Da rivedere');
+    expect(strong).toContain('La scena nomina un personaggio tolto.');
+    expect(light).toContain('Avviso leggero');
+    expect(light).not.toContain('Da rivedere');
+  });
+});
+
 describe('ShotCard', () => {
   const movements = [
     { id: 'static', label: 'Resta fermo' },
@@ -130,14 +157,28 @@ describe('ShotCard', () => {
 
   it('un’inquadratura con un giallo lo dice con il motivo; senza gialli non c’è niente (T4.9, R6)', () => {
     const flagged = render(shot, false, {
-      flags: [{ code: 'R6', reason: 'Il luogo è cambiato. Rifai lo storyboard.', origin: 'rule' }],
+      flags: [
+        {
+          code: 'R6',
+          reason: 'Il luogo è cambiato. Rifai lo storyboard.',
+          origin: 'rule',
+          light: false,
+        },
+      ],
     });
 
     expect(flagged).toContain('Da rivedere');
     expect(flagged).toContain('Il luogo è cambiato. Rifai lo storyboard.');
     expect(render()).not.toContain('Da rivedere');
     const light = render(shot, false, {
-      flags: [{ code: 'R9', reason: 'Il moodboard è cambiato. Rigiralo.', origin: 'rule' }],
+      flags: [
+        {
+          code: 'R9',
+          reason: 'Il moodboard è cambiato. Rigiralo.',
+          origin: 'rule',
+          light: true,
+        },
+      ],
     });
     expect(light).toContain('Avviso leggero');
     expect(light).toContain('Il moodboard è cambiato. Rigiralo.');

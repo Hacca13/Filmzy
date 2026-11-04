@@ -64,8 +64,13 @@ export interface ShotStore {
   /** Il piano della scena pensata più vicina **prima** di questa, se c'è (per l'uscita da cui si riparte). */
   planBefore: (projectId: string, sceneNumber: number) => StoredShotPlan | undefined;
   get: (shotId: string) => StoredShot | undefined;
-  /** Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più. */
+  /**
+   * Cambia la scheda di un'inquadratura (per esempio il movimento di macchina); `false` se non c'è più.
+   * Se cambia il primo o l'ultimo fotogramma si ricorda quando (R5).
+   */
   updateSpec: (shotId: string, spec: ShotSpec) => boolean;
+  /** Quando è cambiato il primo o l'ultimo fotogramma di ogni inquadratura del film che l'ha cambiato (ms). */
+  framesChanges: (projectId: string) => Record<string, number>;
   /** Apre un nuovo tentativo (in coda) dello storyboard o dell'ultimo fotogramma e ne dà il numero. */
   startStoryboard: (shotId: string, mode: StoryboardMode, modelLabel?: string) => number;
   finishStoryboard: (
@@ -98,6 +103,15 @@ const inMode = (shotId: string, mode: StoryboardMode) =>
   and(eq(storyboardAttempts.shotId, shotId), eq(storyboardAttempts.mode, mode));
 
 const toSpec = (row: ShotRow): ShotSpec => shotSpecSchema.parse(JSON.parse(row.spec));
+
+/** Il primo e l'ultimo fotogramma scelti, e da dove vengono: ciò che conta per R5. L'ispirazione non conta. */
+const framesOf = (spec: ShotSpec): string =>
+  JSON.stringify(
+    spec.images
+      .filter((image) => image.use === 'first_frame' || image.use === 'last_frame')
+      .map(({ use, from, assetId, takeId, atS }) => [use, from, assetId, takeId, atS])
+      .sort(),
+  );
 
 function toAttempt(row: StoryboardAttemptRow) {
   const assetIds: unknown = JSON.parse(row.assetIds);
@@ -235,12 +249,28 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
     },
 
     updateSpec(shotId, spec) {
-      const { changes } = db
-        .update(shots)
-        .set({ spec: JSON.stringify(spec) })
+      const current = db.select().from(shots).where(eq(shots.id, shotId)).get();
+      if (current === undefined) return false;
+      const framesChanged = framesOf(toSpec(current)) !== framesOf(spec);
+      db.update(shots)
+        .set({
+          spec: JSON.stringify(spec),
+          ...(framesChanged ? { framesChangedAt: now().getTime() } : {}),
+        })
         .where(eq(shots.id, shotId))
         .run();
-      return changes > 0;
+      return true;
+    },
+
+    framesChanges(projectId) {
+      return Object.fromEntries(
+        db
+          .select({ id: shots.id, changedAt: shots.framesChangedAt })
+          .from(shots)
+          .where(eq(shots.projectId, projectId))
+          .all()
+          .flatMap((shot) => (shot.changedAt === null ? [] : [[shot.id, shot.changedAt] as const])),
+      );
     },
 
     startStoryboard(shotId, mode, modelLabel) {

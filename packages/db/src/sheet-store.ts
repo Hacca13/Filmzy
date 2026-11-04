@@ -57,6 +57,8 @@ export interface SheetStore {
   lock: (characterId: string, attempt: number | undefined) => void;
   /** Gli id dei file del tentativo bloccato, nell'ordine delle angolazioni; vuoto se non è bloccato. */
   lockedAssetIds: (characterId: string) => string[];
+  /** Quando la scheda è cambiata (volto bloccato o sbloccato) di ogni personaggio del film che l'ha cambiata (ms). */
+  sheetChanges: (projectId: string) => Record<string, number>;
   /** Toglie la scheda (quando il personaggio esce dal film). */
   removeFor: (characterId: string) => void;
 }
@@ -194,10 +196,30 @@ export function createSheetStore(db: FilmzyDb, options: SheetStoreOptions = {}):
     },
 
     lock(characterId, attempt) {
+      const at = now().getTime();
+      // Bloccare di nuovo lo stesso tentativo non cambia la scheda: non fa ingiallire niente (R3).
+      const changed = lockedOf(characterId) !== attempt;
       db.update(characters)
-        .set({ lockedAttempt: attempt ?? null, updatedAt: now().getTime() })
+        .set({
+          lockedAttempt: attempt ?? null,
+          updatedAt: at,
+          ...(changed ? { sheetChangedAt: at } : {}),
+        })
         .where(eq(characters.id, characterId))
         .run();
+    },
+
+    sheetChanges(projectId) {
+      return Object.fromEntries(
+        db
+          .select({ id: characters.id, changedAt: characters.sheetChangedAt })
+          .from(characters)
+          .where(eq(characters.projectId, projectId))
+          .all()
+          .flatMap((character) =>
+            character.changedAt === null ? [] : [[character.id, character.changedAt] as const],
+          ),
+      );
     },
 
     lockedAssetIds(characterId) {

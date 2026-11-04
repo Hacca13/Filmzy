@@ -49,6 +49,19 @@ describe('ProjectStore', () => {
     expect(store.update('non-c-e', { tone: 'dark' })).toBeUndefined();
   });
 
+  it('si ricorda quando la fotografia è cambiata; sceglierla uguale o cambiare altro no (R4)', () => {
+    const created = store.create(film);
+    expect(store.cinematographyChangedAt(created.id)).toBeUndefined();
+
+    clock = new Date('2026-10-28T11:00:00.000Z');
+    store.update(created.id, { tone: 'dark', cinematography: film.cinematography });
+    expect(store.cinematographyChangedAt(created.id)).toBeUndefined();
+
+    store.update(created.id, { cinematography: 'noir' });
+    expect(store.cinematographyChangedAt(created.id)).toBe(clock.getTime());
+    expect(store.cinematographyChangedAt('non-c-e')).toBeUndefined();
+  });
+
   it('cambia solo i campi indicati e sposta la data di modifica, non quella di creazione', () => {
     const created = store.create(film);
     clock = new Date('2026-10-28T11:30:00.000Z');

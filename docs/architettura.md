@@ -434,7 +434,7 @@ ShotSpec {
   images: ShotImage[]                                       // scelte dell'utente (D20); vuoto = decide l'aiuto regista
   dialogue: { characterId, text, voiceId?, language }[]     // vuoto nell'MVP
   cinematography: 'inherit' | CinematographyOverride
-  continuity: { entry: ContinuityState, exit: ContinuityState }
+  continuity: { entry: ContinuityState, exit: ContinuityState, change?: string }   // change: un cambiamento voluto rispetto all'uscita prima (R1, R2)
 }
 
 ContinuityState { locationId, timeOfDay, present: CharacterId[], costumes: Record<CharacterId, string>, props: string[] }
@@ -545,7 +545,7 @@ Un solo file di database; i file dei progetti stanno in cartelle accanto. I camp
 | Gruppo | Tabelle | Note |
 |---|---|---|
 | Impostazioni | `settings` | scelte dell'utente che valgono subito, senza pubblicare: funzioni, limiti e tetti di spesa, servizi attivati e servizio predefinito per ruolo o tipo (D36). Non ci sono utenti, crediti né caparre: la spesa si calcola dagli scontrini (D30) |
-| Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `shots.chosen_take_id` è il take da tenere (D69); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36); `take_frames` ricorda i fotogrammi presi dai take (take, momento, immagine) |
+| Film | `projects`, `characters`, `character_assets`, `locations`, `location_assets`, `screenplays`, `scenes`, `shots`, `takes`, `continuity_flags` | `characters.project_id` nullo = cast riutilizzabile; `characters.profile` (JSON), `tag`, `proposal_id`; `locations.prompt`, `proposal_id`; `screenplays` ha versioni e `stage` (`draft`, `final`); `shots.spec` è JSON (ShotSpec); `shots.chosen_take_id` è il take da tenere (D69); `projects.cinematography_changed_at` (R4), `characters.sheet_changed_at` (quando il volto è stato bloccato o sbloccato, per R3) e `shots.frames_changed_at` (quando il primo o l'ultimo fotogramma è cambiato, per R5) sono date, non gialli: i gialli si ricalcolano (D74); `takes.generation_id` rimanda allo scontrino, da cui si legge il servizio usato (D36); `take_frames` ricorda i fotogrammi presi dai take (take, momento, immagine) |
 | File | `assets` | tipo, chiave nello storage, mime, dimensioni, durata, origine, scontrino che l'ha prodotto (`generation_id`, vuoto per i file caricati), checksum, stato dell'etichetta AI, asset di origine e dati del ritocco (operazione, maschera: il ritocco crea un asset nuovo e l'originale resta), esito del controllo delle immagini caricate |
 | Troupe | `troupe_drafts`, `troupe_releases`, `instruction_versions`, `generations` | `generations` sono gli scontrini: una riga per `id`, aggiornata durante la vita della chiamata (regola 10), con le colonne per cercare e sommare (`purpose`, `role`, `model_id`, `status`, costi) e lo scontrino intero in JSON (D36, D48) |
 | Coda | `jobs` | i lavori lunghi (§7): tipo, dato in JSON, stato, priorità, tentativi e `run_after` per l'attesa crescente, chiave di idempotenza unica, film a cui appartengono |
@@ -628,18 +628,18 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 
 - Ogni inquadratura ha uno stato di **entrata** e uno di **uscita**: luogo, ora, chi c'è, costumi, oggetti.
 - **Regole deterministiche**, immediate e gratuite:
-  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato;
-  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono;
-  - **R3:** se la scheda di un personaggio cambia dopo un take (anche per un ritocco che tocca volto o abiti), diventano gialli i take con quel personaggio;
-  - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero;
-  - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli;
+  - **R1:** nella stessa scena l'entrata dell'inquadratura N+1 combacia con l'uscita della N, salvo un cambiamento dichiarato (`continuity.change`); luogo, ora, persone, abiti e oggetti si confrontano, il testo libero senza badare a maiuscole e punteggiatura (D74);
+  - **R2:** se cambia l'uscita di un'inquadratura, diventano gialle quelle che ne dipendono: la prima inquadratura di una scena dipende dall'uscita della scena pensata subito prima, e diventa gialla se quella è stata ripensata dopo e ora non combacia più (D74);
+  - **R3:** se la scheda di un personaggio cambia dopo un take (anche per un ritocco che tocca volto o abiti), diventano gialli i take con quel personaggio; oggi la scheda cambia quando il volto si blocca su un altro tentativo o si sblocca (D74);
+  - **R4:** se cambia la fotografia del film, i take girati con la precedente ricevono un avviso leggero (`projects.cinematography_changed_at`; un'inquadratura con una fotografia sua non la segue; D74);
+  - **R5:** se cambia il primo o l'ultimo fotogramma di un'inquadratura, o la scelta tra generarlo e caricarlo, i take girati prima diventano gialli (l'ispirazione non conta; D74);
   - **R6:** se l'immagine scelta di un luogo cambia o viene ritoccata, diventano gialle le inquadrature che lo usano;
-  - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano;
+  - **R7:** se un personaggio viene scartato o sostituito dopo la stesura ufficiale, diventano gialle le scene che lo nominano (`ScenePlan.sceneFlags`; il nome non c'è più, si dice quanti sono; D74);
   - **R8:** se un take cambia durata o viene sostituito, gli effetti agganciati a quell'inquadratura ricevono un avviso leggero («l'effetto potrebbe non coincidere più»);
   - **R9:** se cambiano la palette o i consigli del moodboard (del film o di una scena), i take girati prima ricevono un avviso leggero, come per R4 (D37).
 - **Cosa queste regole non coprono, ed è noto:** la continuità **tra scene diverse**. R1 vale dentro una scena, perché tra due scene può passare del tempo e un cambio d'abito o di luce è legittimo. Ma se due scene consecutive stanno nello stesso luogo e alla stessa ora, una giacca che ricompare senza che nessuno l'abbia rimessa è un errore che nessuna regola segnala: resta alla segretaria di edizione, che è un LLM e quindi meno affidabile di una regola. Da misurare con i test (T6.6) e da risolvere insieme all'autore: la candidata più semplice è una regola per scene consecutive con lo stesso luogo e la stessa ora (§13).
 - **Segretaria di edizione** (LLM): incoerenze di trama tra le scene ("Marco parla di una lettera che non ha ancora ricevuto").
-- Ogni segnalazione ha un codice, un motivo in italiano e un'origine (`rule`, `llm`, più avanti `vision`). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
+- Ogni segnalazione ha un codice, un motivo in italiano, un'origine (`rule`, `llm`, più avanti `vision`) e un peso (`light`: falso per un giallo vero, vero per un avviso leggero come R4, R8, R9; lo decide il server, D74). L'utente sceglie **Rigenera** o **Ignora**: niente rigenerazioni automatiche.
 
 ## 9. Montaggio ed esportazione
 

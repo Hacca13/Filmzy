@@ -46,6 +46,13 @@ export const isStale = (scene: ScreenplayScene, plan: StoredShotPlan, known: Kno
   plan.sceneHash !== hashScene(scene) || citesMissing(plan.shots, known);
 
 /**
+ * Come finisce un piano, se vale ancora: da lì riparte la scena dopo (l'aiuto regista ne riceve l'uscita, R2
+ * la confronta). Un piano vecchio non vale.
+ */
+export const usableExit = (plan: StoredShotPlan, stale: boolean): ContinuityState | undefined =>
+  stale ? undefined : plan.shots.at(-1)?.continuity.exit;
+
+/**
  * Un piano cita un personaggio o un luogo che il film non ha più (l'utente li ha tolti dopo)?
  * Allora le sue inquadrature non reggono e vanno rifatte, come se la scena fosse cambiata.
  */

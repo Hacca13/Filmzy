@@ -28,6 +28,7 @@ import { acceptedElementSchema, sceneSchema, screenplaySchema } from '../screenp
 import {
   continuityStateSchema,
   shotCharacterSchema,
+  shotContinuitySchema,
   shotIntentSchema,
   shotSpecSchema,
 } from '../shot.js';
@@ -154,7 +155,7 @@ export const proposedShotSchema = z.object({
     }),
   ),
   cinematography: z.literal('inherit'),
-  continuity: z.object({ entry: continuityStateSchema, exit: continuityStateSchema }),
+  continuity: shotContinuitySchema,
 });
 
 export type ProposedShot = z.infer<typeof proposedShotSchema>;

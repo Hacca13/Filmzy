@@ -24,6 +24,8 @@ export interface ProjectStore {
   list: () => Project[];
   /** Cambia i campi dati e aggiorna la data di modifica; `undefined` se il film non c'è. */
   update: (id: string, changes: ProjectChanges) => Project | undefined;
+  /** Quando la fotografia del film è cambiata dopo la creazione (ms); `undefined` se non è mai cambiata (R4). */
+  cinematographyChangedAt: (id: string) => number | undefined;
 }
 
 export interface ProjectStoreOptions {
@@ -70,12 +72,30 @@ export function createProjectStore(db: FilmzyDb, options: ProjectStoreOptions = 
       return db.select().from(projects).orderBy(desc(projects.updatedAt)).all().map(toProject);
     },
     update(id, changes) {
-      if (get(id) === undefined) return undefined;
+      const current = get(id);
+      if (current === undefined) return undefined;
+      const at = now().getTime();
+      // Scegliere la stessa fotografia di prima non è un cambiamento: non avvisa niente (R4).
+      const cinematographyChanged =
+        changes.cinematography !== undefined && changes.cinematography !== current.cinematography;
       db.update(projects)
-        .set({ ...changes, updatedAt: now().getTime() })
+        .set({
+          ...changes,
+          updatedAt: at,
+          ...(cinematographyChanged ? { cinematographyChangedAt: at } : {}),
+        })
         .where(eq(projects.id, id))
         .run();
       return get(id);
+    },
+
+    cinematographyChangedAt(id) {
+      const row = db
+        .select({ at: projects.cinematographyChangedAt })
+        .from(projects)
+        .where(eq(projects.id, id))
+        .get();
+      return row?.at ?? undefined;
     },
   };
 }

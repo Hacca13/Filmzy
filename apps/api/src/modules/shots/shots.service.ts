@@ -15,6 +15,7 @@ import type {
   LocationStore,
   MoodboardChanges,
   MoodboardStore,
+  SheetStore,
   ShotStore,
   StoredShotPlan,
   TakeStore,
@@ -25,13 +26,31 @@ import { Inject, Injectable } from '@nestjs/common';
 import { domainError } from '../../http/domain-error.js';
 import { BibleService } from '../bible/bible.service.js';
 import { withoutImages } from '../bible/without-images.js';
+import { SHEET_STORE } from '../cast/tokens.js';
 import { LOCATION_STORE } from '../locations/tokens.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
-import { locationChangeFlags, mergeFlags, moodboardChangeFlags, oldestWork } from './continuity.js';
-import { hashScene, isStale, sceneIdOf, settleShots, type KnownIds } from './plan-shots.js';
+import { chainFlags, type Names, type PreviousScene } from './chain-flags.js';
+import {
+  characterSheetFlags,
+  cinematographyChangeFlags,
+  frameChangeFlags,
+  locationChangeFlags,
+  mergeFlags,
+  moodboardChangeFlags,
+  oldestWork,
+  removedCharacterFlags,
+} from './continuity.js';
+import {
+  hashScene,
+  isStale,
+  sceneIdOf,
+  settleShots,
+  usableExit,
+  type KnownIds,
+} from './plan-shots.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
 import { STALE_WORK_MS } from './work.js';
 
@@ -58,6 +77,7 @@ export class ShotsService {
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(LOCATION_STORE) private readonly locations: LocationStore,
     @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
+    @Inject(SHEET_STORE) private readonly sheets: SheetStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -72,6 +92,10 @@ export class ShotsService {
       clips: this.takes.latestClips(projectId),
       working: this.workingNow(projectId),
       locationChanges: this.locations.referenceChanges(projectId),
+      sheetChanges: this.sheets.sheetChanges(projectId),
+      framesChanges: this.store.framesChanges(projectId),
+      cinematographyChangedAt: this.projects.cinematographyChangedAt(projectId),
+      characterNames: known.names.characters,
       workedAt: this.workedAt(projectId),
       moodboardChanges: config.features.moodboard
         ? this.moodboards.changes(projectId)
@@ -79,11 +103,13 @@ export class ShotsService {
       takeAt: this.takes.lastTakeAt(projectId),
     };
 
+    const scenes = final.screenplay.scenes.map((scene) =>
+      scenePlan(scene, stored.get(scene.number), known, extras),
+    );
+
     return {
       finalVersionId: final.id,
-      scenes: final.screenplay.scenes.map((scene) =>
-        scenePlan(scene, stored.get(scene.number), known, extras),
-      ),
+      scenes: addChainFlags(scenes, stored, known.names),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
         label,
@@ -138,16 +164,13 @@ export class ShotsService {
       shots,
     });
     this.projects.reach(projectId, 'shots');
-    // Il piano è appena stato rifatto: le inquadrature sono nuove e nessuna ha ancora una variante né un take.
-    return scenePlan(scene, saved, this.bible.knownIds(projectId), {
-      chosen: {},
-      clips: {},
-      working: {},
-      locationChanges: {},
-      workedAt: {},
-      moodboardChanges: { scenes: {} },
-      takeAt: {},
-    });
+    // Il piano è appena stato rifatto: la scheda della scena è quella di `plans`, con i suoi gialli (R1 e R2 compresi).
+    const scenePlanned = (await this.plans(projectId)).scenes.find(
+      (item) => item.sceneNumber === saved.sceneNumber,
+    );
+    if (scenePlanned === undefined)
+      throw domainError(404, 'not_found', { details: { field: 'sceneNumber' } });
+    return scenePlanned;
   }
 
   /** Cambia il movimento di macchina di un'inquadratura, scegliendolo dai movimenti attivi. */
@@ -229,8 +252,7 @@ export class ShotsService {
       (scene) => scene.number === before?.sceneNumber,
     );
     if (before === undefined || beforeScene === undefined) return null;
-    if (isStale(beforeScene, before, known)) return null;
-    return before.shots.at(-1)?.continuity.exit ?? null;
+    return usableExit(before, isStale(beforeScene, before, known)) ?? null;
   }
 
   private async config(): Promise<TroupeConfig> {
@@ -251,6 +273,12 @@ interface PerShot {
   /** Quando è cambiato il riferimento dei luoghi che l'hanno cambiato, e quando è finito l'ultimo lavoro di ogni inquadratura (ms): servono ai gialli (R6). */
   locationChanges: Readonly<Record<string, number>>;
   workedAt: Readonly<Record<string, number>>;
+  /** Quando è cambiata la scheda di ogni personaggio (R3) e il primo o l'ultimo fotogramma di ogni inquadratura (R5), e come si chiamano i personaggi (ms). */
+  sheetChanges: Readonly<Record<string, number>>;
+  framesChanges: Readonly<Record<string, number>>;
+  /** Quando è cambiata la fotografia del film (R4). */
+  cinematographyChangedAt: number | undefined;
+  characterNames: Readonly<Record<string, string>>;
   /** Quando sono cambiati palette e consigli del moodboard, e quando è finito l'ultimo take di ogni inquadratura (ms): servono ai gialli leggeri (R9). */
   moodboardChanges: MoodboardChanges;
   takeAt: Readonly<Record<string, number>>;
@@ -270,6 +298,36 @@ const forShots = <T>(
     }),
   );
 
+/**
+ * R1 e R2 di ogni scena. R2 guarda la scena pensata subito prima, che fa da punto di partenza solo se
+ * il suo piano vale ancora (lo stesso criterio di `exitBefore`); una scena da rifare non dà gialli di
+ * continuità.
+ */
+function addChainFlags(
+  scenes: readonly ScenePlan[],
+  stored: ReadonlyMap<number, StoredShotPlan>,
+  names: Names,
+): ScenePlan[] {
+  let before: PreviousScene | undefined;
+  return scenes.map((current) => {
+    const plan = stored.get(current.sceneNumber);
+    if (plan === undefined) return current;
+    const plannedAt = Date.parse(plan.createdAt);
+    const exit = usableExit(plan, current.stale);
+    const chained = current.stale
+      ? current
+      : {
+          ...current,
+          flags: mergeFlags(
+            chainFlags({ shots: plan.shots, plannedAt, before, names }),
+            current.flags,
+          ),
+        };
+    before = exit === undefined ? undefined : { exit, plannedAt };
+    return chained;
+  });
+}
+
 /** Una scena della stesura con il suo piano, se c'è, e ciò che la card mostra di ogni sua inquadratura. */
 function scenePlan(
   scene: ScreenplayScene,
@@ -287,10 +345,23 @@ function scenePlan(
     stale: plan !== undefined && isStale(scene, plan, known),
     ...(plan?.notes === undefined ? {} : { notes: plan.notes }),
     shots,
+    sceneFlags: removedCharacterFlags(scene, known.characters),
     chosenStoryboards: forShots(shots, extras.chosen),
     clips: forShots(shots, extras.clips),
     working: forShots(shots, extras.working),
     flags: mergeFlags(
+      characterSheetFlags({
+        shots,
+        changedAt: extras.sheetChanges,
+        workedAt: extras.workedAt,
+        names: extras.characterNames,
+      }),
+      frameChangeFlags({ shots, changedAt: extras.framesChanges, takeAt: extras.takeAt }),
+      cinematographyChangeFlags({
+        shots,
+        changedAt: extras.cinematographyChangedAt,
+        takeAt: extras.takeAt,
+      }),
       locationChangeFlags({
         shots,
         changedAt: extras.locationChanges,

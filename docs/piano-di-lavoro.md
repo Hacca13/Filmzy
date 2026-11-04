@@ -239,6 +239,10 @@ _Fatto quando:_ un film senza moodboard funziona come prima; con un moodboard ge
 _Leggere: architettura §5.5, §8 e §9._
 
 **T5.1** Regole R1–R8 (R9 arriva con il moodboard, T4.10), con segnalazioni gialle (R4 e R8 con avviso leggero) e motivo.
+Da fare a tre passi: (1) R1 e R2, che si calcolano dal piano; (2) R3 e R5, che hanno bisogno di sapere quando è cambiata una scheda o un fotogramma; (3) R4 e R7, la dicitura e l'interfaccia. **R8 aspetta gli effetti sonori (T5.5)**: oggi non ci sono effetti da avvisare.
+Passo 1 fatto il 4/11 (D74): ogni giallo ha un peso deciso dal server (`light`); R1 (dentro la scena l'entrata combacia con l'uscita di prima) e R2 (la scena prima è stata ripensata dopo e ora non combacia) si calcolano dal piano, con il motivo che dice cosa è diverso; l'aiuto regista può dichiarare un cambiamento voluto (`continuity.change`).
+Passo 2 fatto il 4/11 (D74, migrazione 0020): R3 (la scheda di un personaggio è cambiata, cioè il volto bloccato su un altro tentativo o sbloccato, dopo il lavoro: gialle le inquadrature in cui c'è) e R5 (il primo o l'ultimo fotogramma è cambiato dopo il video: giallo). Si ricordano le date, i gialli si ricalcolano.
+Passo 3 fatto il 4/11 (D74, migrazione 0021): R4 (la fotografia del film è cambiata dopo il video: avviso leggero) e R7 (la scena nomina un personaggio che non c'è più: la scena è gialla, `sceneFlags`); un solo componente dell'interfaccia (`FlagNote`) mostra i gialli di card e scene. Qui finisce T5.1 tranne R8 (T5.5). Manca: «Rigenera» e «Ignora» (T5.3), le segnalazioni della segretaria di edizione (T5.2).
 Nota: le regole non coprono la continuità **tra scene diverse** (architettura §8): è un caso da provare con i tester (T6.6) prima di decidere se serve una regola in più.
 **T5.2** Segretaria di edizione sulle incoerenze di trama.
 **T5.3** Azioni sul giallo: Rigenera o Ignora.

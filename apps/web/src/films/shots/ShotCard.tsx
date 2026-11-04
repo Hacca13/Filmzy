@@ -2,6 +2,7 @@ import type { ContinuityFlag, ProjectChoice, ScenePlan, ShotSpec } from '@filmzy
 
 import { assetUrl } from '../../api/sheet';
 import { Chip } from '../../components/ui';
+import { FlagNote } from './FlagNote';
 import { continuityLine, humanize, type Names } from './model';
 
 type ShotWork = ScenePlan['working'][string];
@@ -12,18 +13,6 @@ const WORK_TEXT: Record<ShotWork, string> = {
   end_frame: "Sto disegnando l'ultimo fotogramma…",
   video: 'Sto girando il video…',
 };
-
-/**
- * Il chip di un giallo: «Da rivedere» per un luogo cambiato (R6), un avviso leggero (R9, il moodboard
- * cambiato dopo il video) con un tono più calmo. Sempre con parole, mai solo colore.
- */
-function FlagChip({ code }: { code: string }) {
-  return code === 'R9' ? (
-    <Chip tone="info">Avviso leggero</Chip>
-  ) : (
-    <Chip tone="warning">Da rivedere</Chip>
-  );
-}
 
 interface Props {
   shot: ShotSpec;
@@ -37,7 +26,7 @@ interface Props {
   clipAssetId?: string | undefined;
   /** Cosa si sta facendo adesso per questa inquadratura (T4.4): la card lo dice e, finito, mostra il risultato. */
   working?: ShotWork | undefined;
-  /** I gialli di questa inquadratura (T4.9): per ora un luogo cambiato dopo che l'inquadratura era stata fatta (R6). */
+  /** I gialli di questa inquadratura (T4.9, T5.1): una regola di continuità che non torna, con il motivo. */
   flags?: readonly ContinuityFlag[] | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
@@ -93,10 +82,7 @@ export function ShotCard({
       )}
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
-        <div key={flag.code} className="shot-flag">
-          <FlagChip code={flag.code} />
-          <p className="hint">{flag.reason}</p>
-        </div>
+        <FlagNote key={flag.code} flag={flag} />
       ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>

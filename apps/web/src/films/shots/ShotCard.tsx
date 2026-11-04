@@ -72,6 +72,18 @@ export function ShotCard({
     ? movements
     : [...movements, { id: current, label: humanize(current) }];
 
+  // Cosa offrire lo dice il server (`flag.fix`). Rifare il lavoro si fa dal riquadro dell'inquadratura, con
+  // servizio e stima in vista (D30): qui si apre soltanto.
+  const fixOf = (flag: ContinuityFlag) => {
+    if (flag.fix === 'regenerate' && canStoryboard && onOpen !== undefined) {
+      return { label: 'Rigenera', run: onOpen };
+    }
+    if (flag.fix === 'replan' && onReplan !== undefined && replanLabel !== undefined) {
+      return { label: replanLabel, run: onReplan };
+    }
+    return undefined;
+  };
+
   return (
     <li className="shot-card">
       {clipAssetId === undefined ? null : (
@@ -97,24 +109,14 @@ export function ShotCard({
           key={flag.key}
           flag={flag}
           busy={busy}
-          // Rifare il lavoro si fa dal riquadro dell'inquadratura, con servizio e stima in vista (D30).
-          fixLabel={
-            flag.fix === 'regenerate' && canStoryboard
-              ? 'Rigenera'
-              : flag.fix === 'replan'
-                ? replanLabel
-                : undefined
+          fix={fixOf(flag)}
+          onIgnored={
+            onFlagIgnored === undefined
+              ? undefined
+              : (ignored) => {
+                  onFlagIgnored(flag.key, ignored);
+                }
           }
-          onFix={
-            flag.fix === 'regenerate' && canStoryboard
-              ? onOpen
-              : flag.fix === 'replan'
-                ? onReplan
-                : undefined
-          }
-          onIgnored={(ignored) => {
-            onFlagIgnored?.(flag.key, ignored);
-          }}
         />
       ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>

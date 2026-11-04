@@ -1,5 +1,5 @@
 import type { ProjectChoice, ScenePlan, ShotPlans } from '@filmzy/contracts';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '../../api/client';
 import { fetchCast } from '../../api/cast';
@@ -92,6 +92,11 @@ function ShotsView({ filmId, plans, reload }: ViewProps) {
       String(scene.stale),
       ...scene.shots.map((shot) => shot.id),
     ]),
+    // Una segnalazione ignorata da una card deve risultare ignorata anche nell'elenco del controllo.
+    ...plans.scenes
+      .flatMap((scene) => [...Object.values(scene.flags).flat(), ...scene.sceneFlags])
+      .filter((flag) => flag.origin === 'llm' && flag.ignored)
+      .map((flag) => flag.key),
   ].join(',');
 
   return (
@@ -171,6 +176,20 @@ function SceneSection({
   const chip = sceneChip(scene);
   // Se il piano è rifatto l'inquadratura aperta sparisce, e con lei il suo storyboard.
   const storyboardShot = scene.shots.find((shot) => shot.id === storyboardShotId);
+  // Rifare il piano toglie storyboard e video di tutta la scena: se ce ne sono, prima lo si dice.
+  const [confirmingPlan, setConfirmingPlan] = useState(false);
+  const hasWork =
+    Object.keys(scene.clips).length > 0 || Object.keys(scene.chosenStoryboards).length > 0;
+  const requestPlan = () => {
+    if (hasWork) setConfirmingPlan(true);
+    else onPlan();
+  };
+  // «Rigenera» apre il riquadro sotto la striscia, magari fuori dallo schermo: lo si porta in vista.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [openRequest, setOpenRequest] = useState(0);
+  useEffect(() => {
+    if (openRequest > 0) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [openRequest]);
   const planLabel =
     estimateUsd === undefined ? verb : `${verb} · circa ${formatEstimate(estimateUsd)}`;
   const setIgnored = (key: string) => (ignored: boolean) => {
@@ -227,8 +246,9 @@ function SceneSection({
               }}
               onOpen={() => {
                 setStoryboardShotId(shot.id);
+                setOpenRequest((count) => count + 1);
               }}
-              onReplan={onPlan}
+              onReplan={requestPlan}
               replanLabel={planLabel}
               storyboardOpen={shot.id === storyboardShotId}
               canStoryboard={!scene.stale}
@@ -240,15 +260,17 @@ function SceneSection({
         </ol>
       )}
       {storyboardShot === undefined ? null : (
-        <ShotImagesPanel
-          key={storyboardShot.id}
-          filmId={filmId}
-          shot={storyboardShot}
-          onChanged={reload}
-          onClose={() => {
-            setStoryboardShotId(undefined);
-          }}
-        />
+        <div ref={panelRef}>
+          <ShotImagesPanel
+            key={storyboardShot.id}
+            filmId={filmId}
+            shot={storyboardShot}
+            onChanged={reload}
+            onClose={() => {
+              setStoryboardShotId(undefined);
+            }}
+          />
+        </div>
       )}
       {scene.notes === undefined ? null : <p className="hint">Note: {scene.notes}</p>}
       <div className="actions">
@@ -257,11 +279,42 @@ function SceneSection({
           className="button"
           data-kind={scene.planned ? undefined : 'primary'}
           disabled={written.running}
-          onClick={onPlan}
+          onClick={requestPlan}
         >
           {working ? 'Sto pensando…' : planLabel}
         </button>
       </div>
+      {confirmingPlan ? (
+        <>
+          <Notice tone="info" title="Prima di rifarle">
+            Rifare le inquadrature di questa scena toglie gli storyboard e i video già fatti: non
+            tornano, e quello che hai speso non si recupera.
+          </Notice>
+          <div className="actions">
+            <button
+              type="button"
+              className="button"
+              data-kind="danger"
+              disabled={written.running}
+              onClick={() => {
+                setConfirmingPlan(false);
+                onPlan();
+              }}
+            >
+              Rifalle lo stesso
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setConfirmingPlan(false);
+              }}
+            >
+              Annulla
+            </button>
+          </div>
+        </>
+      ) : null}
       {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       {showOutcome ? <WriteOutcome written={written} /> : null}
     </section>

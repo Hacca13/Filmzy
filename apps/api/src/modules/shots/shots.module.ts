@@ -10,6 +10,7 @@ import {
   takeFrameBodySchema,
   type PlanSceneEstimate,
   type ScenePlan,
+  type SetFlagIgnoredBody,
   type SheetOptions,
   type ShotImages,
   type ShotPlans,
@@ -66,7 +67,10 @@ class ShotsController {
 
   /** «Ignora» un giallo o lo rimette (T5.3). */
   @Put('flags')
-  setFlagIgnored(@Param('projectId') projectId: string, @Body() body: unknown): Promise<ShotPlans> {
+  setFlagIgnored(
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+  ): Promise<SetFlagIgnoredBody> {
     return this.shots.setFlagIgnored(projectId, parseBody(setFlagIgnoredBodySchema, body));
   }
 

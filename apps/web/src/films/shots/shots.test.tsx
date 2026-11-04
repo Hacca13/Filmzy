@@ -133,16 +133,14 @@ describe('FlagNote', () => {
     const open = renderToStaticMarkup(
       <FlagNote
         flag={flag()}
-        fixLabel="Rigenera"
-        onFix={() => undefined}
+        fix={{ label: 'Rigenera', run: () => undefined }}
         onIgnored={() => undefined}
       />,
     );
     const ignored = renderToStaticMarkup(
       <FlagNote
         flag={flag({ ignored: true })}
-        fixLabel="Rigenera"
-        onFix={() => undefined}
+        fix={{ label: 'Rigenera', run: () => undefined }}
         onIgnored={() => undefined}
       />,
     );
@@ -225,6 +223,7 @@ describe('ShotCard', () => {
         replanLabel: 'Rifai le inquadrature · circa 0,03 $',
         onOpen: () => undefined,
         onReplan: () => undefined,
+        onFlagIgnored: () => undefined,
         flags: [
           {
             code: 'R1',

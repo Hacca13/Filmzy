@@ -144,8 +144,9 @@ export function chainFlags(input: ChainInput): Record<string, ContinuityFlag[]> 
         flags[shot.id] = [
           ruleFlag({
             code: 'R2',
-            // Se la scena prima cambia ancora, è un'altra situazione.
-            key: `R2:${shot.id}:${createHash('sha256').update(JSON.stringify(input.before)).digest('hex').slice(0, 12)}`,
+            // Se la scena prima cambia ancora in un altro modo è un'altra situazione; se il modello riscrive
+            // la stessa uscita con altre parole, no: si guarda a cosa è diverso, non al testo.
+            key: `R2:${shot.id}:${createHash('sha256').update(differences.join('|')).digest('hex').slice(0, 12)}`,
             reason: `La scena prima è stata ripensata e ora finisce in modo diverso da come questa comincia: ${differences.join('; ')}. Rifai il piano di questa scena per tenerle allineate.`,
             fix: 'replan',
           }),

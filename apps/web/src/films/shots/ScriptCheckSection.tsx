@@ -105,23 +105,20 @@ export function ScriptCheckSection({ filmId, stamp, onChecked }: Props) {
             <li key={issue.id}>
               {issuePlace(issue) === '' ? null : <p className="shot-number">{issuePlace(issue)}</p>}
               <FlagNote
-                flag={{
-                  code: issue.code,
-                  key: issue.key,
-                  reason: issue.reason,
-                  origin: 'llm',
-                  light: issue.light,
-                  fix: 'none',
-                  ignored: issue.ignored,
-                }}
-                busy={action.busy}
-                onIgnored={(ignored) => {
-                  action.run(async () => {
-                    await setFlagIgnored(filmId, { key: issue.key, ignored });
-                    check.reload();
-                    onChecked();
-                  });
-                }}
+                flag={issue}
+                // Una nuova lettura sostituisce le segnalazioni: mentre lavora, e su un controllo vecchio, non si sceglie.
+                busy={action.busy || written.running}
+                onIgnored={
+                  view.state === 'current'
+                    ? (ignored) => {
+                        action.run(async () => {
+                          await setFlagIgnored(filmId, { key: issue.key, ignored });
+                          check.reload();
+                          onChecked();
+                        });
+                      }
+                    : undefined
+                }
               />
             </li>
           ))}

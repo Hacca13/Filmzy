@@ -3,58 +3,40 @@ import type { ContinuityFlag } from '@filmzy/contracts';
 import { Chip } from '../../components/ui';
 
 interface Props {
-  flag: ContinuityFlag;
+  flag: Pick<ContinuityFlag, 'light' | 'reason' | 'ignored'>;
   /** Il pulsante che risolve questo giallo, se da qui si può fare qualcosa (deciso dal server con `flag.fix`). */
-  fixLabel?: string | undefined;
-  onFix?: (() => void) | undefined;
+  fix?: { label: string; run: () => void } | undefined;
   /** «Ignora» o «Rimetti»: senza, il giallo si legge e basta. */
   onIgnored?: ((ignored: boolean) => void) | undefined;
   busy?: boolean;
 }
 
+/** Il chip di un giallo: sempre con parole, mai solo colore. */
+function FlagChip({ flag }: Pick<Props, 'flag'>) {
+  if (flag.ignored) return <Chip tone="info">Ignorato</Chip>;
+  return flag.light ? (
+    <Chip tone="info">Avviso leggero</Chip>
+  ) : (
+    <Chip tone="warning">Da rivedere</Chip>
+  );
+}
+
 /**
  * Un giallo di continuità, di un'inquadratura o di una scena: «Da rivedere», oppure «Avviso leggero» con
- * un tono più calmo quando il server dice che è leggero (R4, R9), e il motivo scritto per esteso. Sempre
- * con parole, mai solo colore. Niente si rifà da solo (§8): decide l'utente, che può anche ignorarlo e
- * cambiare idea (T5.3).
+ * un tono più calmo quando il server dice che è leggero (R4, R9), e il motivo scritto per esteso. Niente
+ * si rifà da solo (§8): decide l'utente, che può anche ignorarlo e cambiare idea (T5.3).
  */
-export function FlagNote({ flag, fixLabel, onFix, onIgnored, busy = false }: Props) {
-  if (flag.ignored) {
-    return (
-      <div className="shot-flag" data-ignored="true">
-        <Chip tone="info">Ignorato</Chip>
-        <p className="hint">{flag.reason}</p>
-        {onIgnored === undefined ? null : (
-          <div className="actions">
-            <button
-              type="button"
-              className="button"
-              disabled={busy}
-              onClick={() => {
-                onIgnored(false);
-              }}
-            >
-              Rimetti
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
+export function FlagNote({ flag, fix, onIgnored, busy = false }: Props) {
+  const shownFix = flag.ignored ? undefined : fix;
   return (
     <div className="shot-flag">
-      {flag.light ? (
-        <Chip tone="info">Avviso leggero</Chip>
-      ) : (
-        <Chip tone="warning">Da rivedere</Chip>
-      )}
+      <FlagChip flag={flag} />
       <p className="hint">{flag.reason}</p>
-      {onFix === undefined && onIgnored === undefined ? null : (
+      {shownFix === undefined && onIgnored === undefined ? null : (
         <div className="actions">
-          {onFix === undefined || fixLabel === undefined ? null : (
-            <button type="button" className="button" disabled={busy} onClick={onFix}>
-              {fixLabel}
+          {shownFix === undefined ? null : (
+            <button type="button" className="button" disabled={busy} onClick={shownFix.run}>
+              {shownFix.label}
             </button>
           )}
           {onIgnored === undefined ? null : (
@@ -63,10 +45,10 @@ export function FlagNote({ flag, fixLabel, onFix, onIgnored, busy = false }: Pro
               className="button"
               disabled={busy}
               onClick={() => {
-                onIgnored(true);
+                onIgnored(!flag.ignored);
               }}
             >
-              Ignora
+              {flag.ignored ? 'Rimetti' : 'Ignora'}
             </button>
           )}
         </div>

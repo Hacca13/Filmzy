@@ -168,6 +168,13 @@ describe('controllare la storia', () => {
     const scene = shotPlansSchema.parse((await finds.client.call('GET', shots)).body).scenes[0];
     expect(scene?.sceneFlags).toEqual([]);
 
+    // Un controllo vecchio non si ignora: quella segnalazione non vale più.
+    const late = await finds.client.call('PUT', `${shots}/flags`, {
+      key: old.issues[1]?.key,
+      ignored: true,
+    });
+    expect(failure(late)).toMatchObject({ status: 409, code: 'invalid_request' });
+
     // Rifatto, torna a valere.
     await finds.client.call('POST', `/projects/${film.id}/script-check`, {});
     expect((await view(finds, film.id)).state).toBe('current');

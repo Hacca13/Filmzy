@@ -1,5 +1,7 @@
 import type { ContinuityFlag, ScenePlan, ScreenplayScene, ShotSpec } from '@filmzy/contracts';
 
+import { hashScene } from './plan-shots.js';
+
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
  * ci sono R3, R4, R5, R6 (T4.9, D21), R7 e R9 (T4.10, D37); R1 e R2 stanno in `chain-flags.ts`. Sono funzioni pure, così
@@ -139,7 +141,8 @@ export function removedCharacterFlags(
   return [
     ruleFlag({
       code: 'R7',
-      key: `R7:${String(scene.number)}:${[...missing].sort().join(',')}`,
+      // Se la scena viene riscritta è un'altra situazione: il numero da solo non basta.
+      key: `R7:${hashScene(scene)}:${[...missing].sort().join(',')}`,
       reason: `Questa scena nomina ${who}. Correggi la stesura o rimetti nel cast chi serve.`,
       fix: 'none',
     }),

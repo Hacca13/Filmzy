@@ -1,6 +1,7 @@
 import {
   planSceneEstimateSchema,
   scenePlanSchema,
+  setFlagIgnoredBodySchema,
   shotPlansSchema,
   shotSpecSchema,
   type ChangeShotBody,
@@ -36,7 +37,7 @@ export function planScene(filmId: string, body: PlanSceneBody) {
 
 /** «Ignora» un giallo o lo rimette (T5.3). */
 export function setFlagIgnored(filmId: string, body: SetFlagIgnoredBody) {
-  return sendJson('PUT', `${base(filmId)}/flags`, shotPlansSchema, body);
+  return sendJson('PUT', `${base(filmId)}/flags`, setFlagIgnoredBodySchema, body);
 }
 
 export function changeShotMovement(filmId: string, shotId: string, body: ChangeShotBody) {

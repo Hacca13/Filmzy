@@ -234,8 +234,39 @@ models:
     quality: {}
     status: active
 
-  # --- Musica ----------------------------------------------------------------
-  # Gli effetti sonori non hanno ancora un modello: serve una ricerca (T5.4).
+  # --- Musica ed effetti ------------------------------------------------------
+  # Scelti in T5.4 (D78). Su fal, quindi con la stessa chiave dei video. Stability dichiara: i risultati sono
+  # dell'utente, nessun limite per tipo di opera (film compresi), dati di addestramento con licenza; la licenza
+  # Community vale sotto 1 milione di dollari di fatturato annuo. Id e prezzi verificati sulle pagine del
+  # fornitore il 4/11, come i video in T1.7; la prova d'ascolto è ancora da fare (D78).
+  music-stable-audio-3:
+    label: Stable Audio 3 · Musica
+    kind: music
+    connection: fal
+    provider_model: fal-ai/stable-audio-3/small/music/base/text-to-audio
+    family: stable_audio
+    capabilities:
+      commercial_use: true
+      max_duration_s: 120                     # «up to 2 minutes» sulla pagina del punto d'accesso
+    request_fields: { prompt: prompt, negative_prompt: negative_prompt, duration_s: duration }
+    pricing: { unit: per_audio, value: 0.0281, note: "a clip, come dice la pagina; se dipende dalla durata lo dirà la prova d'ascolto", checked: 2026-11-04 }
+    status: active
+
+  sfx-stable-audio-3:
+    label: Stable Audio 3 · Effetti
+    kind: sfx
+    connection: fal
+    provider_model: fal-ai/stable-audio-3/small/sfx/base/text-to-audio
+    family: stable_audio
+    capabilities:
+      commercial_use: true
+      max_duration_s: 30                      # la pagina non dà un massimo: valore prudente, un effetto è breve
+    request_fields: { prompt: prompt, negative_prompt: negative_prompt, duration_s: duration }
+    pricing: { unit: per_audio, value: 0.0283, note: "a clip, come dice la pagina; se dipende dalla durata lo dirà la prova d'ascolto", checked: 2026-11-04 }
+    status: active
+
+  # Non in uso (D78): i termini di Eleven Music escludono «film, TV, radio» su tutti i piani tranne Enterprise
+  # Music e vietano di offrire i modelli tramite applicazioni di terzi. Filmzy fa film.
   music-elevenlabs:
     label: ElevenLabs Music
     kind: music
@@ -243,6 +274,6 @@ models:
     provider_model: music_v2_5
     family: elevenlabs_music
     capabilities:
-      commercial_use: true                    # sui piani a pagamento; per film e TV il fornitore chiede il piano Enterprise: da chiarire in T5.4
+      commercial_use: false                   # per i film serve il piano Enterprise Music (D78)
     pricing: { unit: per_second, value: 0.0025, note: "0,15 $ al minuto; clip da 3 s a 5 minuti", checked: 2026-10-21 }
-    status: testing                           # id del modello verificato, indirizzo del punto d'accesso ancora da verificare (T5.4)
+    status: testing                           # POST /v1/music verificato il 4/11; manca l'adapter, e resta spento (D78)

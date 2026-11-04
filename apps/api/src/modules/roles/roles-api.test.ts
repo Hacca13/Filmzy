@@ -5,9 +5,12 @@ import {
   type RoleState,
 } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { cp, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { startApp, type Client } from '../../test-support/app-client.js';
+import { CONFIG_DIR, startApp, type Client } from '../../test-support/app-client.js';
 
 let app: NestExpressApplication;
 let client: Client;
@@ -79,10 +82,39 @@ describe('chi fa cosa (T2.7)', () => {
   });
 
   it('un ruolo spento lo dice col suo motivo, e non ha un servizio', async () => {
-    const composer = await role('composer');
+    // Nel seme non ce n'è uno spento: lo si spegne in una copia della configurazione.
+    const configDir = await mkdtemp(path.join(tmpdir(), 'filmzy-config-'));
+    await cp(CONFIG_DIR, configDir, { recursive: true });
+    const roles = path.join(configDir, 'ai', 'roles.yaml');
+    await writeFile(
+      roles,
+      (await readFile(roles, 'utf8')).replace(
+        'model: music-stable-audio-3',
+        'enabled: false\n    model: music-stable-audio-3',
+      ),
+    );
+    const started = await startApp(undefined, 'offline', configDir);
 
-    expect(composer).toMatchObject({ enabled: false, problem: 'role_disabled' });
-    expect(composer.inUse).toBeUndefined();
+    try {
+      const overview = rolesOverviewSchema.parse((await started.client.call('GET', '/roles')).body);
+      const composer = overview.roles.find((candidate) => candidate.roleId === 'composer');
+
+      expect(composer).toMatchObject({ enabled: false, problem: 'role_disabled' });
+      expect(composer?.inUse).toBeUndefined();
+    } finally {
+      await started.app.close();
+    }
+  }, 60_000);
+
+  it('il compositore e il rumorista lavorano con i servizi di fal (T5.4, D78)', async () => {
+    expect(await role('composer')).toMatchObject({
+      enabled: true,
+      inUse: { connectionId: 'fal', modelId: 'music-stable-audio-3' },
+    });
+    expect(await role('sfx_artist')).toMatchObject({
+      enabled: true,
+      inUse: { connectionId: 'fal', modelId: 'sfx-stable-audio-3' },
+    });
   });
 
   it('dice anche la versione delle istruzioni in uso', async () => {

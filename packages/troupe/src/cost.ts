@@ -26,7 +26,7 @@ export function llmCostUsd(pricing: ModelPricing, usage: LlmUsage | undefined): 
   return (inputTokens * inputPrice + outputTokens * outputPrice) / 1_000_000;
 }
 
-/** Il costo di un lavoro di media: a secondo o a immagine, secondo il prezzo del catalogo. */
+/** Il costo di un lavoro di media: a secondo o a file (immagine o clip audio), secondo il prezzo del catalogo. */
 export function mediaCostUsd(
   pricing: ModelPricing,
   usage: { seconds?: number; images?: number } | undefined,
@@ -34,7 +34,7 @@ export function mediaCostUsd(
   if (pricing.unit === 'per_second') {
     return usage?.seconds === undefined ? undefined : usage.seconds * pricing.value;
   }
-  if (pricing.unit === 'per_image') {
+  if (pricing.unit === 'per_image' || pricing.unit === 'per_audio') {
     return usage?.images === undefined ? undefined : usage.images * pricing.value;
   }
   return undefined;

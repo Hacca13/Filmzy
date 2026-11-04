@@ -5,8 +5,8 @@ features:
   real_people: false     # cast personale: dopo il test sui volti reali e la consulenza legale (D4)
   dialogue: false        # voci generate per i dialoghi: Fase 2 (le registrazioni caricate funzionano già, D27)
   dubbing: false         # doppiaggio: Fase 3
-  music: false           # musica per scena: dopo la scelta del fornitore (T5.4)
-  sound_effects: false   # effetti sonori e "Suggerisci i suoni": dopo la scelta del fornitore (T5.4)
+  music: false           # musica per scena: si accende con le tracce audio (T5.5)
+  sound_effects: false   # effetti sonori e "Suggerisci i suoni": si accendono con le tracce audio (T5.5)
   preview_gate: false    # anteprima video economica prima del take finale (idea da valutare)
   keyframes: false       # "Imposta le immagini": primo e ultimo fotogramma scelti dall'utente (D20); si accende in M4
   image_upload: true     # caricare luoghi e oggetti, con controllo facoltativo delle immagini (D19, D71)

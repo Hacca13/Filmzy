@@ -138,17 +138,16 @@ roles:
   composer:
     label: Compositore
     kind: music
-    model: music-elevenlabs
+    model: music-stable-audio-3               # D78
     instructions: composer@1                  # template del prompt audio, senza LLM
     retries: { technical_error: 2 }
-    enabled: false                            # si accende in T5.4, quando il fornitore è verificato
 
   sfx_artist:
     label: Rumorista
     kind: sfx
+    model: sfx-stable-audio-3                 # D78
     instructions: sfx_artist@1
     retries: { technical_error: 2 }
-    enabled: false                            # il fornitore degli effetti sonori è da ricercare (T5.4)
 
   sound_planner:
     label: Sound designer

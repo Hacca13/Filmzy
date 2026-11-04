@@ -35,6 +35,56 @@ function shot(): TranslateInput {
   };
 }
 
+describe('musica ed effetti (T5.4, D78)', () => {
+  const clip = (modelId: string, durationS: number): TranslateInput => ({
+    role: 'composer',
+    modelId,
+    prompt: 'sparse piano, bittersweet',
+    negativePrompt: 'vocals',
+    inputs: [],
+    characterIds: [],
+    durationS,
+    params: {},
+    idempotencyKey: 'clip-1',
+  });
+
+  it('prompt, negativo e durata vanno nei campi della pagina del fornitore, e la durata è un numero', () => {
+    const model = modelOf(seed, 'music-stable-audio-3');
+
+    expect(translator('stable_audio').check(clip('music-stable-audio-3', 20), model)).toEqual([]);
+    expect(
+      translator('stable_audio').build(clip('music-stable-audio-3', 20), model).providerInput,
+    ).toEqual({
+      prompt: 'sparse piano, bittersweet',
+      negative_prompt: 'vocals',
+      duration: 20,
+    });
+  });
+
+  it('oltre il limite la durata si porta dentro: musica fino a 2 minuti, effetti fino a 30 secondi', () => {
+    const music = modelOf(seed, 'music-stable-audio-3');
+    const sfx = modelOf(seed, 'sfx-stable-audio-3');
+
+    expect(
+      translator('stable_audio').build(clip('music-stable-audio-3', 500), music).providerInput,
+    ).toMatchObject({ duration: 120 });
+    expect(
+      translator('stable_audio').build(clip('sfx-stable-audio-3', 90), sfx).providerInput,
+    ).toMatchObject({ duration: 30 });
+  });
+});
+
+describe('il seme di musica ed effetti (D78)', () => {
+  it('compositore e rumorista passano da fal; ElevenLabs Music resta spento e non vale per i film', () => {
+    expect(seed.roles.composer).toMatchObject({ model: 'music-stable-audio-3' });
+    expect(seed.roles.sfx_artist).toMatchObject({ model: 'sfx-stable-audio-3' });
+    expect(modelOf(seed, 'music-stable-audio-3').connection).toBe('fal');
+    expect(modelOf(seed, 'sfx-stable-audio-3').connection).toBe('fal');
+    expect(seed.connections.elevenlabs?.enabled).toBe(false);
+    expect(modelOf(seed, 'music-elevenlabs').capabilities).toMatchObject({ commercial_use: false });
+  });
+});
+
 describe('la stessa inquadratura verso tre famiglie (T1.4)', () => {
   it('ognuna cita i personaggi come vuole il fornitore, e i campi vengono dal catalogo', () => {
     // Sintassi dei riferimenti e forma della durata verificate il 21/10/2026 (T1.7): Kling e

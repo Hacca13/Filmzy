@@ -171,7 +171,7 @@ export function replacePlaceholders(
     .trim();
 }
 
-const FAMILIES = ['kling', 'seedance', 'gemini_omni', 'image_generic'] as const;
+const FAMILIES = ['kling', 'seedance', 'gemini_omni', 'image_generic', 'stable_audio'] as const;
 
 const TRANSLATORS = new Map<string, Translator>(
   FAMILIES.map((family) => [family, translatorFor(family)]),

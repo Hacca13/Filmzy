@@ -105,6 +105,19 @@ describe('fornitori e servizi (T2.7)', () => {
     expect(elevenlabs.canTest).toBe(false);
   });
 
+  it('musica ed effetti stanno su fal, con il prezzo a clip (T5.4, D78)', async () => {
+    const fal = provider(await overview(), 'audio', 'fal');
+
+    expect(fal.services.map((service) => service.modelId).sort()).toEqual([
+      'music-stable-audio-3',
+      'sfx-stable-audio-3',
+    ]);
+    expect(fal.services[0]?.price.unit).toBe('per_audio');
+    expect(fal.usedBy.map((role) => role.roleId)).toEqual(
+      expect.arrayContaining(['composer', 'sfx_artist']),
+    );
+  });
+
   it('attivarne uno spento è rifiutato, e non salva niente', async () => {
     const reply = await put('/connections/elevenlabs/services', { modelIds: ['music-elevenlabs'] });
 

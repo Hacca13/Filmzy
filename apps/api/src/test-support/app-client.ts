@@ -11,7 +11,7 @@ import { createApp } from '../create-app.js';
 import type { SecretCipher } from '../modules/secrets/secret-cipher.js';
 
 /** La cartella `config/` del repository: i file di seme veri. */
-const CONFIG_DIR = fileURLToPath(new URL('../../../../config', import.meta.url));
+export const CONFIG_DIR = fileURLToPath(new URL('../../../../config', import.meta.url));
 
 /** Un cifrario finto ma reversibile: basta a provare che sul disco non resta il testo in chiaro. */
 export const fakeCipher: SecretCipher = {

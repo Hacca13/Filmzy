@@ -43,6 +43,14 @@ function provider(extra: Partial<ProviderState> = {}): ProviderState {
   };
 }
 
+describe('il prezzo di una clip (D78)', () => {
+  it('si dice a clip', () => {
+    expect(formatPrice({ unit: 'per_audio', value: 0.03, checked: '2026-11-04' })).toContain(
+      'a clip',
+    );
+  });
+});
+
 describe('gruppi', () => {
   it("ogni gruppo ha un nome in italiano, e l'ordine li contiene tutti", () => {
     expect([...GROUP_ORDER].sort()).toEqual(Object.keys(GROUP_LABELS).sort());

@@ -849,3 +849,31 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Perché:** senza «Ignora» un falso giallo restava per sempre; con il confronto del testo reso più stretto (D76) serve ancora di più. Una chiave costa meno di salvare i gialli, che restano calcolati.
 **Scartate:** «Rigenera» che parte da solo (spesa senza stima, contro D30); ignorare per codice o per inquadratura (nasconderebbe un cambiamento nuovo); nascondere del tutto i gialli ignorati (l'utente non potrebbe ripensarci).
 **Conseguenze:** `ContinuityFlag.key`, `.fix`, `.ignored`; `ScriptCheckIssue.key`, `.ignored`; `setFlagIgnoredBodySchema`; le chiavi di inquadrature e controlli passati restano in tabella, senza effetto. **Non fatto:** un rimedio guidato per R7 e per le segnalazioni della segretaria (per esempio aprire la stesura alla scena giusta); un elenco di tutti i gialli del film; il confronto con i disegni (`21-le-scene`, `28-stati-di-base`) col prossimo prompt Figma.
+
+## D78 · Musica ed effetti: Stable Audio 3 su fal, perché ElevenLabs Music esclude i film — 04/11/2026
+
+**Realizza** T5.4 (D24, D27, D36). **Cambia** il seme, che da D24 prevedeva ElevenLabs Music.
+**Cosa si è letto (4/11, pagine dei fornitori):**
+
+| Servizio | Prezzo | Durata | Diritti per un film |
+|---|---|---|---|
+| **Stable Audio 3 Small su fal** (musica ed effetti) | 0,0281 e 0,0283 $ a clip | musica fino a 2 minuti; effetti: non dichiarata | Stability: «you own outputs»; «Stable Audio draws no equivalent line by media type»; dati di addestramento dichiarati con licenza; Community License sotto 1 M$ di fatturato annuo, sopra serve Enterprise |
+| ElevenLabs Music (`POST /v1/music`) | 0,15 $/min | fino a 10 minuti (l'API), 5 (il listino) | «except film, TV, radio, and Studio Games» su tutti i piani tranne Enterprise Music; §4.3 vieta di offrire i modelli «through your or any third-party platform or application» |
+| ElevenLabs Sound Effects (`POST /v1/sound-generation`) | 0,12 $/min | fino a 30 s | la pagina cita film e trailer, ma non i diritti |
+| Sonilo su fal (musica ed effetti) | 0,0025 e 0,0018 $/s | 600 e 180 s | «licensed», ma i suoi termini mettono film e TV nel piano Premium; passando da fal non si sa quale piano valga |
+| Lyria 2, MiniMax Music su fal | 0,10 $ per 30 s; 0,15 $ a clip | | etichetta «Commercial use», nessun testo trovato sui film |
+
+**Decisione:**
+1. **Musica ed effetti con Stable Audio 3 su fal** (`music-stable-audio-3`, `sfx-stable-audio-3`; famiglia `stable_audio`): è l'unico con un testo del fornitore che non pone limiti per tipo di opera e dichiara dati con licenza. Costa pochissimo e passa dalla stessa connessione e chiave dei video: nessun adapter, nessuna chiave in più per l'utente. Compaiono in Connessioni, sotto «Musica ed effetti».
+2. **ElevenLabs Music resta spento** (`commercial_use: false`): Filmzy fa film, e l'utente con un piano normale non avrebbe i diritti. Il connettore resta nel catalogo per le voci di Fase 2.
+3. **Prezzo a clip.** Nuova unità `per_audio`. La pagina dice «per audio» senza dire se dipende dalla durata: lo dirà il primo scontrino vero.
+4. **Limiti di durata nel catalogo** (`max_duration_s`): 120 s per la musica (dalla pagina), 30 s per gli effetti (valore prudente: la pagina non lo dà). Una richiesta più lunga si porta dentro il limite.
+5. Compositore e rumorista sono accesi; le funzioni `music` e `sound_effects` restano spente fino a T5.5, che porta le tracce.
+
+**Perché:** «musica solo da fornitori con licenza chiara» (ricerca del 13/10). Il prezzo qui è secondario: una clip costa centesimi con tutti.
+**Rischi, da non dimenticare:**
+- La frase più netta di Stability sta in una pagina di confronto e parla di Stable Audio 3.0; la licenza vera dice che i risultati sono dell'utente e cita Stable Audio 3.0, ma le pagine di fal non linkano nessuna licenza e i termini di fal rimandano alle condizioni dei modelli di terzi. **Serve una conferma scritta e la lettura di un legale** (voce in «Fuori dal codice»): questa è una scelta tecnica prudente, non un parere.
+- Sopra 1 M$ di fatturato annuo l'utente ha bisogno di una licenza Enterprise: va detto nelle condizioni d'uso (T6.2).
+- La qualità è ignota: **nessuna prova d'ascolto**. Va fatta con T4.0, costa pochi centesimi. Il modello Small è il più piccolo; se non basta si valuta Medium o Large (380 s).
+**Scartate:** ElevenLabs Enterprise (contratto, non adatto a un programma con le chiavi dell'utente); Sonilo come predefinito (film su un piano che via fal non si può verificare); Suno (cause aperte, nessuna API). Un secondo servizio in «Cambia servizio» si aggiunge dopo la prova d'ascolto, se la licenza regge.
+**Conseguenze:** `pricing.unit: per_audio`; `capabilities.max_duration_s` per musica ed effetti; famiglia `stable_audio`. **Non fatto:** prova d'ascolto; il collegamento vero (tracce, lavori in coda, R8) è T5.5.

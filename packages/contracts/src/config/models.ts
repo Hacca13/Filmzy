@@ -65,6 +65,7 @@ export const modelPricingSchema = z.discriminatedUnion('unit', [
   pricingPerMtokSchema,
   pricingPerUnitSchema('per_image'),
   pricingPerUnitSchema('per_second'),
+  pricingPerUnitSchema('per_audio'),
 ]);
 
 export type ModelPricing = z.infer<typeof modelPricingSchema>;
@@ -114,8 +115,11 @@ export const videoCapabilitiesSchema = z.object({
   minors: z.boolean(),
 });
 
-/** Capacità di musica, effetti e voci: non ancora dettagliate dall'architettura (§13). */
-export const audioCapabilitiesSchema = z.object({ commercial_use: z.boolean().optional() });
+/** Capacità di musica, effetti e voci. `max_duration_s`: una richiesta più lunga si porta dentro il limite. */
+export const audioCapabilitiesSchema = z.object({
+  commercial_use: z.boolean().optional(),
+  max_duration_s: z.number().positive().optional(),
+});
 
 /** Un servizio di testo che sa leggere le immagini (capacità `vision`, D19, D38). */
 export function isVisionModel(model: { kind: string; capabilities: unknown }): boolean {

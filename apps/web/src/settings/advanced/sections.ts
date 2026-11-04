@@ -66,6 +66,8 @@ function formatPrice(pricing: ModelPricing | undefined): string {
       return `${String(pricing.value)} $ al secondo`;
     case 'per_image':
       return `${String(pricing.value)} $ a immagine`;
+    case 'per_audio':
+      return `${String(pricing.value)} $ a clip`;
     case 'per_mtok':
       return `${String(pricing.input)} / ${String(pricing.output)} $ per milione di token`;
   }

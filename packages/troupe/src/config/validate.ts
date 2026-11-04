@@ -30,7 +30,7 @@ const PRICE_MAX_AGE_DAYS = 30;
  *
  * Un ruolo spento non blocca niente: i suoi riferimenti si controllano comunque, perché un refuso
  * resta un refuso, ma non si pretende che il suo servizio sia utilizzabile oggi (nel seme
- * `composer` aspetta il fornitore della musica, T5.4).
+ * oggi nessuno è spento, ma le impostazioni avanzate lo permettono).
  */
 export function validateConfig(config: TroupeConfig, options: ValidateOptions = {}): ConfigIssue[] {
   const issues: ConfigIssue[] = [];

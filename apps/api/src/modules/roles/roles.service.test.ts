@@ -36,6 +36,10 @@ function config(): TroupeConfig {
   const sonnet = copy.models['claude-sonnet'];
   if (sonnet === undefined) throw new Error('il seme non ha claude-sonnet');
   sonnet.params = { ...sonnet.params, temperature: { min: 0, max: 1 } };
+  // Nel seme non c'è un ruolo spento: qui ne serve uno.
+  const composer = copy.roles.composer;
+  if (composer === undefined) throw new Error('il seme non ha composer');
+  copy.roles.composer = { ...composer, enabled: false };
   return copy;
 }
 

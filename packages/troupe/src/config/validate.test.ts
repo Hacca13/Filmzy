@@ -36,7 +36,7 @@ describe('validateConfig sui file di seme', () => {
     const issues = validateConfig(seed, { now: NOW, secrets: SEED_SECRETS });
 
     // Dopo T1.7 il seme non ha più né errori né avvisi: i servizi che l'MVP usa sono `active`,
-    // con id e prezzi verificati. La musica resta `testing`, ma il suo ruolo è spento (T5.4).
+    // con id e prezzi verificati. ElevenLabs Music resta `testing`, ma nessun ruolo lo usa (D78).
     expect(issues).toEqual([]);
   });
 
@@ -101,8 +101,17 @@ describe('riferimenti (§4.6 punto 2)', () => {
     expect(issue?.connectionId).toBe('anthropic');
   });
 
-  it('lascia in pace un ruolo spento: nel seme composer aspetta il fornitore (T5.4)', () => {
-    const issues = validateConfig(seed, { now: NOW, secrets: SEED_SECRETS });
+  it('lascia in pace un ruolo spento: un servizio ancora da provare non è un problema', () => {
+    const off = withSeed((config) => {
+      config.roles.composer = {
+        ...roleOf(config, 'composer'),
+        enabled: false,
+        model: 'music-elevenlabs',
+      };
+    });
+
+    const issues = validateConfig(off, { now: NOW, secrets: SEED_SECRETS });
+
     expect(issues.filter((issue) => issue.role === 'composer')).toEqual([]);
   });
 

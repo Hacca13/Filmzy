@@ -147,8 +147,8 @@ troupe.options(role, request)     // i servizi tra cui l'utente può scegliere p
 | `storyboard_artist` | Storyboard | immagine | modo `storyboard`: prompt visivo + riferimenti → 2–3 varianti; modo `end_frame`: primo fotogramma + movimento → ultimo fotogramma | MVP |
 | `camera_operator` | Operatore di ripresa | video | prompt visivo + riferimenti → take | MVP |
 | `script_supervisor` | Segretaria di edizione | LLM | scene e inquadrature → incoerenze con motivo | MVP |
-| `composer` | Compositore | musica | atmosfera e durata di una scena → musica | MVP, spento finché non si sceglie il fornitore (T5.4) |
-| `sfx_artist` | Rumorista | effetti sonori | descrizione e durata → 2–3 varianti | MVP, spento finché non si sceglie il fornitore (T5.4) |
+| `composer` | Compositore | musica | atmosfera e durata di una scena → musica | MVP: Stable Audio 3 su fal (D78); la funzione `music` si accende con T5.5 |
+| `sfx_artist` | Rumorista | effetti sonori | descrizione e durata → 2–3 varianti | MVP: Stable Audio 3 su fal, una clip a richiesta: le varianti sono più richieste (D78); la funzione `sound_effects` si accende con T5.5 |
 | `sound_planner` | Sound designer | LLM | copione, scene e inquadrature → proposte di musica ed effetti | MVP |
 | `voice_actor` | Doppiatore | voce | battuta + voce del personaggio → audio | Fase 2 |
 | `lip_sync` | Sincronizzatore | video | take + audio → take sincronizzato | Fase 2 |

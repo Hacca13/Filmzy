@@ -51,6 +51,9 @@ describe('mediaCostUsd', () => {
 
   it('conta le immagini', () => {
     expect(
+      mediaCostUsd({ unit: 'per_audio', value: 0.03, checked: '2026-11-04' }, { images: 2 }),
+    ).toBeCloseTo(0.06);
+    expect(
       mediaCostUsd({ unit: 'per_image', value: 0.08, checked: '2026-10-13' }, { images: 3 }),
     ).toBeCloseTo(0.24, 10);
   });

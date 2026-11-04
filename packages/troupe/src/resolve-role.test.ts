@@ -43,7 +43,11 @@ describe('resolveRole sul seme', () => {
   });
 
   it('si ferma su un ruolo spento, senza chiamare nessuno', () => {
-    expect(() => resolveRole(seed, 'composer')).toThrow(
+    const off = withSeed((config) => {
+      config.roles.composer = { ...roleOf(config, 'composer'), enabled: false };
+    });
+
+    expect(() => resolveRole(off, 'composer')).toThrow(
       expect.objectContaining({ code: 'role_disabled' }),
     );
   });

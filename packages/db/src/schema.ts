@@ -602,6 +602,77 @@ export const takes = sqliteTable(
 export type TakeRow = typeof takes.$inferSelect;
 
 /**
+ * Le tracce audio di un film (T5.5, D24, architettura §5.5): una per tipo, con muto e volume. Il suono
+ * sta qui e non nei video, così cambiarlo non tocca le clip.
+ */
+export const audioTracks = sqliteTable(
+  'audio_tracks',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    kind: text('kind').notNull(),
+    muted: integer('muted', { mode: 'boolean' }).notNull(),
+    volume: real('volume').notNull(),
+  },
+  (table) => [uniqueIndex('audio_tracks_per_tipo').on(table.projectId, table.kind)],
+);
+
+export type AudioTrackRow = typeof audioTracks.$inferSelect;
+
+/**
+ * Le clip sulle tracce: la musica sta su una scena, un effetto su un'inquadratura (`start_s` conta da lì).
+ * `scene_id` e `shot_id` sono quelli del piano: una musica sopravvive se il piano si rifà.
+ */
+export const audioClips = sqliteTable(
+  'audio_clips',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    trackId: text('track_id').notNull(),
+    sceneId: text('scene_id').notNull(),
+    shotId: text('shot_id'),
+    startS: real('start_s').notNull(),
+    durationS: real('duration_s').notNull(),
+    volume: real('volume').notNull(),
+    fadeInS: real('fade_in_s').notNull(),
+    fadeOutS: real('fade_out_s').notNull(),
+    description: text('description').notNull(),
+    mood: text('mood'),
+    chosenVariantId: text('chosen_variant_id'),
+    source: text('source').notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('audio_clips_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type AudioClipRow = typeof audioClips.$inferSelect;
+
+/**
+ * Le varianti di una clip: ogni «Genera» è una riga, come un take. Hanno uno scontrino, quindi anche il
+ * servizio usato. Un file caricato ha una riga sola, senza servizio (D27).
+ */
+export const audioVariants = sqliteTable(
+  'audio_variants',
+  {
+    id: text('id').primaryKey(),
+    clipId: text('clip_id').notNull(),
+    status: text('status').notNull(),
+    modelId: text('model_id'),
+    modelLabel: text('model_label'),
+    assetId: text('asset_id'),
+    receiptId: text('receipt_id'),
+    costUsd: real('cost_usd'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('audio_variants_per_clip').on(table.clipId, table.createdAt)],
+);
+
+export type AudioVariantRow = typeof audioVariants.$inferSelect;
+
+/**
  * I fotogrammi presi da un take (T4.6): «Usa questo fotogramma come punto di partenza». Restano dopo
  * che l'utente sceglie altro, così si possono riprendere; il file è un'immagine normale (`assets`).
  */

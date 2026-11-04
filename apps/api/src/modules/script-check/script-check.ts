@@ -24,16 +24,18 @@ export const usableScenes = (scenes: readonly ScenePlan[]): ScenePlan[] =>
   scenes.filter((scene) => scene.planned && !scene.stale);
 
 /**
- * Riassume ciò che il controllo ha letto: la stesura finale e le inquadrature delle scene che valgono.
- * Se la stesura viene corretta o una scena viene ripensata (nuove inquadrature, nuovi id) il riassunto
- * cambia e il controllo è vecchio.
+ * Riassume ciò che il controllo ha letto: la stesura finale e, delle inquadrature delle scene che
+ * valgono, ciò che la segretaria guarda (id, azione, entrata e uscita). Se la stesura viene corretta,
+ * una scena viene ripensata (nuovi id) o l'azione di un'inquadratura cambia, il riassunto cambia e il
+ * controllo è vecchio; cambiare il movimento di macchina o le immagini no, perché non le legge.
  */
 export function fingerprintOf(finalId: string, scenes: readonly ScenePlan[]): string {
-  const shotIds = usableScenes(scenes)
-    .flatMap((scene) => scene.shots.map((shot) => shot.id))
-    .sort();
+  const read = usableScenes(scenes)
+    .flatMap((scene) => scene.shots)
+    .map((shot) => ({ id: shot.id, action: shot.intent.action, continuity: shot.continuity }))
+    .sort((a, b) => a.id.localeCompare(b.id));
   return createHash('sha256')
-    .update(JSON.stringify([finalId, shotIds]))
+    .update(JSON.stringify([finalId, read]))
     .digest('hex')
     .slice(0, 16);
 }
@@ -58,27 +60,40 @@ export function placesOf(scenes: readonly ScenePlan[]): KnownPlaces {
 /**
  * Ciò che la segretaria risponde, ripulito: gli id inventati non valgono (un'inquadratura sconosciuta
  * cade sulla sua scena, se questa c'è; altrimenti il problema resta del film), l'inquadratura porta la
- * sua scena e il peso diventa quello del giallo. Un modello che esagera si ferma a `MAX_ISSUES`.
+ * sua scena e il peso diventa quello del giallo. Un motivo vuoto (solo spazi) non dice niente e si
+ * scarta; la stessa segnalazione due volte conta una volta. Un modello che esagera si ferma a
+ * `MAX_ISSUES`.
  */
 export function settleIssues(
   issues: readonly ScriptSupervisorIssue[],
   known: KnownPlaces,
 ): NewScriptIssue[] {
-  return issues.slice(0, MAX_ISSUES).map((issue) => {
+  const seen = new Set<string>();
+  const settled: NewScriptIssue[] = [];
+  for (const issue of issues) {
+    const reason = issue.reason.trim();
+    if (reason === '') continue;
     const shotScene = issue.shotId === undefined ? undefined : known.shotScenes.get(issue.shotId);
     const sceneId =
       shotScene ??
       (issue.sceneId !== undefined && known.sceneIds.has(issue.sceneId)
         ? issue.sceneId
         : undefined);
-    return {
+    const shotId = shotScene === undefined ? undefined : issue.shotId;
+
+    const key = JSON.stringify([issue.code, reason, sceneId, shotId]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    settled.push({
       code: issue.code,
       light: issue.severity === 'notice',
-      reason: issue.reason.trim(),
+      reason,
       ...(sceneId === undefined ? {} : { sceneId }),
-      ...(shotScene === undefined || issue.shotId === undefined ? {} : { shotId: issue.shotId }),
-    };
-  });
+      ...(shotId === undefined ? {} : { shotId }),
+    });
+    if (settled.length === MAX_ISSUES) break;
+  }
+  return settled;
 }
 
 /** `none` senza controllo; `current` se ha letto la storia di adesso; altrimenti `outdated`. */

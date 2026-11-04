@@ -3,6 +3,7 @@ import {
   type ScriptCheckEstimate,
   type ScriptCheckView,
   type ScriptSupervisorInput,
+  type ShotPlans,
 } from '@filmzy/contracts';
 import type { ScriptCheckStore } from '@filmzy/db';
 import type { Troupe } from '@filmzy/troupe';
@@ -49,7 +50,11 @@ export class ScriptCheckService {
   /** L'ultimo controllo, con le scene e le inquadrature numerate, e se vale ancora. */
   async view(projectId: string): Promise<ScriptCheckView> {
     this.projects.get(projectId);
-    const plans = await this.shots.plans(projectId);
+    return this.viewOf(projectId, await this.shots.plans(projectId));
+  }
+
+  /** Il controllo com'è rispetto alle scene che si hanno in mano: il piano si legge una volta sola. */
+  private viewOf(projectId: string, plans: ShotPlans): ScriptCheckView {
     const check = this.store.latest(projectId);
     if (check === undefined) return { state: 'none', issues: [] };
     return {
@@ -70,8 +75,11 @@ export class ScriptCheckService {
       throw domainError(409, 'invalid_request', { details: { field: 'check' } });
     }
     this.running.add(projectId);
+    let plans: ShotPlans;
     try {
-      const { input, fingerprint, places } = await this.inputFor(projectId);
+      const read = await this.inputFor(projectId);
+      const { input, fingerprint, places } = read;
+      plans = read.plans;
       const { data, receipt } = await this.troupe.run(ROLE, input, {
         purpose: 'product',
         projectId,
@@ -87,7 +95,7 @@ export class ScriptCheckService {
     } finally {
       this.running.delete(projectId);
     }
-    return this.view(projectId);
+    return this.viewOf(projectId, plans);
   }
 
   /**
@@ -110,6 +118,7 @@ export class ScriptCheckService {
       language: this.projects.get(projectId).language,
     };
     return {
+      plans,
       input,
       fingerprint: fingerprintOf(plans.finalVersionId, plans.scenes),
       places: placesOf(plans.scenes),

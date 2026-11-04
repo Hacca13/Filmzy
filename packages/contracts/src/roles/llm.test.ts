@@ -311,6 +311,18 @@ describe('script_supervisor', () => {
       'lettera',
     );
   });
+
+  it('il peso è «warning» o «notice»: un altro valore non vale, così il giallo ha un peso sicuro', () => {
+    const issue = { code: 'plot', reason: 'Qualcosa non torna.' };
+
+    expect(
+      scriptSupervisorOutputSchema.safeParse({ issues: [{ ...issue, severity: 'notice' }] })
+        .success,
+    ).toBe(true);
+    expect(
+      scriptSupervisorOutputSchema.safeParse({ issues: [{ ...issue, severity: 'grave' }] }).success,
+    ).toBe(false);
+  });
 });
 
 describe('sound_planner', () => {

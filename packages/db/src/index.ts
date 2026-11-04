@@ -30,6 +30,14 @@ export type { NewProject, ProjectChanges, ProjectStore } from './project-store.j
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
 export { createShotStore } from './shot-store.js';
+export { createScriptCheckStore } from './script-check-store.js';
+export type {
+  NewScriptCheck,
+  NewScriptIssue,
+  ScriptCheckStore,
+  StoredScriptCheck,
+  StoredScriptIssue,
+} from './script-check-store.js';
 export { createTakeStore } from './take-store.js';
 export type { NewShotPlan, ShotStore, StoredShot, StoredShotPlan } from './shot-store.js';
 export type { NewTake, StoredTake, TakePatch, TakeStore } from './take-store.js';

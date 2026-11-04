@@ -10,8 +10,8 @@ import {
 
 import type { Client } from './app-client.js';
 
-/** Per i test dello storyboard e delle immagini: un film con la stesura finale scritta, un luogo e la prima scena pensata. */
-export async function filmWithShot(client: Client) {
+/** Un film con la stesura finale scritta e un luogo, ma nessuna scena ancora pensata. */
+export async function filmWithFinal(client: Client) {
   const options = projectOptionsSchema.parse((await client.call('GET', '/projects/options')).body);
   const film = projectSchema.parse(
     (
@@ -44,11 +44,16 @@ export async function filmWithShot(client: Client) {
       .map((difference) => ({ key: difference.key, decision: 'adapt' })),
   });
   const final = screenplayVersionSchema.parse(written.body);
+  return { film, location, final, shots: `/projects/${film.id}/shots`, places };
+}
 
-  const planned = await client.call('POST', `/projects/${film.id}/shots`, { sceneNumber: 1 });
+/** Per i test dello storyboard e delle immagini: un film con la stesura finale scritta, un luogo e la prima scena pensata. */
+export async function filmWithShot(client: Client) {
+  const { film, location, final, shots, places } = await filmWithFinal(client);
+  const planned = await client.call('POST', shots, { sceneNumber: 1 });
   const plan = scenePlanSchema.parse(planned.body);
   const shot = plan.shots[0];
   if (shot === undefined) throw new Error('doveva esserci un’inquadratura');
 
-  return { film, location, final, shot, shots: `/projects/${film.id}/shots`, places };
+  return { film, location, final, shot, shots, places };
 }

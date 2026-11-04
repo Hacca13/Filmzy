@@ -16,6 +16,7 @@ import { WriteOutcome } from '../WriteOutcome';
 import { useLiveJobs } from '../use-live-jobs';
 import { FlagNote } from './FlagNote';
 import { ShotCard } from './ShotCard';
+import { ScriptCheckSection } from './ScriptCheckSection';
 import { ShotImagesPanel } from './ShotImagesPanel';
 import { sceneChip, type Names } from './model';
 
@@ -77,6 +78,12 @@ function ShotsView({ filmId, plans, reload }: ViewProps) {
   const [active, setActive] = useState<number>();
   const written = useGuardedRun<ScenePlan>(reload);
   const names = useNames(filmId);
+  // Le scene che la segretaria di edizione può leggere: pensate, e con un piano che vale ancora.
+  const plannedScenes = plans.scenes.filter((scene) => scene.planned && !scene.stale);
+  const checkStamp = [
+    plans.finalVersionId,
+    ...plannedScenes.flatMap((scene) => scene.shots.map((shot) => shot.id)),
+  ].join(',');
 
   return (
     <>
@@ -85,6 +92,9 @@ function ShotsView({ filmId, plans, reload }: ViewProps) {
         l&apos;aiuto regista: dove entra e dove esce ciascuna deve combaciare con la vicina. Il
         movimento di macchina lo puoi cambiare tu.
       </p>
+      {plannedScenes.length === 0 ? null : (
+        <ScriptCheckSection filmId={filmId} stamp={checkStamp} onChecked={reload} />
+      )}
       {plans.scenes.map((scene) => (
         <SceneSection
           key={scene.sceneNumber}
@@ -168,7 +178,7 @@ function SceneSection({
       )}
       {working ? <Chip tone="info">L&apos;aiuto regista sta pensando</Chip> : null}
       {scene.sceneFlags.map((flag) => (
-        <FlagNote key={flag.code} flag={flag} />
+        <FlagNote key={`${flag.code}:${flag.reason}`} flag={flag} />
       ))}
       {scene.stale ? (
         <Notice tone="info" title="Informazione">

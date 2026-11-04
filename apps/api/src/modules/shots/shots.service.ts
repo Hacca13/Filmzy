@@ -16,6 +16,7 @@ import type {
   MoodboardChanges,
   MoodboardStore,
   SheetStore,
+  ScriptCheckStore,
   ShotStore,
   StoredShotPlan,
   TakeStore,
@@ -31,6 +32,8 @@ import { LOCATION_STORE } from '../locations/tokens.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScreenplayService } from '../screenplay/screenplay.service.js';
+import { addScriptFlags } from '../script-check/script-check.js';
+import { SCRIPT_CHECK_STORE } from '../script-check/tokens.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
 import { chainFlags, type Names, type PreviousScene } from './chain-flags.js';
 import {
@@ -78,6 +81,7 @@ export class ShotsService {
     @Inject(LOCATION_STORE) private readonly locations: LocationStore,
     @Inject(MOODBOARD_STORE) private readonly moodboards: MoodboardStore,
     @Inject(SHEET_STORE) private readonly sheets: SheetStore,
+    @Inject(SCRIPT_CHECK_STORE) private readonly scriptChecks: ScriptCheckStore,
   ) {}
 
   /** Le scene dell'ultima stesura con le loro inquadrature, e i movimenti di macchina attivi. */
@@ -109,7 +113,11 @@ export class ShotsService {
 
     return {
       finalVersionId: final.id,
-      scenes: addChainFlags(scenes, stored, known.names),
+      scenes: addScriptFlags(
+        addChainFlags(scenes, stored, known.names),
+        this.scriptChecks.latest(projectId),
+        final.id,
+      ),
       cameraMovements: activeMovements(config).map(({ id, label, description }) => ({
         id,
         label,

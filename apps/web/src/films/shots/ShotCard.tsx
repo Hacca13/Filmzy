@@ -82,7 +82,7 @@ export function ShotCard({
       )}
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
-        <FlagNote key={flag.code} flag={flag} />
+        <FlagNote key={`${flag.code}:${flag.reason}`} flag={flag} />
       ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>

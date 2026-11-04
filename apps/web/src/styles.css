@@ -1274,6 +1274,29 @@ a.button {
   gap: 4px;
 }
 
+/* Controlla la storia (T5.2) */
+.script-check {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--row);
+  border-radius: 12px;
+}
+
+.script-check p {
+  margin: 0;
+}
+
+.script-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* Caricamento delle foto (T4.8) */
 .upload-control {
   display: flex;

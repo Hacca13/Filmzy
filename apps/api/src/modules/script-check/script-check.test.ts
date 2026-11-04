@@ -185,11 +185,27 @@ describe('le segnalazioni diventano gialli', () => {
     const [first, second] = addScriptFlags(scenes, current, 'stesura-1');
 
     expect(first?.flags['a2']).toEqual([
-      { code: 'costume', reason: 'Giacca.', origin: 'llm', light: false },
+      {
+        code: 'costume',
+        key: 'llm:i1',
+        reason: 'Giacca.',
+        origin: 'llm',
+        light: false,
+        fix: 'none',
+        ignored: false,
+      },
     ]);
     expect(first?.sceneFlags).toEqual([]);
     expect(second?.sceneFlags).toEqual([
-      { code: 'plot', reason: 'Lettera.', origin: 'llm', light: true },
+      {
+        code: 'plot',
+        key: 'llm:i2',
+        reason: 'Lettera.',
+        origin: 'llm',
+        light: true,
+        fix: 'none',
+        ignored: false,
+      },
     ]);
   });
 
@@ -202,12 +218,15 @@ describe('le segnalazioni diventano gialli', () => {
   });
 
   it('per l’utente scena e inquadratura sono numerate da 1; una che non c’è più resta senza numero', () => {
-    const view = issuesView(current, scenes);
+    const view = issuesView(current, scenes, new Set(['llm:i2']));
 
     expect(view[0]).toMatchObject({ sceneNumber: 1, shotNumber: 2, light: false });
-    expect(view[1]).toMatchObject({ sceneNumber: 2 });
+    expect(view[0]).toMatchObject({ key: 'llm:i1', ignored: false });
+    expect(view[1]).toMatchObject({ sceneNumber: 2, ignored: true });
     expect(view[1]).not.toHaveProperty('shotNumber');
     expect(view[2]).not.toHaveProperty('sceneNumber');
-    expect(issuesView(current, [scene(1, [shot('altro', 1)])])[0]).not.toHaveProperty('shotNumber');
+    expect(issuesView(current, [scene(1, [shot('altro', 1)])], new Set())[0]).not.toHaveProperty(
+      'shotNumber',
+    );
   });
 });

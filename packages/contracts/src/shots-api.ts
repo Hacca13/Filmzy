@@ -33,6 +33,15 @@ export const continuityFlagSchema = z.object({
   origin: z.enum(['rule', 'llm', 'vision']),
   /** Un avviso leggero (R4, R8, R9): l'inquadratura va bene com'è, ma conviene dargli un'occhiata. Altrimenti è un giallo vero. */
   light: z.boolean(),
+  /**
+   * Chi è questo giallo: la stessa situazione ha sempre la stessa chiave. «Ignora» vale per la chiave, così
+   * se la situazione cambia di nuovo (il luogo cambia ancora) il giallo torna (T5.3).
+   */
+  key: z.string().min(1),
+  /** Cosa si può fare, oltre a ignorarlo: rifare il lavoro dell'inquadratura, ripensare la scena o niente da qui. */
+  fix: z.enum(['regenerate', 'replan', 'none']),
+  /** L'utente ha scelto di ignorarlo: resta da leggere, e si può rimettere. */
+  ignored: z.boolean(),
 });
 
 export type ContinuityFlag = z.infer<typeof continuityFlagSchema>;
@@ -72,6 +81,14 @@ export const shotPlansSchema = z.object({
 });
 
 export type ShotPlans = z.infer<typeof shotPlansSchema>;
+
+/** «Ignora» un giallo, o lo rimette (T5.3): niente di generato cambia. */
+export const setFlagIgnoredBodySchema = z.strictObject({
+  key: z.string().min(1),
+  ignored: z.boolean(),
+});
+
+export type SetFlagIgnoredBody = z.infer<typeof setFlagIgnoredBodySchema>;
 
 /** «Pensa le inquadrature» di una scena: rifarla sostituisce le inquadrature di prima. */
 export const planSceneBodySchema = z.strictObject({

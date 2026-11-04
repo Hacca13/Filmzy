@@ -183,6 +183,22 @@ describe('il piano delle inquadrature di una scena', () => {
   });
 });
 
+describe('i gialli ignorati (T5.3)', () => {
+  it('si ricordano per film, ripeterlo non cambia niente, e si rimettono', () => {
+    store.setFlagIgnored('film-1', 'R6:a1:1', true);
+    store.setFlagIgnored('film-1', 'R6:a1:1', true);
+    store.setFlagIgnored('film-2', 'altro', true);
+
+    expect([...store.ignoredFlags('film-1')]).toEqual(['R6:a1:1']);
+
+    store.setFlagIgnored('film-1', 'R6:a1:1', false);
+    store.setFlagIgnored('film-1', 'mai-ignorato', false);
+
+    expect(store.ignoredFlags('film-1').size).toBe(0);
+    expect([...store.ignoredFlags('film-2')]).toEqual(['altro']);
+  });
+});
+
 describe('quando è partita l’ultima immagine (regole di continuità)', () => {
   it('conta la partenza, non l’arrivo', () => {
     store.replaceScene(plan(1, ['a1']));

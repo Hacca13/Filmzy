@@ -28,6 +28,13 @@ interface Props {
   working?: ShotWork | undefined;
   /** I gialli di questa inquadratura (T4.9, T5.1): una regola di continuità che non torna, con il motivo. */
   flags?: readonly ContinuityFlag[] | undefined;
+  /** «Ignora» o «Rimetti» un giallo (T5.3). */
+  onFlagIgnored?: ((key: string, ignored: boolean) => void) | undefined;
+  /** Apre il riquadro dell'inquadratura, dove si rifà il lavoro. */
+  onOpen?: (() => void) | undefined;
+  /** Ripensa la scena: costa, quindi il pulsante porta la stima. */
+  onReplan?: (() => void) | undefined;
+  replanLabel?: string | undefined;
   /** Lo storyboard di questa card è aperto sotto la striscia. */
   storyboardOpen: boolean;
   /** Senza, la card non offre lo storyboard: il piano è da rifare e il server lo rifiuterebbe. */
@@ -50,6 +57,10 @@ export function ShotCard({
   clipAssetId,
   working,
   flags = [],
+  onFlagIgnored,
+  onOpen,
+  onReplan,
+  replanLabel,
   storyboardOpen,
   canStoryboard,
   onStoryboard,
@@ -60,6 +71,18 @@ export function ShotCard({
   const options = movements.some((movement) => movement.id === current)
     ? movements
     : [...movements, { id: current, label: humanize(current) }];
+
+  // Cosa offrire lo dice il server (`flag.fix`). Rifare il lavoro si fa dal riquadro dell'inquadratura, con
+  // servizio e stima in vista (D30): qui si apre soltanto.
+  const fixOf = (flag: ContinuityFlag) => {
+    if (flag.fix === 'regenerate' && canStoryboard && onOpen !== undefined) {
+      return { label: 'Rigenera', run: onOpen };
+    }
+    if (flag.fix === 'replan' && onReplan !== undefined && replanLabel !== undefined) {
+      return { label: replanLabel, run: onReplan };
+    }
+    return undefined;
+  };
 
   return (
     <li className="shot-card">
@@ -82,7 +105,19 @@ export function ShotCard({
       )}
       {working === undefined ? null : <Chip tone="info">{WORK_TEXT[working]}</Chip>}
       {flags.map((flag) => (
-        <FlagNote key={`${flag.code}:${flag.reason}`} flag={flag} />
+        <FlagNote
+          key={flag.key}
+          flag={flag}
+          busy={busy}
+          fix={fixOf(flag)}
+          onIgnored={
+            onFlagIgnored === undefined
+              ? undefined
+              : (ignored) => {
+                  onFlagIgnored(flag.key, ignored);
+                }
+          }
+        />
       ))}
       <p className="shot-number">Inquadratura {shot.order + 1}</p>
       <p className="shot-action">{shot.intent.action}</p>

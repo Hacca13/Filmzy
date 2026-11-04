@@ -46,6 +46,50 @@ afterAll(async () => {
   await app.close();
 });
 
+describe('Ignora e Rimetti (T5.3)', () => {
+  it('il giallo resta da leggere ma ignorato, si rimette, e una chiave che non c’è si rifiuta', async () => {
+    const { shots } = await filmWithFinal(client);
+    await client.call('POST', shots, { sceneNumber: 1 });
+    const read = async () => {
+      const scene = shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0];
+      return Object.values(scene?.flags ?? {}).flat();
+    };
+    const [flag] = await read();
+    if (flag === undefined) throw new Error('doveva esserci un giallo');
+    expect(flag).toMatchObject({ code: 'R1', fix: 'replan', ignored: false });
+
+    const ignored = await client.call('PUT', `${shots}/flags`, { key: flag.key, ignored: true });
+    expect(ignored.status).toBe(200);
+    expect((await read())[0]).toMatchObject({ key: flag.key, ignored: true });
+
+    await client.call('PUT', `${shots}/flags`, { key: flag.key, ignored: false });
+    expect((await read())[0]).toMatchObject({ key: flag.key, ignored: false });
+
+    const unknown = await client.call('PUT', `${shots}/flags`, { key: 'inventata', ignored: true });
+    expect(unknown.status).toBe(409);
+    // Rimettere ciò che non c'è più non è un errore: il giallo può essere passato nel frattempo.
+    const gone = await client.call('PUT', `${shots}/flags`, { key: 'inventata', ignored: false });
+    expect(gone.status).toBe(200);
+  }, 60_000);
+
+  it('ripensare la scena dà inquadrature nuove: il giallo torna, non ignorato', async () => {
+    const { shots } = await filmWithFinal(client);
+    await client.call('POST', shots, { sceneNumber: 1 });
+    const first = shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0];
+    const [flag] = Object.values(first?.flags ?? {}).flat();
+    if (flag === undefined) throw new Error('doveva esserci un giallo');
+    await client.call('PUT', `${shots}/flags`, { key: flag.key, ignored: true });
+
+    await client.call('POST', shots, { sceneNumber: 1 });
+
+    const again = shotPlansSchema.parse((await client.call('GET', shots)).body).scenes[0];
+    expect(Object.values(again?.flags ?? {}).flat()[0]).toMatchObject({
+      code: 'R1',
+      ignored: false,
+    });
+  }, 60_000);
+});
+
 describe('il cambiamento dichiarato dall’aiuto regista', () => {
   it('si salva e R1 non lo segnala; quello non dichiarato sì, con il motivo', async () => {
     const { shots } = await filmWithFinal(client);

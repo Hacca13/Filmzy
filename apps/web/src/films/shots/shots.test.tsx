@@ -1,5 +1,6 @@
 import {
   SHOT_SPEC_SCHEMA_VERSION,
+  type ContinuityFlag,
   type ContinuityState,
   type ScenePlan,
   type ShotSpec,
@@ -107,27 +108,50 @@ describe('continuityLine', () => {
 });
 
 describe('FlagNote', () => {
-  it('un giallo vero dice «Da rivedere», uno leggero «Avviso leggero», sempre con il motivo (anche per una scena, R7)', () => {
-    const strong = renderToStaticMarkup(
-      <FlagNote
-        flag={{
-          code: 'R7',
-          reason: 'La scena nomina un personaggio tolto.',
-          origin: 'rule',
-          light: false,
-        }}
-      />,
-    );
-    const light = renderToStaticMarkup(
-      <FlagNote
-        flag={{ code: 'R4', reason: 'La fotografia è cambiata.', origin: 'rule', light: true }}
-      />,
-    );
+  const flag = (patch: Partial<ContinuityFlag> = {}): ContinuityFlag => ({
+    code: 'R7',
+    key: 'k',
+    reason: 'La scena nomina un personaggio tolto.',
+    origin: 'rule',
+    light: false,
+    fix: 'none',
+    ignored: false,
+    ...patch,
+  });
+
+  it('un giallo vero dice «Da rivedere», uno leggero «Avviso leggero», sempre con il motivo', () => {
+    const strong = renderToStaticMarkup(<FlagNote flag={flag()} />);
+    const light = renderToStaticMarkup(<FlagNote flag={flag({ light: true })} />);
 
     expect(strong).toContain('Da rivedere');
     expect(strong).toContain('La scena nomina un personaggio tolto.');
     expect(light).toContain('Avviso leggero');
     expect(light).not.toContain('Da rivedere');
+  });
+
+  it('si può ignorare e rifare; ignorato resta da leggere e si può rimettere (T5.3)', () => {
+    const open = renderToStaticMarkup(
+      <FlagNote
+        flag={flag()}
+        fix={{ label: 'Rigenera', run: () => undefined }}
+        onIgnored={() => undefined}
+      />,
+    );
+    const ignored = renderToStaticMarkup(
+      <FlagNote
+        flag={flag({ ignored: true })}
+        fix={{ label: 'Rigenera', run: () => undefined }}
+        onIgnored={() => undefined}
+      />,
+    );
+
+    expect(open).toContain('Rigenera');
+    expect(open).toContain('Ignora');
+    expect(ignored).toContain('Ignorato');
+    expect(ignored).toContain('La scena nomina un personaggio tolto.');
+    expect(ignored).toContain('Rimetti');
+    expect(ignored).not.toContain('Rigenera');
+    expect(ignored).not.toContain('Da rivedere');
   });
 });
 
@@ -163,6 +187,9 @@ describe('ShotCard', () => {
           reason: 'Il luogo è cambiato. Rifai lo storyboard.',
           origin: 'rule',
           light: false,
+          key: 'k',
+          fix: 'regenerate',
+          ignored: false,
         },
       ],
     });
@@ -177,6 +204,9 @@ describe('ShotCard', () => {
           reason: 'Il moodboard è cambiato. Rigiralo.',
           origin: 'rule',
           light: true,
+          key: 'k',
+          fix: 'regenerate',
+          ignored: false,
         },
       ],
     });
@@ -184,6 +214,35 @@ describe('ShotCard', () => {
     expect(light).toContain('Il moodboard è cambiato. Rigiralo.');
     expect(light).not.toContain('Da rivedere');
     expect(render(shot, false, { flags: [] })).not.toContain('Da rivedere');
+  });
+
+  it('il pulsante del giallo lo decide il server: rigenera, ripensa la scena o niente (T5.3)', () => {
+    const withFix = (fix: ContinuityFlag['fix'], canStoryboard = true) =>
+      render(shot, false, {
+        canStoryboard,
+        replanLabel: 'Rifai le inquadrature · circa 0,03 $',
+        onOpen: () => undefined,
+        onReplan: () => undefined,
+        onFlagIgnored: () => undefined,
+        flags: [
+          {
+            code: 'R1',
+            key: 'k',
+            reason: 'Non combacia.',
+            origin: 'rule',
+            light: false,
+            fix,
+            ignored: false,
+          },
+        ],
+      });
+
+    expect(withFix('regenerate')).toContain('>Rigenera<');
+    expect(withFix('replan')).toContain('Rifai le inquadrature · circa 0,03 $');
+    expect(withFix('none')).not.toContain('>Rigenera<');
+    expect(withFix('none')).toContain('>Ignora<');
+    // Con il piano da rifare il lavoro dell'inquadratura non si offre.
+    expect(withFix('regenerate', false)).not.toContain('>Rigenera<');
   });
 
   it('mostra cosa succede, il piano, la durata, la luce e come entra ed esce', () => {

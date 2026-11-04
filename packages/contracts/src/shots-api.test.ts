@@ -47,7 +47,17 @@ describe('flags (T4.9)', () => {
     const flagged = {
       ...scene,
       flags: {
-        'shot-1': [{ code: 'R6', reason: 'Il luogo è cambiato.', origin: 'rule', light: false }],
+        'shot-1': [
+          {
+            code: 'R6',
+            key: 'R6:shot-1:1',
+            reason: 'Il luogo è cambiato.',
+            origin: 'rule',
+            light: false,
+            fix: 'regenerate',
+            ignored: false,
+          },
+        ],
       },
     };
 
@@ -55,7 +65,19 @@ describe('flags (T4.9)', () => {
     expect(
       scenePlanSchema.safeParse({
         ...scene,
-        flags: { 'shot-1': [{ code: 'R6', reason: 'x', origin: 'a caso', light: false }] },
+        flags: {
+          'shot-1': [
+            {
+              code: 'R6',
+              key: 'k',
+              reason: 'x',
+              origin: 'a caso',
+              light: false,
+              fix: 'none',
+              ignored: false,
+            },
+          ],
+        },
       }).success,
     ).toBe(false);
     // Senza il peso il giallo non vale: il server lo dice sempre.

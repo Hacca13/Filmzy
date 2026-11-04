@@ -122,12 +122,13 @@ describe('R1: dentro la scena l’entrata combacia con l’uscita di prima', () 
 
     expect(Object.keys(flags)).toEqual(['s2']);
     expect(flags['s2']).toEqual([
-      {
+      expect.objectContaining({
         code: 'R1',
         reason: expect.stringContaining("Anna cambia d'abito") as string,
         origin: 'rule',
         light: false,
-      },
+        fix: 'replan',
+      }),
     ]);
   });
 
@@ -162,12 +163,13 @@ describe('R2: l’uscita della scena prima è cambiata rispetto a quella da cui 
     const flags = chainFlags({ shots: [first], basedOn: oldExit, before: newExit, names });
 
     expect(flags['s1']).toEqual([
-      {
+      expect.objectContaining({
         code: 'R2',
         reason: expect.stringContaining('il luogo cambia') as string,
         origin: 'rule',
         light: false,
-      },
+        fix: 'replan',
+      }),
     ]);
   });
 

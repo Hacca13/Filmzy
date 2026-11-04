@@ -368,12 +368,12 @@ describe('R6: un luogo cambiato ingiallisce le inquadrature già fatte', () => {
     await client.call('PUT', `${places}/${location.id}/images/choice`, { assetId: result });
     const flags = await flagsOf();
     expect(flags[shot.id]).toEqual([
-      {
+      expect.objectContaining({
         code: 'R6',
         reason: expect.stringContaining('Rifai') as string,
         origin: 'rule',
         light: false,
-      },
+      }),
     ]);
 
     // Rifatto lo storyboard dopo il cambiamento, l'inquadratura è di nuovo allineata.

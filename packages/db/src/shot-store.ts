@@ -17,6 +17,7 @@ import { and, asc, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import type { AttemptPatch } from './location-store.js';
 import type { FilmzyDb } from './open.js';
 import {
+  ignoredFlags,
   shotPlans,
   shots,
   storyboardAttempts,
@@ -98,6 +99,10 @@ export interface ShotStore {
    * non è dentro il risultato.
    */
   lastDrawnAt: (projectId: string) => Record<string, number>;
+  /** Le chiavi dei gialli che l'utente ha scelto di ignorare (T5.3). */
+  ignoredFlags: (projectId: string) => Set<string>;
+  /** Ignora un giallo o lo rimette. Ripeterlo non cambia niente. */
+  setFlagIgnored: (projectId: string, key: string, ignored: boolean) => void;
   /** Cosa si sta disegnando adesso (tentativo in coda o in lavorazione) per ogni inquadratura del film; l'ultimo fotogramma vince sullo storyboard. */
   drawing: (projectId: string, since: Date) => Record<string, StoryboardMode>;
 }
@@ -273,6 +278,30 @@ export function createShotStore(db: FilmzyDb, options: ShotStoreOptions = {}): S
         .where(eq(shots.id, shotId))
         .run();
       return true;
+    },
+
+    ignoredFlags(projectId) {
+      return new Set(
+        db
+          .select({ key: ignoredFlags.flagKey })
+          .from(ignoredFlags)
+          .where(eq(ignoredFlags.projectId, projectId))
+          .all()
+          .map((row) => row.key),
+      );
+    },
+
+    setFlagIgnored(projectId, key, ignored) {
+      if (ignored) {
+        db.insert(ignoredFlags)
+          .values({ projectId, flagKey: key, createdAt: now().getTime() })
+          .onConflictDoNothing()
+          .run();
+        return;
+      }
+      db.delete(ignoredFlags)
+        .where(and(eq(ignoredFlags.projectId, projectId), eq(ignoredFlags.flagKey, key)))
+        .run();
     },
 
     framesChanges(projectId) {

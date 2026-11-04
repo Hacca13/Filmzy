@@ -377,6 +377,22 @@ export const moodboardRuns = sqliteTable(
 export type MoodboardRunRow = typeof moodboardRuns.$inferSelect;
 
 /**
+ * I gialli che l'utente ha scelto di ignorare (T5.3). I gialli si ricalcolano, quindi si salva solo la
+ * scelta: la chiave dice di quale situazione si parla, e se la situazione cambia la chiave è un'altra.
+ */
+export const ignoredFlags = sqliteTable(
+  'ignored_flags',
+  {
+    projectId: text('project_id').notNull(),
+    flagKey: text('flag_key').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.flagKey] })],
+);
+
+export type IgnoredFlagRow = typeof ignoredFlags.$inferSelect;
+
+/**
  * Il controllo della storia (T5.2): la segretaria di edizione legge la stesura finale e le inquadrature
  * pensate. Per film ne vale uno solo, l'ultimo. `fingerprint` riassume ciò che ha letto (la stesura e le
  * inquadrature): se cambia, il controllo è vecchio.

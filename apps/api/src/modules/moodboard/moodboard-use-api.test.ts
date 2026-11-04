@@ -126,12 +126,12 @@ describe('R9: palette o consigli cambiati dopo il video', () => {
     });
 
     expect(await flagsOf()).toEqual([
-      {
+      expect.objectContaining({
         code: 'R9',
         reason: expect.stringContaining('rigiralo') as string,
         origin: 'rule',
         light: true,
-      },
+      }),
     ]);
 
     // Rigirato il video dopo il cambiamento, l'inquadratura è di nuovo allineata.

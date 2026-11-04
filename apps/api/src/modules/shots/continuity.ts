@@ -1,4 +1,6 @@
-import type { ContinuityFlag, ScreenplayScene, ShotSpec } from '@filmzy/contracts';
+import type { ContinuityFlag, ScenePlan, ScreenplayScene, ShotSpec } from '@filmzy/contracts';
+
+import { hashScene } from './plan-shots.js';
 
 /**
  * Le segnalazioni di continuità che si possono calcolare dai dati del film (architettura §8). Oggi
@@ -9,6 +11,24 @@ import type { ContinuityFlag, ScreenplayScene, ShotSpec } from '@filmzy/contract
 /** Cosa vede l'utente quando un luogo è cambiato dopo che l'inquadratura era stata fatta (R6). */
 export const LOCATION_CHANGED_REASON =
   'Il luogo è cambiato dopo che hai fatto questa inquadratura. Rifai lo storyboard e il video per tenerla allineata.';
+
+/** Un giallo di una regola: nasce non ignorato (lo decide poi la scelta dell'utente, `markIgnored`). */
+export const ruleFlag = (flag: {
+  code: string;
+  /** La situazione: la stessa chiave vuol dire lo stesso giallo. */
+  key: string;
+  reason: string;
+  light?: boolean;
+  fix: ContinuityFlag['fix'];
+}): ContinuityFlag => ({
+  code: flag.code,
+  key: flag.key,
+  reason: flag.reason,
+  origin: 'rule',
+  light: flag.light ?? false,
+  fix: flag.fix,
+  ignored: false,
+});
 
 /**
  * Quando un'inquadratura è allineata al suo luogo: il lavoro **più vecchio** fra immagini e video che ha.
@@ -53,7 +73,13 @@ export function moodboardChangeFlags(
     const shot_take = input.takeAt[shot.id];
     if (changed === 0 || shot_take === undefined || shot_take >= changed) continue;
     flags[shot.id] = [
-      { code: 'R9', reason: MOODBOARD_CHANGED_REASON, origin: 'rule', light: true },
+      ruleFlag({
+        code: 'R9',
+        key: `R9:${shot.id}:${String(changed)}`,
+        reason: MOODBOARD_CHANGED_REASON,
+        light: true,
+        fix: 'regenerate',
+      }),
     ];
   }
   return flags;
@@ -86,7 +112,13 @@ export function cinematographyChangeFlags(
     if (shot.cinematography !== 'inherit' || take === undefined || take >= input.changedAt)
       continue;
     flags[shot.id] = [
-      { code: 'R4', reason: CINEMATOGRAPHY_CHANGED_REASON, origin: 'rule', light: true },
+      ruleFlag({
+        code: 'R4',
+        key: `R4:${shot.id}:${String(input.changedAt)}`,
+        reason: CINEMATOGRAPHY_CHANGED_REASON,
+        light: true,
+        fix: 'regenerate',
+      }),
     ];
   }
   return flags;
@@ -107,12 +139,13 @@ export function removedCharacterFlags(
       ? 'un personaggio che non c’è più nel film'
       : `${String(missing.length)} personaggi che non ci sono più nel film`;
   return [
-    {
+    ruleFlag({
       code: 'R7',
+      // Se la scena viene riscritta è un'altra situazione: il numero da solo non basta.
+      key: `R7:${hashScene(scene)}:${[...missing].sort().join(',')}`,
       reason: `Questa scena nomina ${who}. Correggi la stesura o rimetti nel cast chi serve.`,
-      origin: 'rule',
-      light: false,
-    },
+      fix: 'none',
+    }),
   ];
 }
 
@@ -140,17 +173,19 @@ export function characterSheetFlags(input: SheetChangeInput): Record<string, Con
   for (const shot of input.shots) {
     const worked = input.workedAt[shot.id];
     if (worked === undefined) continue;
-    const changed = shot.characters
-      .filter(({ characterId }) => (input.changedAt[characterId] ?? 0) > worked)
-      .map(({ characterId }) => input.names[characterId] ?? 'un personaggio');
-    if (changed.length === 0) continue;
+    const changedIds = shot.characters
+      .map(({ characterId }) => characterId)
+      .filter((characterId) => (input.changedAt[characterId] ?? 0) > worked);
+    if (changedIds.length === 0) continue;
+    const changed = changedIds.map((characterId) => input.names[characterId] ?? 'un personaggio');
+    const latest = Math.max(...changedIds.map((characterId) => input.changedAt[characterId] ?? 0));
     flags[shot.id] = [
-      {
+      ruleFlag({
         code: 'R3',
+        key: `R3:${shot.id}:${String(latest)}`,
         reason: `La scheda di ${spoken(changed)} è cambiata dopo che hai fatto questa inquadratura. Rifai lo storyboard e il video per tenerla allineata.`,
-        origin: 'rule',
-        light: false,
-      },
+        fix: 'regenerate',
+      }),
     ];
   }
   return flags;
@@ -179,9 +214,35 @@ export function frameChangeFlags(input: FrameChangeInput): Record<string, Contin
     const changed = input.changedAt[shot.id];
     const take = input.takeAt[shot.id];
     if (changed === undefined || take === undefined || take >= changed) continue;
-    flags[shot.id] = [{ code: 'R5', reason: FRAMES_CHANGED_REASON, origin: 'rule', light: false }];
+    flags[shot.id] = [
+      ruleFlag({
+        code: 'R5',
+        key: `R5:${shot.id}:${String(changed)}`,
+        reason: FRAMES_CHANGED_REASON,
+        fix: 'regenerate',
+      }),
+    ];
   }
   return flags;
+}
+
+/**
+ * Segna i gialli che l'utente ha scelto di ignorare (T5.3). Restano nella risposta, così si leggono e si
+ * rimettono; una situazione nuova ha una chiave nuova, e il giallo torna da solo.
+ */
+export function markIgnored(
+  scenes: readonly ScenePlan[],
+  ignored: ReadonlySet<string>,
+): ScenePlan[] {
+  const mark = (flag: ContinuityFlag): ContinuityFlag =>
+    ignored.has(flag.key) ? { ...flag, ignored: true } : flag;
+  return scenes.map((scene) => ({
+    ...scene,
+    flags: Object.fromEntries(
+      Object.entries(scene.flags).map(([shotId, flags]) => [shotId, flags.map(mark)]),
+    ),
+    sceneFlags: scene.sceneFlags.map(mark),
+  }));
 }
 
 /** Unisce i gialli di più regole: ogni inquadratura li ha tutti, nell'ordine dato. */
@@ -218,7 +279,12 @@ export function locationChangeFlags(input: LocationChangeInput): Record<string, 
     const worked = input.workedAt[shot.id];
     if (changed === undefined || worked === undefined || worked >= changed) continue;
     flags[shot.id] = [
-      { code: 'R6', reason: LOCATION_CHANGED_REASON, origin: 'rule', light: false },
+      ruleFlag({
+        code: 'R6',
+        key: `R6:${shot.id}:${String(changed)}`,
+        reason: LOCATION_CHANGED_REASON,
+        fix: 'regenerate',
+      }),
     ];
   }
   return flags;

@@ -1004,3 +1004,19 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate e corrette; le più serie sono i punti 5, 6, 7 e 8. Il test ora fa un riavvio vero, su una seconda app con la stessa cartella dei dati, e fallisce da solo se si aggiunge un tipo di lavoro senza provarlo.
 
 **Limite noto:** un servizio che aveva già finito il lavoro è pagato e il risultato non si recupera (già segnato in T4.3). Recuperarlo senza spendere è possibile, ma è un lavoro a parte.
+
+## D85 · Tipo di film e durata indicativa; nel montaggio si scelgono le scene — 05/11/2026
+
+**Decisione dell'autore:** all'inizio l'utente dice che film vuole fare, con una durata solo indicativa e un costo indicativo; nel montaggio può montare più o meno scene. I film lunghi restano spenti fino alla seconda versione, perché lo sceneggiatore non li scrive in una richiesta sola: la scrittura va strutturata.
+**Come funziona:**
+1. **Quattro tipi:** Spot (fino a 1 minuto), Corto (da 1 a 10 minuti), Mediometraggio (da 10 a 60) e Lungometraggio (oltre 60: è anche «il film», una voce sola). Gli ultimi due si vedono spenti, con «Nella prossima versione».
+2. **La durata si regola con un cursore dentro il tipo.** Sostituisce le cinque durate fisse di D53.3. Serve allo sceneggiatore e alla stima, non è un obbligo. Il server controlla comunque che stia nei limiti del tipo. Resta il principio di D53.2: si parte già da una scelta (Corto, un minuto), e per cominciare basta scrivere l'idea.
+3. **Il costo indicativo sta accanto al cursore.** Lo calcola il server dal catalogo, mai scritto nel codice (regola 2). È una forchetta: il numero basso vale un video per inquadratura, quello alto li rifà tutti una volta. Personaggi, luoghi e suoni sono a parte, e il testo lo dice. Non spende niente: prima di ogni generazione si vede il costo come oggi. Se la stima non si può fare si dice perché, e il film si può creare lo stesso.
+4. **Nel montaggio ogni scena ha una spunta.** Sostituisce D83.3: una scena senza tutti i video non si può spuntare e dice cosa manca, ma non blocca le altre. Una scena tolta non si cancella e porta via anche i suoi suoni. Serve almeno una scena.
+5. **La differenza fra durata indicata e durata vera è un'informazione,** mai un avviso.
+
+**Il criterio «corto di 60 secondi» di M5** è solo la prova di quel traguardo, non un limite del prodotto.
+
+**Da misurare:** il limite di 10 minuti del Corto è una stima, perché lo sceneggiatore scrive tutto in una richiesta. Va provato con lo sceneggiatore vero prima di chiudere T5.9. Anche i costi del disegno sono esempi fatti a mano sui prezzi del 21/10.
+
+**Seconda versione:** Mediometraggio e Lungometraggio (piano, «Dopo l'MVP»). Per ora `CLAUDE.md` e `docs/contesto-progetto.md` restano come sono: dicono «cortometraggi», e fino ad allora è vero.

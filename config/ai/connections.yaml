@@ -11,7 +11,7 @@ connections:
     api_key: env:ANTHROPIC_API_KEY
     # base_url: https://gateway.esempio.it/anthropic/v1   # facoltativo: gateway o proxy LLM
     http_proxy: env:HTTPS_PROXY?                          # proxy di rete, se serve
-    timeout_s: 120
+    timeout_s: 300                                        # 8.000 token hanno chiesto 65 s (D89): con un servizio lento 120 s non basterebbero
     max_concurrency: 4
     enabled: true
 

@@ -3,11 +3,30 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import type * as TroupeModule from '@filmzy/troupe';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { runEval } from './eval.js';
 import { runBench, type BenchRunResult } from './run.js';
 import { scoreBench } from './score.js';
+
+/** Le chiavi che ricevono i lavori: il fornitore finto non le legge, quindi si guardano qui. */
+const secretsGiven = vi.hoisted(() => [] as unknown[]);
+
+vi.mock('@filmzy/troupe', async (original) => {
+  const real = await original<typeof TroupeModule>();
+  return {
+    ...real,
+    createTroupe: (options: Parameters<typeof real.createTroupe>[0]) => {
+      secretsGiven.push(options.secrets);
+      return real.createTroupe(options);
+    },
+    createMediaRunner: (options: Parameters<typeof real.createMediaRunner>[0]) => {
+      secretsGiven.push(options.secrets);
+      return real.createMediaRunner(options);
+    },
+  };
+});
 
 /**
  * La prova della prova: una matrice minuscola col fornitore finto, dal take al punteggio. Non
@@ -348,4 +367,29 @@ describe('gli esempi fissi degli altri ruoli di testo (T3.10)', () => {
     ).rejects.toThrow(/02-rotto\.json/);
     expect(asked).toBe(false);
   });
+});
+
+describe('le chiavi', () => {
+  it('bench ed eval passano ai fornitori le chiavi dell’ambiente', async () => {
+    secretsGiven.length = 0;
+    await runEval({
+      role: 'moderator',
+      configDir: CONFIG_DIR,
+      evalsDir: fileURLToPath(new URL('../../../config/evals', import.meta.url)),
+      environment: 'offline',
+    });
+    const dir = await mkdtemp(path.join(tmpdir(), 'filmzy-chiavi-'));
+    const planPath = path.join(dir, 'piano.yaml');
+    await writeFile(planPath, PIANO);
+    await runBench({
+      planPath,
+      configDir: CONFIG_DIR,
+      environment: 'offline',
+      outputDir: path.join(dir, 'prove'),
+      pollIntervalMs: 0,
+    });
+
+    expect(secretsGiven.length).toBeGreaterThanOrEqual(3);
+    for (const secrets of secretsGiven) expect(secrets).toEqual({ env: process.env });
+  }, 60_000);
 });

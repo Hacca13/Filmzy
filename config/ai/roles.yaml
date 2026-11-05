@@ -53,7 +53,8 @@ roles:
     label: Sceneggiatore
     kind: llm
     model: claude-sonnet
-    params: { max_tokens: 8000 }
+    # Misurato il 05/11 (D89): la stesura di un Corto da 10 minuti ne usa circa 8.000, e a 8.000 a volte si tagliava.
+    params: { max_tokens: 16000 }
     instructions: screenwriter@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -80,7 +81,8 @@ roles:
     label: Segretaria di edizione
     kind: llm
     model: claude-haiku
-    params: { max_tokens: 3000 }
+    # Misurato il 05/11 (D89): 2.734 su un film da 10 minuti, troppo vicino ai 3.000 di prima.
+    params: { max_tokens: 6000 }
     instructions: script_supervisor@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }
@@ -153,7 +155,8 @@ roles:
     label: Sound designer
     kind: llm
     model: claude-sonnet
-    params: { max_tokens: 3000 }
+    # Misurato il 05/11 (D89): 6.637 su un film da 10 minuti; a 3.000 la risposta si è tagliata.
+    params: { max_tokens: 12000 }
     instructions: sound_planner@1
     output_strategy: auto
     retries: { invalid_output: 2, technical_error: 3 }

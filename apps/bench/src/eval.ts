@@ -73,7 +73,12 @@ export async function runEval(options: EvalOptions): Promise<EvalResult> {
     path.join(options.configDir, 'ai', 'instructions'),
   );
   const receipts = new MemoryReceiptSink();
-  const troupe = createTroupe({ configSource, instructions, receiptSink: receipts });
+  const troupe = createTroupe({
+    configSource,
+    instructions,
+    receiptSink: receipts,
+    secrets: { env: process.env },
+  });
   const context = { purpose: 'eval', ...(modelId === undefined ? {} : { modelId }) } as const;
 
   if (options.confirm !== undefined) {

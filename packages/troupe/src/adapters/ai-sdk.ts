@@ -36,8 +36,18 @@ import type {
 export type ModelFactory = (providerModel: string, options: AdapterOptions) => LanguageModel;
 
 export function anthropicModel(providerModel: string, options: AdapterOptions): LanguageModel {
+  const apiKey = readSecret(options.connection.api_key, options.secrets);
+  // Senza chiave la richiesta partirebbe vuota, e il fornitore direbbe che è sbagliata: invece manca.
+  if (apiKey === undefined) {
+    throw new ProviderError(
+      'secret_missing',
+      false,
+      `La connessione "${options.connectionId}" non ha la sua chiave.`,
+      { connectionId: options.connectionId, field: 'api_key' },
+    );
+  }
   const provider = createAnthropic({
-    apiKey: readSecret(options.connection.api_key, options.secrets) ?? '',
+    apiKey,
     ...(options.connection.base_url === undefined ? {} : { baseURL: options.connection.base_url }),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });

@@ -142,8 +142,10 @@ export async function runBench(options: BenchRunOptions): Promise<BenchRunResult
   const instructions = new FileInstructionsSource(
     path.join(options.configDir, 'ai', 'instructions'),
   );
-  const troupe = createTroupe({ configSource, instructions, receiptSink: receipts });
-  const media = createMediaRunner({ configSource, assets, receiptSink: receipts });
+  // Senza, `env:NOME` non si risolve: con i fornitori veri le richieste partirebbero senza chiave.
+  const secrets = { env: process.env };
+  const troupe = createTroupe({ configSource, instructions, receiptSink: receipts, secrets });
+  const media = createMediaRunner({ configSource, assets, receiptSink: receipts, secrets });
 
   const pollIntervalMs = options.pollIntervalMs ?? 1000;
   const { references, images } = await buildSheets({

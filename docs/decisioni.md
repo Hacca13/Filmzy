@@ -1078,7 +1078,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 6. **Le spunte sono ferme mentre si monta;** una scena senza video non si può spuntare e il server lo controlla comunque. Con nessuna spunta non si monta.
 7. **Una scena si ricorda dal suo numero,** come i suoni. Se la stesura cambia molto, una scena tolta può risultare un'altra: resta scritto «Tolta da te», e con una spunta si rimette.
 
-**Da misurare:** il limite di 10 minuti del Corto (D85) non è provato con lo sceneggiatore vero: costa, e i servizi veri sono rimandati con T4.0. Un film di 10 minuti vuol dire circa 110 inquadrature in una richiesta sola, con 8.000 token di risposta per lo sceneggiatore e 3.000 per il sound designer e la segretaria: facile che non bastino. Un film più lungo di quanto regge fallirebbe dopo aver pagato qualche tentativo. La prova costa pochi centesimi. Anche il costo indicativo non è mai stato confrontato con una spesa vera.
+**Da misurare:** _(fatto: vedi D89.)_ il limite di 10 minuti del Corto (D85) non è provato con lo sceneggiatore vero: costa, e i servizi veri sono rimandati con T4.0. Un film di 10 minuti vuol dire circa 110 inquadrature in una richiesta sola, con 8.000 token di risposta per lo sceneggiatore e 3.000 per il sound designer e la segretaria: facile che non bastino. Un film più lungo di quanto regge fallirebbe dopo aver pagato qualche tentativo. La prova costa pochi centesimi. Anche il costo indicativo non è mai stato confrontato con una spesa vera.
 
 8. **I suoni delle scene fuori dal film non contano:** non rendono indietro il film, «Suggerisci i suoni» non ne propone (il sound designer legge comunque tutta la storia), e il loro pannello si chiude invece di dire «ha perso il posto». Le tracce lo spiegano in una riga.
 9. **Nei titoli di coda c'è chi si vede nel film,** non chi sta solo in una scena tolta.
@@ -1086,3 +1086,29 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 10; la più seria era il pannello del suono che, togliendo una scena, invitava a eliminare suoni già pagati. Restano, per scelta: le scene senza video fuori dalle tracce appena una è pronta (punto 5: il suono di quelle scene si riprende quando hanno i video); il numero della scena (punto 7); il limite dei 10 minuti da misurare (sotto). Da provare con T6.6: con molte scene, le miniature (un video per scena) e le card possono riempire le 6 connessioni del browser.
 
 **Non preso dal disegno:** vedi `design/riferimenti/04-tipo-di-film-e-scene.md`.
+
+## D89 · Il Corto da 10 minuti regge, con più spazio di risposta — 05/11/2026
+
+**Realizza** la misura chiesta da D85 e T5.9, con una chiave dell'autore e i servizi veri. Spesa: 0,39 $. Un film di 10 minuti, una sola storia, ogni chiamata senza nuovi tentativi:
+
+| Ruolo | Limite di prima | Com'è andata | Tempo | Costo |
+|---|---|---|---|---|
+| Sceneggiatore, bozza | 8.000 | riuscita: 6.846 token, 22 scene, 600 s esatti | 55 s | 0,07 $ |
+| Sceneggiatore, stesura | 8.000 | **tagliata** a 8.000: risposta da buttare | 65 s | 0,09 $ |
+| Sceneggiatore, stesura (ripetuta con 24.000) | — | riuscita: 7.676 token | 58 s | 0,09 $ |
+| Sound designer | 3.000 | **tagliato** a 3.000: risposta da buttare | 22 s | 0,05 $ |
+| Sound designer (ripetuto con 12.000) | — | riuscito: 6.637 token, 69 suoni | 39 s | 0,08 $ |
+| Segretaria di edizione | 3.000 | riuscita: 2.734 token | 15 s | meno di un centesimo |
+
+**Decisione:**
+1. **Il Corto resta a 10 minuti.** Una volta che la risposta ci sta, la storia torna: scene da 20 a 30 secondi, durata esatta.
+2. **Nuovi limiti di risposta:** sceneggiatore 16.000, sound designer 12.000, segretaria 6.000: circa il doppio di quanto misurato, perché la stessa richiesta cambia da una volta all'altra. Con il limite di prima un film lungo sarebbe fallito dopo tre tentativi pagati.
+3. **Attesa massima di Anthropic 300 secondi,** non più 120: 8.000 token hanno chiesto 65 secondi, e un servizio lento non ce l'avrebbe fatta.
+
+**Effetto da sapere:** la stima sui pulsanti è il massimo possibile, quindi cresce: lo sceneggiatore da circa 0,08 $ a circa 0,16 $, il sound designer da circa 0,05 $ a circa 0,14 $. La spesa vera non cambia. Per i film corti la stima è molto più alta del costo vero: si può legare alla durata del film, se darà fastidio.
+
+**Trovato con la prova:**
+- `pnpm eval` e `pnpm bench run` non passavano le chiavi: con i servizi veri ogni richiesta partiva con la chiave vuota. T4.0 si sarebbe fermato subito. Il programma non aveva il problema. Corretto, con un test.
+- Senza chiave, Anthropic diceva «la chiave non è valida»: ora dice che manca (`secret_missing`).
+
+**Limiti della misura:** una sola storia. Per il sound designer e la segretaria le 120 inquadrature sono ricavate dalla stesura, non scritte dall'aiuto regista. Con i limiti esatti di 16.000 e 12.000 non si è rilanciato: i consumi misurati ci stanno. L'aiuto regista non è misurato, perché lavora una scena alla volta. La qualità delle storie non è giudicata qui.

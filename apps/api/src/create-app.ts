@@ -32,6 +32,14 @@ export async function listenAndStart(
   await app.get(JobRunner, { strict: false }).start();
 }
 
+/** Le difese e l'indirizzo comuni a ogni server: quello vero e quello ridotto (D90). */
+export function applyCommonSetup(app: NestExpressApplication): void {
+  // Non dichiarare quale framework c'è dietro: un'informazione in meno per chi cerca falle.
+  app.disable('x-powered-by');
+  app.use(rejectNonLocalAccess);
+  app.setGlobalPrefix(API_PREFIX);
+}
+
 export async function createApp(
   options: Pick<NestApplicationOptions, 'logger'> & AppModuleOptions = {},
 ): Promise<NestExpressApplication> {
@@ -56,10 +64,7 @@ export async function createApp(
     limit: AUDIO_UPLOAD_MAX_BYTES * 2,
   });
 
-  // Non dichiarare quale framework c'è dietro: un'informazione in meno per chi cerca falle.
-  app.disable('x-powered-by');
-  app.use(rejectNonLocalAccess);
-  app.setGlobalPrefix(API_PREFIX);
+  applyCommonSetup(app);
   // Chiude il server in modo ordinato quando il programma viene fermato (Ctrl+C o chiusura).
   app.enableShutdownHooks();
 

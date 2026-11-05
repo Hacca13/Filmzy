@@ -127,6 +127,13 @@ export function openFolderCommand(platform: NodeJS.Platform, folder: string): [s
   return ['xdg-open', folder];
 }
 
+/** Apre una cartella nel programma del sistema. La cartella non viene mai da una richiesta. */
+export function openFolder(folder: string): Promise<void> {
+  const [command, target] = openFolderCommand(process.platform, folder);
+  // Su Windows explorer.exe esce con 1 anche quando la cartella si è aperta.
+  return launch(command, [target], { ignoreExitCode: process.platform === 'win32' });
+}
+
 /** Dopo quanto un programma ancora acceso vuol dire che ha funzionato: alcuni restano finché si chiude la finestra. */
 const LAUNCH_WAIT_MS = 3000;
 

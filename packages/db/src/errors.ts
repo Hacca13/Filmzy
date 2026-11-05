@@ -9,7 +9,7 @@ export class DatabaseError extends Error {
   constructor(
     readonly code: Extract<
       DomainErrorCode,
-      'database_too_new' | 'migration_failed' | 'config_invalid'
+      'database_too_new' | 'migration_failed' | 'database_unreadable' | 'config_invalid'
     >,
     message: string,
     readonly details?: { file?: string; backupFile?: string; found?: number; expected?: number },

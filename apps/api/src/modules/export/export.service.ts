@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, rename, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -22,6 +22,7 @@ import { domainError } from '../../http/domain-error.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
+import { moveIntoPlace } from '../media/move-file.js';
 import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
@@ -29,8 +30,7 @@ import {
   exportFileName,
   failureReason,
   fileErrorCode,
-  launch,
-  openFolderCommand,
+  openFolder,
   otherAspects,
   qualitiesFor,
   removeEntries,
@@ -56,9 +56,7 @@ const BEAT_MS = 5 * 60 * 1000;
 @Injectable()
 export class FolderOpener {
   open(folder: string): Promise<void> {
-    const [command, target] = openFolderCommand(process.platform, folder);
-    // Su Windows explorer.exe esce con 1 anche quando la cartella si è aperta.
-    return launch(command, [target], { ignoreExitCode: process.platform === 'win32' });
+    return openFolder(folder);
   }
 }
 
@@ -304,7 +302,7 @@ export class ExportService implements OnModuleInit {
       await this.writeFile(stored.sourceAssetId, stored.export, work);
       const fileName = exportFileName(this.projects.get(projectId).title, stored.export);
       replacing = true;
-      await rename(work, path.join(folder, fileName));
+      await moveIntoPlace(work, path.join(folder, fileName));
       this.store.finish(exportId, { status: 'succeeded', fileName });
     } catch (error) {
       const errorCode =

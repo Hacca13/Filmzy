@@ -5,6 +5,8 @@
 export const TROUPE_STORE = Symbol('TROUPE_STORE');
 export const CONFIG_DIR = Symbol('CONFIG_DIR');
 export const TROUPE_ENVIRONMENT = Symbol('TROUPE_ENVIRONMENT');
+/** Le chiavi mancanti fermano la pubblicazione? Solo da riga di comando: nel programma sono normali (D90). */
+export const SECRETS_REQUIRED = Symbol('SECRETS_REQUIRED');
 export const CONFIG_SOURCE = Symbol('CONFIG_SOURCE');
 export const TROUPE = Symbol('TROUPE');
 /** La troupe che lavora sulla **bozza** (la prova, T2.5): stessa troupe, altra sorgente. */

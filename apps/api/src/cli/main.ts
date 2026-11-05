@@ -88,9 +88,13 @@ export async function main(argv: readonly string[]): Promise<number> {
   try {
     // Da riga di comando non c'è il portachiavi del sistema (arriva con Electron): valgono le
     // variabili d'ambiente.
-    const service = new TroupeConfigService(createTroupeStore(opened.db), configDir, environment, {
-      env: process.env,
-    });
+    const service = new TroupeConfigService(
+      createTroupeStore(opened.db),
+      configDir,
+      environment,
+      { env: process.env },
+      true,
+    );
 
     return command === 'import'
       ? await commandImport(service, configDir, parsed.values.pubblica === true)

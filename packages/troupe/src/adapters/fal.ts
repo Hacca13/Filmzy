@@ -1,6 +1,5 @@
 import { ApiError, createFalClient } from '@fal-ai/client';
 
-import { readSecret } from '../config/secrets.js';
 import { ProviderError } from '../provider-error.js';
 import { keyFor, probe } from './probe.js';
 import type {
@@ -36,7 +35,8 @@ export type FalFetch = (url: string) => Promise<MediaFile>;
 
 export function falQueueFromClient(options: AdapterOptions): FalQueue {
   const client = createFalClient({
-    credentials: readSecret(options.connection.api_key, options.secrets),
+    // Senza chiave si ferma qui: né una richiesta inutile né il testo dell'utente arrivano al fornitore.
+    credentials: keyFor(options),
     ...(options.connection.base_url === undefined ? {} : { proxyUrl: options.connection.base_url }),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -50,6 +50,7 @@ import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import { registerAssets } from '../media/image-jobs.js';
+import { moveIntoPlace } from '../media/move-file.js';
 import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { sceneIdOf } from '../shots/plan-shots.js';
@@ -452,7 +453,7 @@ export class AssemblyService implements OnModuleInit {
     const assetId = filmAssetId(projectId, checksum);
     const target = path.join(filmDir, `${assetId}.mp4`);
     const existing = await stat(target).catch(() => undefined);
-    if (existing === undefined) await rename(file, target);
+    if (existing === undefined) await moveIntoPlace(file, target);
     const { size } = await stat(target);
     registerAssets(this.files, { dataDir: this.dataDir, projectId }, [
       { assetId, path: target, contentType: 'video/mp4', bytes: size, checksum },

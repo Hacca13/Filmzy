@@ -343,6 +343,7 @@ export class ConnectionsService {
             },
           }
         : {}),
+      ...(connection.key_url === undefined ? {} : { keyUrl: connection.key_url }),
       keyWritable: this.secrets.writable,
       ...(monthlyCapUsd === undefined ? {} : { monthlyCapUsd }),
       canTest: adapterCanTest(connection.adapter),

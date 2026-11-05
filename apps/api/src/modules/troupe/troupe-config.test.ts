@@ -44,6 +44,26 @@ afterEach(() => {
   aperto.close();
 });
 
+describe('una chiave mancante (D90)', () => {
+  const senzaChiavi = (required?: boolean) =>
+    new TroupeConfigService(store, CONFIG_DIR, undefined, { env: {} }, required);
+
+  it('nel programma non ferma la pubblicazione: chi ha appena installato non ne ha', async () => {
+    const { release } = await senzaChiavi().importFromFiles(CONFIG_DIR, { publish: true });
+
+    expect(release).toBeDefined();
+  });
+
+  it('da riga di comando sì: lì serve sapere subito che manca', async () => {
+    const { release, issues } = await senzaChiavi(true).importFromFiles(CONFIG_DIR, {
+      publish: true,
+    });
+
+    expect(release).toBeUndefined();
+    expect(issues.some((issue) => issue.code === 'secret_missing')).toBe(true);
+  });
+});
+
 async function esiste(file: string): Promise<boolean> {
   try {
     await access(file);

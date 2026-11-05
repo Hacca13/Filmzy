@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { keyUrlSchema } from './config/connections.js';
 import { modelPricingSchema, modelStatusSchema } from './config/models.js';
 import { connectionIdSchema, modelIdSchema } from './ids.js';
 import { modelGroupSchema, modelKindSchema } from './model-kind.js';
@@ -56,6 +57,8 @@ export const providerStateSchema = z.object({
   /** Il fornitore finto, un modello sul proprio computer e simili non vogliono nessuna chiave. */
   keyRequired: z.boolean(),
   key: providerKeySchema.optional(),
+  /** Dove si prende la chiave: «Come ottengo la chiave?». */
+  keyUrl: keyUrlSchema.optional(),
   /** Si può scrivere una chiave solo con il portachiavi del sistema (Electron, D45). */
   keyWritable: z.boolean(),
   monthlyCapUsd: z.number().positive().optional(),

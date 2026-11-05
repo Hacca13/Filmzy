@@ -1,9 +1,15 @@
-import type { ProviderState } from '@filmzy/contracts';
+import type { ModelGroup, ProviderState } from '@filmzy/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import type { MergedProvider } from '../settings/connections/model';
-import { ChooseProviders, SpendStep } from './WelcomePage';
+import {
+  ChooseProviders,
+  ReadySummary,
+  SpendStep,
+  previousStage,
+  providerSections,
+} from './WelcomePage';
 
 function entry(extra: Partial<ProviderState> = {}): MergedProvider {
   return {
@@ -45,7 +51,25 @@ describe('ChooseProviders', () => {
 
     expect(html).toContain('fal.ai');
     expect(html).toContain('immagini, video');
-    expect(html.match(/type="checkbox"/g)).toHaveLength(1);
+    expect(html.match(/aria-pressed/g)).toHaveLength(1);
+  });
+
+  it('si sceglie con un pulsante che dice com’è', () => {
+    expect(render([entry()])).toMatch(/aria-pressed="false"[^>]*>Scegli/);
+    expect(render([entry()], ['fal'])).toMatch(/aria-pressed="true"[^>]*>✓ Scelto/);
+  });
+
+  it('dice dove si prende la chiave, se lo sa', () => {
+    const url = 'https://esempio.it/chiavi';
+
+    expect(render([entry({ keyUrl: url })])).toContain(`href="${url}"`);
+    expect(render([entry({ keyUrl: url })])).toContain('Come ottengo la chiave?');
+    expect(render([entry()])).not.toContain('Come ottengo la chiave?');
+    // A chi non serve una chiave, o l'ha già, non si chiede di prenderla.
+    expect(render([entry({ keyUrl: url, keyRequired: false })])).not.toContain('Come ottengo');
+    expect(render([entry({ keyUrl: url, key: { name: 'FAL_KEY', present: true } })])).not.toContain(
+      'Come ottengo',
+    );
   });
 
   it('«Continua» resta spento finché non se ne sceglie uno, e si può saltare', () => {
@@ -60,6 +84,111 @@ describe('ChooseProviders', () => {
 
   it("le parole per l'utente non nominano prompt, modelli o token", () => {
     expect(render([entry()])).not.toMatch(/prompt|token|temperatura/i);
+  });
+});
+
+describe('le sezioni dei fornitori', () => {
+  const withGroups = (id: string, ...groups: ModelGroup[]): MergedProvider => ({
+    ...entry({ connectionId: id }),
+    groups: groups.map((group) => ({ group, hasDefault: false })),
+  });
+
+  it('un fornitore sta una volta sola, nella prima sezione in cui lavora', () => {
+    const sections = providerSections([
+      withGroups('testo', 'text', 'vision'),
+      withGroups('tutto', 'image', 'video', 'audio'),
+      withGroups('musica', 'audio'),
+    ]);
+
+    expect(sections.map(({ title, entries }) => [title, entries.length])).toEqual([
+      ['Testo', 1],
+      ['Immagini e video', 1],
+      ['Musica ed effetti', 1],
+    ]);
+  });
+
+  it('un fornitore che non lavora per nessuna sezione nota non si perde', () => {
+    expect(providerSections([withGroups('testo', 'vision')])[0]?.title).toBe('Testo');
+    expect(providerSections([])).toEqual([]);
+  });
+});
+
+describe('tornare indietro', () => {
+  it('dalla chiave del primo fornitore si torna alla scelta', () => {
+    expect(previousStage({ name: 'provider', index: 0, step: 'key' }, 2)).toEqual({
+      name: 'choose',
+    });
+  });
+
+  it('dalla chiave del secondo si torna ai servizi del primo', () => {
+    expect(previousStage({ name: 'provider', index: 1, step: 'key' }, 2)).toEqual({
+      name: 'provider',
+      index: 0,
+      step: 'services',
+    });
+  });
+
+  it('dai servizi si torna alla chiave dello stesso fornitore', () => {
+    expect(previousStage({ name: 'provider', index: 1, step: 'services' }, 2)).toEqual({
+      name: 'provider',
+      index: 1,
+      step: 'key',
+    });
+  });
+
+  it('dalle spese si torna ai servizi dell’ultimo fornitore', () => {
+    expect(previousStage({ name: 'spend' }, 2)).toEqual({
+      name: 'provider',
+      index: 1,
+      step: 'services',
+    });
+    expect(previousStage({ name: 'spend' }, 0)).toEqual({ name: 'choose' });
+  });
+});
+
+describe('ReadySummary', () => {
+  const service = {
+    modelId: 'm',
+    label: 'M',
+    enabled: true,
+    usable: true,
+  } as unknown as ProviderState['services'][number];
+
+  it('elenca solo i fornitori collegati davvero', () => {
+    const linked = entry({ key: { name: 'K', present: true }, services: [service] });
+    const notYet = entry({ connectionId: 'altro', label: 'Altro' });
+
+    const html = renderToStaticMarkup(<ReadySummary entries={[linked, notYet]} />);
+
+    expect(html).toContain('✓ fal.ai collegato');
+    expect(html).not.toContain('Altro');
+  });
+
+  it('con un fornitore solo non dice che è tutto pronto, se per un film ne manca uno', () => {
+    const images = entry({ key: { name: 'K', present: true }, services: [service] });
+
+    const html = renderToStaticMarkup(<ReadySummary entries={[images]} />);
+
+    expect(html).toContain('Quasi pronto');
+    expect(html).toContain('manca ancora un fornitore per: testo');
+    expect(html).not.toContain('Tutto pronto');
+  });
+
+  it('con testo, immagini e video è tutto pronto', () => {
+    const images = entry({ key: { name: 'K', present: true }, services: [service] });
+    const text: MergedProvider = {
+      provider: { ...images.provider, connectionId: 'testo', label: 'Testo' },
+      groups: [{ group: 'text', hasDefault: false }],
+    };
+
+    const html = renderToStaticMarkup(<ReadySummary entries={[text, images]} />);
+
+    expect(html).toContain('Tutto pronto per la tua prima storia');
+    expect(html).not.toContain('manca ancora');
+  });
+
+  it('senza nessuno non dice che è tutto pronto', () => {
+    expect(renderToStaticMarkup(<ReadySummary entries={[entry()]} />)).toBe('');
   });
 });
 

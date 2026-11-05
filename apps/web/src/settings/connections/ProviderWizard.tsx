@@ -166,11 +166,13 @@ export function KeyStep({
   onReload,
   onNext,
   onCancel,
+  cancelLabel = 'Annulla',
 }: {
   provider: ProviderState;
   onReload: () => Promise<void>;
   onNext: () => void;
   onCancel: () => void;
+  cancelLabel?: string;
 }) {
   const ready = !provider.keyRequired || provider.key?.present === true;
 
@@ -188,7 +190,7 @@ export function KeyStep({
           Continua
         </button>
         <button type="button" className="button" onClick={onCancel}>
-          Annulla
+          {cancelLabel}
         </button>
       </div>
     </>
@@ -203,6 +205,8 @@ export function ServicesStep({
   onOverview,
   onNext,
   onCancel,
+  nextLabel = 'Fine',
+  cancelLabel = 'Annulla',
 }: {
   /** I gruppi in cui il fornitore lavora: in ognuno, se non c'è un fornitore «di solito», diventa questo. */
   groups: { group: ModelGroup; hasDefault: boolean }[];
@@ -212,6 +216,8 @@ export function ServicesStep({
   onOverview: (overview: ConnectionsOverview) => void;
   onNext: () => void;
   onCancel: () => void;
+  nextLabel?: string;
+  cancelLabel?: string;
 }) {
   const [selected, setSelected] = useState<string[]>(() => preselectedServices(provider));
   const [defaultId, setDefaultId] = useState<string | undefined>(
@@ -288,10 +294,10 @@ export function ServicesStep({
           disabled={action.busy || selected.length === 0}
           onClick={finish}
         >
-          Fine
+          {nextLabel}
         </button>
         <button type="button" className="button" onClick={onCancel}>
-          Annulla
+          {cancelLabel}
         </button>
       </div>
     </>

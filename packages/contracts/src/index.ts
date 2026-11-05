@@ -1,7 +1,7 @@
 export { apiErrorSchema } from './api-error.js';
 export type { ApiErrorBody } from './api-error.js';
-export { healthResponseSchema } from './health.js';
-export type { HealthResponse } from './health.js';
+export { healthResponseSchema, startupBlockSchema } from './health.js';
+export type { HealthResponse, StartupBlock } from './health.js';
 export {
   API_PREFIX,
   DEFAULT_API_PORT,

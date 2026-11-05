@@ -57,6 +57,18 @@ describe('validateConfig sui file di seme', () => {
     expect(missing[0]?.severity).toBe('error');
   });
 
+  it('nel programma una chiave mancante è un avviso: chi ha appena installato non ne ha', () => {
+    const issues = validateConfig(seed, {
+      now: NOW,
+      secrets: { env: {} },
+      secretsRequired: false,
+    });
+    const missing = issues.filter((issue) => issue.code === 'secret_missing');
+
+    expect(missing.map((issue) => issue.severity)).toEqual(['warning', 'warning']);
+    expect(issues.filter((issue) => issue.severity === 'error')).toEqual([]);
+  });
+
   it('in test le chiavi non servono (§4.6 punto 5)', () => {
     const issues = validateConfig(seed, { now: NOW, environment: 'test', secrets: { env: {} } });
     expect(issues.filter((issue) => issue.code === 'secret_missing')).toEqual([]);

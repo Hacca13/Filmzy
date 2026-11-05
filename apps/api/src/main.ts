@@ -1,14 +1,13 @@
 import { LOCAL_API_HOST, readApiPort } from '@filmzy/contracts';
 import { Logger } from '@nestjs/common';
 
-import { createApp, listenAndStart } from './create-app.js';
+import { startServer } from './start-server.js';
 
 const logger = new Logger('Filmzy');
 
 async function bootstrap(): Promise<void> {
   const port = readApiPort(process.env);
-  const app = await createApp();
-  await listenAndStart(app, port, LOCAL_API_HOST);
+  await startServer({ port, host: LOCAL_API_HOST });
   logger.log(`Server locale pronto su http://${LOCAL_API_HOST}:${String(port)}`);
 }
 

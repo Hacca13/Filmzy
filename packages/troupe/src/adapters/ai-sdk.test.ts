@@ -3,7 +3,7 @@ import { APICallError, NoObjectGeneratedError, type LanguageModel } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it, vi } from 'vitest';
 
-import { aiSdkLlmAdapter, openAiCompatibleModel } from './ai-sdk.js';
+import { aiSdkLlmAdapter, anthropicModel, openAiCompatibleModel } from './ai-sdk.js';
 import type { AdapterOptions, LlmRequest } from './types.js';
 
 const connection: Connection = {
@@ -218,5 +218,17 @@ describe('gli errori del fornitore diventano codici di §4.10', () => {
 describe('openai_compatible', () => {
   it('pretende un base_url: senza, non sa a chi parlare', () => {
     expect(() => openAiCompatibleModel('un-modello', options)).toThrow(/base_url/);
+  });
+});
+
+describe('senza chiave', () => {
+  it('Anthropic lo dice subito, invece di mandare una richiesta vuota', () => {
+    expect(() => anthropicModel('un-modello', { ...options, secrets: { env: {} } })).toThrow(
+      expect.objectContaining({
+        code: 'secret_missing',
+        retryable: false,
+        details: expect.objectContaining({ field: 'api_key' }) as unknown,
+      }) as Error,
+    );
   });
 });

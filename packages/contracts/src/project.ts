@@ -48,7 +48,7 @@ export type FilmKind = z.infer<typeof filmKindSchema>;
 /**
  * Quanto può durare ogni tipo di film, in secondi (D85). Sono un limite del programma e non un preset: la
  * durata decide quanto costa il film, e lo sceneggiatore scrive tutto in una richiesta sola. Un lungometraggio
- * non ha un massimo. Il limite di 10 minuti del Corto è una stima da misurare con lo sceneggiatore vero.
+ * non ha un massimo. Il limite di 10 minuti del Corto è misurato con lo sceneggiatore vero (D89).
  */
 export const FILM_KIND_RANGES: Record<
   FilmKind,

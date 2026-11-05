@@ -17,12 +17,7 @@ export function startAssembly(filmId: string) {
 
 /** La spunta di una scena (D85): togliere non cancella niente. */
 export function setAssemblyScene(filmId: string, sceneNumber: number, body: SetAssemblySceneBody) {
-  return sendJson(
-    'PUT',
-    `${base(filmId)}/scenes/${String(sceneNumber)}`,
-    assemblyViewSchema,
-    body,
-  );
+  return sendJson('PUT', `${base(filmId)}/scenes/${String(sceneNumber)}`, assemblyViewSchema, body);
 }
 
 /** «Togli» su un film montato prima: lo cancella dal computer. */

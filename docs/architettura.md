@@ -67,7 +67,7 @@ filmzy/
 |---|---|---|
 | `spend` | api | stime, tetti di spesa e spesa fatta, calcolati dagli scontrini (D30) |
 | `uploads` | api | foto di luoghi e oggetti caricate dall'utente: tipo letto dai byte, controllo dell'analista di immagini prima di salvare, rifiuto di persone e marchi (D19, D71) |
-| `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, durata, fase (§3.1) |
+| `projects` | api | il film: idea, genere, tono, stile, fotografia, lingua, tipo, durata, fase (§3.1) |
 | `bible` | api | personaggi (con tag e dettagli), luoghi (con immagini), schede; assembla la Bibbia per i ruoli |
 | `screenplay` | api, worker | sceneggiatura con versioni e fase (bozza o finale), richieste di modifica, riepilogo con le scelte |
 | `moodboard` | api, worker | moodboard del film e delle scene: palette, consigli, immagini di riferimento generate o caricate e analizzate (D37) |
@@ -655,6 +655,7 @@ Un lavoro ripetuto non conta due volte nella spesa: la chiave di idempotenza sta
 - Marcatura leggibile dalle macchine (C2PA): opzione dopo l'MVP (`c2pa_marking`, D31). Filigrane e metadati dei fornitori non si rimuovono, ma l'esportazione ricodifica i video, quindi non è garantito che sopravvivano.
 - Il file finale si salva nella cartella del progetto e l'app lo mostra nella cartella di esportazione.
 - **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, i film di prima, se è indietro, i titoli), `POST /projects/:id/assembly`, e per un film di prima `GET /projects/:id/assembly/:assemblyId/file` e `DELETE /projects/:id/assembly/:assemblyId` (D87). Il montaggio non chiama fornitori e non costa; dopo un riavvio si ferma come ogni altro lavoro (D84).
+- **Oggi (T5.9, D85, D88):** ogni scena ha una spunta. Tabella `film_scene_exclusions` (le scene tolte dall'utente), rotta `PUT /projects/:id/assembly/scenes/:sceneNumber` (`included`). Entrano nel film e sulle tracce solo le scene pronte e non tolte; `GET /projects/:id/audio/timeline` elenca le altre in `hiddenSceneIds`. In «La tua idea» tipo e durata: `GET /projects/options` dà i limiti, `GET /projects/estimate?durationS=` il costo indicativo dal catalogo.
 - **Oggi (T5.8, D86):** lavoro `film_export`, tabella `film_exports`, file in `progetti/<film>/esportazioni/`, un file per ogni combinazione di qualità, formato e tipo (D87), e quelli a metà in `esportazioni-in-corso/`. Rotte: `GET /projects/:id/exports` (il film da esportare con le sue qualità e gli altri formati, l'ultimo tentativo, il file che c'è), `POST /projects/:id/exports` (`shortSide`, `aspect`, `container`), `POST /projects/:id/exports/folder` («Apri la cartella») e `GET /projects/:id/exports/:exportId/file` («Salva una copia», come allegato). Montaggio ed esportazione dello stesso film non lavorano insieme, perché ricodificare usa già tutti i processori.
 
 ## 10. Sicurezza, privacy e responsabilità

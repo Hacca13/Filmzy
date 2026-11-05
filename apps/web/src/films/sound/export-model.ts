@@ -1,4 +1,11 @@
-import { JOB_INTERRUPTED, type ExportSource, type ExportView } from '@filmzy/contracts';
+import {
+  JOB_INTERRUPTED,
+  hasAspect,
+  type ExportAspect,
+  type ExportContainer,
+  type ExportSource,
+  type ExportView,
+} from '@filmzy/contracts';
 
 import { ApiError } from '../../api/client';
 import { describeError } from '../../settings/messages';
@@ -32,13 +39,12 @@ const KNOWN_RATIOS: readonly (readonly [number, number])[] = [
   [21, 9],
 ];
 
-/** Quanto può scostarsi un formato da uno noto: le misure pari arrotondano un po'. */
-const RATIO_TOLERANCE = 0.02;
-
 /** «16:9 · Orizzontale». Un formato che non ha un nome si dice con le sue misure. */
 export function formatLabel({ width, height }: Pick<ExportSource, 'width' | 'height'>): string {
   const shape = width > height ? 'Orizzontale' : width < height ? 'Verticale' : 'Quadrato';
-  const known = KNOWN_RATIOS.find(([a, b]) => Math.abs(width / height - a / b) < RATIO_TOLERANCE);
+  const known = KNOWN_RATIOS.find(([a, b]) =>
+    hasAspect({ width, height }, { width: a, height: b }),
+  );
   const size =
     known === undefined
       ? `${String(width)}×${String(height)}`
@@ -46,12 +52,45 @@ export function formatLabel({ width, height }: Pick<ExportSource, 'width' | 'hei
   return `${size} · ${shape}`;
 }
 
+/** Cosa ha scelto l'utente nel modulo: una scelta non fatta segue quella di partenza. */
+export interface ExportChoice {
+  shortSide?: number;
+  aspect?: ExportAspect | undefined;
+  container: ExportContainer;
+}
+
+export const INITIAL_EXPORT_CHOICE: ExportChoice = { container: 'mp4' };
+
+/** La qualità e il formato da usare: una scelta di prima può non valere più, un film nuovo ha le sue. */
+export function validChoice(choice: ExportChoice, source: ExportSource | undefined) {
+  const { shortSide, aspect, container } = choice;
+  return {
+    shortSide:
+      shortSide !== undefined && source?.qualities.includes(shortSide) === true
+        ? shortSide
+        : source?.qualities[0],
+    aspect: aspect !== undefined && source?.aspects.includes(aspect) === true ? aspect : undefined,
+    container,
+  };
+}
+
+const CONTAINER_LABELS: Record<ExportContainer, string> = {
+  mp4: 'MP4 · va bene quasi ovunque',
+  mov: 'MOV · per i programmi di montaggio',
+  webm: 'WebM · per il web, più leggero',
+};
+
+export function containerLabel(container: ExportContainer): string {
+  return CONTAINER_LABELS[container];
+}
+
 const FAILURES: Record<string, string> = {
   [JOB_INTERRUPTED]:
     'Il programma si è chiuso mentre esportava. Non riparte da solo: esporta di nuovo quando vuoi.',
   ffmpeg_missing: 'Manca il programma che lavora i video. Reinstalla Filmzy.',
   not_found: 'Il film montato non c’è più sul computer. Montalo di nuovo, poi esporta.',
-  disk_full: 'Il disco è pieno. Libera un po’ di spazio e riprova.',
+  disk_full:
+    'Il disco è pieno. Togli qualche film montato prima o libera un po’ di spazio, e riprova.',
   file_in_use: 'Il file di prima è aperto in un altro programma. Chiudilo e riprova.',
   no_permission: 'Non riesco a scrivere nella cartella del film. Controlla che non sia protetta.',
   timeout: 'L’esportazione ci ha messo troppo. Chiudi gli altri programmi e riprova.',

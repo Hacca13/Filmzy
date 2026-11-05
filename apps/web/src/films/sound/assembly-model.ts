@@ -1,5 +1,10 @@
 import { JOB_INTERRUPTED, type AssemblyGap, type AssemblyView } from '@filmzy/contracts';
 
+import { ApiError } from '../../api/client';
+import { formatDateTime } from '../../lib/format';
+import { describeError } from '../../settings/messages';
+import { formatDuration } from '../model';
+
 /**
  * Le piccole decisioni del montaggio (T5.7), fuori dai componenti così si provano a parte. Cosa manca e
  * a che punto è lo dice il server: qui si dice come scriverlo.
@@ -34,7 +39,26 @@ const FAILURES: Record<string, string> = {
   not_found: 'Un video o un suono del film non c’è più sul computer. Rifallo, poi monta di nuovo.',
   invalid_request: 'Mentre aspettava è cambiato qualcosa. Controlla cosa manca e riprova.',
   timeout: 'Il montaggio ci ha messo troppo. Chiudi gli altri programmi e riprova.',
+  disk_full:
+    'Il disco è pieno. Togli qualche film montato prima o libera un po’ di spazio, e riprova.',
+  no_permission: 'Non riesco a scrivere nella cartella del film. Controlla che non sia protetta.',
 };
+
+/** «5 novembre 2026, 14:20 · 1 min 2 s»: i film di prima si riconoscono da quando sono stati montati. */
+export function earlierFilmLabel({
+  createdAt,
+  durationS,
+}: Pick<NonNullable<AssemblyView['film']>, 'createdAt' | 'durationS'>): string {
+  const when = formatDateTime(createdAt);
+  return durationS === undefined ? when : `${when} · ${formatDuration(Math.round(durationS))}`;
+}
+
+/** Perché un film di prima non si è tolto: su Windows un file aperto non si cancella. */
+export function removeFilmFailureText(error: unknown): string {
+  return error instanceof ApiError && error.serverCode === 'media_failed'
+    ? 'Non riesco a togliere questo film: forse è aperto. Fermalo o chiudilo, poi riprova.'
+    : describeError(error);
+}
 
 /** Perché il montaggio non è riuscito, in parole semplici. */
 export function assemblyFailureText(code: string | undefined): string {

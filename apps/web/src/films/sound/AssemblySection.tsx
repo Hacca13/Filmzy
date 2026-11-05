@@ -6,6 +6,7 @@ import { assetUrl } from '../../api/sheet';
 import { Notice } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
 import { useWatched } from '../use-watched';
+import { EarlierFilms } from './EarlierFilms';
 import { ExportSection } from './ExportSection';
 import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-model';
 
@@ -57,6 +58,9 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
         )}
         {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       </section>
+      {value === undefined || value.earlier.length === 0 ? null : (
+        <EarlierFilms filmId={filmId} films={value.earlier} onRemoved={reload} />
+      )}
       {value?.film === undefined ? null : (
         <ExportSection
           filmId={filmId}

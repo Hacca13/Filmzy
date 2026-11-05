@@ -727,6 +727,8 @@ export const filmExports = sqliteTable(
     status: text('status').notNull(),
     sourceAssetId: text('source_asset_id').notNull(),
     shortSide: integer('short_side').notNull(),
+    aspect: text('aspect'),
+    container: text('container').notNull().default('mp4'),
     fileName: text('file_name'),
     errorCode: text('error_code'),
     createdAt: integer('created_at').notNull(),

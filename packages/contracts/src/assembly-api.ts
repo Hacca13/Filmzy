@@ -55,9 +55,14 @@ export const assemblyViewSchema = z.object({
   latest: filmAssemblySchema.optional(),
   /** L'ultimo film riuscito: un tentativo che fallisce o che sta lavorando non lo nasconde. */
   film: filmAssemblySchema.optional(),
+  /**
+   * I film montati prima, dal più recente: restano finché li toglie l'utente (D87). Quelli tolti dalla
+   * cartella non compaiono, così l'interfaccia non offre qualcosa che non c'è più.
+   */
+  earlier: z.array(filmAssemblySchema),
   /** Quel film contiene tutto ciò che c'è adesso: niente è cambiato dopo. */
   upToDate: z.boolean(),
-  /** Il film si sta esportando: finché lavora non si monta, perché un nuovo film toglie quello di prima. */
+  /** Il film si sta esportando: finché lavora non si monta, perché ricodificare usa già tutti i processori. */
   exportWorking: z.boolean(),
   titles: assemblyTitlesSchema,
 });

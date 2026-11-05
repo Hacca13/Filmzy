@@ -2,7 +2,7 @@ import { copyFile, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { MediaError, run, tail } from './ffmpeg.js';
+import { MediaError, failureCode, run, tail } from './ffmpeg.js';
 
 /**
  * Il montaggio (T5.7, architettura §9): è deterministico, quindi non è un ruolo. Ogni clip si porta allo
@@ -21,6 +21,22 @@ const SILENCE = `anullsrc=channel_layout=stereo:sample_rate=${String(SAMPLE_RATE
 
 const VIDEO_CODEC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18'];
 const AUDIO_CODEC = ['-c:a', 'aac', '-b:a', '192k', '-ar', String(SAMPLE_RATE), '-ac', '2'];
+/** Lo stesso film in WebM: `row-mt` e `cpu-used` tengono i tempi ragionevoli, a una qualità che regge. */
+const WEBM_VIDEO_CODEC = [
+  '-c:v',
+  'libvpx-vp9',
+  '-crf',
+  '32',
+  '-b:v',
+  '0',
+  '-deadline',
+  'good',
+  '-cpu-used',
+  '5',
+  '-row-mt',
+  '1',
+];
+const WEBM_AUDIO_CODEC = ['-c:a', 'libopus', '-b:a', '160k'];
 
 /** Il formato di tutto il film. */
 export interface FilmFormat {
@@ -55,7 +71,7 @@ async function step(
     cwd,
   );
   if (code !== 0) {
-    throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);
+    throw new MediaError(failureCode(stderr), `ffmpeg non è riuscito: ${tail(stderr)}`);
   }
   const written = await stat(cwd === undefined ? output : path.resolve(cwd, output)).catch(
     () => undefined,
@@ -63,6 +79,14 @@ async function step(
   if (written === undefined || written.size === 0) {
     throw new MediaError('ffmpeg_failed', 'ffmpeg non ha scritto il file.');
   }
+}
+
+/** Porta l'immagine a queste misure senza deformarla: le parti vuote diventano bande nere. */
+function fitWithBars(width: number, height: number): string[] {
+  return [
+    `scale=${String(width)}:${String(height)}:force_original_aspect_ratio=decrease`,
+    `pad=${String(width)}:${String(height)}:(ow-iw)/2:(oh-ih)/2`,
+  ];
 }
 
 /** Larghezza e altezza di un video, lette dal file; `undefined` se dentro non c'è un video. */
@@ -92,8 +116,7 @@ export async function normalizeClip(options: NormalizeClipOptions): Promise<void
   const { input, output, format, keepAudio } = options;
   const { width, height, fps } = format;
   const video = [
-    `scale=${String(width)}:${String(height)}:force_original_aspect_ratio=decrease`,
-    `pad=${String(width)}:${String(height)}:(ow-iw)/2:(oh-ih)/2`,
+    ...fitWithBars(width, height),
     'setsar=1',
     `fps=${String(fps)}`,
     'format=yuv420p',
@@ -401,31 +424,47 @@ export function scaledSize(
   };
 }
 
-export interface ResizeFilmOptions extends StepOptions {
+/** Il tipo di file da scrivere: ffmpeg lo riconosce dall'estensione di `output`. */
+export type FilmContainer = 'mp4' | 'mov' | 'webm';
+
+export interface ConvertFilmOptions extends StepOptions {
   input: string;
+  /** Il file da scrivere: deve finire con l'estensione di `container`. */
   output: string;
+  container: FilmContainer;
+  /** Le misure del file. */
   width: number;
   height: number;
+  /** Il formato è diverso da quello del film: l'immagine si adatta con le bande nere. */
+  bars: boolean;
+  /** L'immagine resta com'è: se il tipo di file lo permette non si rifà, e non si perde niente. */
+  samePicture: boolean;
 }
 
-/** Il film a una qualità più bassa (T5.8): si rifà solo il video, il suono è già quello giusto. */
-export async function resizeFilm(options: ResizeFilmOptions): Promise<void> {
-  const { input, output, width, height } = options;
+/**
+ * Il film finale in un altro formato, qualità o tipo di file (T5.8, D87). MP4 e MOV portano lo stesso video e
+ * lo stesso suono del film, quindi si rifà solo ciò che cambia; WebM ne vuole altri, e si rifà tutto.
+ */
+export async function convertFilm(options: ConvertFilmOptions): Promise<void> {
+  const { input, output, container, width, height, bars, samePicture } = options;
+  const webm = container === 'webm';
+  const filter = bars
+    ? [...fitWithBars(width, height), 'setsar=1']
+    : [`scale=${String(width)}:${String(height)}`, 'setsar=1'];
+  const picture =
+    samePicture && !webm
+      ? ['-c:v', 'copy']
+      : ['-filter:v', filter.join(','), ...(webm ? WEBM_VIDEO_CODEC : VIDEO_CODEC)];
   await step(
     [
       '-i',
       input,
-      '-filter:v',
-      `scale=${String(width)}:${String(height)},setsar=1`,
       '-map',
       '0:v:0',
       '-map',
       '0:a:0',
-      ...VIDEO_CODEC,
-      '-c:a',
-      'copy',
-      '-movflags',
-      '+faststart',
+      ...picture,
+      ...(webm ? WEBM_AUDIO_CODEC : ['-c:a', 'copy', '-movflags', '+faststart']),
     ],
     output,
     options,

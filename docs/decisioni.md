@@ -1027,12 +1027,12 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Decisione:**
 1. **Si esporta l'ultimo film montato,** in coda e gratis: non chiama nessun fornitore. Dopo un riavvio si ferma come tutti gli altri lavori (D84), e il file a metà si toglie.
 2. **La qualità parte da quella del film e scende:** 1080p, 720p e 480p, se sono più basse. Sopra non si va: il file peserebbe di più senza vedersi meglio. Alla qualità del film si copia il file, senza perdere niente; a una più bassa si rifà il video e il suono resta com'è.
-3. **Il formato si legge e non si sceglie.** Viene dai video generati (D83.4): cambiarlo qui vorrebbe dire tagliare l'immagine o aggiungere bande. Il disegno lo mostra allo stesso modo, senza menu.
+3. **Il formato si legge e non si sceglie.** Viene dai video generati (D83.4): cambiarlo qui vorrebbe dire tagliare l'immagine o aggiungere bande. Il disegno lo mostra allo stesso modo, senza menu. _Superato da D87: si sceglie, con le bande._
 4. **Un file per qualità,** in `progetti/<film>/esportazioni/`, col nome che viene dal titolo: «L'ultima corsa - 1080p.mp4». Esportare di nuovo alla stessa qualità lo sostituisce. Se nel frattempo il titolo è cambiato, il file col vecchio nome resta: sta nella cartella che l'utente vede, e non si toglie da soli. Il titolo non può uscire dalla cartella né dare un nome che il sistema rifiuta. I file a metà stanno in `esportazioni-in-corso/`: chi apre la cartella trova solo film finiti, e un film che si chiama «lavoro-…» non si scambia per un avanzo.
 5. **«Salva una copia…» lascia decidere dove:** il server manda il file come allegato e nessun percorso scelto dall'utente arriva al server. Nel programma installato dovrebbe aprirsi la finestra «Salva con nome»; nel browser dipende dalle sue impostazioni. Va controllato con T6.4.
 6. **«Apri la cartella» parte dal server,** col comando del sistema e il percorso come argomento a parte. La cartella viene dal film, non dalla richiesta. Su Windows si guarda solo se il programma parte: `explorer.exe` esce con 1 anche quando va bene.
-7. **Montaggio ed esportazione dello stesso film non lavorano insieme.** Un nuovo montaggio toglie il film di prima, e l'esportazione lo sta leggendo: mentre uno lavora il pulsante dell'altro è spento e lo dice. Il server lo controlla comunque.
-8. **I film montati prima dell'ultimo si tolgono,** subito dopo aver scritto il nuovo: chiude il limite di D83. Se un lettore ne tiene aperto uno, resta fino al prossimo montaggio. I file esportati sono copie e non si toccano.
+7. **Montaggio ed esportazione dello stesso film non lavorano insieme.** Un nuovo montaggio toglie il film di prima, e l'esportazione lo sta leggendo: mentre uno lavora il pulsante dell'altro è spento e lo dice. Il server lo controlla comunque. _Da D87 il motivo è un altro: ricodificare usa già tutti i processori._
+8. **I film montati prima dell'ultimo si tolgono,** subito dopo aver scritto il nuovo: chiude il limite di D83. Se un lettore ne tiene aperto uno, resta fino al prossimo montaggio. I file esportati sono copie e non si toccano. _Superato da D87: restano finché li toglie l'utente._
 9. **Si può esportare un film rimasto indietro:** se manca una scena, l'ultimo film buono sarebbe altrimenti bloccato. Un testo dice che le modifiche fatte dopo non ci sono, e un file di un montaggio precedente lo dice anche lui.
 10. **Se il film montato non si legge** (tolto a mano, ffmpeg che manca o non risponde) si dice di rimontarlo, senza errori grezzi, e il file già esportato resta raggiungibile. Se l'ultimo file è stato tolto dalla cartella si offre quello prima.
 
@@ -1043,3 +1043,25 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 14: le più serie sono un film chiamato «lavoro-…» cancellato come avanzo, l'errore grezzo se ffmpeg manca, il file già fatto nascosto se il film montato non si legge, e «Apri la cartella» che su Linux non diceva niente se non si apriva. Per il cambio di titolo si è scelto di non cancellare (punto 4). Le correzioni non hanno avuto una seconda rilettura completa.
 
 **Limite noto:** ffmpeg ha 20 minuti per passo (D83): su un computer lento un film lungo alla qualità più bassa può fermarsi con «ci ha messo troppo». Mai provato con video veri dei fornitori (T4.0).
+
+## D87 · Esportazione: formato e tipo di file si scelgono; i film di prima li toglie l'utente — 05/11/2026
+
+**Decisione dell'autore:** «Vorrei che l'utente possa scegliere anche i vari formati per l'esportazione». E sui film montati prima: «se l'utente vuole anche una versione vecchia deve lasciarla. Quindi non cancella, se non serve se lo cancella l'utente per fatti suoi». Corregge D86.3 e D86.8.
+**Come funziona:**
+1. **Formato:** quello del film oppure 16:9, 9:16, 1:1, 4:3, 21:9. Il film resta intero: le parti che avanzano sono bande nere.
+2. **Niente ritaglio, per ora.** Tagliando un 16:9 in verticale sparirebbero i lati dei titoli e la dicitura AI, che deve sempre vedersi (D28). Per farlo bisogna rifare i titoli a parte per ogni formato.
+3. **Tipo di file:** MP4 (quello di partenza), MOV e WebM. «Formati» poteva voler dire entrambe le cose, quindi ci sono entrambe. MP4 e MOV portano lo stesso video e lo stesso suono: se non cambiano le misure non si rifà niente e non si perde qualità. WebM si rifà sempre, ed è più lento: il modulo lo dice.
+4. **Un file per ogni combinazione,** col nome che lo dice: «L'ultima corsa - 720p - 9x16.webm». Esportare di nuovo la stessa combinazione lo sostituisce.
+5. **I film montati prima restano** nella cartella `montaggio/`. Hanno come nome il loro checksum, quindi l'interfaccia li mostra con data e durata in «Film montati prima», con «Guarda», «Salva una copia…» e «Togli». Si elencano solo quelli che ci sono ancora: chi li toglie a mano dalla cartella non vede errori.
+6. **«Togli» chiede conferma** e cancella il file. L'ultimo film non si toglie: è quello che si vede e si esporta. Se un lettore lo tiene aperto il sistema può rifiutare, e lo si dice. Rifare un film identico riusa lo stesso file: si elenca una volta sola.
+
+**Fatto senza disegno,** con gli stili che c'erano: i due menu e «Film montati prima» sono da disegnare (`design/prossimo-prompt.md`).
+
+7. **Il tempo massimo di una conversione cresce col film:** 20 volte la sua durata, e mai meno di 20 minuti. Il limite fisso di D86 avrebbe fermato sempre un Corto lungo in WebM. Mentre lavora dà un segno di vita, così non sembra persa.
+8. **L'id di un film montato vale per quel progetto.** Prima era solo il checksum, ma il registro dei file è unico: con due film identici «Togli» avrebbe cancellato il file dell'altro.
+9. **Un disco pieno si riconosce** (`disk_full`) anche durante il montaggio, e il messaggio suggerisce di togliere qualche film di prima. Questa decisione rende il disco pieno più probabile.
+10. **Mentre si monta non si toglie un film di prima:** rifare un film identico riusa lo stesso file.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 14. Quella rimasta è la dicitura AI a 480p in verticale o quadrato, alta circa 9 px invece dei 10 del minimo di `layoutTitle`: guardata su un fotogramma vero, si legge, e non si è cambiato niente.
+
+**Da sapere:** i film di prima occupano spazio finché l'utente non li toglie; l'elenco non dice ancora quanto pesano. Si esporta solo l'ultimo film: quelli di prima si salvano così come sono. WebM usa un codec provato su Windows e nella CI su Linux, non su macOS (T6.5). Mai provato con video veri dei fornitori (T4.0).

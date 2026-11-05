@@ -132,6 +132,8 @@ describe('prima di esportare', () => {
       width: 1280,
       height: 720,
       qualities: [720, 480],
+      // Il suo formato non c'è: è la scelta di partenza.
+      aspects: ['9:16', '1:1', '4:3', '21:9'],
     });
   });
 
@@ -145,6 +147,16 @@ describe('prima di esportare', () => {
     }
     const extra = await client.call('POST', exportsOf(film.id), { shortSide: 720, x: 1 });
     expect(extra.status).toBe(400);
+    expect((await viewOf(film.id)).latest).toBeUndefined();
+  });
+
+  it('un formato che non si può usare si rifiuta, anche se è quello del film', async () => {
+    const { film } = await mountedFilm('1280x720');
+
+    const own = await client.call('POST', exportsOf(film.id), { shortSide: 720, aspect: '16:9' });
+
+    expect(own.status).toBe(400);
+    expect(domainErrorSchema.parse(own.body).details?.field).toBe('aspect');
     expect((await viewOf(film.id)).latest).toBeUndefined();
   });
 
@@ -185,6 +197,38 @@ describe('esportare', () => {
     expect(path.basename(done.path)).toBe('L’ultima corsa - 480p.mp4');
     expect(await videoSize(done.path)).toEqual({ width: 852, height: 480 });
   }, 60_000);
+
+  it('in un altro formato cambia le misure, e il nome del file lo dice', async () => {
+    const { film } = await mountedFilm('320x180');
+
+    await client.call('POST', exportsOf(film.id), { shortSide: 180, aspect: '9:16' });
+    const view = await settled(film.id);
+
+    expect(view.latest).toMatchObject({ status: 'succeeded', aspect: '9:16', container: 'mp4' });
+    const done = view.file;
+    if (done === undefined) throw new Error('doveva esserci il file');
+    expect(path.basename(done.path)).toBe('L’ultima corsa - 180p - 9x16.mp4');
+    expect(await videoSize(done.path)).toEqual({ width: 180, height: 320 });
+  }, 60_000);
+
+  it.each(['mov', 'webm'] as const)(
+    'in %s fa un file di quel tipo, senza toccare quello già fatto in MP4',
+    async (container) => {
+      const { film } = await mountedFilm('320x180');
+      const first = await exported(film.id, 180);
+
+      await client.call('POST', exportsOf(film.id), { shortSide: 180, container });
+      const view = await settled(film.id);
+
+      expect(view.latest).toMatchObject({ status: 'succeeded', container });
+      expect(path.basename(view.file?.path ?? '')).toBe(`L’ultima corsa - 180p.${container}`);
+      expect(await videoSize(view.file?.path ?? '')).toEqual({ width: 320, height: 180 });
+      expect((await readdir(folderOf(film.id))).sort()).toEqual(
+        [path.basename(first.path), `L’ultima corsa - 180p.${container}`].sort(),
+      );
+    },
+    120_000,
+  );
 
   it('un titolo scomodo non esce dalla cartella', async () => {
     const { film } = await mountedFilm('320x180', '../fuori');
@@ -240,7 +284,11 @@ describe('quando qualcosa va storto', () => {
     const { film, assetId, file } = await mountedFilm();
     await rm(file);
     const stored = app.get<ExportStore>(EXPORT_STORE, { strict: false });
-    const started = stored.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const started = stored.start(film.id, {
+      sourceAssetId: assetId,
+      shortSide: 180,
+      container: 'mp4',
+    });
 
     app.get(JobRunner, { strict: false }).enqueue({
       kind: EXPORT_JOB_KIND,
@@ -287,7 +335,11 @@ describe('quando qualcosa va storto', () => {
   it('un’esportazione alla volta, e non mentre si monta', async () => {
     const { film, assetId } = await mountedFilm();
     const stored = app.get<ExportStore>(EXPORT_STORE, { strict: false });
-    const open = stored.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const open = stored.start(film.id, {
+      sourceAssetId: assetId,
+      shortSide: 180,
+      container: 'mp4',
+    });
 
     const again = await client.call('POST', exportsOf(film.id), { shortSide: 180 });
     expect(again.status).toBe(409);
@@ -308,7 +360,7 @@ describe('quando qualcosa va storto', () => {
     const old = createExportStore(opened.db, {
       now: () => new Date(Date.now() - STALE_WORK_MS - 60_000),
     });
-    const stuck = old.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const stuck = old.start(film.id, { sourceAssetId: assetId, shortSide: 180, container: 'mp4' });
 
     expect((await viewOf(film.id)).latest).toMatchObject({
       id: stuck.id,
@@ -327,6 +379,7 @@ describe('salvare una copia', () => {
     const reply = await fetch(`${base}/api${exportsOf(film.id)}/${done.id}/file`);
 
     expect(reply.status).toBe(200);
+    expect(reply.headers.get('content-type')).toContain('video/mp4');
     expect(reply.headers.get('content-disposition')).toContain('attachment');
     expect(reply.headers.get('content-disposition')).toContain('180p.mp4');
     expect(Buffer.from(await reply.arrayBuffer()).equals(await readFile(done.path))).toBe(true);

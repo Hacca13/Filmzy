@@ -11,6 +11,7 @@ import {
   type AssemblyView,
   type AudioClip,
   type AudioTrack,
+  type FilmAssembly,
   type ScenePlan,
 } from '@filmzy/contracts';
 import {
@@ -19,6 +20,7 @@ import {
   type AudioStore,
   type KeptTake,
   type SheetStore,
+  type StoredAssembly,
   type TakeStore,
 } from '@filmzy/db';
 import {
@@ -52,7 +54,13 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
-import { failureReason, removeEntries } from './export-files.js';
+import {
+  earlierFilmName,
+  failureReason,
+  fileErrorCode,
+  filmAssetId,
+  removeEntries,
+} from './export-files.js';
 import { ExportService } from './export.service.js';
 import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
@@ -140,7 +148,7 @@ export class AssemblyService implements OnModuleInit {
     if (open === 'queued' || open === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
     }
-    // Un nuovo film toglie quello di prima: l'esportazione lo sta leggendo.
+    // Un lavoro alla volta per film: ricodificare usa già tutti i processori.
     if (this.exports.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
     }
@@ -163,18 +171,92 @@ export class AssemblyService implements OnModuleInit {
   }
 
   /** L'ultimo tentativo e l'ultimo film riuscito: uno che fallisce non nasconde quello buono. */
-  private viewOf(projectId: string, snapshot: Snapshot): AssemblyView {
+  private async viewOf(projectId: string, snapshot: Snapshot): Promise<AssemblyView> {
     this.closeLost(projectId);
     const latest = this.store.latest(projectId);
-    const film = this.store.lastSucceeded(projectId);
+    const [film, ...others] = this.store.succeeded(projectId);
     return {
       gaps: snapshot.gaps,
       ...(latest === undefined ? {} : { latest: latest.assembly }),
       ...(film === undefined ? {} : { film: film.assembly }),
+      earlier: await this.earlierFilms(film, others),
       upToDate: film?.fingerprint === snapshot.fingerprint,
       exportWorking: this.exports.isWorking(projectId),
       titles: snapshot.titles,
     };
+  }
+
+  /**
+   * I film montati prima dell'ultimo che ci sono ancora sul disco (D87). Rifare un film identico riusa lo
+   * stesso file: si mostra una volta sola, e mai se è l'ultimo.
+   */
+  private async earlierFilms(
+    film: StoredAssembly | undefined,
+    others: readonly StoredAssembly[],
+  ): Promise<FilmAssembly[]> {
+    const current = film?.assembly.assetId;
+    const seen = new Set(current === undefined ? [] : [current]);
+    const candidates = others.flatMap(({ assembly }) => {
+      if (assembly.assetId === undefined || seen.has(assembly.assetId)) return [];
+      seen.add(assembly.assetId);
+      return [{ assembly, assetId: assembly.assetId }];
+    });
+    const found = await Promise.all(
+      candidates.map(({ assetId }) => existingAssetFile(this.files, this.dataDir, assetId)),
+    );
+    return candidates.flatMap(({ assembly }, index) =>
+      found[index] === undefined ? [] : [assembly],
+    );
+  }
+
+  /** Dov'è un film già montato, per salvarne una copia. Altrimenti «non trovato». */
+  async filmFile(projectId: string, assemblyId: string): Promise<{ file: string; name: string }> {
+    const { file, createdAt } = await this.storedFilm(projectId, assemblyId);
+    return { file, name: earlierFilmName(this.projects.get(projectId).title, new Date(createdAt)) };
+  }
+
+  /**
+   * «Togli» su un film di prima: solo l'utente toglie un film (D87). L'ultimo non si toglie: è quello che si
+   * vede e si esporta. Non mentre si monta: rifare un film identico riusa lo stesso file. Se un programma lo
+   * tiene aperto il sistema può non lasciarlo togliere, e lo si dice.
+   */
+  async removeEarlier(projectId: string, assemblyId: string): Promise<void> {
+    const { file, assetId } = await this.storedFilm(projectId, assemblyId);
+    if (assetId === this.store.lastSucceeded(projectId)?.assembly.assetId) {
+      throw domainError(409, 'invalid_request', { details: { field: 'currentFilm' } });
+    }
+    this.closeLost(projectId);
+    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
+      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
+    }
+    try {
+      await rm(file, { force: true });
+    } catch (error) {
+      this.log.warn(
+        `Il film di prima non si è potuto togliere: ${failureReason(error, this.dataDir)}.`,
+      );
+      throw domainError(409, 'media_failed', {
+        retryable: true,
+        details: { field: 'earlierFilm' },
+      });
+    }
+  }
+
+  private async storedFilm(
+    projectId: string,
+    assemblyId: string,
+  ): Promise<{ file: string; assetId: string; createdAt: string }> {
+    this.projects.get(projectId);
+    const stored = this.store.get(assemblyId);
+    const assetId = stored?.projectId === projectId ? stored.assembly.assetId : undefined;
+    const file =
+      assetId === undefined
+        ? undefined
+        : await existingAssetFile(this.files, this.dataDir, assetId);
+    if (stored === undefined || assetId === undefined || file === undefined) {
+      throw domainError(404, 'not_found');
+    }
+    return { file, assetId, createdAt: stored.assembly.createdAt };
   }
 
   /** Il lavoro in coda: un errore si scrive sul tentativo, e il lavoro finisce lo stesso. */
@@ -213,11 +295,11 @@ export class AssemblyService implements OnModuleInit {
         beat,
       );
       this.store.finish(assemblyId, { status: 'succeeded', assetId, durationS });
-      // Solo dopo aver scritto il nuovo: se ci si ferma prima, il film di prima resta quello buono.
-      await this.removeOldFilms(filmDir, assetId);
     } catch (error) {
       const errorCode =
-        error instanceof MediaError || error instanceof ProviderError ? error.code : 'unknown';
+        error instanceof MediaError || error instanceof ProviderError
+          ? error.code
+          : fileErrorCode(error);
       this.log.warn(`Montaggio fallito: ${failureReason(error, this.dataDir)}.`);
       this.store.finish(assemblyId, { status: 'failed', errorCode });
     } finally {
@@ -233,14 +315,6 @@ export class AssemblyService implements OnModuleInit {
     return removeEntries(
       filmDir,
       (name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current,
-    );
-  }
-
-  /** I film montati prima dell'ultimo pesano quanto lui, e non li guarda più nessuno: l'esportazione è una copia. */
-  private removeOldFilms(filmDir: string, currentAssetId: string): Promise<void> {
-    return removeEntries(
-      filmDir,
-      (name) => name.endsWith('.mp4') && name !== `${currentAssetId}.mp4`,
     );
   }
 
@@ -341,20 +415,21 @@ export class AssemblyService implements OnModuleInit {
   }
 
   /**
-   * Il film resta nella cartella del film col checksum come nome, come ogni altro file (regola 11). Se c'è
+   * Il film resta nella cartella del film, col nome che viene dal suo contenuto (regola 11). Se c'è
    * già vuol dire che è identico: si tiene quello, che il lettore può avere aperto e Windows non lo
    * lascerebbe sostituire.
    */
   private async keepFilm(projectId: string, file: string, filmDir: string): Promise<string> {
     const checksum = await checksumOf(file);
-    const target = path.join(filmDir, `${checksum}.mp4`);
+    const assetId = filmAssetId(projectId, checksum);
+    const target = path.join(filmDir, `${assetId}.mp4`);
     const existing = await stat(target).catch(() => undefined);
     if (existing === undefined) await rename(file, target);
     const { size } = await stat(target);
     registerAssets(this.files, { dataDir: this.dataDir, projectId }, [
-      { assetId: checksum, path: target, contentType: 'video/mp4', bytes: size, checksum },
+      { assetId, path: target, contentType: 'video/mp4', bytes: size, checksum },
     ]);
-    return checksum;
+    return assetId;
   }
 
   /** Il file in uso di ogni suono che si sente, con la sua durata vera: serve a sapere quanto si può sentire. */

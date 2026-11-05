@@ -559,7 +559,7 @@ Un solo file di database; i file dei progetti stanno in cartelle accanto. I camp
 | Moodboard | `moodboards`, `moodboard_scenes`, `moodboard_references`, `moodboard_runs` | palette e consigli (JSON) del film e di ogni scena; i riferimenti puntano a un asset e, se generati, al loro scontrino; le richieste di immagini hanno il loro stato (D73) |
 | Audio | `audio_tracks`, `audio_clips`, `audio_variants` | le varianti hanno uno scontrino come i take, quindi anche il servizio usato |
 | Segreti | (fuori dal database) | le chiavi stanno nel portachiavi del sistema operativo (D29) |
-| Esportazioni | `film_exports` | tentativo, stato, qualità (`short_side`), film di partenza, nome del file (D86) |
+| Esportazioni | `film_exports` | tentativo, stato, qualità (`short_side`), formato (`aspect`), tipo di file (`container`), film di partenza, nome del file (D86, D87) |
 | Consensi (spenti) | `real_people`, `consents`, `provider_assets` | ambito (volto, voce), metodo, prove, revoca; asset registrati presso i fornitori, da cancellare alla revoca |
 
 ### 6.1 Dove stanno i dati, e perché non nella cartella del programma
@@ -654,8 +654,8 @@ Un lavoro ripetuto non conta due volte nella spesa: la chiave di idempotenza sta
 - Nei titoli compare la dicitura "Contiene contenuti generati con intelligenza artificiale".
 - Marcatura leggibile dalle macchine (C2PA): opzione dopo l'MVP (`c2pa_marking`, D31). Filigrane e metadati dei fornitori non si rimuovono, ma l'esportazione ricodifica i video, quindi non è garantito che sopravvivano.
 - Il file finale si salva nella cartella del progetto e l'app lo mostra nella cartella di esportazione.
-- **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, se è indietro, i titoli) e `POST /projects/:id/assembly`. Il montaggio non chiama fornitori e non costa; dopo un riavvio si ferma come ogni altro lavoro (D84).
-- **Oggi (T5.8, D86):** lavoro `film_export`, tabella `film_exports`, file in `progetti/<film>/esportazioni/`, un file per qualità, e quelli a metà in `esportazioni-in-corso/`. Rotte: `GET /projects/:id/exports` (il film da esportare con le sue qualità, l'ultimo tentativo, il file che c'è), `POST /projects/:id/exports` (`shortSide`), `POST /projects/:id/exports/folder` («Apri la cartella») e `GET /projects/:id/exports/:exportId/file` («Salva una copia», come allegato). Montaggio ed esportazione dello stesso film non lavorano insieme, perché un nuovo montaggio toglie il film di prima.
+- **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, i film di prima, se è indietro, i titoli), `POST /projects/:id/assembly`, e per un film di prima `GET /projects/:id/assembly/:assemblyId/file` e `DELETE /projects/:id/assembly/:assemblyId` (D87). Il montaggio non chiama fornitori e non costa; dopo un riavvio si ferma come ogni altro lavoro (D84).
+- **Oggi (T5.8, D86):** lavoro `film_export`, tabella `film_exports`, file in `progetti/<film>/esportazioni/`, un file per ogni combinazione di qualità, formato e tipo (D87), e quelli a metà in `esportazioni-in-corso/`. Rotte: `GET /projects/:id/exports` (il film da esportare con le sue qualità e gli altri formati, l'ultimo tentativo, il file che c'è), `POST /projects/:id/exports` (`shortSide`, `aspect`, `container`), `POST /projects/:id/exports/folder` («Apri la cartella») e `GET /projects/:id/exports/:exportId/file` («Salva una copia», come allegato). Montaggio ed esportazione dello stesso film non lavorano insieme, perché ricodificare usa già tutti i processori.
 
 ## 10. Sicurezza, privacy e responsabilità
 

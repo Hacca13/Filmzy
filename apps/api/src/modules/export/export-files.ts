@@ -1,7 +1,15 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
+import {
+  EXPORT_ASPECTS,
+  aspectParts,
+  hasAspect,
+  type ExportAspect,
+  type ExportContainer,
+} from '@filmzy/contracts';
 import { MediaError } from '@filmzy/media';
 import { ProviderError } from '@filmzy/troupe';
 
@@ -16,17 +24,52 @@ const FORBIDDEN_IN_NAME = /[<>:"/\\|?*\u0000-\u001f]/g;
 const FALLBACK_TITLE = 'Film';
 
 /**
- * Il nome del file finale: «L'ultima corsa - 1080p.mp4». Viene dal titolo, che scrive l'utente: non deve
- * poter uscire dalla cartella né dare un nome che il sistema rifiuta (CLAUDE.md, «Sicuro»). Un punto davanti
- * nasconderebbe il file su Linux e macOS. Il titolo ha già un limite di lunghezza (`TITLE_MAX_LENGTH`).
+ * Il titolo come pezzo di un nome di file. Lo scrive l'utente: non deve poter uscire dalla cartella né dare
+ * un nome che il sistema rifiuta (CLAUDE.md, «Sicuro»). Un punto davanti nasconderebbe il file su Linux e
+ * macOS. Il titolo ha già un limite di lunghezza (`TITLE_MAX_LENGTH`).
  */
-export function exportFileName(title: string, shortSide: number): string {
+function titleInName(title: string): string {
   const cleaned = title
     .replace(FORBIDDEN_IN_NAME, ' ')
     .replace(/\s+/g, ' ')
     .replace(/^[.\s]+/, '')
     .trim();
-  return `${cleaned === '' ? FALLBACK_TITLE : cleaned} - ${String(shortSide)}p.mp4`;
+  return cleaned === '' ? FALLBACK_TITLE : cleaned;
+}
+
+/**
+ * Il nome del file finale: «L'ultima corsa - 1080p.mp4», «L'ultima corsa - 720p - 9x16.webm». I due punti di
+ * «9:16» Windows non li accetta in un nome.
+ */
+export function exportFileName(
+  title: string,
+  choice: { shortSide: number; aspect?: ExportAspect | undefined; container: ExportContainer },
+): string {
+  const { shortSide, aspect, container } = choice;
+  const format = aspect === undefined ? '' : ` - ${aspect.replace(':', 'x')}`;
+  return `${titleInName(title)} - ${String(shortSide)}p${format}.${container}`;
+}
+
+/**
+ * L'id di un film montato. Il checksum da solo non basta: il registro dei file è unico per tutti i film, e due
+ * film uguali (stesso titolo, stessi video) finirebbero sulla stessa riga. Togliendone uno si toglierebbe il
+ * file dell'altro.
+ */
+export function filmAssetId(projectId: string, checksum: string): string {
+  return createHash('sha256').update(`${projectId}:${checksum}`).digest('hex');
+}
+
+/** Il nome di una copia di un film montato prima: «L'ultima corsa - montato il 2026-11-05 14.20.mp4». */
+export function earlierFilmName(title: string, createdAt: Date): string {
+  const two = (value: number): string => String(value).padStart(2, '0');
+  const day = `${String(createdAt.getFullYear())}-${two(createdAt.getMonth() + 1)}-${two(createdAt.getDate())}`;
+  const time = `${two(createdAt.getHours())}.${two(createdAt.getMinutes())}`;
+  return `${titleInName(title)} - montato il ${day} ${time}.mp4`;
+}
+
+/** I formati in cui si può esportare un film di queste misure: tutti tranne il suo. */
+export function otherAspects(size: { width: number; height: number }): ExportAspect[] {
+  return EXPORT_ASPECTS.filter((aspect) => !hasAspect(size, aspectParts(aspect)));
 }
 
 /**

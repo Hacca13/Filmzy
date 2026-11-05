@@ -1,4 +1,11 @@
-import type { ExportView } from '@filmzy/contracts';
+import {
+  EXPORT_CONTAINERS,
+  aspectParts,
+  exportAspectSchema,
+  exportContainerSchema,
+  type ExportView,
+  type StartExportBody,
+} from '@filmzy/contracts';
 import { useCallback, useState } from 'react';
 
 import { exportFileUrl, fetchExport, openExportFolder, startExport } from '../../api/exports';
@@ -6,17 +13,21 @@ import { Notice } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
 import { useWatched } from '../use-watched';
 import {
+  INITIAL_EXPORT_CHOICE,
+  containerLabel,
   exportFailureText,
   exportIsWorking,
   formatLabel,
   openFolderFailureText,
   qualityLabel,
+  validChoice,
+  type ExportChoice,
 } from './export-model';
 
 /**
- * «Esporta il film» (T5.8, §9): il file finale alla qualità scelta, nella cartella del film. Lavora sul
- * computer dell'utente, quindi non costa niente. Ascolta anche il montaggio: un film nuovo cambia le qualità
- * possibili e rende indietro il file già fatto.
+ * «Esporta il film» (T5.8, D87, §9): il file finale con la qualità, il formato e il tipo di file scelti, nella
+ * cartella del film. Lavora sul computer dell'utente, quindi non costa niente. Ascolta anche il montaggio: un
+ * film nuovo cambia le scelte possibili e rende indietro il file già fatto.
  */
 export function ExportSection({
   filmId,
@@ -34,7 +45,7 @@ export function ExportSection({
   });
   const starting = useAction();
   const opening = useAction();
-  const [chosen, setChosen] = useState<number>();
+  const [chosen, setChosen] = useState<ExportChoice>(INITIAL_EXPORT_CHOICE);
 
   return (
     <section className="sheet sound-film" aria-label="Esporta il film">
@@ -53,11 +64,13 @@ export function ExportSection({
           chosen={chosen}
           busy={starting.busy}
           opening={opening.busy}
-          onChoose={setChosen}
-          onStart={(shortSide) => {
+          onChoose={(changes) => {
+            setChosen({ ...chosen, ...changes });
+          }}
+          onStart={(body) => {
             starting.run(async () => {
               try {
-                setValue(await startExport(filmId, { shortSide }));
+                setValue(await startExport(filmId, body));
               } catch (error) {
                 // Il server dice che non si può o che sta già lavorando: la pagina deve dire lo stesso.
                 await reload();
@@ -93,23 +106,19 @@ export function ExportBody({
   view: ExportView;
   /** Dopo l'ultimo montaggio è cambiato qualcosa nel film. */
   behind: boolean;
-  /** Il film si sta montando: un nuovo film toglie quello di prima. */
+  /** Il film si sta montando: un lavoro alla volta, ricodificare usa già tutti i processori. */
   mounting: boolean;
-  chosen: number | undefined;
+  chosen: ExportChoice;
   busy: boolean;
   opening: boolean;
-  onChoose: (shortSide: number) => void;
-  onStart: (shortSide: number) => void;
+  onChoose: (changes: Partial<ExportChoice>) => void;
+  onStart: (body: StartExportBody) => void;
   onOpenFolder: () => void;
 }) {
   const { source, latest, file } = view;
   const working = exportIsWorking(view);
 
-  // Una scelta di prima può non valere più: un film nuovo può avere altre qualità.
-  const quality =
-    chosen !== undefined && source?.qualities.includes(chosen) === true
-      ? chosen
-      : source?.qualities[0];
+  const { shortSide: quality, aspect, container } = validChoice(chosen, source);
 
   return (
     <>
@@ -126,7 +135,7 @@ export function ExportBody({
               value={quality}
               disabled={working}
               onChange={(event) => {
-                onChoose(Number(event.target.value));
+                onChoose({ shortSide: Number(event.target.value) });
               }}
             >
               {source.qualities.map((shortSide) => (
@@ -136,12 +145,53 @@ export function ExportBody({
               ))}
             </select>
           </div>
-          <dl className="details">
-            <div>
-              <dt>Formato</dt>
-              <dd>{formatLabel(source)}</dd>
-            </div>
-          </dl>
+          <div className="field">
+            <label htmlFor="export-aspect">Formato</label>
+            <select
+              id="export-aspect"
+              value={aspect ?? ''}
+              disabled={working}
+              onChange={(event) => {
+                const parsed = exportAspectSchema.safeParse(event.target.value);
+                onChoose({ aspect: parsed.success ? parsed.data : undefined });
+              }}
+            >
+              <option value="">{formatLabel(source)} · come il film</option>
+              {source.aspects.map((option) => (
+                <option key={option} value={option}>
+                  {formatLabel(aspectParts(option))}
+                </option>
+              ))}
+            </select>
+            {aspect === undefined ? null : (
+              <p className="hint">
+                Il film resta intero: nelle parti che avanzano ci sono delle bande nere.
+              </p>
+            )}
+          </div>
+          <div className="field">
+            <label htmlFor="export-container">Tipo di file</label>
+            <select
+              id="export-container"
+              value={container}
+              disabled={working}
+              onChange={(event) => {
+                onChoose({ container: exportContainerSchema.parse(event.target.value) });
+              }}
+            >
+              {EXPORT_CONTAINERS.map((option) => (
+                <option key={option} value={option}>
+                  {containerLabel(option)}
+                </option>
+              ))}
+            </select>
+            {container === 'webm' ? (
+              <p className="hint">
+                Questo tipo di file ci mette molto di più: il film si rifà da capo, e può volerci
+                anche più di mezz’ora.
+              </p>
+            ) : null}
+          </div>
           {behind ? (
             <p className="hint">
               Esporti l’ultimo film montato: le modifiche fatte dopo non ci sono.
@@ -158,7 +208,13 @@ export function ExportBody({
               data-kind="primary"
               disabled={busy || working || mounting || quality === undefined}
               onClick={() => {
-                if (quality !== undefined) onStart(quality);
+                if (quality !== undefined) {
+                  onStart({
+                    shortSide: quality,
+                    container,
+                    ...(aspect === undefined ? {} : { aspect }),
+                  });
+                }
               }}
             >
               Esporta il film

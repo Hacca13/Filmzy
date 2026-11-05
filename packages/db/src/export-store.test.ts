@@ -17,11 +17,25 @@ beforeEach(async () => {
 });
 
 describe('le esportazioni di un film', () => {
+  it('ricorda formato e tipo di file; senza formato vale quello del film', () => {
+    const plain = store.start('film-1', { sourceAssetId: 'a', shortSide: 720, container: 'mp4' });
+    const chosen = store.start('film-1', {
+      sourceAssetId: 'a',
+      shortSide: 720,
+      aspect: '9:16',
+      container: 'webm',
+    });
+
+    expect(plain.aspect).toBeUndefined();
+    expect(plain.container).toBe('mp4');
+    expect(store.get(chosen.id)?.export).toMatchObject({ aspect: '9:16', container: 'webm' });
+  });
+
   it('l’ultimo tentativo e l’ultimo file riuscito sono due cose diverse', () => {
-    const good = store.start('film-1', { sourceAssetId: 'a', shortSide: 720 });
+    const good = store.start('film-1', { sourceAssetId: 'a', shortSide: 720, container: 'mp4' });
     store.finish(good.id, { status: 'succeeded', fileName: 'Film - 720p.mp4' });
     clock = new Date('2026-11-05T10:01:00.000Z');
-    const bad = store.start('film-1', { sourceAssetId: 'b', shortSide: 480 });
+    const bad = store.start('film-1', { sourceAssetId: 'b', shortSide: 480, container: 'mp4' });
     store.finish(bad.id, { status: 'failed', errorCode: 'ffmpeg_failed' });
 
     expect(store.latest('film-1')?.export).toMatchObject({
@@ -40,17 +54,17 @@ describe('le esportazioni di un film', () => {
   });
 
   it('i riusciti vengono dal più recente', () => {
-    const first = store.start('film-1', { sourceAssetId: 'a', shortSide: 720 });
+    const first = store.start('film-1', { sourceAssetId: 'a', shortSide: 720, container: 'mp4' });
     store.finish(first.id, { status: 'succeeded', fileName: 'a.mp4' });
     clock = new Date('2026-11-05T10:01:00.000Z');
-    const second = store.start('film-1', { sourceAssetId: 'a', shortSide: 480 });
+    const second = store.start('film-1', { sourceAssetId: 'a', shortSide: 480, container: 'mp4' });
     store.finish(second.id, { status: 'succeeded', fileName: 'b.mp4' });
 
     expect(store.succeeded('film-1').map(({ fileName }) => fileName)).toEqual(['b.mp4', 'a.mp4']);
   });
 
   it('un film non vede le esportazioni di un altro', () => {
-    const other = store.start('film-2', { sourceAssetId: 'a', shortSide: 720 });
+    const other = store.start('film-2', { sourceAssetId: 'a', shortSide: 720, container: 'mp4' });
     store.finish(other.id, { status: 'succeeded', fileName: 'Altro.mp4' });
 
     expect(store.latest('film-1')).toBeUndefined();
@@ -62,7 +76,7 @@ describe('le esportazioni di un film', () => {
   });
 
   it('il segno di vita si aggiorna a ogni passo', () => {
-    const started = store.start('film-1', { sourceAssetId: 'a', shortSide: 720 });
+    const started = store.start('film-1', { sourceAssetId: 'a', shortSide: 720, container: 'mp4' });
 
     clock = new Date('2026-11-05T10:05:00.000Z');
     store.finish(started.id, { status: 'running' });

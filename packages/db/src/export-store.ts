@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { filmExportSchema, type FilmExport, type SheetImageStatus } from '@filmzy/contracts';
+import {
+  filmExportSchema,
+  type ExportAspect,
+  type ExportContainer,
+  type FilmExport,
+  type SheetImageStatus,
+} from '@filmzy/contracts';
 import { and, desc, eq } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
@@ -24,9 +30,17 @@ export interface StoredExport {
   export: FilmExport;
 }
 
+/** Cosa si chiede di esportare. Senza formato vale quello del film. */
+export interface ExportRequest {
+  sourceAssetId: string;
+  shortSide: number;
+  aspect?: ExportAspect | undefined;
+  container: ExportContainer;
+}
+
 /** Le esportazioni di un film (T5.8): contano l'ultimo tentativo e l'ultimo file riuscito. */
 export interface ExportStore {
-  start: (projectId: string, request: { sourceAssetId: string; shortSide: number }) => FilmExport;
+  start: (projectId: string, request: ExportRequest) => FilmExport;
   finish: (exportId: string, patch: ExportPatch) => void;
   get: (exportId: string) => StoredExport | undefined;
   latest: (projectId: string) => StoredExport | undefined;
@@ -48,6 +62,8 @@ function toStored(row: FilmExportRow): StoredExport {
       id: row.id,
       status: row.status,
       shortSide: row.shortSide,
+      ...(row.aspect === null ? {} : { aspect: row.aspect }),
+      container: row.container,
       ...(row.errorCode === null ? {} : { errorCode: row.errorCode }),
       createdAt: new Date(row.createdAt).toISOString(),
     }),
@@ -58,7 +74,7 @@ export function createExportStore(db: FilmzyDb, options: ExportStoreOptions = {}
   const now = options.now ?? (() => new Date());
 
   return {
-    start(projectId, { sourceAssetId, shortSide }) {
+    start(projectId, { sourceAssetId, shortSide, aspect, container }) {
       const at = now().getTime();
       const row = db
         .insert(filmExports)
@@ -68,6 +84,8 @@ export function createExportStore(db: FilmzyDb, options: ExportStoreOptions = {}
           status: 'queued',
           sourceAssetId,
           shortSide,
+          aspect: aspect ?? null,
+          container,
           createdAt: at,
           updatedAt: at,
         })

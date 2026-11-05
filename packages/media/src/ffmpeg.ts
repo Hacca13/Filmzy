@@ -22,6 +22,8 @@ export type MediaErrorCode =
   | 'ffmpeg_missing'
   /** ffmpeg è partito ma non è riuscito: il file non è un video, o è rovinato. */
   | 'ffmpeg_failed'
+  /** ffmpeg si è fermato perché sul disco non c'è più posto. */
+  | 'disk_full'
   /** Il momento chiesto non è un tempo valido (negativo, non un numero). */
   | 'invalid_time'
   /** Il momento chiesto è oltre la fine del video: non c'è nessun fotogramma. */
@@ -101,6 +103,11 @@ export function run(
       },
     );
   });
+}
+
+/** Perché ffmpeg non è riuscito: un disco pieno si risolve liberando spazio, un video rovinato no. */
+export function failureCode(stderr: string): MediaErrorCode {
+  return /no space left/i.test(stderr) ? 'disk_full' : 'ffmpeg_failed';
 }
 
 /** Le ultime righe di ciò che ffmpeg ha detto: bastano a capire, senza riempire il registro. */

@@ -2,15 +2,50 @@ import { MediaError } from '@filmzy/media';
 import { describe, expect, it } from 'vitest';
 
 import {
-  exportFileName,
+  earlierFilmName,
+  exportFileName as nameWith,
   failureReason,
   fileErrorCode,
   launch,
   openFolderCommand,
+  otherAspects,
   qualitiesFor,
 } from './export-files.js';
 
+/** Il nome in MP4, nel formato del film: il caso di tutti i controlli sul titolo. */
+const exportFileName = (title: string, shortSide: number): string =>
+  nameWith(title, { shortSide, container: 'mp4' });
+
+describe('i formati da offrire', () => {
+  it('sono tutti tranne quello del film', () => {
+    expect(otherAspects({ width: 1280, height: 720 })).toEqual(['9:16', '1:1', '4:3', '21:9']);
+    expect(otherAspects({ width: 720, height: 1280 })).toEqual(['16:9', '1:1', '4:3', '21:9']);
+    expect(otherAspects({ width: 852, height: 480 })).not.toContain('16:9');
+  });
+
+  it('un film dalle misure strane può andare in tutti', () => {
+    expect(otherAspects({ width: 1000, height: 700 })).toHaveLength(5);
+  });
+});
+
 describe('il nome del file', () => {
+  it('dice il formato, se non è quello del film, senza i due punti che Windows rifiuta', () => {
+    expect(nameWith('Film', { shortSide: 720, aspect: '9:16', container: 'mp4' })).toBe(
+      'Film - 720p - 9x16.mp4',
+    );
+  });
+
+  it('finisce col tipo di file', () => {
+    expect(nameWith('Film', { shortSide: 720, container: 'webm' })).toBe('Film - 720p.webm');
+    expect(nameWith('Film', { shortSide: 720, container: 'mov' })).toBe('Film - 720p.mov');
+  });
+
+  it('un film di prima si riconosce dalla data, e il titolo resta pulito', () => {
+    expect(earlierFilmName('../Film', new Date(2026, 10, 5, 14, 7))).toBe(
+      'Film - montato il 2026-11-05 14.07.mp4',
+    );
+  });
+
   it('viene dal titolo, con la qualità', () => {
     expect(exportFileName('L’ultima corsa', 1080)).toBe('L’ultima corsa - 1080p.mp4');
   });

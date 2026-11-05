@@ -2,11 +2,20 @@ import { JOB_INTERRUPTED, type AssemblyView } from '@filmzy/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import { ApiError } from '../../api/client';
 import { AssemblyBody } from './AssemblySection';
-import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-model';
+import { EarlierFilmsList } from './EarlierFilms';
+import {
+  assemblyFailureText,
+  assemblyIsWorking,
+  earlierFilmLabel,
+  gapText,
+  removeFilmFailureText,
+} from './assembly-model';
 
 const view = (patch: Partial<AssemblyView> = {}): AssemblyView => ({
   gaps: [],
+  earlier: [],
   upToDate: false,
   exportWorking: false,
   titles: {
@@ -51,6 +60,64 @@ describe('cosa manca', () => {
 
     expect(html).toContain('Per montare il film manca ancora');
     expect(startButton(html)).toContain('disabled');
+  });
+});
+
+describe('i film montati prima', () => {
+  const earlier = { ...made, id: 'm-0', assetId: 'vecchio', durationS: 62 };
+
+  const list = (patch: { watching?: string; confirming?: string; busy?: boolean } = {}) =>
+    renderToStaticMarkup(
+      <EarlierFilmsList
+        filmId="film-1"
+        films={[earlier]}
+        watching={patch.watching}
+        confirming={patch.confirming}
+        busy={patch.busy ?? false}
+        onWatch={() => undefined}
+        onConfirm={() => undefined}
+        onRemove={() => undefined}
+      />,
+    );
+
+  it('si riconoscono da quando sono stati montati e da quanto durano', () => {
+    expect(earlierFilmLabel(earlier)).toContain('novembre 2026');
+    expect(earlierFilmLabel(earlier)).toContain('1 min 2 s');
+    expect(earlierFilmLabel({ createdAt: earlier.createdAt })).not.toContain('·');
+  });
+
+  it('si possono guardare, salvare e togliere, e di loro non si dice che si cancellano da soli', () => {
+    const html = list();
+
+    expect(html).toContain('Guarda');
+    expect(html).toContain('href="/api/projects/film-1/assembly/m-0/file"');
+    expect(html).toContain('Salva una copia…');
+    expect(html).toContain('Togli');
+    expect(html).toContain('Restano sul tuo computer finché non li togli tu');
+    expect(html).not.toContain('<video');
+  });
+
+  it('guardandone uno compare il lettore, e si può chiudere', () => {
+    const html = list({ watching: 'm-0' });
+
+    expect(html).toContain('<video');
+    expect(html).toContain('/api/assets/vecchio');
+    expect(html).toContain('Chiudi');
+  });
+
+  it('togliere chiede conferma: non si torna indietro', () => {
+    const html = list({ confirming: 'm-0' });
+
+    expect(html).toContain('Vuoi toglierlo dal computer?');
+    expect(html).toContain('Sì, togli');
+    expect(html).toContain('Annulla');
+  });
+
+  it('se è aperto e non si toglie lo dice, in parole semplici', () => {
+    expect(
+      removeFilmFailureText(new ApiError('http_error', { serverCode: 'media_failed' })),
+    ).toContain('forse è aperto');
+    expect(removeFilmFailureText(new ApiError('network_error'))).toContain('non risponde');
   });
 });
 

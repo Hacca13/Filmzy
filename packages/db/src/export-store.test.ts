@@ -17,6 +17,20 @@ beforeEach(async () => {
 });
 
 describe('le esportazioni di un film', () => {
+  it('ricorda formato e tipo di file; senza dirli vale il formato del film e MP4', () => {
+    const plain = store.start('film-1', { sourceAssetId: 'a', shortSide: 720 });
+    const chosen = store.start('film-1', {
+      sourceAssetId: 'a',
+      shortSide: 720,
+      aspect: '9:16',
+      container: 'webm',
+    });
+
+    expect(plain.aspect).toBeUndefined();
+    expect(plain.container).toBe('mp4');
+    expect(store.get(chosen.id)?.export).toMatchObject({ aspect: '9:16', container: 'webm' });
+  });
+
   it('l’ultimo tentativo e l’ultimo file riuscito sono due cose diverse', () => {
     const good = store.start('film-1', { sourceAssetId: 'a', shortSide: 720 });
     store.finish(good.id, { status: 'succeeded', fileName: 'Film - 720p.mp4' });

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { readdir, rm } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -29,7 +29,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { startApp, type Client } from '../../test-support/app-client.js';
 import { filmWithFinal } from '../../test-support/film-with-shot.js';
-import { realSound, realVideo, takeWithFile } from '../../test-support/real-clip.js';
+import {
+  filmAlreadyMounted,
+  realSound,
+  realVideo,
+  takeWithFile,
+} from '../../test-support/real-clip.js';
 import { AUDIO_STORE } from '../audio/tokens.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
@@ -124,6 +129,93 @@ async function loudness(file: string): Promise<number> {
   if (found === null) throw new Error('niente volume');
   return Number(found[1]);
 }
+
+describe('i film montati prima', () => {
+  /** Un film con la stesura e due montaggi: non serve rifarli davvero per provare l'elenco. */
+  async function twoFilms() {
+    const { film } = await filmWithFinal(client);
+    const first = await filmAlreadyMounted(app, dataDir, { filmId: film.id, size: '320x180' });
+    const second = await filmAlreadyMounted(app, dataDir, { filmId: film.id, size: '320x180' });
+    const view = await viewOf(film.id);
+    const earlier = view.earlier[0];
+    if (earlier === undefined) throw new Error('doveva esserci il film di prima');
+    return { film, first, second, earlier, view };
+  }
+
+  it('l’elenco ha quelli di prima, non l’ultimo', async () => {
+    const { first, second, view } = await twoFilms();
+
+    expect(view.film?.assetId).toBe(second.assetId);
+    expect(view.earlier.map(({ assetId }) => assetId)).toEqual([first.assetId]);
+  }, 60_000);
+
+  it('si salva una copia, col nome del film e la data', async () => {
+    const { film, earlier } = await twoFilms();
+
+    const reply = await fetch(`${base}/api${assemblyOf(film.id)}/${earlier.id}/file`);
+
+    expect(reply.status).toBe(200);
+    expect(reply.headers.get('content-disposition')).toContain('attachment');
+    expect(reply.headers.get('content-disposition')).toContain('montato');
+    await reply.body?.cancel();
+  }, 60_000);
+
+  it('toglierlo cancella il file, e non si offre più', async () => {
+    const { film, first, earlier } = await twoFilms();
+
+    const reply = await client.call('DELETE', `${assemblyOf(film.id)}/${earlier.id}`);
+
+    expect(reply.status).toBe(204);
+    expect((await viewOf(film.id)).earlier).toEqual([]);
+    await expect(stat(first.file)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect((await client.call('DELETE', `${assemblyOf(film.id)}/${earlier.id}`)).status).toBe(404);
+  }, 60_000);
+
+  it('l’ultimo film non si toglie', async () => {
+    const { film, second, view } = await twoFilms();
+
+    const reply = await client.call('DELETE', `${assemblyOf(film.id)}/${view.film?.id ?? ''}`);
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('currentFilm');
+    expect((await stat(second.file)).size).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('un film tolto a mano dalla cartella sparisce dall’elenco', async () => {
+    const { film, first } = await twoFilms();
+
+    await rm(first.file);
+
+    expect((await viewOf(film.id)).earlier).toEqual([]);
+  }, 60_000);
+
+  it('il film di un altro progetto, o uno che non c’è, è «non trovato»', async () => {
+    const { earlier } = await twoFilms();
+    const { film: other } = await filmWithFinal(client);
+
+    expect((await client.call('DELETE', `${assemblyOf(other.id)}/${earlier.id}`)).status).toBe(404);
+    expect((await client.call('GET', `${assemblyOf(other.id)}/${earlier.id}/file`)).status).toBe(
+      404,
+    );
+    expect((await client.call('DELETE', `${assemblyOf(other.id)}/nessuno`)).status).toBe(404);
+  }, 60_000);
+
+  it('se il sistema non lo lascia togliere lo dice col suo codice', async () => {
+    const { film, first, earlier } = await twoFilms();
+    // Al posto del file una cartella: non si toglie, in ogni sistema, come un file tenuto aperto su Windows.
+    await rm(first.file);
+    await mkdir(first.file);
+
+    const reply = await client.call('DELETE', `${assemblyOf(film.id)}/${earlier.id}`);
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body)).toMatchObject({
+      code: 'media_failed',
+      details: { field: 'earlierFilm' },
+    });
+    expect((await viewOf(film.id)).earlier).toHaveLength(1);
+  }, 60_000);
+});
 
 describe('cosa manca per montare', () => {
   it('senza la stesura finale non c’è niente da montare', async () => {
@@ -395,22 +487,26 @@ describe('montare il film', () => {
     expect(await loudness(filmFile(heard))).toBeGreaterThan(-40);
   }, 240_000);
 
-  it('un nuovo film toglie quello di prima: pesa quanto lui, e non lo guarda più nessuno', async () => {
+  it('un nuovo film non toglie quello di prima: lo toglie l’utente, se vuole', async () => {
     const { film } = await filmReady();
     await client.call('POST', assemblyOf(film.id));
     const first = await settled(film.id);
+    expect(first.earlier).toEqual([]);
     await uploadMusic(film.id);
 
     await client.call('POST', assemblyOf(film.id));
     const second = await settled(film.id);
 
     expect(second.film?.assetId).not.toBe(first.film?.assetId);
+    expect(second.earlier.map(({ id }) => id)).toEqual([first.film?.id]);
     await app.get(JobRunner, { strict: false }).drain();
     const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
-    expect(await readdir(folder)).toEqual([path.basename(filmFile(second))]);
+    expect((await readdir(folder)).sort()).toEqual(
+      [path.basename(filmFile(first)), path.basename(filmFile(second))].sort(),
+    );
   }, 240_000);
 
-  it('mentre si esporta non si monta: l’esportazione sta leggendo il film', async () => {
+  it('mentre si esporta non si monta: un film alla volta', async () => {
     const { film } = await filmReady();
     const exportsStore = app.get<ExportStore>(EXPORT_STORE, { strict: false });
     const open = exportsStore.start(film.id, { sourceAssetId: 'film', shortSide: 720 });

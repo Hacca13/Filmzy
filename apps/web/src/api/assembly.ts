@@ -1,4 +1,5 @@
-import { assemblyViewSchema } from '@filmzy/contracts';
+import { API_PREFIX, assemblyViewSchema } from '@filmzy/contracts';
+import { z } from 'zod';
 
 import { getJson, sendJson } from './client';
 
@@ -12,4 +13,14 @@ export function fetchAssembly(filmId: string, signal?: AbortSignal) {
 
 export function startAssembly(filmId: string) {
   return sendJson('POST', base(filmId), assemblyViewSchema);
+}
+
+/** «Togli» su un film montato prima: lo cancella dal computer. */
+export function removeEarlierFilm(filmId: string, assemblyId: string) {
+  return sendJson('DELETE', `${base(filmId)}/${encodeURIComponent(assemblyId)}`, z.undefined());
+}
+
+/** Dove si scarica un film montato prima: il server lo manda come allegato, col suo nome. */
+export function earlierFilmUrl(filmId: string, assemblyId: string): string {
+  return `/${API_PREFIX}${base(filmId)}/${encodeURIComponent(assemblyId)}/file`;
 }

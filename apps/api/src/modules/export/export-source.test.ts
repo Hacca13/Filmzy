@@ -44,7 +44,9 @@ describe('quando il film montato non si legge', () => {
       const service = await serviceWithFilm();
 
       expect(await service.view('film-1')).toEqual({});
-      await expect(service.start('film-1', 720)).rejects.toMatchObject({
+      await expect(
+        service.start('film-1', { shortSide: 720, container: 'mp4' }),
+      ).rejects.toMatchObject({
         response: { code: 'invalid_request', details: { field: 'exportSource' } },
       });
     },

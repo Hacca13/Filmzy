@@ -8,6 +8,7 @@ describe('il montaggio', () => {
   it('una vista con cosa manca e senza tentativi è valida', () => {
     const view = assemblyViewSchema.parse({
       gaps: [{ sceneNumber: 1, kind: 'no_take', missing: 2 }],
+      earlier: [],
       upToDate: false,
       exportWorking: false,
       titles,
@@ -21,13 +22,15 @@ describe('il montaggio', () => {
     expect(
       assemblyViewSchema.safeParse({
         gaps: [{ sceneNumber: 1, kind: 'boh' }],
+        earlier: [],
         upToDate: false,
         exportWorking: false,
         titles,
       }).success,
     ).toBe(false);
     expect(
-      assemblyViewSchema.safeParse({ gaps: [], upToDate: false, exportWorking: false }).success,
+      assemblyViewSchema.safeParse({ gaps: [], earlier: [], upToDate: false, exportWorking: false })
+        .success,
     ).toBe(false);
   });
 

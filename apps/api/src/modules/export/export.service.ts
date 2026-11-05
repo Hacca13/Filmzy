@@ -5,13 +5,16 @@ import path from 'node:path';
 import {
   EXPORT_SHORT_SIDES,
   JOB_INTERRUPTED,
+  aspectParts,
   exportJobPayloadSchema,
   type ExportSource,
   type ExportView,
   type ExportedFile,
+  type FilmExport,
+  type StartExportBody,
 } from '@filmzy/contracts';
 import { projectsDir, type AssemblyStore, type ExportStore, type SheetStore } from '@filmzy/db';
-import { MediaError, resizeFilm, scaledSize, videoSize } from '@filmzy/media';
+import { MediaError, convertFilm, scaledSize, videoSize } from '@filmzy/media';
 import { ProviderError } from '@filmzy/troupe';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
@@ -28,6 +31,7 @@ import {
   fileErrorCode,
   launch,
   openFolderCommand,
+  otherAspects,
   qualitiesFor,
   removeEntries,
 } from './export-files.js';
@@ -47,9 +51,10 @@ export class FolderOpener {
 }
 
 /**
- * L'esportazione (T5.8, architettura §9): dal film montato fa il file finale nella cartella del film, alla
- * qualità scelta. Non chiama nessun fornitore, quindi non costa; dopo un riavvio però non riparte da sola,
- * come ogni altro lavoro (D84). Alla qualità del film non ricodifica: copia, così non perde niente.
+ * L'esportazione (T5.8, D87, architettura §9): dal film montato fa il file finale nella cartella del film,
+ * con la qualità, il formato e il tipo di file scelti. Non chiama nessun fornitore, quindi non costa; dopo un
+ * riavvio però non riparte da sola, come ogni altro lavoro (D84). Se non cambia niente non ricodifica: copia,
+ * così non perde niente.
  */
 @Injectable()
 export class ExportService implements OnModuleInit {
@@ -99,23 +104,27 @@ export class ExportService implements OnModuleInit {
   }
 
   /** «Esporta il film»: controlla che si possa, poi mette in coda. Non costa niente. */
-  async start(projectId: string, shortSide: number): Promise<ExportView> {
+  async start(projectId: string, body: StartExportBody): Promise<ExportView> {
+    const { shortSide, aspect, container } = body;
     this.projects.get(projectId);
     const film = this.filmOf(projectId);
     const source = film === undefined ? undefined : await this.sourceOf(film);
-    // Durante l'attesa un montaggio può aver finito e tolto questo film: si riparte da quello nuovo.
-    if (this.filmOf(projectId) !== film) return this.start(projectId, shortSide);
+    // Durante l'attesa un montaggio può aver finito: si esporta sempre l'ultimo film.
+    if (this.filmOf(projectId) !== film) return this.start(projectId, body);
     if (film === undefined || source === undefined) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportSource' } });
     }
     if (!source.qualities.includes(shortSide)) {
       throw domainError(400, 'invalid_request', { details: { field: 'shortSide' } });
     }
+    if (aspect !== undefined && !source.aspects.includes(aspect)) {
+      throw domainError(400, 'invalid_request', { details: { field: 'aspect' } });
+    }
     // I controlli stanno qui, dopo le attese e subito prima di aprire il tentativo: un doppio clic ne apre uno.
     if (this.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
     }
-    // Un nuovo montaggio toglie il film di prima: non si esporta qualcosa che sta per sparire.
+    // Un film alla volta: ricodificare usa già tutti i processori.
     const mounting = this.assemblies.latest(projectId);
     if (
       mounting !== undefined &&
@@ -125,7 +134,12 @@ export class ExportService implements OnModuleInit {
       throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
     }
 
-    const started = this.store.start(projectId, { sourceAssetId: film, shortSide });
+    const started = this.store.start(projectId, {
+      sourceAssetId: film,
+      shortSide,
+      aspect,
+      container,
+    });
     try {
       this.runner.enqueue({
         kind: EXPORT_JOB_KIND,
@@ -195,7 +209,11 @@ export class ExportService implements OnModuleInit {
       const size = await this.sizeOf(assetId, file);
       return size === undefined
         ? undefined
-        : { ...size, qualities: qualitiesFor(size, EXPORT_SHORT_SIDES) };
+        : {
+            ...size,
+            qualities: qualitiesFor(size, EXPORT_SHORT_SIDES),
+            aspects: otherAspects(size),
+          };
     } catch (error) {
       if (!(error instanceof MediaError)) throw error;
       this.log.warn(`Il film montato non si legge: ${failureReason(error, this.dataDir)}.`);
@@ -259,7 +277,7 @@ export class ExportService implements OnModuleInit {
 
     const folder = this.folderOf(projectId);
     const workDir = this.workDirOf(projectId);
-    const work = path.join(workDir, `${randomUUID()}.mp4`);
+    const work = path.join(workDir, `${randomUUID()}.${stored.export.container}`);
     let replacing = false;
     try {
       this.store.finish(exportId, { status: 'running' });
@@ -267,8 +285,8 @@ export class ExportService implements OnModuleInit {
       // Si lavora un'esportazione alla volta per film: ciò che c'è è di un giro interrotto.
       await removeEntries(workDir, () => true);
 
-      await this.writeFile(stored.sourceAssetId, stored.export.shortSide, work);
-      const fileName = exportFileName(this.projects.get(projectId).title, stored.export.shortSide);
+      await this.writeFile(stored.sourceAssetId, stored.export, work);
+      const fileName = exportFileName(this.projects.get(projectId).title, stored.export);
       replacing = true;
       await rename(work, path.join(folder, fileName));
       this.store.finish(exportId, { status: 'succeeded', fileName });
@@ -286,19 +304,32 @@ export class ExportService implements OnModuleInit {
     }
   }
 
-  /** Alla qualità del film si copia, senza perdere niente; a una più bassa si rifà il video. */
-  private async writeFile(sourceAssetId: string, shortSide: number, output: string): Promise<void> {
+  /** Se non cambia niente si copia, senza perdere niente; altrimenti si rifà solo ciò che cambia. */
+  private async writeFile(
+    sourceAssetId: string,
+    { shortSide, aspect, container }: FilmExport,
+    output: string,
+  ): Promise<void> {
     const input = await existingAssetFile(this.files, this.dataDir, sourceAssetId);
     if (input === undefined) {
       throw new ProviderError('not_found', false, 'Il film montato non c’è più.');
     }
     const size = await this.sizeOf(sourceAssetId, input);
     if (size === undefined) throw new MediaError('ffmpeg_failed', 'Il film montato non si legge.');
-    if (shortSide === Math.min(size.width, size.height)) {
+    const target = scaledSize(aspect === undefined ? size : aspectParts(aspect), shortSide);
+    const samePicture = target.width === size.width && target.height === size.height;
+    if (samePicture && container === 'mp4') {
       await copyFile(input, output);
       return;
     }
-    await resizeFilm({ input, output, ...scaledSize(size, shortSide) });
+    await convertFilm({
+      input,
+      output,
+      container,
+      ...target,
+      bars: aspect !== undefined,
+      samePicture,
+    });
   }
 
   /** Un tentativo fermo da troppo tempo si è perso: si chiude, o bloccherebbe il pulsante. */

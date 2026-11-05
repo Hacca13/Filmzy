@@ -11,6 +11,7 @@ import {
   type AssemblyView,
   type AudioClip,
   type AudioTrack,
+  type FilmAssembly,
   type ScenePlan,
 } from '@filmzy/contracts';
 import {
@@ -52,7 +53,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
-import { failureReason, removeEntries } from './export-files.js';
+import { earlierFilmName, failureReason, removeEntries } from './export-files.js';
 import { ExportService } from './export.service.js';
 import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
@@ -140,7 +141,7 @@ export class AssemblyService implements OnModuleInit {
     if (open === 'queued' || open === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
     }
-    // Un nuovo film toglie quello di prima: l'esportazione lo sta leggendo.
+    // Un lavoro alla volta per film: ricodificare usa già tutti i processori.
     if (this.exports.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
     }
@@ -163,7 +164,7 @@ export class AssemblyService implements OnModuleInit {
   }
 
   /** L'ultimo tentativo e l'ultimo film riuscito: uno che fallisce non nasconde quello buono. */
-  private viewOf(projectId: string, snapshot: Snapshot): AssemblyView {
+  private async viewOf(projectId: string, snapshot: Snapshot): Promise<AssemblyView> {
     this.closeLost(projectId);
     const latest = this.store.latest(projectId);
     const film = this.store.lastSucceeded(projectId);
@@ -171,10 +172,73 @@ export class AssemblyService implements OnModuleInit {
       gaps: snapshot.gaps,
       ...(latest === undefined ? {} : { latest: latest.assembly }),
       ...(film === undefined ? {} : { film: film.assembly }),
+      earlier: await this.earlierFilms(projectId),
       upToDate: film?.fingerprint === snapshot.fingerprint,
       exportWorking: this.exports.isWorking(projectId),
       titles: snapshot.titles,
     };
+  }
+
+  /**
+   * I film montati prima dell'ultimo che ci sono ancora sul disco (D87). Rifare un film identico riusa lo
+   * stesso file: si mostra una volta sola, e mai se è l'ultimo.
+   */
+  private async earlierFilms(projectId: string): Promise<FilmAssembly[]> {
+    const current = this.store.lastSucceeded(projectId)?.assembly.assetId;
+    const seen = new Set(current === undefined ? [] : [current]);
+    const candidates = this.store.succeeded(projectId).flatMap(({ assembly }) => {
+      if (assembly.assetId === undefined || seen.has(assembly.assetId)) return [];
+      seen.add(assembly.assetId);
+      return [{ assembly, assetId: assembly.assetId }];
+    });
+    const found = await Promise.all(
+      candidates.map(({ assetId }) => existingAssetFile(this.files, this.dataDir, assetId)),
+    );
+    return candidates.flatMap(({ assembly }, index) =>
+      found[index] === undefined ? [] : [assembly],
+    );
+  }
+
+  /** Dov'è un film già montato, per salvarne una copia. Altrimenti «non trovato». */
+  async filmFile(projectId: string, assemblyId: string): Promise<{ file: string; name: string }> {
+    const { file, createdAt } = await this.storedFilm(projectId, assemblyId);
+    return { file, name: earlierFilmName(this.projects.get(projectId).title, new Date(createdAt)) };
+  }
+
+  /**
+   * «Togli» su un film di prima: solo l'utente toglie un film (D87). L'ultimo non si toglie: è quello che si
+   * vede e si esporta. Se un lettore lo tiene aperto il sistema non lo lascia togliere, e lo si dice.
+   */
+  async removeEarlier(projectId: string, assemblyId: string): Promise<void> {
+    const { file, assetId } = await this.storedFilm(projectId, assemblyId);
+    if (assetId === this.store.lastSucceeded(projectId)?.assembly.assetId) {
+      throw domainError(409, 'invalid_request', { details: { field: 'currentFilm' } });
+    }
+    try {
+      await rm(file, { force: true });
+    } catch (error) {
+      this.log.warn(
+        `Il film di prima non si è potuto togliere: ${failureReason(error, this.dataDir)}.`,
+      );
+      throw domainError(409, 'media_failed', { details: { field: 'earlierFilm' } });
+    }
+  }
+
+  private async storedFilm(
+    projectId: string,
+    assemblyId: string,
+  ): Promise<{ file: string; assetId: string; createdAt: string }> {
+    this.projects.get(projectId);
+    const stored = this.store.get(assemblyId);
+    const assetId = stored?.projectId === projectId ? stored.assembly.assetId : undefined;
+    const file =
+      assetId === undefined
+        ? undefined
+        : await existingAssetFile(this.files, this.dataDir, assetId);
+    if (stored === undefined || assetId === undefined || file === undefined) {
+      throw domainError(404, 'not_found');
+    }
+    return { file, assetId, createdAt: stored.assembly.createdAt };
   }
 
   /** Il lavoro in coda: un errore si scrive sul tentativo, e il lavoro finisce lo stesso. */
@@ -213,8 +277,6 @@ export class AssemblyService implements OnModuleInit {
         beat,
       );
       this.store.finish(assemblyId, { status: 'succeeded', assetId, durationS });
-      // Solo dopo aver scritto il nuovo: se ci si ferma prima, il film di prima resta quello buono.
-      await this.removeOldFilms(filmDir, assetId);
     } catch (error) {
       const errorCode =
         error instanceof MediaError || error instanceof ProviderError ? error.code : 'unknown';
@@ -233,14 +295,6 @@ export class AssemblyService implements OnModuleInit {
     return removeEntries(
       filmDir,
       (name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current,
-    );
-  }
-
-  /** I film montati prima dell'ultimo pesano quanto lui, e non li guarda più nessuno: l'esportazione è una copia. */
-  private removeOldFilms(filmDir: string, currentAssetId: string): Promise<void> {
-    return removeEntries(
-      filmDir,
-      (name) => name.endsWith('.mp4') && name !== `${currentAssetId}.mp4`,
     );
   }
 

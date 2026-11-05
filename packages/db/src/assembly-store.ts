@@ -33,6 +33,8 @@ export interface AssemblyStore {
   latest: (projectId: string) => StoredAssembly | undefined;
   /** L'ultimo riuscito: un tentativo che fallisce non lo cancella. */
   lastSucceeded: (projectId: string) => StoredAssembly | undefined;
+  /** Tutti quelli riusciti, dal più recente: i film di prima restano finché li toglie l'utente (D87). */
+  succeeded: (projectId: string) => StoredAssembly[];
 }
 
 export interface AssemblyStoreOptions {
@@ -107,6 +109,16 @@ export function createAssemblyStore(
         .limit(1)
         .get();
       return row === undefined ? undefined : toStored(row);
+    },
+
+    succeeded(projectId) {
+      return db
+        .select()
+        .from(filmAssemblies)
+        .where(and(eq(filmAssemblies.projectId, projectId), eq(filmAssemblies.status, 'succeeded')))
+        .orderBy(desc(filmAssemblies.createdAt))
+        .all()
+        .map(toStored);
     },
 
     lastSucceeded(projectId) {

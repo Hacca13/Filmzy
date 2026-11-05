@@ -8,12 +8,12 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   concatClips,
+  convertFilm,
   layoutTitle,
   mixSounds,
   muxFilm,
   normalizeClip,
   renderTitleCard,
-  resizeFilm,
   scaledSize,
   titleFontPath,
   videoSize,
@@ -31,6 +31,14 @@ import {
 const exec = promisify(execFile);
 
 const format: FilmFormat = { width: 320, height: 180, fps: 24 };
+
+/** Cosa dice ffmpeg di un file: esce sempre con un errore, perché non gli si chiede di scrivere niente. */
+async function ffmpegInfo(file: string): Promise<string> {
+  const failed = await exec(ffmpegPath(), ['-hide_banner', '-i', file], {
+    windowsHide: true,
+  }).catch((error: unknown) => error as { stderr: string });
+  return 'stderr' in failed ? failed.stderr : '';
+}
 
 let dir: string;
 /** Una clip vera di due secondi, in un altro formato, con un suono. */
@@ -213,7 +221,15 @@ describe('il film a una qualità più bassa', () => {
     await normalizeClip({ input: source, output: film, format, keepAudio: true });
     const smaller = path.join(workDir, 'piccolo.mp4');
 
-    await resizeFilm({ input: film, output: smaller, width: 160, height: 90 });
+    await convertFilm({
+      input: film,
+      output: smaller,
+      container: 'mp4',
+      width: 160,
+      height: 90,
+      bars: false,
+      samePicture: false,
+    });
 
     expect(await videoSize(smaller)).toEqual({ width: 160, height: 90 });
     expect(await videoDurationS(smaller)).toBeCloseTo((await videoDurationS(film)) ?? 0, 0);
@@ -227,9 +243,111 @@ describe('il film a una qualità più bassa', () => {
     await writeFile(broken, 'non sono un video');
 
     await expect(
-      resizeFilm({ input: broken, output: path.join(workDir, 'x.mp4'), width: 160, height: 90 }),
+      convertFilm({
+        input: broken,
+        output: path.join(workDir, 'x.mp4'),
+        container: 'mp4',
+        width: 160,
+        height: 90,
+        bars: false,
+        samePicture: false,
+      }),
     ).rejects.toMatchObject({ code: 'ffmpeg_failed' });
   }, 60_000);
+});
+
+describe('il film in un altro formato o tipo di file', () => {
+  async function filmIn(prefix: string): Promise<{ workDir: string; film: string }> {
+    const workDir = await mkdtemp(path.join(dir, prefix));
+    const film = path.join(workDir, 'film.mp4');
+    await normalizeClip({ input: source, output: film, format, keepAudio: true });
+    return { workDir, film };
+  }
+
+  /** Il colore del punto dato, nel primo fotogramma: serve a vedere le bande senza guardare il video. */
+  async function brightnessAt(file: string, x: number, y: number): Promise<number> {
+    const { stdout } = await exec(
+      ffmpegPath(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        file,
+        '-frames:v',
+        '1',
+        '-filter:v',
+        `crop=2:2:${String(x)}:${String(y)},format=gray`,
+        '-f',
+        'rawvideo',
+        '-',
+      ],
+      { encoding: 'buffer', windowsHide: true },
+    );
+    return stdout[0] ?? 0;
+  }
+
+  it('in verticale ci sono le bande nere sopra e sotto, e l’immagine in mezzo', async () => {
+    const { workDir, film } = await filmIn('bande-');
+    const tall = path.join(workDir, 'verticale.mp4');
+
+    await convertFilm({
+      input: film,
+      output: tall,
+      container: 'mp4',
+      width: 180,
+      height: 320,
+      bars: true,
+      samePicture: false,
+    });
+
+    expect(await videoSize(tall)).toEqual({ width: 180, height: 320 });
+    expect(await videoDurationS(tall)).toBeCloseTo((await videoDurationS(film)) ?? 0, 0);
+    expect(await brightnessAt(tall, 90, 4)).toBeLessThan(30);
+    expect(await brightnessAt(tall, 90, 314)).toBeLessThan(30);
+    expect(await brightnessAt(tall, 90, 160)).toBeGreaterThan(30);
+  }, 60_000);
+
+  it('in MOV alle stesse misure non rifà il video: resta identico', async () => {
+    const { workDir, film } = await filmIn('mov-');
+    const mov = path.join(workDir, 'film.mov');
+
+    await convertFilm({
+      input: film,
+      output: mov,
+      container: 'mov',
+      width: 320,
+      height: 180,
+      bars: false,
+      samePicture: true,
+    });
+
+    expect(await videoSize(mov)).toEqual({ width: 320, height: 180 });
+    expect(await hasAudioStream(mov)).toBe(true);
+    expect(await videoDurationS(mov)).toBeCloseTo((await videoDurationS(film)) ?? 0, 0);
+    const codecs = async (file: string) => /Video: (\w+)/.exec(await ffmpegInfo(file))?.[1];
+    expect(await codecs(mov)).toBe(await codecs(film));
+  }, 60_000);
+
+  it('in WebM rifà video e suono nel tipo giusto, anche alle stesse misure', async () => {
+    const { workDir, film } = await filmIn('webm-');
+    const webm = path.join(workDir, 'film.webm');
+
+    await convertFilm({
+      input: film,
+      output: webm,
+      container: 'webm',
+      width: 320,
+      height: 180,
+      bars: false,
+      samePicture: true,
+    });
+
+    const info = await ffmpegInfo(webm);
+    expect(info).toContain('Video: vp9');
+    expect(info).toContain('Audio: opus');
+    expect(await videoDurationS(webm)).toBeCloseTo((await videoDurationS(film)) ?? 0, 0);
+  }, 120_000);
 });
 
 describe('dai pezzi al film', () => {

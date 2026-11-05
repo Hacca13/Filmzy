@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import { ExportBody } from './ExportSection';
 import {
+  INITIAL_EXPORT_CHOICE,
   exportFailureText,
   exportIsWorking,
   formatLabel,
@@ -16,12 +17,14 @@ const source: NonNullable<ExportView['source']> = {
   width: 1920,
   height: 1080,
   qualities: [1080, 720, 480],
+  aspects: ['9:16', '1:1', '4:3', '21:9'],
 };
 
 const attempt = (patch: Partial<NonNullable<ExportView['latest']>> = {}) => ({
   id: 'e-1',
   status: 'succeeded' as const,
   shortSide: 1080,
+  container: 'mp4' as const,
   createdAt: '2026-11-05T10:00:00.000Z',
   ...patch,
 });
@@ -35,7 +38,7 @@ const file: NonNullable<ExportView['file']> = {
 
 const body = (
   view: ExportView,
-  { behind = false, mounting = false, chosen = undefined as number | undefined } = {},
+  { behind = false, mounting = false, chosen = INITIAL_EXPORT_CHOICE } = {},
 ) =>
   renderToStaticMarkup(
     <ExportBody
@@ -104,8 +107,40 @@ describe('esportare', () => {
   });
 
   it('una scelta che non vale più torna alla più alta', () => {
-    expect(body({ source }, { chosen: 480 })).toMatch(/<option value="480" selected/);
-    expect(body({ source }, { chosen: 240 })).toMatch(/<option value="1080" selected/);
+    const quality = (shortSide: number) => ({ chosen: { container: 'mp4' as const, shortSide } });
+
+    expect(body({ source }, quality(480))).toMatch(/<option value="480" selected/);
+    expect(body({ source }, quality(240))).toMatch(/<option value="1080" selected/);
+  });
+
+  it('il formato si sceglie: parte da quello del film, e un altro dice delle bande', () => {
+    const html = body({ source });
+
+    expect(html).toMatch(/<option value="" selected[^>]*>16:9 · Orizzontale · come il film/);
+    expect(html).toContain('9:16 · Verticale');
+    expect(html).toContain('1:1 · Quadrato');
+    expect(html).not.toContain('bande nere');
+
+    const tall = body({ source }, { chosen: { container: 'mp4', aspect: '9:16' } });
+    expect(tall).toMatch(/<option value="9:16" selected/);
+    expect(tall).toContain('bande nere');
+  });
+
+  it('un formato che non vale più per questo film torna a quello del film', () => {
+    const html = body({ source }, { chosen: { container: 'mp4', aspect: '16:9' } });
+
+    expect(html).toMatch(/<option value="" selected/);
+    expect(html).not.toContain('bande nere');
+  });
+
+  it('il tipo di file si sceglie: parte da MP4, e WebM avvisa che ci mette di più', () => {
+    const html = body({ source });
+
+    expect(html).toMatch(/<option value="mp4" selected[^>]*>MP4/);
+    expect(html).toContain('MOV · per i programmi di montaggio');
+    expect(html).not.toContain('ci mette di più');
+
+    expect(body({ source }, { chosen: { container: 'webm' } })).toContain('ci mette di più');
   });
 
   it('mentre lavora lo dice, e non si chiede di nuovo', () => {

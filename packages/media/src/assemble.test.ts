@@ -13,6 +13,8 @@ import {
   muxFilm,
   normalizeClip,
   renderTitleCard,
+  resizeFilm,
+  scaledSize,
   titleFontPath,
   videoSize,
   wrapText,
@@ -195,6 +197,39 @@ describe('i titoli', () => {
     expect(await videoDurationS(file)).toBeCloseTo(2, 0);
     expect(await hasAudioStream(file)).toBe(true);
   });
+});
+
+describe('il film a una qualità più bassa', () => {
+  it('le misure tengono il formato, e sono pari anche se il conto non torna', () => {
+    expect(scaledSize({ width: 1920, height: 1080 }, 720)).toEqual({ width: 1280, height: 720 });
+    expect(scaledSize({ width: 1280, height: 720 }, 480)).toEqual({ width: 852, height: 480 });
+    // In un film verticale il lato corto è la larghezza.
+    expect(scaledSize({ width: 1080, height: 1920 }, 720)).toEqual({ width: 720, height: 1280 });
+  });
+
+  it('cambia il video e tiene il suono così com’è', async () => {
+    const workDir = await mkdtemp(path.join(dir, 'qualita-'));
+    const film = path.join(workDir, 'film.mp4');
+    await normalizeClip({ input: source, output: film, format, keepAudio: true });
+    const smaller = path.join(workDir, 'piccolo.mp4');
+
+    await resizeFilm({ input: film, output: smaller, width: 160, height: 90 });
+
+    expect(await videoSize(smaller)).toEqual({ width: 160, height: 90 });
+    expect(await videoDurationS(smaller)).toBeCloseTo((await videoDurationS(film)) ?? 0, 0);
+    expect(await loudness(smaller)).toBeCloseTo(await loudness(film), 0);
+    expect((await stat(smaller)).size).toBeLessThan((await stat(film)).size);
+  }, 60_000);
+
+  it('un file che non è un video dà un errore con il suo codice', async () => {
+    const workDir = await mkdtemp(path.join(dir, 'rotto-'));
+    const broken = path.join(workDir, 'rotto.mp4');
+    await writeFile(broken, 'non sono un video');
+
+    await expect(
+      resizeFilm({ input: broken, output: path.join(workDir, 'x.mp4'), width: 160, height: 90 }),
+    ).rejects.toMatchObject({ code: 'ffmpeg_failed' });
+  }, 60_000);
 });
 
 describe('dai pezzi al film', () => {

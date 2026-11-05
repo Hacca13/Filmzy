@@ -385,3 +385,47 @@ export async function muxFilm(options: MuxOptions): Promise<void> {
     options,
   );
 }
+
+/** Le misure di un film a una qualità: lo stesso formato, con misure pari come vuole il codec. */
+export function scaledSize(
+  size: { width: number; height: number },
+  shortSide: number,
+): { width: number; height: number } {
+  const ratio = shortSide / Math.min(size.width, size.height);
+  const even = (value: number): number => {
+    const rounded = Math.round(value);
+    return rounded - (rounded % 2);
+  };
+  return { width: even(size.width * ratio), height: even(size.height * ratio) };
+}
+
+export interface ResizeFilmOptions extends StepOptions {
+  input: string;
+  output: string;
+  width: number;
+  height: number;
+}
+
+/** Il film a una qualità più bassa (T5.8): si rifà solo il video, il suono è già quello giusto. */
+export async function resizeFilm(options: ResizeFilmOptions): Promise<void> {
+  const { input, output, width, height } = options;
+  await step(
+    [
+      '-i',
+      input,
+      '-filter:v',
+      `scale=${String(width)}:${String(height)},setsar=1`,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
+      ...VIDEO_CODEC,
+      '-c:a',
+      'copy',
+      '-movflags',
+      '+faststart',
+    ],
+    output,
+    options,
+  );
+}

@@ -52,8 +52,10 @@ export function AddSoundForm({
   const [description, setDescription] = useState('');
   const [startS, setStartS] = useState('0');
 
-  const scene = scenes.find((candidate) => candidate.sceneId === sceneId);
-  const shot = shots.find((candidate) => candidate.shotId === shotId);
+  // Gli elenchi possono cambiare mentre il modulo è aperto: se la scelta non c'è più vale la prima,
+  // quella che la tendina mostra.
+  const scene = scenes.find((candidate) => candidate.sceneId === sceneId) ?? scenes[0];
+  const shot = shots.find((candidate) => candidate.shotId === shotId) ?? shots[0];
   const text = description.trim();
   const start = Number(startS);
   const startValid = startS.trim() !== '' && Number.isFinite(start) && start >= 0;
@@ -68,42 +70,35 @@ export function AddSoundForm({
           ? 'Scrivi prima la sceneggiatura finale.'
           : undefined;
 
+  // Dove va il suono: la musica sulla scena, un effetto sull'inquadratura, una voce sulla scena da un secondo.
+  const place = () => {
+    if (kind === 'sfx') {
+      return shot === undefined
+        ? undefined
+        : { sceneId: shot.sceneId, shotId: shot.shotId, startS: start };
+    }
+    if (scene === undefined) return undefined;
+    return kind === 'music'
+      ? { sceneId: scene.sceneId }
+      : { sceneId: scene.sceneId, startS: start };
+  };
+
   const add = () => {
+    const where = place();
+    if (where === undefined || kind === 'dialogue') return;
+    const durationS = kind === 'music' ? (scene?.durationS ?? DEFAULT_EFFECT_S) : DEFAULT_EFFECT_S;
     action.run(async () => {
-      if (kind === 'music' && scene !== undefined) {
-        await onAdded(
-          await createAudioClip(filmId, {
-            kind: 'music',
-            sceneId: scene.sceneId,
-            durationS: scene.durationS,
-            description: text,
-          }),
-        );
-      } else if (kind === 'sfx' && shot !== undefined) {
-        await onAdded(
-          await createAudioClip(filmId, {
-            kind: 'sfx',
-            sceneId: shot.sceneId,
-            shotId: shot.shotId,
-            startS: start,
-            durationS: DEFAULT_EFFECT_S,
-            description: text,
-          }),
-        );
-      }
+      await onAdded(
+        await createAudioClip(filmId, { kind, ...where, durationS, description: text }),
+      );
     }, describeAudioError);
   };
 
   const upload = (file: File) => {
-    if (scene === undefined) return;
+    const where = place();
+    if (where === undefined) return;
     action.run(async () => {
-      await onAdded(
-        await uploadAudioClip(
-          filmId,
-          { kind: 'dialogue', sceneId: scene.sceneId, startS: start, description: text },
-          file,
-        ),
-      );
+      await onAdded(await uploadAudioClip(filmId, { kind, ...where, description: text }, file));
     }, describeAudioError);
   };
 
@@ -125,7 +120,7 @@ export function AddSoundForm({
               <label htmlFor="suono-inquadratura">Inquadratura</label>
               <select
                 id="suono-inquadratura"
-                value={shotId}
+                value={shot?.shotId ?? ''}
                 onChange={(event) => {
                   setShotId(event.target.value);
                 }}
@@ -142,7 +137,7 @@ export function AddSoundForm({
               <label htmlFor="suono-scena">Scena</label>
               <select
                 id="suono-scena"
-                value={sceneId}
+                value={scene?.sceneId ?? ''}
                 onChange={(event) => {
                   setSceneId(event.target.value);
                 }}
@@ -186,13 +181,7 @@ export function AddSoundForm({
             </div>
           )}
 
-          {kind === 'dialogue' ? (
-            <AudioFilePicker
-              label="Carica una registrazione"
-              disabled={action.busy || text === '' || !startValid}
-              onPick={upload}
-            />
-          ) : (
+          {kind === 'dialogue' ? null : (
             <div className="actions">
               <button
                 type="button"
@@ -205,6 +194,11 @@ export function AddSoundForm({
               </button>
             </div>
           )}
+          <AudioFilePicker
+            label={kind === 'dialogue' ? 'Carica una registrazione' : 'Oppure carica un tuo file'}
+            disabled={action.busy || text === '' || !startValid}
+            onPick={upload}
+          />
         </>
       )}
 

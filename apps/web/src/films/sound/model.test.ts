@@ -18,6 +18,7 @@ import {
   shotsForEffects,
   soundFailureText,
   soundIsWorking,
+  stackRows,
   suggestionPlace,
   variantText,
 } from './model';
@@ -89,6 +90,30 @@ describe('il tempo', () => {
     expect(percentOf(30, 60)).toBe(50);
     expect(percentOf(90, 60)).toBe(100);
     expect(percentOf(5, 0)).toBe(0);
+  });
+});
+
+describe('i blocchi di una traccia', () => {
+  const block = (id: string, startS: number, durationS: number) => ({ id, startS, durationS });
+
+  it('uno dopo l’altro stanno sulla stessa riga', () => {
+    expect(stackRows([block('a', 0, 2), block('b', 2, 2)])).toEqual({
+      rows: { a: 0, b: 0 },
+      count: 1,
+    });
+  });
+
+  it('nello stesso momento stanno uno sotto l’altro, e nessuno copre l’altro', () => {
+    expect(
+      stackRows([block('a', 0, 2), block('b', 0, 2), block('c', 1, 1), block('d', 2, 1)]),
+    ).toEqual({
+      rows: { a: 0, b: 1, c: 2, d: 0 },
+      count: 3,
+    });
+  });
+
+  it('una traccia vuota non ha righe', () => {
+    expect(stackRows([])).toEqual({ rows: {}, count: 0 });
   });
 });
 

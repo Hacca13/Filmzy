@@ -41,22 +41,21 @@ export function SoundPanel({ filmId, plansStamp }: { filmId: string; plansStamp:
     },
     [filmId],
   );
-  const { value, setValue, problem } = useWatched(load, isWorking, {
+  const {
+    value,
+    problem,
+    reload: refresh,
+  } = useWatched(load, isWorking, {
     kinds: ['audio_generate', 'take_generate'],
     projectId: filmId,
   });
-  const refresh = useCallback(async () => {
-    setValue(await load(new AbortController().signal));
-  }, [load, setValue]);
 
   const check = useAction();
   const firstStamp = useRef(plansStamp);
   useEffect(() => {
     if (plansStamp === firstStamp.current) return;
     firstStamp.current = plansStamp;
-    refresh().catch(() => {
-      // Il prossimo evento o il prossimo controllo rilegge: l'errore di lettura lo dice `problem`.
-    });
+    void refresh();
   }, [plansStamp, refresh]);
 
   return (
@@ -84,7 +83,6 @@ export function SoundPanel({ filmId, plansStamp }: { filmId: string; plansStamp:
               Controlla di nuovo
             </button>
           </div>
-          {check.problem === undefined ? null : <Notice tone="error">{check.problem}</Notice>}
         </>
       ) : (
         <SoundView filmId={filmId} editor={value} refresh={refresh} />

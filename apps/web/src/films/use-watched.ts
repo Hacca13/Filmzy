@@ -37,17 +37,22 @@ export function useWatched<T>(
       alive.current = false;
     };
   }, []);
+  // Vale solo l'ultima lettura partita: una più vecchia che arriva dopo riporterebbe indietro la pagina.
+  const lastRead = useRef(0);
   const read = useCallback(
-    (signal: AbortSignal) => {
-      load(signal).then(
+    (signal: AbortSignal): Promise<void> => {
+      lastRead.current += 1;
+      const thisRead = lastRead.current;
+      const current = () => alive.current && !signal.aborted && thisRead === lastRead.current;
+      return load(signal).then(
         (next) => {
-          if (alive.current && !signal.aborted) {
+          if (current()) {
             setValue(next);
             setProblem(undefined);
           }
         },
         (error: unknown) => {
-          if (alive.current && !signal.aborted) setProblem(describeError(error));
+          if (current()) setProblem(describeError(error));
         },
       );
     },
@@ -58,9 +63,9 @@ export function useWatched<T>(
   useEffect(() => {
     if (!working) return undefined;
     const controller = new AbortController();
-    read(controller.signal);
+    void read(controller.signal);
     const timer = setInterval(() => {
-      read(controller.signal);
+      void read(controller.signal);
     }, everyMs);
     return () => {
       controller.abort();
@@ -70,8 +75,11 @@ export function useWatched<T>(
 
   // Un evento rilegge subito, anche se in quel momento niente sembrava lavorare (l'ha chiesto un'altra finestra).
   useLiveJobs(live, () => {
-    read(new AbortController().signal);
+    void read(new AbortController().signal);
   });
 
-  return { value, setValue, problem, working };
+  /** Rilegge adesso e finisce quando ha letto; un errore di lettura finisce in `problem`. */
+  const reload = useCallback(() => read(new AbortController().signal), [read]);
+
+  return { value, setValue, problem, working, reload };
 }

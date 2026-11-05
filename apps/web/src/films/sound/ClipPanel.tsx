@@ -1,5 +1,5 @@
 import type { AudioClip, AudioVariant, UpdateAudioClipBody } from '@filmzy/contracts';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   chooseAudioVariant,
@@ -15,7 +15,13 @@ import { useAction } from '../../settings/use-action';
 import { FailureActions } from '../FailureActions';
 import { GenerateBar, useGeneration } from '../generation';
 import { AudioFilePicker } from './AudioFilePicker';
-import { TRACK_LABELS, clipIsWorking, describeAudioError, variantText } from './model';
+import {
+  TRACK_LABELS,
+  clipIsWorking,
+  describeAudioError,
+  soundFailureText,
+  variantText,
+} from './model';
 
 /**
  * Il pannello del blocco (T5.6, D24): com'è il suono, «Genera» con «Cambia servizio», «Cambia» fra le
@@ -119,7 +125,7 @@ export function ClipPanel({
           />
         </div>
       ) : null}
-      {fields.patch === undefined ? null : (
+      {fields.patch === undefined || !placed ? null : (
         <div className="actions">
           <button
             type="button"
@@ -139,33 +145,37 @@ export function ClipPanel({
       )}
 
       {generated ? (
-        // La stima dipende dalla durata: con una durata nuova si rilegge il prezzo giusto.
         <GenerateSection
-          key={clip.durationS}
           filmId={filmId}
           clip={clip}
           placed={placed}
           patch={fields.valid ? fields.patch : undefined}
-          blocked={!fields.valid}
+          // Il prezzo sul pulsante vale per la durata salvata: con una nuova si salva prima.
+          blocked={!fields.valid || fields.patch?.durationS !== undefined}
           otherBusy={action.busy}
           onChanged={onChanged}
         />
       ) : null}
+      {generated && fields.valid && fields.patch?.durationS !== undefined ? (
+        <p className="hint">Salva la nuova durata per vedere il prezzo giusto.</p>
+      ) : null}
 
       <VariantList
         clip={clip}
-        busy={action.busy}
+        busy={action.busy || !placed}
         onChoose={(variantId) => {
           running(() => chooseAudioVariant(filmId, clip.id, variantId));
         }}
       />
 
-      <UploadSection
-        busy={action.busy}
-        onPick={(file) => {
-          running(() => uploadAudioVariant(filmId, clip.id, file));
-        }}
-      />
+      {placed ? (
+        <UploadSection
+          busy={action.busy}
+          onPick={(file) => {
+            running(() => uploadAudioVariant(filmId, clip.id, file));
+          }}
+        />
+      ) : null}
 
       <RemoveSection
         busy={action.busy}
@@ -186,6 +196,20 @@ function useClipFields(clip: AudioClip) {
   const [mood, setMood] = useState(clip.mood ?? '');
   const [startS, setStartS] = useState(String(clip.startS));
   const [durationS, setDurationS] = useState(String(clip.durationS));
+
+  // Un valore cambiato sul server (per esempio un file caricato porta la sua durata) si vede subito.
+  useEffect(() => {
+    setDescription(clip.description);
+  }, [clip.description]);
+  useEffect(() => {
+    setMood(clip.mood ?? '');
+  }, [clip.mood]);
+  useEffect(() => {
+    setStartS(String(clip.startS));
+  }, [clip.startS]);
+  useEffect(() => {
+    setDurationS(String(clip.durationS));
+  }, [clip.durationS]);
 
   const start = Number(startS);
   const duration = Number(durationS);
@@ -236,15 +260,23 @@ function GenerateSection({
   otherBusy: boolean;
   onChanged: () => Promise<void>;
 }) {
+  // La stima dipende dalla durata: con una durata nuova si rilegge il prezzo giusto, e il servizio scelto resta.
   const loadOptions = useCallback(
     (signal: AbortSignal) => fetchAudioOptions(filmId, clip.id, signal),
-    [filmId, clip.id],
+    [filmId, clip.id, clip.durationS],
   );
+  // «Continua» dopo un limite di spesa rilancia la richiesta di prima: deve salvare il testo di adesso.
+  const latestPatch = useRef(patch);
+  useEffect(() => {
+    latestPatch.current = patch;
+  }, [patch]);
   const generation = useGeneration<AudioClip>({
     loadOptions,
     // Si genera quello che l'utente vede: il testo non ancora salvato si salva prima.
     start: async (body) => {
-      if (patch !== undefined) await updateAudioClip(filmId, clip.id, patch);
+      if (latestPatch.current !== undefined) {
+        await updateAudioClip(filmId, clip.id, latestPatch.current);
+      }
       return startAudioVariant(filmId, clip.id, body);
     },
     onStarted: () => {
@@ -255,21 +287,31 @@ function GenerateSection({
   });
   const working = clipIsWorking(clip);
   const [latest] = clip.variants;
+  const blockedNow = working || !placed || blocked;
 
   return (
     <div className="sound-generate">
       <GenerateBar
         generation={generation}
         createVerb="Genera"
-        disabled={working || !placed || blocked}
-        otherBusy={otherBusy}
+        disabled={blockedNow}
+        otherBusy={otherBusy || blocked}
       />
+      {generation.choices?.length === 0 ? (
+        <Notice tone="info">
+          Nessun servizio attivo sa fare un suono così. Prova con una durata più corta, oppure
+          attivane un altro nelle impostazioni.
+        </Notice>
+      ) : null}
       {latest?.status === 'failed' ? (
-        <FailureActions
-          code={latest.errorCode}
-          generation={generation}
-          busy={generation.busy || working}
-        />
+        <>
+          <p className="hint">{soundFailureText(latest.errorCode)}</p>
+          <FailureActions
+            code={latest.errorCode}
+            generation={generation}
+            busy={generation.busy || blockedNow || otherBusy}
+          />
+        </>
       ) : null}
     </div>
   );

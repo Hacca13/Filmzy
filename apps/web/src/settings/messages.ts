@@ -96,7 +96,7 @@ const BY_INVALID_FIELD: Record<string, string> = {
   nativeAudio: 'Questa clip è stata generata senza audio.',
   startS: 'Questo secondo è oltre la fine. Scegline uno prima.',
   shotId: 'Questa inquadratura non c’è più. Aggiorna la pagina e riprova.',
-  source: 'Questo suono è un file tuo: non si genera e la sua durata è quella del file.',
+  source: 'Questo suono è un file tuo: non si genera, e dura quanto il file.',
 };
 
 /** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */

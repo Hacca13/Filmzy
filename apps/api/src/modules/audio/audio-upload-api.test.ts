@@ -11,7 +11,7 @@ import {
   domainErrorSchema,
   type AudioClip,
 } from '@filmzy/contracts';
-import type { ReceiptStore, SheetStore, TakeStore } from '@filmzy/db';
+import type { AudioStore, ReceiptStore, SheetStore, TakeStore } from '@filmzy/db';
 import { ffmpegPath } from '@filmzy/media';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.j
 import { SHEET_STORE } from '../cast/tokens.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
+import { AUDIO_STORE } from './tokens.js';
 
 /**
  * I file audio dell'utente (D27): finiscono nel mix e **non vanno mai a un fornitore AI**. Col server
@@ -176,13 +177,34 @@ describe('caricare un file su un blocco che c’è già (T5.6)', () => {
     expect(reply.status).toBe(201);
     const updated = audioClipSchema.parse(reply.body);
     expect(updated.source).toBe('generated');
-    expect(updated.durationS).toBe(20);
+    expect(updated.durationS).toBeCloseTo(2, 1);
     expect(updated.chosenVariantId).toBe(updated.variants[0]?.id);
     expect(updated.variants[0]?.modelId).toBeUndefined();
     expect(count()).toBe(before);
     expect(
       (await client.call('GET', `/projects/${film.id}/audio/clips/${clip.id}/options`)).status,
     ).toBe(200);
+  });
+
+  it('su un blocco che ha perso il suo posto non si carica: non si sentirebbe', async () => {
+    const { film } = await filmWithFinal(client);
+    const created = await client.call('POST', `/projects/${film.id}/audio/clips`, {
+      ...music,
+      durationS: 20,
+    });
+    const clip = audioClipSchema.parse(created.body);
+    const audio = app.get<AudioStore>(AUDIO_STORE, { strict: false });
+    const lost = audio.createClip({
+      projectId: film.id,
+      kind: 'music',
+      sceneId: 'scene-99',
+      durationS: 5,
+      description: 'Una scena che non c’è più',
+      source: 'generated',
+    });
+
+    expect((await uploadOn(film.id, lost.id, wavFile())).status).toBe(404);
+    expect((await uploadOn(film.id, clip.id, wavFile())).status).toBe(201);
   });
 
   it('un file che non è audio non aggiunge niente, e una clip che non c’è è 404', async () => {
@@ -195,6 +217,24 @@ describe('caricare un file su un blocco che c’è già (T5.6)', () => {
       (await client.call('GET', `/projects/${film.id}/audio`)).body,
     );
     expect(clips[0]?.variants).toHaveLength(1);
+  });
+});
+
+describe('una voce sulla scena (T5.6)', () => {
+  it('parte dentro la scena come la vede la linea del tempo: quanto le sue inquadrature', async () => {
+    const { film } = await filmWithShot(client);
+    const timeline = audioTimelineSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio/timeline`)).body,
+    );
+    const lengthS = timeline.scenes[0]?.durationS ?? 0;
+    const voice = { ...music, kind: 'dialogue' };
+
+    expect((await upload(film.id, { ...voice, startS: String(lengthS) }, wavFile())).status).toBe(
+      400,
+    );
+    expect(
+      (await upload(film.id, { ...voice, startS: String(lengthS - 0.5) }, wavFile())).status,
+    ).toBe(201);
   });
 });
 

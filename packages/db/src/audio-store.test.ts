@@ -193,7 +193,7 @@ describe('le varianti', () => {
     store.chooseVariant(clip.id, generated.id);
     tick();
 
-    store.addUploadedVariant(clip.id, 'a-mio');
+    store.addUploadedVariant(clip.id, 'a-mio', 7);
 
     const updated = store.getClip(clip.id)?.clip;
     const [latest] = updated?.variants ?? [];
@@ -201,6 +201,7 @@ describe('le varianti', () => {
     expect(latest?.modelId).toBeUndefined();
     expect(updated?.chosenVariantId).toBe(latest?.id);
     expect(updated?.variants).toHaveLength(2);
+    expect(updated?.durationS).toBe(7);
   });
 
   it('una variante data per persa che poi riesce non resta con il suo errore', () => {

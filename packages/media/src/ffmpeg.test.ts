@@ -13,6 +13,7 @@ import {
   extractFrame,
   ffmpegPath,
   audioDurationS,
+  hasAudioStream,
   markArea,
   maskHasPaint,
   shrinkImage,
@@ -84,6 +85,42 @@ describe('videoDurationS', () => {
     expect((await failure(() => videoDurationS(path.join(dir, 'non-c-e.mp4')))).code).toBe(
       'ffmpeg_failed',
     );
+  });
+});
+
+describe('hasAudioStream', () => {
+  it('un video senza suono non ne ha, e un file che non si apre è un errore', async () => {
+    expect(await hasAudioStream(video)).toBe(false);
+    expect((await failure(() => hasAudioStream(path.join(dir, 'non-c-e.mp4')))).code).toBe(
+      'ffmpeg_failed',
+    );
+  });
+
+  it('un video col suono ne ha', async () => {
+    const withSound = path.join(dir, 'col-suono.mp4');
+    await run(
+      ffmpegPath(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'testsrc=duration=1:size=160x90:rate=10',
+        '-f',
+        'lavfi',
+        '-i',
+        'sine=duration=1',
+        '-c:v',
+        'mpeg4',
+        '-shortest',
+        withSound,
+      ],
+      { windowsHide: true },
+    );
+
+    expect(await hasAudioStream(withSound)).toBe(true);
   });
 });
 

@@ -100,6 +100,26 @@ describe('le tracce', () => {
     expect(html).toContain('Da girare');
   });
 
+  it('due suoni nello stesso momento stanno uno sotto l’altro', () => {
+    const second = { ...clip, id: 'c-2', description: 'Una seconda musica' };
+    const html = lanes(
+      editor({
+        clips: [clip, second],
+        timeline: {
+          ...timeline,
+          placements: {
+            'c-1': { startS: 5, durationS: 5 },
+            'c-2': { startS: 5, durationS: 5 },
+          },
+        },
+      }),
+    );
+
+    expect(html).toContain('top:8px');
+    expect(html).toContain('top:64px');
+    expect(html).toContain('min-height:128px');
+  });
+
   it('una traccia vuota dice cosa ci va', () => {
     const html = lanes(editor({ clips: [] }));
 

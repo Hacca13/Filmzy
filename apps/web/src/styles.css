@@ -1404,8 +1404,7 @@ a.button {
 
 .sound-block {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  height: 48px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1426,7 +1425,14 @@ button.sound-block {
 }
 
 .sound-block[aria-pressed='true'] {
+  z-index: 1;
   border: 2px solid var(--accent);
+}
+
+.sound-block[data-kind='video'] {
+  top: 8px;
+  bottom: 8px;
+  height: auto;
 }
 
 .sound-block[data-kind='music'] {

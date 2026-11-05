@@ -64,6 +64,32 @@ export function percentOf(seconds: number, durationS: number): number {
   return Math.min(100, Math.max(0, (seconds / durationS) * 100));
 }
 
+export interface PlacedBlock {
+  id: string;
+  startS: number;
+  durationS: number;
+}
+
+/**
+ * In che riga sta ogni blocco della traccia: due suoni nello stesso momento si mettono uno sotto l'altro,
+ * altrimenti quello sopra coprirebbe l'altro e non si potrebbe più aprire.
+ */
+export function stackRows(blocks: readonly PlacedBlock[]): {
+  rows: Record<string, number>;
+  count: number;
+} {
+  const rowEnds: number[] = [];
+  const rows: Record<string, number> = {};
+  const inOrder = [...blocks].sort((a, b) => a.startS - b.startS);
+  for (const block of inOrder) {
+    const free = rowEnds.findIndex((end) => end <= block.startS);
+    const row = free === -1 ? rowEnds.length : free;
+    rowEnds[row] = block.startS + block.durationS;
+    rows[block.id] = row;
+  }
+  return { rows, count: rowEnds.length };
+}
+
 const isOpen = ({ status }: AudioVariant) => status === 'queued' || status === 'running';
 
 /** Qualche suono è in coda o in lavorazione: serve continuare a guardare. */

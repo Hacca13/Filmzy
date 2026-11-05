@@ -946,10 +946,14 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 1. **La linea del tempo la calcola il server** (regola 8) con una funzione pura, che userà anche il montaggio. Una scena pensata dura quanto le sue inquadrature, una non pensata il tempo scritto nella stesura. La musica sta dentro la sua scena; un effetto o una voce possono sforare nell'inquadratura dopo, ma non oltre la fine del film.
 2. **Una clip senza posizione ha perso il suo posto:** è il limite lasciato da D81. Non sta sulle tracce, l'editor la elenca e si può solo togliere: non si genera.
 3. **L'audio originale si accende per un take,** non per un'inquadratura (D24): tornare a un altro take riparte spento. Accenderlo riapre la traccia, che parte muta: chi lo accende vuole sentirlo. Si controlla al clic se la clip ha un suono, non a ogni lettura: leggere ogni clip con ffmpeg a ogni apertura costerebbe secondi. Quindi l'icona non è spenta in anticipo come nel disegno: dice «generata senza audio» al clic.
-4. **«Carica un file» su un blocco** è una variante, subito in uso: non si perdono quelle generate, e il file non va a nessuno (D27). La durata del blocco non cambia, il mix taglia al suo posto.
-5. **Si genera quello che l'utente vede:** «Genera» salva prima il testo non ancora salvato.
+4. **«Carica un file» su un blocco** è una variante, subito in uso: non si perdono quelle generate, e il file non va a nessuno (D27). Il blocco prende la durata del file. Si può caricare anche su musica ed effetti da «Aggiungi»: con le funzioni AI spente è l'unica strada, e resta aperta.
+5. **Si genera quello che l'utente vede:** «Genera» salva prima il testo non ancora salvato, anche quando si conferma un limite di spesa. Una durata nuova invece si salva a mano: il prezzo sul pulsante vale per quella salvata, e pagare un prezzo diverso da quello mostrato non è ammesso (D30). Anche «Suggerisci i suoni» non parte senza la stima.
 6. **«Elimina» chiede conferma solo se ci sono suoni generati,** perché si sono pagati e con la clip si perdono.
-7. Codici più precisi: `audioFile` per un file audio rifiutato (prima condivideva `file` con le foto e il messaggio parlava di foto), `music` per una seconda musica sulla scena (prima diceva che la scena non c'era più).
+7. **Due suoni nello stesso momento stanno uno sotto l'altro:** altrimenti quello sopra copre l'altro, che non si può più aprire.
+8. **La durata di una scena è una sola,** sul server: quella della linea del tempo vale anche per controllare dove parte una voce.
+9. Codici più precisi: `audioFile` per un file audio rifiutato (prima condivideva `file` con le foto e il messaggio parlava di foto), `music` per una seconda musica sulla scena (prima diceva che la scena non c'era più).
+
+**Riletto con Opus xhigh:** 15 segnalazioni, tutte verificate e corrette. Le più serie: «Genera» poteva costare più del prezzo mostrato; «Cambia servizio» si perdeva cambiando la durata; «Riprova» aggirava i controlli del pulsante; due effetti nello stesso punto si coprivano; una voce poteva finire fuori dalla sua scena.
 
 **Non preso dal disegno:** miniature delle clip e forma d'onda (si ascolta col lettore del browser), proposte dentro le tracce (sono un elenco sopra), «Annulla» di una generazione in corso (il server non ha come fermarla).
 

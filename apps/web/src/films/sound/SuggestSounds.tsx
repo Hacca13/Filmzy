@@ -6,6 +6,7 @@ import { createAudioClip, estimateSoundSuggestions, suggestSounds } from '../../
 import { Notice } from '../../components/ui';
 import { formatEstimate } from '../../lib/format';
 import { useResource } from '../../lib/use-resource';
+import { describeError } from '../../settings/messages';
 import { SpendConfirm } from '../../settings/spend/SpendConfirm';
 import { useGuardedRun } from '../../settings/spend/use-guarded-run';
 import { useAction } from '../../settings/use-action';
@@ -36,10 +37,11 @@ export function SuggestSounds({
   const accepting = useAction();
   const busy = written.running || written.raising || accepting.busy;
 
+  // Si chiede solo con il prezzo in vista (D30): senza stima non si spende.
   const costLabel =
     estimate.state.status === 'ready'
       ? ` · circa ${formatEstimate(estimate.state.data.estimate.estimatedCostUsd)}`
-      : '';
+      : undefined;
 
   const without = (body: CreateAudioClipBody) =>
     (proposed ?? []).filter((candidate) => candidate !== body);
@@ -50,14 +52,17 @@ export function SuggestSounds({
         <button
           type="button"
           className="button"
-          disabled={busy}
+          disabled={busy || costLabel === undefined}
           onClick={() => {
             written.run((spendConfirmed) => suggestSounds(filmId, spendConfirmed));
           }}
         >
-          {written.running ? 'Sto ascoltando la storia…' : `Suggerisci i suoni${costLabel}`}
+          {written.running ? 'Sto ascoltando la storia…' : `Suggerisci i suoni${costLabel ?? ''}`}
         </button>
       </div>
+      {estimate.state.status === 'error' ? (
+        <Notice tone="error">{describeError(estimate.state.error)}</Notice>
+      ) : null}
       {written.problem === undefined ? null : <Notice tone="error">{written.problem}</Notice>}
       {written.breach === undefined ? null : (
         <SpendConfirm

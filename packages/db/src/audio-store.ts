@@ -84,8 +84,8 @@ export interface AudioStore {
   updateTrack: (projectId: string, trackId: string, patch: AudioTrackPatch) => boolean;
   createClip: (clip: NewAudioClip) => AudioClip;
   updateClip: (clipId: string, patch: AudioClipPatch) => void;
-  /** Un file dell'utente su una clip che c'è già: diventa una variante, subito in uso (D27). */
-  addUploadedVariant: (clipId: string, assetId: string) => void;
+  /** Un file dell'utente su una clip che c'è già: diventa una variante, subito in uso, e il blocco dura quanto lui (D27). */
+  addUploadedVariant: (clipId: string, assetId: string, durationS: number) => void;
   /** Una clip con il file dell'utente, già pronta e in uso: o tutto o niente (D27). */
   createUploadedClip: (clip: NewAudioClip, assetId: string) => AudioClip;
   getClip: (clipId: string) => StoredAudioClip | undefined;
@@ -240,7 +240,7 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
         .run();
     },
 
-    addUploadedVariant(clipId, assetId) {
+    addUploadedVariant(clipId, assetId, durationS) {
       const at = now().getTime();
       const variantId = randomUUID();
       db.transaction((tx) => {
@@ -255,7 +255,7 @@ export function createAudioStore(db: FilmzyDb, options: AudioStoreOptions = {}):
           })
           .run();
         tx.update(audioClips)
-          .set({ chosenVariantId: variantId, updatedAt: at })
+          .set({ chosenVariantId: variantId, durationS, updatedAt: at })
           .where(eq(audioClips.id, clipId))
           .run();
       });

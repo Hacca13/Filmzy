@@ -30,7 +30,7 @@ import {
   type ShotStore,
   type TakeStore,
 } from '@filmzy/db';
-import { audioDurationS } from '@filmzy/media';
+import { audioDurationS, hasAudioStream } from '@filmzy/media';
 import {
   LocalAssetStore,
   ProviderError,
@@ -68,7 +68,7 @@ import { STALE_WORK_MS } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
 import { settleCues } from './sound-cues.js';
-import { buildTimeline } from './timeline.js';
+import { buildTimeline, sceneLengthS } from './timeline.js';
 import { AUDIO_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che genera una variante. */
@@ -162,13 +162,15 @@ export class AudioService implements OnModuleInit {
     if (body.on) {
       const { assetId } = found.take;
       const clip = assetId === undefined ? undefined : assetFile(this.files, this.dataDir, assetId);
-      const soundS =
-        clip === undefined ? undefined : await mediaStep(() => audioDurationS(clip.file));
-      if (soundS === undefined) {
+      if (clip === undefined) throw domainError(404, 'not_found', { details: { field: 'takeId' } });
+      if (!(await mediaStep(() => hasAudioStream(clip.file)))) {
         throw domainError(409, 'invalid_request', { details: { field: 'nativeAudio' } });
       }
     }
-    this.takes.setNativeAudio(takeId, body.on);
+    // Mentre ffmpeg leggeva, il piano può essere stato rifatto: il take non c'è più.
+    if (!this.takes.setNativeAudio(takeId, body.on)) {
+      throw domainError(404, 'not_found', { details: { field: 'takeId' } });
+    }
     if (body.on) {
       const native = this.store.tracks(projectId).find((track) => track.kind === 'native');
       if (native?.muted === true) this.store.updateTrack(projectId, native.id, { muted: false });
@@ -249,15 +251,15 @@ export class AudioService implements OnModuleInit {
   }
 
   /**
-   * «Carica un file» su un blocco che c'è già (T5.6): è una variante come le altre, subito in uso. La
-   * durata del blocco non cambia: il mix taglia al posto che ha. Vale la regola di sempre, il file resta
-   * qui (D27), e le varianti generate restano da scegliere.
+   * «Carica un file» su un blocco che c'è già (T5.6): è una variante come le altre, subito in uso, e il
+   * blocco dura quanto il file. Vale la regola di sempre, il file resta qui (D27), e le varianti generate
+   * restano da scegliere. Su un blocco che ha perso il suo posto non servirebbe: non si sentirebbe.
    */
   async uploadVariant(projectId: string, clipId: string, body: unknown): Promise<AudioClip> {
     this.projects.get(projectId);
-    this.clipOf(projectId, clipId);
-    return this.keepFile(projectId, body, (assetId) => {
-      this.store.addUploadedVariant(clipId, assetId);
+    this.assertPlace(projectId, this.clipOf(projectId, clipId));
+    return this.keepFile(projectId, body, (assetId, durationS) => {
+      this.store.addUploadedVariant(clipId, assetId, durationS);
       return this.clipOf(projectId, clipId);
     });
   }
@@ -572,7 +574,9 @@ export class AudioService implements OnModuleInit {
     }
     const startS = body.startS ?? 0;
     if (body.shotId === undefined) {
-      if (startS >= scene.durationS) {
+      // Lo stesso criterio della linea del tempo: altrimenti una voce accettata qui finirebbe fuori scena.
+      const planned = this.shots.plan(projectId, scene.number)?.shots ?? [];
+      if (startS >= sceneLengthS(planned, scene.durationS)) {
         throw domainError(400, 'invalid_request', { details: { field: 'startS' } });
       }
       return;

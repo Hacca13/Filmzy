@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 
 import {
   audioClipSchema,
@@ -11,15 +8,13 @@ import {
   domainErrorSchema,
   type AudioClip,
 } from '@filmzy/contracts';
-import type { AudioStore, ReceiptStore, SheetStore, TakeStore } from '@filmzy/db';
-import { ffmpegPath } from '@filmzy/media';
+import type { AudioStore, ReceiptStore } from '@filmzy/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startApp, type Client } from '../../test-support/app-client.js';
 import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.js';
-import { SHEET_STORE } from '../cast/tokens.js';
-import { TAKE_STORE } from '../shots/tokens.js';
+import { realVideo, takeWithFile } from '../../test-support/real-clip.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
 import { AUDIO_STORE } from './tokens.js';
 
@@ -239,45 +234,9 @@ describe('una voce sulla scena (T5.6)', () => {
 });
 
 describe('l’audio originale di un take (T5.6)', () => {
-  const run = promisify(execFile);
-
-  /** Un take riuscito con questo file: il fornitore finto non fa video veri, e qui il suono conta. */
-  async function takeWith(filmId: string, shotId: string, file: string) {
-    const bytes = await readFile(file);
-    const takes = app.get<TakeStore>(TAKE_STORE, { strict: false });
-    const files = app.get<SheetStore>(SHEET_STORE, { strict: false });
-    const assetId = createHash('sha256').update(file).digest('hex');
-    files.registerAsset({
-      id: assetId,
-      projectId: filmId,
-      path: path.relative(dataDir, file).replaceAll(path.sep, '/'),
-      contentType: 'video/mp4',
-      bytes: bytes.byteLength,
-    });
-    const take = takes.start(shotId, { modelId: 'video', modelLabel: 'Video' });
-    takes.finish(take.id, { status: 'succeeded', assetId });
-    return take.id;
-  }
-
-  async function videoFile(withSound: boolean): Promise<string> {
-    const dir = await mkdtemp(path.join(dataDir, 'prova-'));
-    const file = path.join(dir, 'clip.mp4');
-    await run(ffmpegPath(), [
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-f',
-      'lavfi',
-      '-i',
-      'testsrc=duration=1:size=64x36:rate=10',
-      ...(withSound ? ['-f', 'lavfi', '-i', 'sine=duration=1'] : []),
-      '-pix_fmt',
-      'yuv420p',
-      '-shortest',
-      file,
-    ]);
-    return file;
-  }
+  const takeWith = (filmId: string, shotId: string, file: string) =>
+    takeWithFile(app, dataDir, { filmId, shotId, file });
+  const videoFile = (withSound: boolean) => realVideo(dataDir, { withSound });
 
   it('accenderlo si vede sulla linea del tempo e riapre la traccia, che parte muta', async () => {
     const { film, shot } = await filmWithShot(client);

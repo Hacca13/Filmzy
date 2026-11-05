@@ -86,6 +86,9 @@ const BY_INVALID_FIELD: Record<string, string> = {
     'Questa foto è stata caricata senza controllo e non si può ritoccare. Riaccendi il controllo delle foto in Prudenza e caricala di nuovo.',
   instruction:
     'Il campo di testo serve per «Sostituisci» e «Cambia colore», non per «Togli». Controlla cosa hai scritto.',
+  // Il montaggio (T5.7).
+  assembly: 'Per montare il film manca ancora qualcosa: guarda l’elenco qui sopra.',
+  assemblyWorking: 'Il film si sta già montando. Aspetta che finisca.',
   // Le tracce audio (T5.5, T5.6).
   audioFile:
     'Questo file non è un suono che posso usare. Vanno bene WAV, MP3 o M4A, fino a 100 MB, e dentro deve esserci un suono.',

@@ -692,3 +692,25 @@ export const takeFrames = sqliteTable(
 );
 
 export type TakeFrameRow = typeof takeFrames.$inferSelect;
+
+/**
+ * I montaggi di un film (T5.7): il film si rifà da capo ogni volta, e vale l'ultimo. `fingerprint` è
+ * l'impronta di ciò che è entrato: se cambia, il film montato è indietro.
+ */
+export const filmAssemblies = sqliteTable(
+  'film_assemblies',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    status: text('status').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    assetId: text('asset_id'),
+    durationS: real('duration_s'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('film_assemblies_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type FilmAssemblyRow = typeof filmAssemblies.$inferSelect;

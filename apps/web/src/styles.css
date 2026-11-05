@@ -1345,7 +1345,12 @@ a.button {
   color: var(--text);
 }
 
-/* L'editor delle tracce (T5.6): quattro tracce sotto un solo righello, e il pannello del blocco a destra. */
+/* L'editor delle tracce (T5.6): quattro tracce sotto un solo righello, e il pannello del blocco a destra.
+   Ha bisogno di più spazio delle altre sezioni: esce dalla colonna della pagina, come nel disegno. */
+.panel.sound {
+  margin-inline: calc((100% - min(1360px, 100vw - 64px)) / 2);
+}
+
 .sound-editor {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1396,6 +1401,7 @@ a.button {
 
 .sound-lane-blocks {
   position: relative;
+  min-width: 0;
   min-height: 112px;
   padding: 8px;
   background: var(--background);
@@ -1404,10 +1410,11 @@ a.button {
 
 .sound-block {
   position: absolute;
-  height: 48px;
+  height: 56px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 2px;
   min-width: 28px;
   padding: 6px;
   overflow: hidden;

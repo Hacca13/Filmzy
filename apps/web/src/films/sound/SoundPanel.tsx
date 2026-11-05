@@ -16,7 +16,7 @@ import { AddSoundForm, type AddKind } from './AddSoundForm';
 import { ClipPanel } from './ClipPanel';
 import { SoundLanes } from './SoundLanes';
 import { SuggestSounds } from './SuggestSounds';
-import { sceneName, soundIsWorking } from './model';
+import { formatSceneCount, sceneName, soundIsWorking } from './model';
 
 /** Senza la stesura finale non c'è ancora niente da montare: non è un errore. */
 const NO_FINAL = null;
@@ -119,7 +119,8 @@ function SoundView({
         <div>
           <h3>Montaggio multitraccia</h3>
           <p className="hint">
-            {timeline.scenes.length} scene · {formatDuration(Math.round(timeline.durationS))}
+            {formatSceneCount(timeline.scenes.length)} ·{' '}
+            {formatDuration(Math.round(timeline.durationS))}
           </p>
         </div>
       </div>

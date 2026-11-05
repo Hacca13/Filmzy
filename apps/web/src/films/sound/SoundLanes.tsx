@@ -17,7 +17,7 @@ import {
 } from './model';
 
 /** Quanto occupa una riga di blocchi sulla traccia (px), e il margine sopra e sotto: come nel foglio di stile. */
-const ROW_PX = 56;
+const ROW_PX = 64;
 const LANE_PADDING_PX = 8;
 
 /** Dove sta un blocco sulla traccia: tutto in percentuale della durata del film. */

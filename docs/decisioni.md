@@ -957,4 +957,6 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Non preso dal disegno:** miniature delle clip e forma d'onda (si ascolta col lettore del browser), proposte dentro le tracce (sono un elenco sopra), «Annulla» di una generazione in corso (il server non ha come fermarla).
 
-**Non fatto:** non è stato guardato in un browser, solo coi test; nessuna prova con i servizi veri (T4.0).
+**Guardato in un browser** (Edge senza finestra, col fornitore finto): tracce e pannello aperto. Ha mostrato difetti che i test non vedono, corretti: titoli dei blocchi tagliati, tracce senza spazio col pannello aperto (la sezione ora esce dalla colonna della pagina, come nel disegno), «1 scene», tacche ripetute sul righello. Non sono stati premuti tutti i pulsanti.
+
+**Non fatto:** nessuna prova con i servizi veri (T4.0).

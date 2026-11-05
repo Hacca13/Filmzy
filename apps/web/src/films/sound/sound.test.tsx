@@ -116,8 +116,8 @@ describe('le tracce', () => {
     );
 
     expect(html).toContain('top:8px');
-    expect(html).toContain('top:64px');
-    expect(html).toContain('min-height:128px');
+    expect(html).toContain('top:72px');
+    expect(html).toContain('min-height:144px');
   });
 
   it('una traccia vuota dice cosa ci va', () => {

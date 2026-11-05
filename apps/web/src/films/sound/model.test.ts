@@ -10,6 +10,7 @@ import {
   clipIsWorking,
   describeAudioError,
   formatClock,
+  formatSceneCount,
   formatSeconds,
   percentOf,
   rulerMarks,
@@ -84,6 +85,20 @@ describe('il tempo', () => {
   it('il righello va dall’inizio alla fine, e un film vuoto non ne ha', () => {
     expect(rulerMarks(60)).toEqual([0, 10, 20, 30, 40, 50, 60]);
     expect(rulerMarks(0)).toEqual([]);
+    expect(rulerMarks(5).map(formatClock)).toEqual([
+      '00:00',
+      '00:01',
+      '00:02',
+      '00:03',
+      '00:04',
+      '00:05',
+    ]);
+    expect(rulerMarks(0.5)).toEqual([0, 0.5]);
+  });
+
+  it('le scene si contano in italiano', () => {
+    expect(formatSceneCount(1)).toBe('1 scena');
+    expect(formatSceneCount(6)).toBe('6 scene');
   });
 
   it('una posizione non esce mai dalla traccia', () => {

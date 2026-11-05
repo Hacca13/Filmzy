@@ -52,10 +52,19 @@ export function formatSeconds(seconds: number): string {
 /** Quante tacche ha il righello: abbastanza da orientarsi, poche da leggerle tutte. */
 const RULER_STEPS = 6;
 
-/** I momenti da scrivere sul righello, dall'inizio alla fine del film. Un film vuoto non ne ha. */
+/**
+ * I momenti da scrivere sul righello, dall'inizio alla fine del film. Un film vuoto non ne ha, e uno di
+ * pochi secondi ha meno tacche: si leggono al secondo, e non devono ripetersi.
+ */
 export function rulerMarks(durationS: number): number[] {
   if (durationS <= 0) return [];
-  return Array.from({ length: RULER_STEPS + 1 }, (_, step) => (durationS * step) / RULER_STEPS);
+  const steps = Math.min(RULER_STEPS, Math.max(1, Math.floor(durationS)));
+  return Array.from({ length: steps + 1 }, (_, step) => (durationS * step) / steps);
+}
+
+/** «1 scena», «6 scene». */
+export function formatSceneCount(count: number): string {
+  return count === 1 ? '1 scena' : `${String(count)} scene`;
 }
 
 /** Dove sta un momento sulla traccia, in percentuale: mai fuori dalla traccia. */

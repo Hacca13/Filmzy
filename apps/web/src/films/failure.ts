@@ -6,6 +6,8 @@
  * l'utente può riprovare o scegliere un altro servizio.
  */
 
+import { JOB_INTERRUPTED } from '@filmzy/contracts';
+
 export type FailureAction =
   /** Un altro tentativo, con il servizio che c'è adesso. */
   | { kind: 'retry' }
@@ -40,7 +42,7 @@ const TECHNICAL: Failure = {
 
 const BY_CODE: Record<string, Failure> = {
   // Il programma si è chiuso prima della fine: non riparte da solo, perché a decidere è chi paga (D84).
-  interrupted: {
+  [JOB_INTERRUPTED]: {
     reason: 'Il programma si è chiuso prima che finisse',
     advice: 'Non riparte da solo: rifallo solo se vuoi',
     actions: [retry, changeService],

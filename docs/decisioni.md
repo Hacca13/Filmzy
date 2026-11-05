@@ -186,7 +186,7 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 **Aggiorna** parti di D1 (database, coda e distribuzione), D2 (configurazione e pannello admin), D7 (webhook di fal), D11 (Drizzle, ora con SQLite), D19 (la regola sulle persone) e D25 (le chiavi).
 **Decisione:** il programma è un'app per Windows, macOS e Linux, impacchettata con Electron e installabile con un doppio clic, con aggiornamenti da GitHub Releases. Prima dell'installatore si lavora con un'app locale che parte da riga di comando.
 - **Dati:** SQLite (con Drizzle) nella cartella dell'app; i file dei progetti in cartelle locali, un film una cartella; un progetto si esporta e si importa come copia di sicurezza.
-- **Lavori:** un solo processo. La coda è interna e salvata in SQLite, così i lavori ripartono dopo un riavvio. Niente Redis, BullMQ, MinIO, R2, Docker né Caddy.
+- **Lavori:** un solo processo. La coda è interna e salvata in SQLite, così i lavori sopravvivono a un riavvio (che ripartano è stato superato da D84: si chiudono e decide l'utente). Niente Redis, BullMQ, MinIO, R2, Docker né Caddy.
 - **Fornitori:** solo polling. La verifica dei webhook non si implementa.
 - **Chiavi:** nel portachiavi del sistema operativo (Electron `safeStorage`), inserite dall'utente da Impostazioni > Connessioni.
 - **Eliminati:** account, ruoli, crediti, pagamenti, segnalazioni e rimozioni. La configurazione avanzata della troupe diventa «Impostazioni avanzate».
@@ -635,10 +635,10 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Realizza** una richiesta dell'utente (dopo T4.1, D62); da fare con Electron (T6.4). Nessun codice ancora.
 **Decisione:**
-1. **Se si chiude il programma con lavori a pagamento in coda o in corso, la chiusura si ferma** e compare una finestra: dice quanti lavori ci sono («Sto ancora lavorando a 2 cose»), che chiudendo adesso al riavvio il programma le rifà e **potresti pagarle due volte**, e offre tre scelte: «Aspetta che finisca» (il programma si chiude da solo appena ha finito; è la scelta in evidenza), «Torna al film» e «Chiudi lo stesso».
+1. **Se si chiude il programma con lavori a pagamento in coda o in corso, la chiusura si ferma** e compare una finestra: dice quanti lavori ci sono («Sto ancora lavorando a 2 cose»), che chiudendo adesso quei lavori si fermano, **il servizio può averli già fatti e addebitati**, e al riavvio non ripartono da soli (D84), e offre tre scelte: «Aspetta che finisca» (il programma si chiude da solo appena ha finito; è la scelta in evidenza), «Torna al film» e «Chiudi lo stesso».
 2. **«Chiudi lo stesso» non si impedisce:** l'utente deve poter sempre chiudere, e se lo sceglie la responsabilità è sua (la finestra lo dice). Senza lavori in corso la chiusura è immediata, senza finestra.
 3. **Lo spegnimento del computer** non può mostrare la finestra in modo affidabile: lì vale solo il ripiego del punto 4.
-4. **Ripiego, da valutare dopo:** salvare l'id della richiesta fatta al fornitore e, alla ripartenza, riprendere ad aspettare quella invece di rifarla. Oggi un lavoro interrotto a metà ricomincia da capo (schede, luoghi, storyboard); un lavoro già chiuso non si rifà (D62). Il ripiego dipende da quanto a lungo il fornitore conserva una richiesta.
+4. **Ripiego, da valutare dopo:** salvare l'id della richiesta fatta al fornitore e, alla ripartenza, riprendere ad aspettare quella invece di rifarla. Oggi un lavoro interrotto si chiude e non riparte (D84); un lavoro già chiuso non si rifà (D62). Il ripiego dipende da quanto a lungo il fornitore conserva una richiesta.
 
 **Perché:** chiudere per distrazione non deve costare soldi senza che l'utente lo sappia; ma un programma che non si lascia chiudere è peggio.
 **Scartate:** impedire la chiusura senza via d'uscita; avvisare solo dopo, alla riapertura (il costo c'è già).
@@ -992,9 +992,15 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Come funziona:**
 1. **La regola sta in un posto solo,** l'esecutore della coda: all'avvio ogni lavoro rimasto da fare si chiude con il codice `interrupted`. Vale per quelli a metà e anche per quelli solo in coda, che non hanno ancora speso: partirebbero a spendere con l'utente magari non davanti al computer, giorni dopo.
 2. **Chi registra un lavoro deve dire come chiuderlo:** è obbligatorio, così un tipo nuovo non può dimenticarsene. Vale per video, storyboard, immagini dei luoghi, schede, moodboard, ritocco, suoni e montaggio. Un tentativo già riuscito resta com'è, e quello che è già arrivato (immagini di una scheda o del moodboard) resta.
-3. **L'interfaccia lo dice:** «Il programma si è chiuso prima che finisse · Non riparte da solo: rifallo solo se vuoi», con «Riprova», «Cambia servizio» e l'invito a guardare i costi nel pannello del servizio, che può aver già lavorato. Prima diceva «il servizio ci ha messo troppo», che era falso.
+3. **L'interfaccia lo dice:** «Il programma si è chiuso prima che finisse · Non riparte da solo: rifallo solo se vuoi» e l'invito a guardare i costi nel pannello del servizio, che può aver già lavorato. Prima diceva «il servizio ci ha messo troppo», che era falso. Dove c'è il riquadro degli errori offre «Riprova» e «Cambia servizio»; schede e moodboard hanno già il loro pulsante per rifare.
 4. **Anche il montaggio si ferma,** pur essendo gratis: «vale per tutto», e una regola senza eccezioni è più semplice da capire.
+5. **Prima si scrive sul tentativo, poi si chiude il lavoro:** se il programma si chiude anche durante questo giro, al prossimo avvio riprende da lì. Un lavoro si chiude comunque, anche se scrivere non riesce: se restasse in coda partirebbe, e spenderebbe. In quel caso il motivo va nel registro.
+6. **Gli scontrini aperti si chiudono:** uno mai partito non è costato niente; uno già partito resta contato alla stima, perché il servizio può aver addebitato e una spesa sottostimata farebbe superare i limiti senza saperlo. Se poi l'utente rifà il lavoro, si contano tutti e due: se il servizio non aveva addebitato, la spesa mostrata è un po' più alta di quella vera.
+7. **La coda parte dopo aver aperto la porta:** un secondo Filmzy lanciato per sbaglio trova la porta presa e si ferma, senza chiudere come interrotti i lavori del primo.
+8. **Anche ciò che resta senza un lavoro si chiude:** il moodboard apre la richiesta prima di scrivere i consigli, e va in coda solo dopo. I file provvisori del ritocco e i pezzi del montaggio si tolgono subito.
 
 **Tolto:** il moodboard che riprendeva dall'ultima immagine arrivata, e i controlli doppi su video e suoni.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate e corrette; le più serie sono i punti 5, 6, 7 e 8. Il test ora fa un riavvio vero, su una seconda app con la stessa cartella dei dati, e fallisce da solo se si aggiunge un tipo di lavoro senza provarlo.
 
 **Limite noto:** un servizio che aveva già finito il lavoro è pagato e il risultato non si recupera (già segnato in T4.3). Recuperarlo senza spendere è possibile, ma è un lavoro a parte.

@@ -52,11 +52,8 @@ export interface JobQueue {
   cancel: (id: string) => Job | undefined;
   /** Annulla i lavori di un film ancora da fare: serve quando si cancella il film. */
   cancelProject: (projectId: string) => number;
-  /**
-   * Chiude i lavori rimasti da fare, in corso o ancora in coda: il programma si è chiuso prima che
-   * finissero. Non ripartono mai da soli (D84). Si chiama all'avvio, e dà quelli chiusi.
-   */
-  closeUnfinished: (failure: { code: string; message: string }) => Job[];
+  /** I lavori rimasti da fare, in corso o ancora in coda. All'avvio vuol dire che si sono interrotti (D84). */
+  unfinished: () => Job[];
   get: (id: string) => Job | undefined;
   list: (filter?: { status?: JobStatus; projectId?: string; limit?: number }) => Job[];
   counts: () => Record<JobStatus, number>;
@@ -214,19 +211,11 @@ export function createJobQueue(db: FilmzyDb, options: JobQueueOptions = {}): Job
         .all().length;
     },
 
-    closeUnfinished(failure) {
-      const at = now().getTime();
+    unfinished() {
       return db
-        .update(jobs)
-        .set({
-          status: 'failed',
-          finishedAt: at,
-          errorCode: failure.code,
-          errorMessage: failure.message,
-          updatedAt: at,
-        })
+        .select()
+        .from(jobs)
         .where(inArray(jobs.status, ['queued', 'running']))
-        .returning()
         .all()
         .map(toJob);
     },

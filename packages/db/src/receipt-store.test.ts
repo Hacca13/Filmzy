@@ -38,6 +38,41 @@ beforeEach(async () => {
   };
 });
 
+describe('gli scontrini rimasti aperti dopo un riavvio (D84)', () => {
+  it('uno mai partito non costa, uno partito resta contato alla stima, e uno chiuso non si tocca', async () => {
+    await store.write(
+      receipt({ id: 'mai-partito', status: 'queued', estimatedCostUsd: 1, projectId: 'film-1' }),
+    );
+    await store.write(
+      receipt({ id: 'partito', status: 'running', estimatedCostUsd: 2, projectId: 'film-1' }),
+    );
+    await store.write(
+      receipt({
+        id: 'chiuso',
+        status: 'succeeded',
+        estimatedCostUsd: 5,
+        actualCostUsd: 4,
+        projectId: 'film-1',
+      }),
+    );
+
+    store.closeUnfinished('interrupted');
+
+    expect(store.get('mai-partito')).toMatchObject({
+      status: 'failed',
+      errorCode: 'interrupted',
+      actualCostUsd: 0,
+    });
+    expect(store.get('partito')).toMatchObject({
+      status: 'failed',
+      errorCode: 'interrupted',
+      actualCostUsd: 2,
+    });
+    expect(store.get('chiuso')).toMatchObject({ status: 'succeeded', actualCostUsd: 4 });
+    expect(store.spentOnProject('film-1')).toBe(6);
+  });
+});
+
 describe('scontrini nel database', () => {
   it('uno scontrino scritto si rilegge uguale', async () => {
     await store.write(receipt());

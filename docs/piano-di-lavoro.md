@@ -112,7 +112,7 @@ Fatto il 21/10 (`pnpm troupe check` è pulito: nessun errore, nessun avviso). Co
 _Leggere: architettura §4.5, §4.6, §6, §10._
 
 **T2.1 Database e coda locali.** SQLite con Drizzle (si conferma D11), migrazioni, scelta del driver (`better-sqlite3` oppure `node:sqlite`) e del portachiavi; coda interna salvata in SQLite, con nuovi tentativi e limiti di concorrenza. Il database e i file stanno nella **cartella dati dell'utente**, fuori dalla cartella del programma (architettura §6.1): le migrazioni si applicano all'avvio, in transazione, dopo una copia di sicurezza del file, e un database scritto da una versione più nuova non si apre, con un messaggio chiaro (D44).
-_Fatto quando:_ un lavoro messo in coda riparte dopo la chiusura e la riapertura dell'app; una migrazione lascia una copia di sicurezza e, se fallisce, l'app riparte dai dati di prima.
+_Fatto quando:_ un lavoro messo in coda riparte dopo la chiusura e la riapertura dell'app (superato da D84: ora non riparte, e decide l'utente); una migrazione lascia una copia di sicurezza e, se fallisce, l'app riparte dai dati di prima.
 Fatto il 22/10: driver `better-sqlite3` e portachiavi `safeStorage` scelti (D45), `packages/db` con cartella dei dati, migrazioni e coda, e l'esecutore dei lavori nel server (architettura §7.1). Le chiavi vere si scriveranno in T2.3, con l'interfaccia `SecretStore`: fino a Electron (M6) arrivano dalle variabili d'ambiente.
 
 **T2.2 Configurazione nel database.** Tabelle `troupe_drafts`, `troupe_releases`, `instruction_versions`; `pnpm troupe import` ed `export`; `ConfigSource` dal database, che consegna anche le scelte dell'utente (`settings`, D36); ricarica immediata senza riavvio; se la nuova release non è valida si tiene la precedente.

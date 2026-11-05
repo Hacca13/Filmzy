@@ -5,3 +5,7 @@
  * l'inquadratura) e non conta come «in corso» sulla card, che non deve dire «Sto girando…» per sempre.
  */
 export const STALE_WORK_MS = 45 * 60 * 1000;
+
+/** Un tentativo che non è ancora chiuso: in coda o in lavorazione. */
+export const isOpenStatus = (status: string | undefined): boolean =>
+  status === 'queued' || status === 'running';

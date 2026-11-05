@@ -29,6 +29,8 @@ export const DOMAIN_ERROR_CODES = [
   'not_found',
   // Un file del film non si è potuto elaborare (per esempio un fotogramma da un video, T4.6).
   'media_failed',
+  /** Il programma si è chiuso prima che il lavoro finisse: non riparte da solo (D84). */
+  'interrupted',
   // Il database locale (architettura §6.2, D44): all'avvio l'utente deve capire cosa è successo.
   'database_too_new',
   'migration_failed',

@@ -1,13 +1,6 @@
 import { JOB_INTERRUPTED, type Job, type JobStatus } from '@filmzy/contracts';
 import type { EnqueueInput, JobQueue } from '@filmzy/db';
-import {
-  Inject,
-  Injectable,
-  Logger,
-  Optional,
-  type OnApplicationBootstrap,
-  type OnApplicationShutdown,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, type OnApplicationShutdown } from '@nestjs/common';
 
 import { JOB_QUEUE } from '../database/database.module.js';
 import { EventBus } from '../events/event-bus.js';
@@ -25,8 +18,11 @@ import { EventBus } from '../events/event-bus.js';
 
 export type JobHandler = (job: Job) => Promise<void>;
 
-/** Scrive sul tentativo che il lavoro non si farà più. Non chiama fornitori, e non rifà niente. */
-export type JobInterruptedHandler = (job: Job) => void;
+/**
+ * Scrive sul tentativo che il lavoro non si farà più e toglie i suoi file provvisori. Non chiama fornitori e
+ * non rifà niente. Può essere chiamato due volte, se il programma si chiude anche durante questo giro.
+ */
+export type JobInterruptedHandler = (job: Job) => void | Promise<void>;
 
 export const JOB_RUNNER_OPTIONS = Symbol('JOB_RUNNER_OPTIONS');
 
@@ -45,10 +41,13 @@ export interface JobRunnerOptions {
 const RETRYABLE_CODES = new Set(['provider_unavailable', 'timeout', 'rate_limited']);
 
 @Injectable()
-export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown {
+export class JobRunner implements OnApplicationShutdown {
   private readonly log = new Logger('Lavori');
   private readonly handlers = new Map<string, JobHandler>();
   private readonly interruptedHandlers = new Map<string, JobInterruptedHandler>();
+  private readonly startCleanups: (() => void)[] = [];
+  /** Sta chiudendo i lavori interrotti: nessuno deve poterli prendere in quel momento. */
+  private closing = false;
   private readonly inFlight = new Set<Promise<void>>();
   private readonly concurrency: number;
   private readonly pollIntervalMs: number;
@@ -76,9 +75,22 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     this.interruptedHandlers.set(kind, onInterrupted);
   }
 
-  onApplicationBootstrap(): void {
-    this.stopping = false;
-    this.closeInterrupted();
+  /** I tipi di lavoro registrati: chi prova la regola del riavvio non può dimenticarne uno. */
+  registeredKinds(): string[] {
+    return [...this.handlers.keys()];
+  }
+
+  /** Per ciò che resta aperto senza un lavoro in coda (scontrini, una richiesta non ancora accodata). */
+  atStart(cleanup: () => void): void {
+    this.startCleanups.push(cleanup);
+  }
+
+  /**
+   * Fa partire la coda. Lo chiama chi ha già aperto la porta: se un altro Filmzy è aperto la porta è presa, e
+   * così non si chiudono come interrotti i lavori che lui sta facendo (D84).
+   */
+  async start(): Promise<void> {
+    await this.closeInterrupted();
 
     // Il controllo periodico serve quando nessuno chiama `wake`: un lavoro che aspetta un nuovo
     // tentativo (`runAfter` nel futuro) e il prossimo della fila quando uno finisce. Un secondo di
@@ -90,23 +102,47 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     this.wake();
   }
 
-  /** I lavori rimasti da fare si chiudono tutti: uno che non si riesce a scrivere non ferma gli altri. */
-  private closeInterrupted(): void {
-    const closed = this.queue.closeUnfinished({
-      code: JOB_INTERRUPTED,
-      message: 'Il programma si è chiuso prima che il lavoro finisse.',
-    });
-    for (const job of closed) {
-      try {
-        this.interruptedHandlers.get(job.kind)?.(job);
-      } catch (error) {
-        const reason = error instanceof Error ? error.name : 'errore';
-        this.log.warn(`Lavoro "${job.kind}" (${job.id}) interrotto, non scritto: ${reason}.`);
+  /**
+   * I lavori rimasti da fare si chiudono tutti. Prima si scrive sul tentativo e poi si chiude il lavoro: se
+   * il programma si chiude a metà di questo giro, al prossimo avvio si riprende da lì. Un lavoro si chiude
+   * comunque, anche se scrivere non riesce: se restasse in coda partirebbe, e spenderebbe.
+   */
+  private async closeInterrupted(): Promise<void> {
+    this.closing = true;
+    try {
+      for (const cleanup of this.startCleanups) {
+        try {
+          cleanup();
+        } catch (error) {
+          this.log.error(`Pulizia all'avvio non riuscita: ${errorName(error)}.`);
+        }
       }
-      this.announce(job, 'failed');
-    }
-    if (closed.length > 0) {
-      this.log.warn(`${String(closed.length)} lavori interrotti: non ripartono da soli.`);
+
+      const unfinished = this.queue.unfinished();
+      for (const job of unfinished) {
+        const handler = this.interruptedHandlers.get(job.kind);
+        if (handler === undefined) {
+          this.log.error(`Nessuno sa chiudere il lavoro "${job.kind}" (${job.id}).`);
+        }
+        try {
+          await handler?.(job);
+        } catch (error) {
+          this.log.error(
+            `Lavoro "${job.kind}" (${job.id}) interrotto, non scritto: ${errorName(error)}.`,
+          );
+        }
+        this.queue.fail(job.id, {
+          code: JOB_INTERRUPTED,
+          message: 'Il programma si è chiuso prima che il lavoro finisse.',
+          retryable: false,
+        });
+        this.announce(job, 'failed');
+      }
+      if (unfinished.length > 0) {
+        this.log.warn(`${String(unfinished.length)} lavori interrotti: non ripartono da soli.`);
+      }
+    } finally {
+      this.closing = false;
     }
   }
 
@@ -130,7 +166,7 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
 
   /** Dà una guardata alla coda adesso: lo chiama chi mette un lavoro in coda. */
   wake(): void {
-    if (this.stopping) return;
+    if (this.stopping || this.closing) return;
 
     const free = this.concurrency - this.inFlight.size;
     if (free <= 0) return;
@@ -194,6 +230,9 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     }
   }
 }
+
+/** Per il registro: il tipo di errore, mai il messaggio, che può contenere i dati del lavoro. */
+const errorName = (error: unknown): string => (error instanceof Error ? error.name : 'errore');
 
 /** Dall'errore di chi esegue al motivo da scrivere nella coda, con il suo codice (§4.10). */
 function failureOf(error: unknown): { code: string; message: string; retryable: boolean } {

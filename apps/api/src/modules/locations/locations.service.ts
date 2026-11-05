@@ -50,6 +50,7 @@ import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { UPLOAD_STORE } from '../uploads/tokens.js';
 import { LOCATION_STORE } from './tokens.js';
+import { isOpenStatus } from '../shots/work.js';
 
 const ROLE = 'set_designer';
 
@@ -106,10 +107,10 @@ export class LocationsService implements OnModuleInit {
    */
   closeInterrupted(rawPayload: unknown): void {
     const { locationId, attempt } = locationJobPayloadSchema.parse(rawPayload);
-    const status = this.store
+    const current = this.store
       .images(locationId)
-      .attempts.find((candidate) => candidate.attempt === attempt)?.status;
-    if (status === 'queued' || status === 'running') {
+      .attempts.find((candidate) => candidate.attempt === attempt);
+    if (isOpenStatus(current?.status)) {
       this.store.finishAttempt(locationId, attempt, {
         status: 'failed',
         errorCode: JOB_INTERRUPTED,

@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { FailureActions } from './FailureActions';
+import { JOB_INTERRUPTED } from '@filmzy/contracts';
+
 import { COST_NOTE, failureOf, failureText } from './failure';
 import type { Generation } from './generation';
 
@@ -18,6 +20,16 @@ const generation = {
 
 const render = (code: string | undefined, busy = false) =>
   renderToStaticMarkup(<FailureActions code={code} generation={generation} busy={busy} />);
+
+describe('un lavoro interrotto da un riavvio (D84)', () => {
+  it('dice che non riparte da solo, offre di rifarlo e ricorda di guardare i costi', () => {
+    const failure = failureOf(JOB_INTERRUPTED);
+
+    expect(failureText(JOB_INTERRUPTED)).toContain('Non riparte da solo');
+    expect(failure.actions.map(({ kind }) => kind)).toEqual(['retry', 'change_service']);
+    expect(failure.mayHaveCost).toBe(true);
+  });
+});
 
 describe('failureOf', () => {
   it('un rifiuto del contenuto non offre nessuna scelta che lo aggiri: né «Riprova» né un altro servizio (D36)', () => {

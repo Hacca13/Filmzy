@@ -22,9 +22,11 @@ import {
   angleLabel,
   attemptIsComplete,
   attemptLabel,
+  attemptMayHaveCost,
   imageStatusText,
   sheetIsWorking,
 } from './sheet-model';
+import { COST_NOTE } from '../failure';
 
 /**
  * La scheda di un personaggio (T3.6): le tre immagini su fondo neutro (fronte, profilo, tre quarti)
@@ -136,6 +138,7 @@ export function SheetSection({ filmId, characterId }: { filmId: string; characte
                   </figure>
                 ))}
               </div>
+              {attemptMayHaveCost(attempt) ? <p className="hint">{COST_NOTE}</p> : null}
               {attempt.attempt === sheet.lockedAttempt ? (
                 <div className="actions">
                   <button

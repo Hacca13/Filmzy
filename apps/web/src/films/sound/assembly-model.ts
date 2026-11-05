@@ -1,4 +1,4 @@
-import type { AssemblyGap, AssemblyView } from '@filmzy/contracts';
+import { JOB_INTERRUPTED, type AssemblyGap, type AssemblyView } from '@filmzy/contracts';
 
 /**
  * Le piccole decisioni del montaggio (T5.7), fuori dai componenti così si provano a parte. Cosa manca e
@@ -28,7 +28,7 @@ export function gapText({ sceneNumber = 1, kind, missing = 1 }: AssemblyGap): st
 }
 
 const FAILURES: Record<string, string> = {
-  interrupted:
+  [JOB_INTERRUPTED]:
     'Il programma si è chiuso mentre montava. Non riparte da solo: monta di nuovo quando vuoi.',
   ffmpeg_missing: 'Manca il programma che monta i video. Reinstalla Filmzy.',
   not_found: 'Un video o un suono del film non c’è più sul computer. Rifallo, poi monta di nuovo.',

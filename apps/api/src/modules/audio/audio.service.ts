@@ -65,7 +65,7 @@ import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { assertPlanCurrent, shotOf } from '../shots/shot-access.js';
 import { SHOT_STORE, TAKE_STORE } from '../shots/tokens.js';
-import { STALE_WORK_MS } from '../shots/work.js';
+import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
 import { settleCues } from './sound-cues.js';
@@ -133,8 +133,7 @@ export class AudioService implements OnModuleInit {
   /** Il programma si è chiuso prima della fine: la variante si chiude, e un'altra la chiede l'utente (D84). */
   private closeInterrupted(rawPayload: unknown): void {
     const { variantId } = audioJobPayloadSchema.parse(rawPayload);
-    const status = this.store.getVariant(variantId)?.variant.status;
-    if (status === 'queued' || status === 'running') {
+    if (isOpenStatus(this.store.getVariant(variantId)?.variant.status)) {
       this.store.finishVariant(variantId, { status: 'failed', errorCode: JOB_INTERRUPTED });
     }
   }

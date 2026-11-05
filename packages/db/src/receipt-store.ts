@@ -1,9 +1,10 @@
 import {
   generationReceiptSchema,
+  type DomainErrorCode,
   type GenerationPurpose,
   type GenerationReceipt,
 } from '@filmzy/contracts';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { generations, type GenerationRow } from './schema.js';
@@ -31,6 +32,12 @@ export interface SpendRow {
  */
 export interface ReceiptStore {
   write: (receipt: GenerationReceipt) => Promise<void>;
+  /**
+   * Chiude gli scontrini rimasti aperti: il programma si è chiuso prima che finissero, e nessuno li chiuderà
+   * più (D84). Uno mai partito non è costato niente. Uno già partito può essere stato addebitato: resta
+   * contato alla stima, perché una spesa sottostimata farebbe superare i limiti senza saperlo.
+   */
+  closeUnfinished: (errorCode: DomainErrorCode) => void;
   get: (id: string) => GenerationReceipt | undefined;
   /** I più recenti per primi. Le righe che non si leggono (forma sbagliata) si saltano. */
   list: (options?: { purpose?: GenerationPurpose; limit?: number }) => GenerationReceipt[];
@@ -76,6 +83,37 @@ export function createReceiptStore(db: FilmzyDb): ReceiptStore {
         .onConflictDoUpdate({ target: generations.id, set: changing })
         .run();
       return Promise.resolve();
+    },
+
+    closeUnfinished(errorCode) {
+      const open = db
+        .select()
+        .from(generations)
+        .where(inArray(generations.status, ['queued', 'running']))
+        .all();
+      for (const row of open) {
+        const started = row.status === 'running';
+        const actualCostUsd = started ? row.estimatedCostUsd : 0;
+        const receipt = toReceipt(row);
+        db.update(generations)
+          .set({
+            status: 'failed',
+            actualCostUsd,
+            // Una riga che non si legge più resta illeggibile: ma non deve restare aperta.
+            ...(receipt === undefined
+              ? {}
+              : {
+                  receipt: JSON.stringify({
+                    ...receipt,
+                    status: 'failed',
+                    errorCode,
+                    actualCostUsd,
+                  }),
+                }),
+          })
+          .where(eq(generations.id, row.id))
+          .run();
+      }
     },
 
     get(id) {

@@ -183,7 +183,7 @@ describe('la coda dei lavori (§7)', () => {
 });
 
 describe('dopo una chiusura del programma (§7)', () => {
-  it('un lavoro in corso riparte alla riapertura, senza perdere i tentativi fatti', async () => {
+  it('alla riapertura un lavoro in corso e uno in coda risultano ancora da fare, col loro carico', async () => {
     const dataDir = await tempDataDir();
     const primo = await openFilmzyDatabase({ dataDir, appVersion: '0.3.0' });
     const messo = createJobQueue(primo.db).enqueue({
@@ -201,14 +201,17 @@ describe('dopo una chiusura del programma (§7)', () => {
     expect(ripresa.get(messo.id)?.status).toBe('running');
     const inCoda = ripresa.enqueue({ kind: 'take.generate', payload: { shotId: 'shot-2' } });
 
-    const chiusi = ripresa.closeUnfinished({ code: 'interrupted', message: 'Interrotto.' });
+    const rimasti = ripresa.unfinished();
 
-    // Né quello in corso né quello in coda ripartono: chi paga deve decidere (D84).
-    expect(chiusi.map((job) => job.id).sort()).toEqual([messo.id, inCoda.id].sort());
-    expect(chiusi.find((job) => job.id === messo.id)?.payload).toEqual({ shotId: 'shot-1' });
-    expect(ripresa.get(messo.id)).toMatchObject({ status: 'failed', errorCode: 'interrupted' });
+    expect(rimasti.map((job) => job.id).sort()).toEqual([messo.id, inCoda.id].sort());
+    expect(rimasti.find((job) => job.id === messo.id)?.payload).toEqual({ shotId: 'shot-1' });
+
+    // Chiuderli è compito dell'esecutore: dopo non risultano più da fare.
+    for (const job of rimasti) {
+      ripresa.fail(job.id, { code: 'interrupted', message: 'Interrotto.', retryable: false });
+    }
+    expect(ripresa.unfinished()).toEqual([]);
     expect(ripresa.claim(5)).toEqual([]);
-    expect(ripresa.closeUnfinished({ code: 'interrupted', message: 'Interrotto.' })).toEqual([]);
 
     secondo.close();
   });

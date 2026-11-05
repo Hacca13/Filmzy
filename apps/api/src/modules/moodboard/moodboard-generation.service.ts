@@ -93,22 +93,14 @@ export class MoodboardGenerationService implements OnModuleInit {
     this.runner.register(
       MOODBOARD_JOB_KIND,
       (job) => this.makeImages(job.payload),
-      (job) => {
-        this.closeInterrupted(job.payload);
-      },
+      // Le richieste aperte le chiude la pulizia qui sotto, che le prende tutte.
+      () => undefined,
     );
-  }
-
-  /**
-   * Il programma si è chiuso prima della fine: la richiesta si chiude, e le immagini già arrivate restano.
-   * Un'altra la chiede l'utente (D84).
-   */
-  private closeInterrupted(rawPayload: unknown): void {
-    const { runId } = moodboardJobPayloadSchema.parse(rawPayload);
-    const status = this.store.getRun(runId)?.status;
-    if (status === 'queued' || status === 'running') {
-      this.store.updateRun(runId, { status: 'failed', errorCode: JOB_INTERRUPTED });
-    }
+    // La richiesta si apre prima di scrivere i consigli e il lavoro va in coda solo dopo: chiudendo in mezzo
+    // non c'è nessun lavoro da cui risalire, quindi si guardano le richieste. Le immagini arrivate restano.
+    this.runner.atStart(() => {
+      this.store.closeOpenRuns(JOB_INTERRUPTED);
+    });
   }
 
   /** I servizi per le immagini, con la stima di **tutto** il lavoro: il testo e le immagini. */
@@ -192,7 +184,9 @@ export class MoodboardGenerationService implements OnModuleInit {
     const payload = moodboardJobPayloadSchema.parse(rawPayload);
     const { projectId, runId } = payload;
 
-    if (this.store.getRun(runId)?.status === 'succeeded') return;
+    // Una richiesta già chiusa non rifà niente: si pagherebbe due volte (regola 10).
+    const status = this.store.getRun(runId)?.status;
+    if (status === 'succeeded' || status === 'failed') return;
     let images = 0;
     let costUsd = 0;
     try {

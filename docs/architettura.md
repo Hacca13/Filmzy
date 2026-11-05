@@ -627,7 +627,7 @@ Un lavoro ripetuto non conta due volte nella spesa: la chiave di idempotenza sta
 - **Quanti insieme:** pochi e configurabili. Un computer di casa non deve generare quattro video in parallelo, e ogni fornitore ha il suo limite (`max_concurrency` della connessione, §4.3).
 - **Ordine:** prima la priorità più alta, poi chi è arrivato per primo.
 - **Tentativi:** solo per gli errori che hanno senso (`provider_unavailable`, `timeout`, `rate_limited`), con attesa che raddoppia (`run_after`), fino a `max_attempts`; poi il lavoro si ferma col suo codice e decide l'utente (§4.10, D36). Un rifiuto del contenuto o un errore del nostro codice non si ritentano.
-- **Dopo una chiusura:** i lavori rimasti «in lavorazione» tornano in coda all'avvio, perché nessuno li sta più facendo. I tentativi già fatti restano contati, e la chiave di idempotenza evita di pagare due volte.
+- **Dopo una chiusura (D84):** all'avvio nessun lavoro riparte, né a metà né in coda. Chi l'aveva chiesto lo scrive sul suo tentativo con il codice `interrupted`, gli scontrini aperti si chiudono (uno già partito resta contato alla stima) e decide l'utente. La coda parte solo dopo aver aperto la porta: un secondo Filmzy lanciato per sbaglio si ferma lì, senza chiudere i lavori del primo.
 - **Annullare:** un lavoro o tutti quelli di un film (quando il film si cancella); i lavori già finiti non si toccano.
 
 ## 8. Continuità e giallo

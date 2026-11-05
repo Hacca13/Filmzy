@@ -50,7 +50,7 @@ import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
-import { STALE_WORK_MS } from '../shots/work.js';
+import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
 import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
 
@@ -107,19 +107,20 @@ export class AssemblyService implements OnModuleInit {
     this.runner.register(
       ASSEMBLY_JOB_KIND,
       (job) => this.makeFilm(job.payload),
-      (job) => {
-        this.closeInterrupted(job.payload);
-      },
+      (job) => this.closeInterrupted(job.payload),
     );
   }
 
-  /** Il programma si è chiuso prima della fine: si chiude, e un altro montaggio lo chiede l'utente (D84). */
-  private closeInterrupted(rawPayload: unknown): void {
-    const { assemblyId } = assemblyJobPayloadSchema.parse(rawPayload);
-    const status = this.store.get(assemblyId)?.assembly.status;
-    if (status === 'queued' || status === 'running') {
+  /**
+   * Il programma si è chiuso prima della fine: si chiude, e un altro montaggio lo chiede l'utente (D84). I
+   * pezzi a metà pesano quanto il film: si tolgono subito, perché il lavoro non ripartirà a farlo.
+   */
+  private async closeInterrupted(rawPayload: unknown): Promise<void> {
+    const { projectId, assemblyId } = assemblyJobPayloadSchema.parse(rawPayload);
+    if (isOpenStatus(this.store.get(assemblyId)?.assembly.status)) {
       this.store.finish(assemblyId, { status: 'failed', errorCode: JOB_INTERRUPTED });
     }
+    await this.removeLeftovers(path.join(projectsDir(this.dataDir), projectId, 'montaggio'));
   }
 
   async view(projectId: string): Promise<AssemblyView> {
@@ -229,8 +230,8 @@ export class AssemblyService implements OnModuleInit {
   }
 
   /** Le cartelle di giri interrotti: si tolgono se si può, e se sono ancora in uso resteranno al prossimo giro. */
-  private async removeLeftovers(filmDir: string, current: string): Promise<void> {
-    const names = await readdir(filmDir);
+  private async removeLeftovers(filmDir: string, current?: string): Promise<void> {
+    const names = await readdir(filmDir).catch((): string[] => []);
     await Promise.all(
       names
         .filter((name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current)

@@ -48,7 +48,7 @@ import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../tr
 import { assertPlanCurrent, shotOf } from './shot-access.js';
 import { cinematographerInputFor, familyOf } from './storyboard-input.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
-import { STALE_WORK_MS } from './work.js';
+import { STALE_WORK_MS, isOpenStatus } from './work.js';
 import { videoImages, videoStandInRequest, videoTarget, type VideoImages } from './video-inputs.js';
 
 const ROLE = 'camera_operator';
@@ -108,8 +108,7 @@ export class TakesService implements OnModuleInit {
    */
   private closeInterrupted(rawPayload: unknown): void {
     const { takeId } = takeJobPayloadSchema.parse(rawPayload);
-    const status = this.takes.get(takeId)?.take.status;
-    if (status === 'queued' || status === 'running') {
+    if (isOpenStatus(this.takes.get(takeId)?.take.status)) {
       this.takes.finish(takeId, { status: 'failed', errorCode: JOB_INTERRUPTED });
     }
   }

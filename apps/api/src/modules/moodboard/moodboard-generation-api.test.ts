@@ -221,7 +221,7 @@ describe('creare il moodboard', () => {
 
 describe('un lavoro ripetuto (regola 10)', () => {
   /** Il lavoro com'è in coda, rimesso insieme da ciò che la richiesta ha lasciato. */
-  async function resumable() {
+  async function finished() {
     const { film } = await filmWithShot(normal.client);
     await normal.client.call('POST', `/projects/${film.id}/moodboard/generate`, {});
     const done = await untilDone(normal, film.id);
@@ -239,8 +239,6 @@ describe('un lavoro ripetuto (regola 10)', () => {
     return {
       film,
       payload,
-      references,
-      done,
       store: normal.app.get<MoodboardStore>(MOODBOARD_STORE),
       service: normal.app.get(MoodboardGenerationService),
     };
@@ -250,12 +248,26 @@ describe('un lavoro ripetuto (regola 10)', () => {
     normal.receipts.list().filter((receipt) => receipt.role === 'moodboard_artist').length;
 
   it('un lavoro già finito non fa niente', async () => {
-    const { film, payload, service } = await resumable();
+    const { film, payload, service } = await finished();
     const before = artistReceipts();
 
     await service.makeImages(payload);
 
     expect((await read(normal, film.id)).moodboard.film.references).toHaveLength(2);
+    expect(artistReceipts()).toBe(before);
+  }, 90_000);
+
+  it('nemmeno uno chiuso con un errore: rifarlo lo decide l’utente', async () => {
+    const { film, payload, store, service } = await finished();
+    store.updateRun(payload.runId, { status: 'failed', errorCode: 'interrupted' });
+    const before = artistReceipts();
+
+    await service.makeImages(payload);
+
+    expect((await read(normal, film.id)).run).toMatchObject({
+      status: 'failed',
+      errorCode: 'interrupted',
+    });
     expect(artistReceipts()).toBe(before);
   }, 90_000);
 });

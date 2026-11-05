@@ -1,6 +1,6 @@
 import type { CharacterSheet, SheetAngle, SheetAttempt, SheetImageStatus } from '@filmzy/contracts';
 
-import { failureText } from '../failure';
+import { failureOf, failureText } from '../failure';
 
 /**
  * Le piccole decisioni della scheda del personaggio (T3.6), fuori dai componenti così si provano a
@@ -29,6 +29,13 @@ export function imageStatusText(status: SheetImageStatus, errorCode?: string): s
     case 'failed':
       return failureText(errorCode);
   }
+}
+
+/** Un'immagine fallita può essere stata comunque addebitata: va ricordato di guardare i costi. */
+export function attemptMayHaveCost(attempt: SheetAttempt): boolean {
+  return attempt.images.some(
+    (image) => image.status === 'failed' && failureOf(image.errorCode).mayHaveCost,
+  );
 }
 
 /** Qualche immagine è ancora in coda o in lavorazione: serve continuare a guardare. */

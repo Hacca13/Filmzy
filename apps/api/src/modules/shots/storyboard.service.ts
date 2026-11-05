@@ -50,6 +50,7 @@ import {
   storyboardTarget,
 } from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
+import { isOpenStatus } from './work.js';
 
 const ROLE = 'storyboard_artist';
 
@@ -128,10 +129,10 @@ export class StoryboardService implements OnModuleInit {
   /** Il programma si è chiuso prima della fine: il tentativo si chiude, e un altro lo chiede l'utente (D84). */
   private closeInterrupted(rawPayload: unknown): void {
     const { shotId, mode, attempt } = storyboardJobPayloadSchema.parse(rawPayload);
-    const status = this.store
+    const current = this.store
       .storyboard(shotId, mode)
-      .attempts.find((candidate) => candidate.attempt === attempt)?.status;
-    if (status === 'queued' || status === 'running') {
+      .attempts.find((candidate) => candidate.attempt === attempt);
+    if (isOpenStatus(current?.status)) {
       this.store.finishStoryboard(shotId, mode, attempt, {
         status: 'failed',
         errorCode: JOB_INTERRUPTED,

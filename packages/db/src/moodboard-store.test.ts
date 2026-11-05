@@ -96,7 +96,23 @@ describe('il moodboard nel database (T4.10)', () => {
     });
   });
 
-  it('una richiesta di immagini si rilegge per id, per riprenderla dopo un riavvio', () => {
+  it('all’avvio le richieste aperte si chiudono col motivo, e le immagini fatte restano contate', () => {
+    const aperta = store.startRun('film-1', 'scene-1', 'Nano Banana');
+    store.updateRun(aperta, { status: 'running', images: 2, costUsd: 0.1 });
+    const finita = store.startRun('film-2', undefined, 'Nano Banana');
+    store.updateRun(finita, { status: 'succeeded', images: 1 });
+
+    store.closeOpenRuns('interrupted');
+
+    expect(store.getRun(aperta)).toMatchObject({
+      status: 'failed',
+      errorCode: 'interrupted',
+      images: 2,
+    });
+    expect(store.getRun(finita)?.status).toBe('succeeded');
+  });
+
+  it('una richiesta di immagini si rilegge per id', () => {
     const id = store.startRun('film-1', 'scene-1', 'Nano Banana');
     store.updateRun(id, { status: 'running', images: 2, costUsd: 0.1 });
 

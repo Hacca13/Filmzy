@@ -9,6 +9,8 @@ import type { NestApplicationOptions } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
+import { JobRunner } from './modules/jobs/job-runner.service.js';
+
 import { AppModule, type AppModuleOptions } from './app.module.js';
 import { rejectNonLocalAccess } from './security/local-access.js';
 
@@ -17,6 +19,19 @@ import { rejectNonLocalAccess } from './security/local-access.js';
  * test, così quello che si prova è la stessa configurazione che gira davvero.
  * Non mette il server in ascolto: lo fa chi chiama.
  */
+/**
+ * Apre la porta e solo dopo fa partire la coda. L'ordine conta: se un altro Filmzy è già aperto la porta è
+ * presa e ci si ferma qui, prima di chiudere come interrotti i lavori che lui sta facendo (D84).
+ */
+export async function listenAndStart(
+  app: NestExpressApplication,
+  port: number,
+  host: string,
+): Promise<void> {
+  await app.listen(port, host);
+  await app.get(JobRunner, { strict: false }).start();
+}
+
 export async function createApp(
   options: Pick<NestApplicationOptions, 'logger'> & AppModuleOptions = {},
 ): Promise<NestExpressApplication> {

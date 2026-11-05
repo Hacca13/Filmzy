@@ -232,7 +232,7 @@ describe("l'esecutore della coda (§7)", () => {
         chiusi.push(job.payload);
       },
     );
-    runner.onApplicationBootstrap();
+    await runner.start();
     await runner.drain();
 
     expect(fatti).toEqual([]);
@@ -262,11 +262,63 @@ describe("l'esecutore della coda (§7)", () => {
       },
     );
 
-    runner.onApplicationBootstrap();
+    await runner.start();
     await runner.drain();
 
     expect(chiusi).toEqual(['prova']);
-    expect(queue.list({ status: 'queued' })).toEqual([]);
+    // Anche quello che non si è riuscito a scrivere è chiuso: in coda partirebbe, e spenderebbe.
+    expect(queue.unfinished()).toEqual([]);
+  });
+
+  it('un lavoro di un tipo che nessuno sa chiudere si chiude comunque', async () => {
+    const messo = queue.enqueue({ kind: 'tolto.con.un.aggiornamento', payload: {} });
+
+    await runner.start();
+    await runner.drain();
+
+    expect(queue.get(messo.id)).toMatchObject({ status: 'failed', errorCode: JOB_INTERRUPTED });
+  });
+
+  it('mentre chiude non si prende nessun lavoro, e aspetta le chiusure che tolgono file', async () => {
+    const messo = queue.enqueue({ kind: 'prova', payload: {} });
+    const fatti: string[] = [];
+    let durante: string | undefined;
+    register(
+      'prova',
+      (job) => {
+        fatti.push(job.id);
+        return Promise.resolve();
+      },
+      async () => {
+        runner.wake();
+        await Promise.resolve();
+        durante = queue.get(messo.id)?.status;
+      },
+    );
+
+    await runner.start();
+    await runner.drain();
+
+    expect(durante).toBe('queued');
+    expect(fatti).toEqual([]);
+    expect(queue.get(messo.id)?.status).toBe('failed');
+  });
+
+  it('prima delle chiusure fa le pulizie di chi non ha un lavoro in coda', async () => {
+    const fatte: string[] = [];
+    runner.atStart(() => {
+      fatte.push('prima');
+    });
+    runner.atStart(() => {
+      throw new Error('rotta');
+    });
+    runner.atStart(() => {
+      fatte.push('dopo una rotta');
+    });
+
+    await runner.start();
+
+    expect(fatte).toEqual(['prima', 'dopo una rotta']);
   });
 
   it('un lavoro chiesto dopo l’avvio parte normalmente', async () => {
@@ -275,7 +327,7 @@ describe("l'esecutore della coda (§7)", () => {
       fatti.push(job.id);
       return Promise.resolve();
     });
-    runner.onApplicationBootstrap();
+    await runner.start();
 
     const messo = runner.enqueue({ kind: 'prova', payload: {} });
     await runner.drain();

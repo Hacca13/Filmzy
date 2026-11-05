@@ -11,7 +11,7 @@ import {
   type MoodboardRun,
   type MoodReference,
 } from '@filmzy/contracts';
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { FilmzyDb } from './open.js';
@@ -59,9 +59,11 @@ export interface MoodboardStore {
   /** Apre una richiesta di immagini (in coda) e ne dà l'id. */
   startRun: (projectId: string, sceneId: string | undefined, modelLabel: string) => string;
   updateRun: (runId: string, patch: RunPatch) => void;
+  /** Chiude le richieste rimaste aperte: all'avvio vuol dire che si sono interrotte (D84). */
+  closeOpenRuns: (errorCode: string) => void;
   /** L'ultima richiesta del film. */
   latestRun: (projectId: string) => MoodboardRun | undefined;
-  /** Una richiesta: per chiudere un lavoro rimasto a metà dopo un riavvio (D84). */
+  /** Una richiesta: un lavoro ripetuto su una già chiusa non rifà niente (regola 10). */
   getRun: (runId: string) => MoodboardRun | undefined;
 }
 
@@ -295,6 +297,13 @@ export function createMoodboardStore(
           updatedAt: now().getTime(),
         })
         .where(eq(moodboardRuns.id, runId))
+        .run();
+    },
+
+    closeOpenRuns(errorCode) {
+      db.update(moodboardRuns)
+        .set({ status: 'failed', errorCode, updatedAt: now().getTime() })
+        .where(inArray(moodboardRuns.status, ['queued', 'running']))
         .run();
     },
 

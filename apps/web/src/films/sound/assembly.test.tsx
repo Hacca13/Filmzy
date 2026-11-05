@@ -1,4 +1,4 @@
-import type { AssemblyView } from '@filmzy/contracts';
+import { JOB_INTERRUPTED, type AssemblyView } from '@filmzy/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -115,6 +115,7 @@ describe('il montaggio', () => {
 
     expect(html).toContain('non c’è più sul computer');
     expect(startButton(html)).not.toContain('disabled');
+    expect(assemblyFailureText(JOB_INTERRUPTED)).toContain('Non riparte da solo');
     expect(assemblyFailureText('ffmpeg_failed')).toContain('non è riuscito');
     expect(assemblyFailureText(undefined)).toContain('non è riuscito');
   });

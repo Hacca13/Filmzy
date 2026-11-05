@@ -16,20 +16,21 @@ function Home() {
   const [checks, setChecks] = useState(0);
 
   return (
-    <main className="app">
-      <h1>Filmzy</h1>
-      <p>I tuoi cortometraggi, con l'intelligenza artificiale.</p>
-      <p>
-        <a href="#/impostazioni/connessioni">Impostazioni</a>
-      </p>
-      <FirstRunGate
-        key={checks}
-        onFinish={() => {
-          setChecks(checks + 1);
-        }}
-      />
-      <FilmsHome />
-    </main>
+    <FirstRunGate
+      key={checks}
+      onFinish={() => {
+        setChecks(checks + 1);
+      }}
+    >
+      <main className="app">
+        <h1>Filmzy</h1>
+        <p>I tuoi cortometraggi, con l'intelligenza artificiale.</p>
+        <p>
+          <a href="#/impostazioni/connessioni">Impostazioni</a>
+        </p>
+        <FilmsHome />
+      </main>
+    </FirstRunGate>
   );
 }
 
@@ -60,13 +61,11 @@ function Screens() {
   if (path.startsWith('/impostazioni')) return <SettingsPage path={path} />;
   if (path === '/benvenuto') {
     return (
-      <main className="app">
-        <WelcomePage
-          onFinish={() => {
-            window.location.hash = '#/';
-          }}
-        />
-      </main>
+      <WelcomePage
+        onFinish={() => {
+          window.location.hash = '#/';
+        }}
+      />
     );
   }
   return <Home />;

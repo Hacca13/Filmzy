@@ -84,6 +84,205 @@ h2 {
   height: 64px;
 }
 
+/* Il benvenuto al primo avvio: prende tutta la finestra. */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.welcome-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.welcome-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 48px;
+  margin: 0;
+  padding: 16px 32px;
+  list-style: none;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.welcome-steps li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.welcome-steps span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.welcome-steps li[data-state='current'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.welcome-steps li[data-state='current'] span {
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.welcome-steps li[data-state='done'] span {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.welcome-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(240px, 330px) minmax(320px, 780px);
+  gap: 56px;
+  justify-content: center;
+  padding: 40px 32px;
+}
+
+.welcome-body aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.welcome-body aside h1 {
+  margin: 0;
+  font-size: 36px;
+  line-height: 1.15;
+}
+
+.welcome-body aside p {
+  margin: 0;
+}
+
+.welcome-body aside hr {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.welcome-step-chip {
+  padding: 6px 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  border-radius: 100px;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.welcome-card h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.welcome-card p {
+  margin: 0;
+}
+
+.welcome-choice {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.welcome-provider {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.welcome-tile {
+  display: grid;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--row);
+  border-radius: 10px;
+}
+
+.welcome-provider-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.welcome-provider-text a {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.welcome-provider-text a:hover {
+  text-decoration: underline;
+}
+
+.welcome-note {
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  background: var(--accent-soft);
+  border-radius: 12px;
+}
+
+.welcome-note p {
+  margin: 8px 0 0;
+}
+
+.welcome-foot {
+  padding: 16px 32px;
+  text-align: right;
+  border-top: 1px solid var(--border);
+}
+
+.welcome-foot .hint {
+  margin: 0;
+}
+
+@media (max-width: 800px) {
+  .welcome-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
 /* L'avvio: una colonna al centro della finestra, con la luce del proiettore dietro come nel disegno. */
 .startup {
   display: flex;

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdir, rm } from 'node:fs/promises';
+import { readdir, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -94,6 +94,34 @@ export function fileErrorCode(error: unknown, replacing = false): string {
   if (code === 'EBUSY') return 'file_in_use';
   if (code === 'EPERM' || code === 'EACCES') return replacing ? 'file_in_use' : 'no_permission';
   return 'unknown';
+}
+
+const FILE_BUSY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
+
+/** Quante volte provare, e quanto aspettare fra una e l'altra: in tutto meno di due secondi. */
+const MOVE_ATTEMPTS = 6;
+const MOVE_WAIT_MS = 300;
+
+/**
+ * Mette un file al suo posto, sostituendo quello che c'è. Su Windows un file appena scritto può restare
+ * occupato per un attimo (antivirus, indicizzazione): senza riprovare l'utente leggerebbe che è aperto in un
+ * altro programma, e non è vero. Se dopo i tentativi è ancora occupato, allora lo è davvero.
+ */
+export async function moveIntoPlace(
+  from: string,
+  to: string,
+  { move = rename, waitMs = MOVE_WAIT_MS }: { move?: typeof rename; waitMs?: number } = {},
+): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await move(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      if (attempt >= MOVE_ATTEMPTS || code === undefined || !FILE_BUSY_CODES.has(code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
 }
 
 /** Per il registro: il motivo, senza il percorso dei dati, che porta il nome dell'utente. */

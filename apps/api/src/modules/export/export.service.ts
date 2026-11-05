@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, rename, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -29,6 +29,7 @@ import {
   exportFileName,
   failureReason,
   fileErrorCode,
+  moveIntoPlace,
   openFolder,
   otherAspects,
   qualitiesFor,
@@ -301,7 +302,7 @@ export class ExportService implements OnModuleInit {
       await this.writeFile(stored.sourceAssetId, stored.export, work);
       const fileName = exportFileName(this.projects.get(projectId).title, stored.export);
       replacing = true;
-      await rename(work, path.join(folder, fileName));
+      await moveIntoPlace(work, path.join(folder, fileName));
       this.store.finish(exportId, { status: 'succeeded', fileName });
     } catch (error) {
       const errorCode =

@@ -56,6 +56,8 @@ export const providerStateSchema = z.object({
   /** Il fornitore finto, un modello sul proprio computer e simili non vogliono nessuna chiave. */
   keyRequired: z.boolean(),
   key: providerKeySchema.optional(),
+  /** Dove si prende la chiave: «Come ottengo la chiave?». */
+  keyUrl: z.url({ protocol: /^https$/ }).optional(),
   /** Si può scrivere una chiave solo con il portachiavi del sistema (Electron, D45). */
   keyWritable: z.boolean(),
   monthlyCapUsd: z.number().positive().optional(),

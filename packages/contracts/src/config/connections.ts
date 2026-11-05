@@ -22,6 +22,8 @@ export const connectionSchema = z.strictObject({
   label: z.string().min(1).optional(),
   adapter: configKeySchema,
   base_url: z.url().optional(),
+  /** La pagina del fornitore dove si prende la chiave. Solo https: finisce in un collegamento. */
+  key_url: z.url({ protocol: /^https$/ }).optional(),
   api_key: secretRefSchema,
   http_proxy: secretRefSchema.optional(),
   timeout_s: z.number().int().positive(),

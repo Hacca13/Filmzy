@@ -259,8 +259,10 @@ Fatto il 5/11 (D82, migrazione 0026): la sezione «Montaggio ed esporta» nella 
 **T5.7** Montaggio: normalizzazione con l'audio originale tolto, concatenazione, mix delle tracce con livellamento del volume, titoli con la dicitura AI.
 Fatto il 5/11 (D83, migrazione 0027): «Monta il film» nella sezione «Il tuo film», in coda e gratis; il film resta nella cartella del film e si guarda lì. Provato con video veri fatti da ffmpeg, anche dal browser. **Salvarlo dove vuole l'utente è T5.8.** Mai provato con video veri dei fornitori (con T4.0).
 **T5.8** Esportazione: il file finale nella cartella del progetto.
+**T5.9** Tipo di film, durata e scene (D85; aspetta i disegni del prompt 07): in «La tua idea» Spot e Corto con la durata su un cursore e il costo indicativo calcolato dal server sul catalogo; Mediometraggio e Lungometraggio spenti. Nel montaggio una spunta per ogni scena, al posto dell'obbligo di averle tutte (D83.3). Prima di chiuderlo si misura con lo sceneggiatore vero se il limite di 10 minuti del Corto regge.
+_Fatto quando:_ un film si crea scegliendo tipo e durata e vedendo il costo; un film con una scena senza video si monta togliendo quella scena, che resta lì con i suoi suoni; i film già creati si aprono senza errori.
 
-_Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con musica, effetti, titoli e dicitura; una modifica a monte accende il giallo giusto con il motivo giusto; cambiare la musica o un effetto e riesportare non rigenera i video.
+_Fatto quando:_ un corto di 60 secondi con due personaggi si esporta con musica, effetti, titoli e dicitura; una modifica a monte accende il giallo giusto con il motivo giusto; cambiare la musica o un effetto e riesportare non rigenera i video. I 60 secondi sono solo la prova di questo traguardo, non un limite del prodotto (D85).
 
 ## M6 — Installatore e beta chiusa (8–12 giornate)
 
@@ -294,6 +296,7 @@ _Fatto quando:_ almeno 5 persone non tecniche installano Filmzy, collegano i lor
 
 ## Dopo l'MVP
 
+- **Film lunghi, seconda versione (D85):** accendere Mediometraggio e Lungometraggio. Serve la sceneggiatura scritta a parti, perché oggi lo sceneggiatore scrive tutto in una richiesta; più di 2 personaggi; la pagina del film divisa per scene (circa 1.500 inquadrature in 130 minuti) e le tracce adatte a quella scala; un montaggio che regga ore di video; un avviso forte sui costi. Allora si aggiornano anche `CLAUDE.md` e `docs/contesto-progetto.md`, che dicono «cortometraggi».
 - **Cast personale:** test dedicato sui volti reali; poi consenso dato dalla persona stessa (link, selfie dal vivo, frase per la voce) e router limitato ai modelli che accettano volti verificati.
 - **Marcatura C2PA** (`c2pa_marking`): dopo il parere legale (D31).
 - **Modifica vera del video** (`video_edit`): prova su 3–4 clip, con costo e affidabilità misurati.

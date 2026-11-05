@@ -1674,6 +1674,78 @@ button.sound-block {
   margin: 0;
 }
 
+.film-scenes {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.film-scene {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 12px 16px;
+  background: var(--row);
+}
+
+.film-scene + .film-scene {
+  border-top: 1px solid var(--border);
+}
+
+.film-scene label {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  font-weight: 400;
+}
+
+.film-scene input[type='checkbox'] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+/* Una scena tolta dall'utente si legge, più spenta; una che non è pronta dice cosa manca. */
+.film-scene[data-included='false'][data-ready='true'] > * {
+  opacity: 0.6;
+}
+
+.film-scene-preview {
+  flex: none;
+  display: block;
+  width: 56px;
+  height: 32px;
+  object-fit: cover;
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.film-scene-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.film-scene-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.film-scene .hint {
+  margin: 0;
+}
+
 .earlier-films {
   display: grid;
   gap: 16px;

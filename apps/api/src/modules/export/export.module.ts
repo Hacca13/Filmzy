@@ -1,4 +1,9 @@
-import { startExportBodySchema, type AssemblyView, type ExportView } from '@filmzy/contracts';
+import {
+  setAssemblySceneBodySchema,
+  startExportBodySchema,
+  type AssemblyView,
+  type ExportView,
+} from '@filmzy/contracts';
 import {
   createAssemblyStore,
   createExportStore,
@@ -16,6 +21,7 @@ import {
   Module,
   Param,
   Post,
+  Put,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -66,6 +72,20 @@ class AssemblyController {
   @Post()
   start(@Param('projectId') projectId: string): Promise<AssemblyView> {
     return this.assembly.start(projectId);
+  }
+
+  /** La spunta di una scena (D85). Un numero che non è di una scena del film è «non trovato». */
+  @Put('scenes/:sceneNumber')
+  setScene(
+    @Param('projectId') projectId: string,
+    @Param('sceneNumber') sceneNumber: string,
+    @Body() body: unknown,
+  ): Promise<AssemblyView> {
+    return this.assembly.setSceneIncluded(
+      projectId,
+      Number(sceneNumber),
+      parseBody(setAssemblySceneBodySchema, body).included,
+    );
   }
 
   /** «Togli» su un film montato prima: lo decide solo l'utente (D87). */

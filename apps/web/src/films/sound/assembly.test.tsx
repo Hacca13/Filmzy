@@ -9,12 +9,24 @@ import {
   assemblyFailureText,
   assemblyIsWorking,
   earlierFilmLabel,
+  filmLengthLine,
   gapText,
   removeFilmFailureText,
 } from './assembly-model';
 
+const ready = (sceneNumber: number, patch: Partial<AssemblyView['scenes'][number]> = {}) => ({
+  sceneNumber,
+  heading: `Luogo ${String(sceneNumber)}`,
+  durationS: 18,
+  previewAssetId: `video-${String(sceneNumber)}`,
+  included: true,
+  ...patch,
+});
+
 const view = (patch: Partial<AssemblyView> = {}): AssemblyView => ({
-  gaps: [],
+  scenes: [ready(1)],
+  filmDurationS: 18,
+  plannedDurationS: 90,
   earlier: [],
   upToDate: false,
   exportWorking: false,
@@ -34,32 +46,105 @@ const made: NonNullable<AssemblyView['film']> = {
 };
 
 const body = (value: AssemblyView) =>
-  renderToStaticMarkup(<AssemblyBody view={value} busy={false} onStart={() => undefined} />);
+  renderToStaticMarkup(
+    <AssemblyBody
+      view={value}
+      busy={false}
+      onToggleScene={() => undefined}
+      onStart={() => undefined}
+    />,
+  );
 
-const startButton = (html: string) => /<button[^>]*>[^<]*<\/button>/.exec(html)?.[0] ?? '';
+const startButton = (html: string) =>
+  /<button[^>]*>(Monta il film|Monta di nuovo|Montaggio in corso)<\/button>/.exec(html)?.[0] ?? '';
 
-describe('cosa manca', () => {
-  it('si scrive in parole semplici', () => {
-    expect(gapText({ kind: 'no_scenes' })).toBe('La storia non ha ancora nessuna scena');
-    expect(gapText({ sceneNumber: 2, kind: 'not_planned' })).toBe(
-      'Scena 2: le inquadrature sono ancora da pensare',
-    );
-    expect(gapText({ sceneNumber: 2, kind: 'stale' })).toBe(
-      'Scena 2: è cambiata, rifai le inquadrature',
-    );
-    expect(gapText({ sceneNumber: 3, kind: 'no_take', missing: 1 })).toBe(
-      'Scena 3: un’inquadratura senza video',
-    );
-    expect(gapText({ sceneNumber: 3, kind: 'no_take', missing: 4 })).toBe(
-      'Scena 3: 4 inquadrature senza video',
-    );
+describe('le scene del film', () => {
+  it('cosa manca si scrive in parole semplici', () => {
+    expect(gapText({ kind: 'not_planned' })).toBe('Le inquadrature sono ancora da pensare');
+    expect(gapText({ kind: 'stale' })).toBe('È cambiata: rifai le inquadrature');
+    expect(gapText({ kind: 'no_take', missing: 1 })).toBe('Un’inquadratura senza video');
+    expect(gapText({ kind: 'no_take', missing: 4 })).toBe('4 inquadrature senza video');
   });
 
-  it('finché manca qualcosa il pulsante è spento, e l’elenco lo dice', () => {
-    const html = body(view({ gaps: [{ sceneNumber: 1, kind: 'not_planned' }] }));
+  it('una scena spuntata si legge con la sua durata, e si può togliere', () => {
+    const html = body(view());
 
-    expect(html).toContain('Per montare il film manca ancora');
+    expect(html).toContain('Scena 1 · Luogo 1');
+    expect(html).toContain('18 s');
+    expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*checked=""/);
+    expect(html).toContain('/api/assets/video-1#t=0.1');
+    expect(html).not.toContain('Tolta da te');
+  });
+
+  it('una scena tolta lo dice, e si può rimettere', () => {
+    const html = body(view({ scenes: [ready(1), ready(2, { included: false })] }));
+
+    expect(html).toContain('Tolta da te');
+    expect(html.match(/disabled=""/g)).toBeNull();
+  });
+
+  it('una scena senza video non si spunta, dice cosa manca e porta là, e non blocca le altre', () => {
+    const html = body(
+      view({
+        scenes: [
+          ready(1),
+          ready(2, {
+            included: false,
+            gap: { kind: 'no_take', missing: 2 },
+            previewAssetId: undefined,
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('2 inquadrature senza video');
+    expect(html).toContain('Vai alla scena');
+    expect(html.match(/<input[^>]*disabled=""/g)).toHaveLength(1);
+    expect(startButton(html)).not.toContain('disabled');
+  });
+
+  it('la durata è un’informazione, non un avviso', () => {
+    const value = view({
+      scenes: [ready(1), ready(2), ready(3, { included: false })],
+      filmDurationS: 62,
+      plannedDurationS: 90,
+    });
+
+    expect(filmLengthLine(value)).toBe(
+      '2 scene su 3 · il film dura 1 min 2 s · all’inizio avevi indicato circa 1 min 30 s',
+    );
+    expect(filmLengthLine(view())).toContain('1 scena su 1');
+  });
+
+  it('senza scene spuntate il pulsante è spento e lo dice', () => {
+    const html = body(view({ scenes: [ready(1, { included: false })], filmDurationS: 0 }));
+
+    expect(html).toContain('Scegli almeno una scena.');
     expect(startButton(html)).toContain('disabled');
+  });
+
+  it('una storia senza scene lo dice', () => {
+    const html = body(view({ scenes: [], filmDurationS: 0 }));
+
+    expect(html).toContain('La storia non ha ancora nessuna scena');
+    expect(startButton(html)).toContain('disabled');
+  });
+
+  it('mentre si monta le spunte sono ferme', () => {
+    const html = body(view({ latest: { ...made, status: 'running' } }));
+
+    expect(html).toMatch(/<input[^>]*disabled=""/);
+    expect(startButton(html)).toContain('Montaggio in corso');
+  });
+
+  it('il pulsante è in evidenza solo se c’è da montare', () => {
+    expect(startButton(body(view()))).toContain('data-kind="primary"');
+    expect(startButton(body(view({ latest: made, film: made, upToDate: false })))).toContain(
+      'data-kind="primary"',
+    );
+    expect(startButton(body(view({ latest: made, film: made, upToDate: true })))).not.toContain(
+      'data-kind="primary"',
+    );
   });
 });
 
@@ -138,7 +223,7 @@ describe('il montaggio', () => {
     expect(html).toContain('L’ultima corsa');
     expect(html).toContain('Con Anna e Marco');
     expect(html).toContain('Contiene contenuti generati con intelligenza artificiale');
-    expect(html).not.toContain('<video');
+    expect(html).not.toContain('take-video');
   });
 
   it('mentre lavora lo dice e non si chiede di nuovo', () => {
@@ -152,7 +237,7 @@ describe('il montaggio', () => {
   it('riuscito mostra il film e si può rifare', () => {
     const html = body(view({ latest: made, film: made, upToDate: true }));
 
-    expect(html).toContain('<video');
+    expect(html).toContain('take-video');
     expect(startButton(html)).toContain('Monta di nuovo');
     expect(html).not.toContain('hai cambiato qualcosa');
   });
@@ -182,10 +267,10 @@ describe('il montaggio', () => {
       view({ latest: { id: 'm-2', status: 'running', createdAt: 'x' }, film: made }),
     );
 
-    expect(failed).toContain('<video');
+    expect(failed).toContain('take-video');
     expect(failed).toContain('ci ha messo troppo');
     expect(startButton(failed)).toContain('Monta di nuovo');
-    expect(working).toContain('<video');
+    expect(working).toContain('take-video');
     expect(working).not.toContain('hai cambiato qualcosa');
   });
 

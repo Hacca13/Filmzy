@@ -7,12 +7,14 @@ import {
   assemblyViewSchema,
   audioClipSchema,
   audioOverviewSchema,
+  audioTimelineSchema,
   domainErrorSchema,
   projectOptionsSchema,
   projectSchema,
   scenePlanSchema,
   shotPlansSchema,
   type AssemblyView,
+  type ScenePlan,
 } from '@filmzy/contracts';
 import {
   createAssemblyStore,
@@ -129,6 +131,140 @@ async function loudness(file: string): Promise<number> {
   if (found === null) throw new Error('niente volume');
   return Number(found[1]);
 }
+
+describe('scegliere le scene', () => {
+  const sceneOf = (filmId: string, sceneNumber: number | string) =>
+    `${assemblyOf(filmId)}/scenes/${String(sceneNumber)}`;
+
+  /** Un film con una scena in più, scritta a mano nella stesura: quella finta ne ha una sola. */
+  async function filmWithTwoScenes() {
+    const { film, final, shots } = await filmWithFinal(client);
+    const [first] = final.screenplay.scenes;
+    if (first === undefined) throw new Error('doveva esserci una scena');
+    await client.call('PUT', `/projects/${film.id}/screenplay/final`, {
+      screenplay: {
+        ...final.screenplay,
+        scenes: [first, { ...first, number: 2, heading: 'La seconda scena' }],
+      },
+    });
+    return { film, shots };
+  }
+
+  /** Quanto dura una scena nell'elenco: quanto previsto dal piano, finché non è montata davvero. */
+  const plannedS = (plan: ScenePlan): number =>
+    plan.shots.reduce((total, shot) => total + shot.intent.durationS, 0);
+
+  /** Pensa una scena e gira un video per ogni inquadratura. */
+  async function shootScene(filmId: string, shots: string, sceneNumber: number) {
+    const plan = scenePlanSchema.parse((await client.call('POST', shots, { sceneNumber })).body);
+    for (const shot of plan.shots) {
+      const file = await realVideo(dataDir);
+      await takeWithFile(app, dataDir, { filmId, shotId: shot.id, file });
+    }
+    return plan;
+  }
+
+  it('una scena senza video non blocca le altre: si monta quella pronta', async () => {
+    const { film, shots } = await filmWithTwoScenes();
+    const plan = await shootScene(film.id, shots, 1);
+
+    const view = await viewOf(film.id);
+
+    expect(view.scenes.map(({ included }) => included)).toEqual([true, false]);
+    expect(view.scenes[1]?.gap).toMatchObject({ kind: 'not_planned' });
+    expect(view.scenes[0]?.previewAssetId).toBeDefined();
+    expect(view.filmDurationS).toBe(plannedS(plan));
+    expect(view.plannedDurationS).toBe(film.durationS);
+
+    await client.call('POST', assemblyOf(film.id));
+    const mounted = await settled(film.id);
+    expect(mounted.latest?.status).toBe('succeeded');
+    // Tre secondi di apertura, cinque di chiusura e un secondo per inquadratura della scena pronta.
+    expect(await videoDurationS(filmFile(mounted))).toBeCloseTo(8 + plan.shots.length, 0);
+  }, 120_000);
+
+  it('una scena tolta esce dal film e dalle tracce, coi suoi suoni, e si rimette', async () => {
+    const { film, shots } = await filmWithTwoScenes();
+    const first = await shootScene(film.id, shots, 1);
+    const second = await shootScene(film.id, shots, 2);
+    const clipId = await uploadMusic(film.id);
+    await client.call('POST', assemblyOf(film.id));
+    const both = await settled(film.id);
+    expect(both.filmDurationS).toBe(plannedS(first) + plannedS(second));
+    expect(both.upToDate).toBe(true);
+
+    const removed = await client.call('PUT', sceneOf(film.id, 1), { included: false });
+
+    expect(removed.status).toBe(200);
+    const view = assemblyViewSchema.parse(removed.body);
+    expect(view.scenes.map(({ included }) => included)).toEqual([false, true]);
+    expect(view.scenes[0]?.gap).toBeUndefined();
+    expect(view.filmDurationS).toBe(plannedS(second));
+    expect(view.upToDate).toBe(false);
+
+    // Le tracce seguono le spunte, e il suono della scena tolta non è un suono perso.
+    const timeline = audioTimelineSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio/timeline`)).body,
+    );
+    expect(timeline.scenes.map(({ sceneNumber }) => sceneNumber)).toEqual([2]);
+    expect(timeline.durationS).toBe(plannedS(second));
+    expect(timeline.placements[clipId]).toBeUndefined();
+    expect(timeline.hiddenSceneIds).toEqual(['scene-1']);
+
+    await client.call('POST', assemblyOf(film.id));
+    const without = await settled(film.id);
+    expect(await videoDurationS(filmFile(without))).toBeCloseTo(8 + second.shots.length, 0);
+    // La musica era sulla scena tolta: non si sente.
+    expect(await loudness(filmFile(without))).toBeLessThan(-60);
+
+    // Rimessa, torna tutto: i video e i suoni non si erano cancellati.
+    const back = assemblyViewSchema.parse(
+      (await client.call('PUT', sceneOf(film.id, 1), { included: true })).body,
+    );
+    expect(back.scenes.map(({ included }) => included)).toEqual([true, true]);
+    const again = audioTimelineSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio/timeline`)).body,
+    );
+    expect(again.placements[clipId]).toBeDefined();
+    expect(again.hiddenSceneIds).toEqual([]);
+  }, 240_000);
+
+  it('senza nessuna scena spuntata non si monta', async () => {
+    const { film, shots } = await filmWithFinal(client);
+    await shootScene(film.id, shots, 1);
+    await client.call('PUT', sceneOf(film.id, 1), { included: false });
+
+    const reply = await client.call('POST', assemblyOf(film.id));
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('assembly');
+  }, 60_000);
+
+  it('una scena senza video non si spunta, e una che non c’è è «non trovato»', async () => {
+    const { film } = await filmWithFinal(client);
+
+    const notReady = await client.call('PUT', sceneOf(film.id, 1), { included: true });
+    expect(notReady.status).toBe(409);
+    expect(domainErrorSchema.parse(notReady.body).details?.field).toBe('sceneNotReady');
+
+    expect((await client.call('PUT', sceneOf(film.id, 99), { included: false })).status).toBe(404);
+    expect((await client.call('PUT', sceneOf(film.id, 'x'), { included: false })).status).toBe(404);
+    expect((await client.call('PUT', sceneOf(film.id, 1), { included: 'no' })).status).toBe(400);
+  });
+
+  it('mentre si monta le spunte non cambiano', async () => {
+    const { film, shots } = await filmWithFinal(client);
+    await shootScene(film.id, shots, 1);
+    const assemblies = app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false });
+    const open = assemblies.start(film.id, 'in corso');
+
+    const reply = await client.call('PUT', sceneOf(film.id, 1), { included: false });
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('assemblyWorking');
+    assemblies.finish(open.id, { status: 'failed', errorCode: 'unknown' });
+  }, 60_000);
+});
 
 describe('i film montati prima', () => {
   /** Un film con la stesura e due montaggi: non serve rifarli davvero per provare l'elenco. */
@@ -278,7 +414,11 @@ describe('cosa manca per montare', () => {
 
     const view = await viewOf(film.id);
 
-    expect(view.gaps[0]).toMatchObject({ sceneNumber: 1, kind: 'not_planned' });
+    expect(view.scenes[0]).toMatchObject({
+      sceneNumber: 1,
+      included: false,
+      gap: { kind: 'not_planned' },
+    });
     expect(view.upToDate).toBe(false);
     const reply = await client.call('POST', assemblyOf(film.id));
     expect(reply.status).toBe(409);
@@ -291,8 +431,8 @@ describe('cosa manca per montare', () => {
 
     const view = await viewOf(film.id);
 
-    expect(view.gaps[0]).toMatchObject({ sceneNumber: 1, kind: 'no_take' });
-    expect(view.gaps[0]?.missing).toBeGreaterThan(0);
+    expect(view.scenes[0]?.gap).toMatchObject({ kind: 'no_take' });
+    expect(view.scenes[0]?.gap?.missing).toBeGreaterThan(0);
   });
 
   it('i titoli si leggono prima, con la dicitura', async () => {

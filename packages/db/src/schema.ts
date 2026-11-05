@@ -718,6 +718,19 @@ export const filmAssemblies = sqliteTable(
 export type FilmAssemblyRow = typeof filmAssemblies.$inferSelect;
 
 /**
+ * Le scene che l'utente ha tolto dal film (D85). Si salvano quelle tolte e non quelle spuntate: una scena
+ * nuova o finita dopo entra da sola nel film, e toglierla è una scelta.
+ */
+export const filmSceneExclusions = sqliteTable(
+  'film_scene_exclusions',
+  {
+    projectId: text('project_id').notNull(),
+    sceneNumber: integer('scene_number').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.sceneNumber] })],
+);
+
+/**
  * Le esportazioni di un film (T5.8): il file finale, fatto dal film montato alla qualità scelta. Non si
  * salva il percorso intero ma il nome del file: la cartella si può spostare (architettura §6.1).
  */

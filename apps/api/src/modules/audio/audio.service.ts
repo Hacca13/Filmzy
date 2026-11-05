@@ -27,6 +27,7 @@ import {
 import {
   projectsDir,
   type AudioStore,
+  type SceneChoiceStore,
   type SheetStore,
   type ShotStore,
   type TakeStore,
@@ -69,8 +70,8 @@ import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
 import { settleCues } from './sound-cues.js';
-import { buildTimeline, sceneLengthS } from './timeline.js';
-import { AUDIO_STORE } from './tokens.js';
+import { buildTimeline, sceneLengthS, scenesOnLanes } from './timeline.js';
+import { AUDIO_STORE, SCENE_CHOICES } from './tokens.js';
 
 /** Il tipo di lavoro in coda che genera una variante. */
 export const AUDIO_JOB_KIND = 'audio_generate';
@@ -103,6 +104,7 @@ export class AudioService implements OnModuleInit {
 
   constructor(
     @Inject(AUDIO_STORE) private readonly store: AudioStore,
+    @Inject(SCENE_CHOICES) private readonly sceneChoices: SceneChoiceStore,
     @Inject(SHOT_STORE) private readonly shots: ShotStore,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
@@ -145,10 +147,15 @@ export class AudioService implements OnModuleInit {
     return { tracks: this.store.tracks(projectId), clips: this.store.clips(projectId) };
   }
 
-  /** La linea del tempo del film (T5.6): le inquadrature in fila, con il take che finirà nel film. */
+  /** La linea del tempo del film (T5.6, D85): le inquadrature in fila, con il take che finirà nel film. */
   async timeline(projectId: string): Promise<AudioTimeline> {
     const { scenes } = await this.plans.plans(projectId);
-    return buildTimeline(scenes, this.takes.keptTakes(projectId), this.store.clips(projectId));
+    const kept = this.takes.keptTakes(projectId);
+    const shown = scenesOnLanes(scenes, kept, this.sceneChoices.excluded(projectId));
+    const hidden = scenes
+      .filter((scene) => !shown.includes(scene))
+      .map((scene) => sceneIdOf(scene.sceneNumber));
+    return buildTimeline(shown, kept, this.store.clips(projectId), hidden);
   }
 
   updateTrack(projectId: string, trackId: string, body: UpdateAudioTrackBody): AudioOverview {

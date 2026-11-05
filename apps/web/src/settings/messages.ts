@@ -87,7 +87,8 @@ const BY_INVALID_FIELD: Record<string, string> = {
   instruction:
     'Il campo di testo serve per «Sostituisci» e «Cambia colore», non per «Togli». Controlla cosa hai scritto.',
   // Il montaggio (T5.7).
-  assembly: 'Per montare il film manca ancora qualcosa: guarda l’elenco qui sopra.',
+  assembly: 'Scegli almeno una scena da mettere nel film.',
+  sceneNotReady: 'Questa scena non si può ancora spuntare: guarda cosa le manca.',
   assemblyWorking: 'Il film si sta già montando. Aspetta che finisca.',
   // L'esportazione (T5.8).
   exportWorking: 'Il film si sta esportando. Aspetta che finisca.',

@@ -1,44 +1,66 @@
 import type { ScenePlan, ShotSpec } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { gapsOf, joinNames } from './assembly.service.js';
+import { scenesOnLanes, tickedScenes } from '../audio/timeline.js';
+import { joinNames, sceneRows } from './assembly.service.js';
 
-const shot = (id: string): ShotSpec => ({ id }) as unknown as ShotSpec;
+const shot = (id: string): ShotSpec => ({ id, intent: { durationS: 4 } }) as unknown as ShotSpec;
 const take = { takeId: 't', assetId: 'a', nativeAudio: false };
 
 const scene = (sceneNumber: number, patch: Partial<ScenePlan> = {}): ScenePlan =>
   ({
     sceneNumber,
+    heading: `Scena numero ${String(sceneNumber)}`,
+    durationS: 10,
     planned: true,
     stale: false,
     shots: [shot('a')],
     ...patch,
   }) as unknown as ScenePlan;
 
-describe('cosa manca per montare', () => {
-  it('una storia senza scene non ha niente da montare', () => {
-    expect(gapsOf([], {})).toEqual([{ kind: 'no_scenes' }]);
+describe('le scene del film', () => {
+  const none = new Set<number>();
+  const complete = scene(1);
+  const notPlanned = scene(2, { planned: false, shots: [] });
+  const stale = scene(3, { stale: true });
+  const missingVideos = scene(4, { shots: [shot('b'), shot('c'), shot('a')] });
+  const all = [complete, notPlanned, stale, missingVideos];
+  const kept = { a: take };
+
+  it('entra chi ha tutto e non è stata tolta, e le altre non bloccano', () => {
+    expect(tickedScenes(all, kept, none)).toEqual([complete]);
+    expect(tickedScenes(all, kept, new Set([1]))).toEqual([]);
   });
 
-  it('niente, se ogni inquadratura di ogni scena ha il suo video', () => {
-    expect(gapsOf([scene(1)], { a: take })).toEqual([]);
-  });
+  it('l’elenco dice cosa manca a ogni scena, e tiene l’ordine della storia', () => {
+    const rows = sceneRows(all, kept, [complete]);
 
-  it('una scena da pensare, una da rifare, una con inquadrature senza video', () => {
-    expect(
-      gapsOf(
-        [
-          scene(1, { planned: false, shots: [] }),
-          scene(2, { stale: true }),
-          scene(3, { shots: [shot('b'), shot('c'), shot('a')] }),
-        ],
-        { a: take },
-      ),
-    ).toEqual([
-      { sceneNumber: 1, kind: 'not_planned' },
-      { sceneNumber: 2, kind: 'stale' },
-      { sceneNumber: 3, kind: 'no_take', missing: 2 },
+    expect(rows.map(({ sceneNumber }) => sceneNumber)).toEqual([1, 2, 3, 4]);
+    expect(rows.map(({ gap }) => gap)).toEqual([
+      undefined,
+      { kind: 'not_planned' },
+      { kind: 'stale' },
+      { kind: 'no_take', missing: 2 },
     ]);
+    expect(rows.map(({ included }) => included)).toEqual([true, false, false, false]);
+    expect(rows[0]).toMatchObject({ previewAssetId: 'a', durationS: 4 });
+    // Una scena da pensare dura il tempo scritto nella stesura.
+    expect(rows[1]).toMatchObject({ durationS: 10 });
+    expect(rows[1]?.previewAssetId).toBeUndefined();
+  });
+
+  it('una scena tolta non ha niente da dire: resta senza spunta, e senza motivo', () => {
+    expect(sceneRows([complete], kept, [])[0]).toMatchObject({ included: false });
+    expect(sceneRows([complete], kept, [])[0]?.gap).toBeUndefined();
+  });
+
+  it('sulle tracce stanno solo le scene del film', () => {
+    expect(scenesOnLanes(all, kept, none)).toEqual([complete]);
+  });
+
+  it('finché nessuna è pronta si vedono tutte tranne quelle tolte: il suono si prepara prima', () => {
+    expect(scenesOnLanes(all, {}, none)).toEqual(all);
+    expect(scenesOnLanes(all, {}, new Set([2]))).toEqual([complete, stale, missingVideos]);
   });
 });
 

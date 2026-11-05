@@ -107,7 +107,11 @@ function SoundView({
   const [side, setSide] = useState<Side>();
   const action = useAction();
   const selected = side?.mode === 'clip' ? clips.find(({ id }) => id === side.clipId) : undefined;
-  const orphans = clips.filter(({ id }) => timeline.placements[id] === undefined);
+  // Il suono di una scena che non è nel film non è perso: torna con la scena (D85).
+  const orphans = clips.filter(
+    ({ id, sceneId }) =>
+      timeline.placements[id] === undefined && !timeline.hiddenSceneIds.includes(sceneId),
+  );
 
   const openNew = async (clip: AudioClip) => {
     await refresh();
@@ -116,7 +120,7 @@ function SoundView({
 
   return (
     <>
-      <AssemblySection filmId={filmId} stamp={editor} />
+      <AssemblySection filmId={filmId} stamp={editor} onScenesChanged={refresh} />
 
       <div className="panel-head">
         <div>

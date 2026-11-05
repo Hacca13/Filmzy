@@ -7,6 +7,7 @@ import { VariantList } from './ClipPanel';
 import { SoundLanes } from './SoundLanes';
 
 const timeline: AudioTimeline = {
+  hiddenSceneIds: [],
   durationS: 10,
   scenes: [
     { sceneId: 'scene-1', sceneNumber: 1, heading: 'UNO', startS: 0, durationS: 10, stale: false },

@@ -1,4 +1,4 @@
-import { API_PREFIX, assemblyViewSchema } from '@filmzy/contracts';
+import { API_PREFIX, assemblyViewSchema, type SetAssemblySceneBody } from '@filmzy/contracts';
 import { z } from 'zod';
 
 import { getJson, sendJson } from './client';
@@ -13,6 +13,16 @@ export function fetchAssembly(filmId: string, signal?: AbortSignal) {
 
 export function startAssembly(filmId: string) {
   return sendJson('POST', base(filmId), assemblyViewSchema);
+}
+
+/** La spunta di una scena (D85): togliere non cancella niente. */
+export function setAssemblyScene(filmId: string, sceneNumber: number, body: SetAssemblySceneBody) {
+  return sendJson(
+    'PUT',
+    `${base(filmId)}/scenes/${String(sceneNumber)}`,
+    assemblyViewSchema,
+    body,
+  );
 }
 
 /** «Togli» su un film montato prima: lo cancella dal computer. */

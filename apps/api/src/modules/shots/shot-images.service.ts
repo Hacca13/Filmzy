@@ -19,7 +19,7 @@ import type { ConfigSource, Troupe } from '@filmzy/troupe';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import { domainError } from '../../http/domain-error.js';
@@ -27,6 +27,7 @@ import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { mediaStep } from '../media/media-step.js';
+import { moveIntoPlace } from '../media/move-file.js';
 import { assetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, TROUPE } from '../troupe/tokens.js';
@@ -170,7 +171,7 @@ export class ShotImagesService {
       const bytes = await readFile(temporary);
       const id = createHash('sha256').update(bytes).digest('hex');
       const target = path.join(dir, `${id}.png`);
-      await rename(temporary, target);
+      await moveIntoPlace(temporary, target);
 
       // Un file già registrato (lo stesso momento di prima) non si tocca, nemmeno se il resto va storto.
       if (this.files.getAsset(id) === undefined) {

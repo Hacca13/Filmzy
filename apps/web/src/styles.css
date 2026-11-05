@@ -104,6 +104,15 @@ h2 {
   min-height: 100vh;
 }
 
+.welcome-failure {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 660px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
 .welcome-bar {
   display: flex;
   align-items: center;

@@ -27,10 +27,10 @@ import {
   type ConfigIssue,
   type SecretSources,
 } from '@filmzy/troupe';
-import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, type OnApplicationBootstrap } from '@nestjs/common';
 
 import { SECRET_SOURCES } from '../secrets/tokens.js';
-import { CONFIG_DIR, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
+import { CONFIG_DIR, SECRETS_REQUIRED, TROUPE_ENVIRONMENT, TROUPE_STORE } from './tokens.js';
 
 /**
  * La configurazione della troupe come si usa in esercizio (architettura §4.5): bozza, prova,
@@ -62,6 +62,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
     @Inject(CONFIG_DIR) private readonly configDir: string,
     @Inject(TROUPE_ENVIRONMENT) private readonly environment: ConfigEnvironment | undefined,
     @Inject(SECRET_SOURCES) private readonly secrets: SecretSources,
+    @Optional() @Inject(SECRETS_REQUIRED) private readonly secretsRequired: boolean = false,
   ) {}
 
   /**
@@ -350,7 +351,8 @@ export class TroupeConfigService implements OnApplicationBootstrap {
   }
 
   /**
-   * Lo stesso controllo di `pnpm troupe check`: configurazione e istruzioni (§4.6), sulla
+   * Lo stesso controllo di `pnpm troupe check`, ma nel programma una chiave mancante è un avviso (D90):
+   * configurazione e istruzioni (§4.6), sulla
    * configurazione **adattata all'ambiente**. L'adattamento è un livello di §4.5 e non si pubblica
    * (lo applica la sorgente a ogni lettura): serve solo a controllare quello che girerà davvero —
    * con `offline`, per esempio, le chiavi non servono perché rispondono i fornitori finti.
@@ -363,7 +365,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
       ...validateConfig(effective.config, {
         ...(this.environment === undefined ? {} : { environment: this.environment }),
         secrets: this.secrets,
-        secretsRequired: false,
+        secretsRequired: this.secretsRequired,
       }),
       ...(await validateInstructions(
         effective.config,

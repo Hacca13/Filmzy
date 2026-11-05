@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { StartupScreen, type StartupState } from './StartupGate';
+import { StartupScreen, watchStartup, type StartupState } from './StartupGate';
 
 const screen = (state: Exclude<StartupState, { name: 'ready' }>, problem?: string) =>
   renderToStaticMarkup(
@@ -13,6 +13,54 @@ const screen = (state: Exclude<StartupState, { name: 'ready' }>, problem?: strin
       onOpenFolder={() => undefined}
     />,
   );
+
+describe('aspettare il server', () => {
+  const down = () => Promise.reject(new Error('non risponde'));
+
+  it('dopo aver detto che non riesce a partire continua a guardare, e se arriva si apre', async () => {
+    const seen: string[] = [];
+    const wait = vi
+      .fn()
+      .mockImplementationOnce(down)
+      .mockImplementationOnce(down)
+      .mockResolvedValue({ status: 'ok' });
+
+    await watchStartup(
+      (state) => seen.push(state.name),
+      new AbortController().signal,
+      wait as never,
+    );
+
+    expect(seen).toEqual(['unreachable', 'unreachable', 'ready']);
+  });
+
+  it('dice perché i dati non si aprono', async () => {
+    const block = { reason: 'database_too_new' as const };
+    const seen: StartupState[] = [];
+
+    await watchStartup(
+      (state) => seen.push(state),
+      new AbortController().signal,
+      vi.fn().mockResolvedValue({ status: 'blocked', block }) as never,
+    );
+
+    expect(seen).toEqual([{ name: 'blocked', block }]);
+  });
+
+  it('se la pagina si chiude smette, senza dire niente', async () => {
+    const controller = new AbortController();
+    const seen: string[] = [];
+    const wait = vi.fn(() => {
+      controller.abort();
+      return down();
+    });
+
+    await watchStartup((state) => seen.push(state.name), controller.signal, wait);
+
+    expect(seen).toEqual([]);
+    expect(wait).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('l’avvio', () => {
   it('mentre parte dice che sta preparando, col marchio', () => {
@@ -51,11 +99,37 @@ describe('l’avvio', () => {
     expect(html).toContain('Apri la cartella');
   });
 
-  it('senza una copia non dice di averla rimessa', () => {
-    const html = screen({ name: 'blocked', block: { reason: 'migration_failed' } });
+  it('senza una copia non dice di averla rimessa, e dice dove stanno i dati', () => {
+    const html = screen({
+      name: 'blocked',
+      block: { reason: 'migration_failed', file: 'C:\\dati\\filmzy.db' },
+    });
 
     expect(html).toContain('non ho cambiato niente');
     expect(html).not.toContain('copia di prima');
+    expect(html).toContain('I tuoi dati · sola lettura');
+    expect(html).toContain('filmzy.db');
+  });
+
+  it('dati che non si leggono: dice cosa controllare, e si può riprovare', () => {
+    const html = screen({
+      name: 'blocked',
+      block: { reason: 'database_unreadable', file: 'C:\\dati\\filmzy.db' },
+    });
+
+    expect(html).toContain('Non riesco ad aprire i tuoi dati');
+    expect(html).toContain('spazio');
+    expect(html).toContain('Riprova');
+  });
+
+  it('se non è riuscito a rimettere la copia non dice di averlo fatto', () => {
+    const html = screen({
+      name: 'blocked',
+      block: { reason: 'database_unreadable', backupFile: 'C:\\dati\\copia', file: 'x' },
+    });
+
+    expect(html).toContain('Non sono riuscito a rimettere la copia');
+    expect(html).toContain('La copia di sicurezza · sola lettura');
   });
 
   it('se la cartella non si apre lo dice', () => {
@@ -73,6 +147,7 @@ describe('l’avvio', () => {
       screen({ name: 'unreachable' }),
       screen({ name: 'blocked', block: { reason: 'database_too_new' } }),
       screen({ name: 'blocked', block: { reason: 'migration_failed' } }),
+      screen({ name: 'blocked', block: { reason: 'database_unreadable' } }),
     ].join(' ');
 
     for (const word of ['database', 'migrazione', 'server', 'schema']) {

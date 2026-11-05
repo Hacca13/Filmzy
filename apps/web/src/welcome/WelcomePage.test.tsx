@@ -65,8 +65,11 @@ describe('ChooseProviders', () => {
     expect(render([entry({ keyUrl: url })])).toContain(`href="${url}"`);
     expect(render([entry({ keyUrl: url })])).toContain('Come ottengo la chiave?');
     expect(render([entry()])).not.toContain('Come ottengo la chiave?');
-    // A chi non serve una chiave non si chiede di prenderla.
+    // A chi non serve una chiave, o l'ha già, non si chiede di prenderla.
     expect(render([entry({ keyUrl: url, keyRequired: false })])).not.toContain('Come ottengo');
+    expect(render([entry({ keyUrl: url, key: { name: 'FAL_KEY', present: true } })])).not.toContain(
+      'Come ottengo',
+    );
   });
 
   it('«Continua» resta spento finché non se ne sceglie uno, e si può saltare', () => {
@@ -157,9 +160,31 @@ describe('ReadySummary', () => {
 
     const html = renderToStaticMarkup(<ReadySummary entries={[linked, notYet]} />);
 
-    expect(html).toContain('Tutto pronto per la tua prima storia');
     expect(html).toContain('✓ fal.ai collegato');
     expect(html).not.toContain('Altro');
+  });
+
+  it('con un fornitore solo non dice che è tutto pronto, se per un film ne manca uno', () => {
+    const images = entry({ key: { name: 'K', present: true }, services: [service] });
+
+    const html = renderToStaticMarkup(<ReadySummary entries={[images]} />);
+
+    expect(html).toContain('Quasi pronto');
+    expect(html).toContain('manca ancora un fornitore per: testo');
+    expect(html).not.toContain('Tutto pronto');
+  });
+
+  it('con testo, immagini e video è tutto pronto', () => {
+    const images = entry({ key: { name: 'K', present: true }, services: [service] });
+    const text: MergedProvider = {
+      provider: { ...images.provider, connectionId: 'testo', label: 'Testo' },
+      groups: [{ group: 'text', hasDefault: false }],
+    };
+
+    const html = renderToStaticMarkup(<ReadySummary entries={[text, images]} />);
+
+    expect(html).toContain('Tutto pronto per la tua prima storia');
+    expect(html).not.toContain('manca ancora');
   });
 
   it('senza nessuno non dice che è tutto pronto', () => {

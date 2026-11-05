@@ -58,12 +58,32 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
   const migrationsDir = options.migrationsDir ?? MIGRATIONS_DIR;
   const shipped = await countMigrations(migrationsDir);
 
-  await mkdir(options.dataDir, { recursive: true });
   const file = databaseFile(options.dataDir);
+  /** Non si riesce nemmeno a leggere: file rovinato, disco pieno, cartella protetta. Non si è cambiato niente. */
+  const unreadable = (cause: unknown, backupFile?: string): DatabaseError =>
+    new DatabaseError(
+      'database_unreadable',
+      'Non riesco ad aprire i dati dei tuoi film.',
+      { file, ...(backupFile === undefined ? {} : { backupFile }) },
+      { cause },
+    );
 
-  let sqlite = new Database(file);
-  prepareConnection(sqlite);
-  const found = readMeta(sqlite);
+  let sqlite: Database.Database;
+  let found: StoredMeta;
+  try {
+    await mkdir(options.dataDir, { recursive: true });
+    sqlite = new Database(file);
+    try {
+      prepareConnection(sqlite);
+      found = readMeta(sqlite);
+    } catch (cause) {
+      // Lasciata aperta, su Windows il file resta bloccato: l'utente non potrebbe nemmeno sostituirlo.
+      sqlite.close();
+      throw cause;
+    }
+  } catch (cause) {
+    throw unreadable(cause);
+  }
 
   if (found.schemaVersion !== undefined && found.schemaVersion > shipped) {
     sqlite.close();
@@ -88,14 +108,26 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
 
   if (backupFile !== undefined) {
     // `backup` di SQLite, non una copia qualunque: tiene conto di quello che sta nel file WAL.
-    await sqlite.backup(backupFile);
+    try {
+      await sqlite.backup(backupFile);
+    } catch (cause) {
+      sqlite.close();
+      throw unreadable(cause);
+    }
   }
 
   try {
     migrate(drizzle(sqlite), { migrationsFolder: migrationsDir });
   } catch (cause) {
     sqlite.close();
-    if (backupFile !== undefined) await restore(backupFile, file);
+    if (backupFile !== undefined) {
+      try {
+        await restore(backupFile, file);
+      } catch (restoreCause) {
+        // Non si può dire «ho rimesso la copia»: si dice dov'è, e l'utente non la perde.
+        throw unreadable(restoreCause, backupFile);
+      }
+    }
 
     throw new DatabaseError(
       'migration_failed',

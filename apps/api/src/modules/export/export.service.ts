@@ -22,6 +22,7 @@ import { domainError } from '../../http/domain-error.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
+import { moveIntoPlace } from '../media/move-file.js';
 import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
@@ -29,7 +30,6 @@ import {
   exportFileName,
   failureReason,
   fileErrorCode,
-  moveIntoPlace,
   openFolder,
   otherAspects,
   qualitiesFor,

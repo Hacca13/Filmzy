@@ -17,13 +17,16 @@ export type SecretRef = z.infer<typeof secretRefSchema>;
  * Una connessione: come si raggiunge un fornitore (architettura §4.3). `adapter` resta una
  * stringa aperta (configKeySchema): un nuovo adapter non tocca questo schema (§4.12 caso C).
  */
+/** Finisce in un collegamento dell'interfaccia: solo https, così un `javascript:` non può passare. */
+export const keyUrlSchema = z.url({ protocol: /^https$/ });
+
 export const connectionSchema = z.strictObject({
   /** Il nome per l'utente («fal.ai»); senza, si usa l'id della connessione. */
   label: z.string().min(1).optional(),
   adapter: configKeySchema,
   base_url: z.url().optional(),
-  /** La pagina del fornitore dove si prende la chiave. Solo https: finisce in un collegamento. */
-  key_url: z.url({ protocol: /^https$/ }).optional(),
+  /** La pagina del fornitore dove si prende la chiave. */
+  key_url: keyUrlSchema.optional(),
   api_key: secretRefSchema,
   http_proxy: secretRefSchema.optional(),
   timeout_s: z.number().int().positive(),

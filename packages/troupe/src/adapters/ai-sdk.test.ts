@@ -224,11 +224,7 @@ describe('openai_compatible', () => {
 describe('senza chiave', () => {
   it('Anthropic lo dice subito, invece di mandare una richiesta vuota', () => {
     expect(() => anthropicModel('un-modello', { ...options, secrets: { env: {} } })).toThrow(
-      expect.objectContaining({
-        code: 'secret_missing',
-        retryable: false,
-        details: expect.objectContaining({ field: 'api_key' }) as unknown,
-      }) as Error,
+      expect.objectContaining({ code: 'secret_missing', retryable: false }) as Error,
     );
   });
 });

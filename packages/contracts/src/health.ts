@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
 /**
- * Perché il programma non può aprire i dati (architettura §6.2): sono di una versione più nuova, oppure
- * l'aggiornamento non è riuscito e si è tornati alla copia di sicurezza, che `backupFile` dice dov'è.
+ * Perché il programma non può aprire i dati (architettura §6.2): sono di una versione più nuova,
+ * l'aggiornamento non è riuscito, oppure non si leggono proprio. `backupFile` dice dov'è la copia di
+ * sicurezza, se c'è, e `file` dove stanno i dati: l'utente deve poterli ritrovare.
  */
 export const startupBlockSchema = z.object({
-  reason: z.enum(['database_too_new', 'migration_failed']),
+  reason: z.enum(['database_too_new', 'migration_failed', 'database_unreadable']),
   backupFile: z.string().min(1).optional(),
+  file: z.string().min(1).optional(),
 });
 
 export type StartupBlock = z.infer<typeof startupBlockSchema>;

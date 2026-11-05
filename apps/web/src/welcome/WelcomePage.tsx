@@ -90,7 +90,17 @@ export function WelcomePage({ onFinish }: Props) {
   if (state.status === 'error') {
     return (
       <main className="welcome">
-        <Notice tone="error">{describeError(state.error)}</Notice>
+        <header className="welcome-bar">
+          <Brand />
+        </header>
+        <div className="welcome-failure">
+          <Notice tone="error">{describeError(state.error)}</Notice>
+          <div className="actions">
+            <button type="button" className="button" onClick={onFinish}>
+              Vai ai tuoi film
+            </button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -105,7 +115,8 @@ export function WelcomePage({ onFinish }: Props) {
   const back = () => {
     setStage(previousStage(stage, picked.length));
   };
-  const skip = () => {
+  // Finita o saltata, la procedura non si ripropone: se nessun fornitore risultasse collegato tornerebbe qui.
+  const leave = () => {
     skipWelcome();
     onFinish();
   };
@@ -124,7 +135,7 @@ export function WelcomePage({ onFinish }: Props) {
           onNext={() => {
             setStage({ name: 'provider', index: 0, step: 'key' });
           }}
-          onSkip={skip}
+          onSkip={leave}
         />
         <p className="welcome-note">
           ✦ Le chiavi restano sul tuo computer. Puoi collegare altri servizi più avanti, nelle
@@ -220,7 +231,7 @@ export function WelcomePage({ onFinish }: Props) {
       <SpendStep
         overview={overview}
         onOverview={setData}
-        onNext={onFinish}
+        onNext={leave}
         onBack={back}
         ready={<ReadySummary entries={picked} />}
       />
@@ -288,7 +299,7 @@ function ProviderName({ entry }: { entry: MergedProvider }) {
           {usesOf(entry)}
           {isLinked(provider) ? ` · ${providerStatus(provider).text}` : ''}
         </span>
-        {provider.keyRequired && provider.keyUrl !== undefined ? (
+        {provider.keyRequired && provider.key?.present !== true && provider.keyUrl !== undefined ? (
           // Una pagina del fornitore: si apre fuori dal programma, senza dirgli da dove si arriva.
           <a href={provider.keyUrl} target="_blank" rel="noreferrer">
             Come ottengo la chiave? ↗
@@ -362,18 +373,30 @@ export function ChooseProviders({
   );
 }
 
+/** Per fare un film servono il testo, le immagini e il video: un fornitore solo può non bastare. */
+const NEEDED_FOR_A_FILM: readonly ModelGroup[] = ['text', 'image', 'video'];
+
 /** Cosa è pronto, prima di cominciare. Solo i fornitori collegati davvero. */
 export function ReadySummary({ entries }: { entries: readonly MergedProvider[] }) {
   const linked = entries.filter((entry) => isLinked(entry.provider));
   if (linked.length === 0) return null;
+  const covered = new Set(linked.flatMap((entry) => entry.groups.map(({ group }) => group)));
+  const missing = NEEDED_FOR_A_FILM.filter((group) => !covered.has(group));
   return (
     <section className="welcome-card">
-      <h2>Tutto pronto per la tua prima storia</h2>
+      <h2>{missing.length === 0 ? 'Tutto pronto per la tua prima storia' : 'Quasi pronto'}</h2>
       {linked.map((entry) => (
         <p key={entry.provider.connectionId}>
           ✓ {entry.provider.label} collegato · {usesOf(entry)}
         </p>
       ))}
+      {missing.length === 0 ? null : (
+        <p>
+          Per fare un film manca ancora un fornitore per:{' '}
+          {missing.map((group) => GROUP_LABELS[group].toLowerCase()).join(', ')}. Puoi collegarlo
+          quando vuoi, nelle Impostazioni.
+        </p>
+      )}
       <p className="hint">Le tue idee e i tuoi film restano sul tuo computer.</p>
     </section>
   );

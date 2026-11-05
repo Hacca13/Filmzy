@@ -11,7 +11,6 @@ import {
 import { z } from 'zod';
 
 import { ProviderError } from '../provider-error.js';
-import { readSecret } from '../config/secrets.js';
 import { keyFor, probe, trimTrailingSlash } from './probe.js';
 import type {
   AdapterFactory,
@@ -36,18 +35,9 @@ import type {
 export type ModelFactory = (providerModel: string, options: AdapterOptions) => LanguageModel;
 
 export function anthropicModel(providerModel: string, options: AdapterOptions): LanguageModel {
-  const apiKey = readSecret(options.connection.api_key, options.secrets);
-  // Senza chiave la richiesta partirebbe vuota, e il fornitore direbbe che è sbagliata: invece manca.
-  if (apiKey === undefined) {
-    throw new ProviderError(
-      'secret_missing',
-      false,
-      `La connessione "${options.connectionId}" non ha la sua chiave.`,
-      { connectionId: options.connectionId, field: 'api_key' },
-    );
-  }
   const provider = createAnthropic({
-    apiKey,
+    // Senza chiave `keyFor` si ferma: il fornitore direbbe che è sbagliata, e invece manca.
+    apiKey: keyFor(options) ?? '',
     ...(options.connection.base_url === undefined ? {} : { baseURL: options.connection.base_url }),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
@@ -71,7 +61,8 @@ export function openAiCompatibleModel(
   const provider = createOpenAICompatible({
     name: options.connectionId,
     baseURL,
-    apiKey: readSecret(options.connection.api_key, options.secrets),
+    // Un modello sul proprio computer non vuole chiavi: `keyFor` si ferma solo se è obbligatoria.
+    apiKey: keyFor(options),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
   return provider(providerModel);

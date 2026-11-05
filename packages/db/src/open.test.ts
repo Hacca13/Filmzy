@@ -1,4 +1,4 @@
-import { access, mkdir } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { sql } from 'drizzle-orm';
@@ -154,6 +154,16 @@ describe('apertura del database (§6.2)', () => {
 
     await expect(openFilmzyDatabase({ dataDir, appVersion: '0.3.0' })).rejects.toMatchObject({
       code: 'database_too_new',
+    });
+  });
+
+  it('un file rovinato non è un errore grezzo: dice il suo codice e dov’è', async () => {
+    const dataDir = await tempDataDir();
+    await writeFile(databaseFile(dataDir), 'questo non è un database, e non lo è mai stato');
+
+    await expect(openFilmzyDatabase({ dataDir, appVersion: '0.3.0' })).rejects.toMatchObject({
+      code: 'database_unreadable',
+      details: { file: databaseFile(dataDir) },
     });
   });
 

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -93,7 +93,7 @@ describe('quando i dati non si aprono', () => {
 
     expect(await healthOf(base)).toEqual({
       status: 'blocked',
-      block: { reason: 'database_too_new' },
+      block: { reason: 'database_too_new', file: path.join(dataDir, 'filmzy.db') },
     });
     // Tutto il resto non c'è: il programma non lavora su dati che non può leggere.
     expect((await fetch(`${base}/projects`)).status).toBe(404);
@@ -112,10 +112,37 @@ describe('quando i dati non si aprono', () => {
       block: {
         reason: 'migration_failed',
         backupFile: path.join(dataDir, 'filmzy.db.backup-1.0.0'),
+        file: path.join(dataDir, 'filmzy.db'),
       },
     });
     expect((await stat(path.join(dataDir, 'filmzy.db.backup-1.0.0'))).size).toBeGreaterThan(0);
 
+    await fixAndRetry(base, dataDir, running);
+  }, 60_000);
+
+  it('con un file rovinato lo dice, invece di spegnersi', async () => {
+    const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-avvio-'));
+    await writeFile(path.join(dataDir, 'filmzy.db'), 'questo non è un database');
+    const { base, running } = await started(dataDir);
+
+    expect(await healthOf(base)).toEqual({
+      status: 'blocked',
+      block: { reason: 'database_unreadable', file: path.join(dataDir, 'filmzy.db') },
+    });
+
+    await fixAndRetry(base, dataDir, running);
+  }, 60_000);
+
+  it('«Riprova» risponde senza corpo: l’interfaccia non deve leggerne uno', async () => {
+    const dataDir = await dataDirWith(TOO_NEW);
+    const { base, running } = await started(dataDir);
+    await healthOf(base);
+
+    // Con un 202 vuoto l'interfaccia dava errore, e la schermata restava ferma anche a programma ripartito.
+    const reply = await fetch(`${base}/startup/retry`, { method: 'POST' });
+    expect(reply.status).toBe(204);
+
+    expect((await healthOf(base)).status).toBe('blocked');
     await fixAndRetry(base, dataDir, running);
   }, 60_000);
 

@@ -34,6 +34,8 @@ export const DOMAIN_ERROR_CODES = [
   // Il database locale (architettura §6.2, D44): all'avvio l'utente deve capire cosa è successo.
   'database_too_new',
   'migration_failed',
+  // I dati non si leggono proprio: file rovinato, disco pieno, cartella protetta (D90).
+  'database_unreadable',
 ] as const;
 
 export const domainErrorCodeSchema = z.enum(DOMAIN_ERROR_CODES);

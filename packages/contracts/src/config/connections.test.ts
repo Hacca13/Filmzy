@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { connectionSchema, connectionsFileSchema, secretRefSchema } from './connections.js';
+import {
+  connectionSchema,
+  connectionsFileSchema,
+  keyUrlSchema,
+  secretRefSchema,
+} from './connections.js';
 
 describe('secretRefSchema', () => {
   it.each(['env:ANTHROPIC_API_KEY', 'env:HTTPS_PROXY?', 'secret:FAL_KEY', 'none'])(
@@ -14,6 +19,19 @@ describe('secretRefSchema', () => {
     'rifiuta %j: mai una chiave in chiaro (regola d\'oro 7)',
     (invalid) => {
       expect(secretRefSchema.safeParse(invalid).success).toBe(false);
+    },
+  );
+});
+
+describe('keyUrlSchema', () => {
+  it('accetta una pagina https', () => {
+    expect(keyUrlSchema.safeParse('https://fal.ai/dashboard/keys').success).toBe(true);
+  });
+
+  it.each(['javascript:alert(1)', 'http://fal.ai/keys', 'file:///C:/segreti', 'non un indirizzo'])(
+    'rifiuta %j: finisce in un collegamento',
+    (invalid) => {
+      expect(keyUrlSchema.safeParse(invalid).success).toBe(false);
     },
   );
 });

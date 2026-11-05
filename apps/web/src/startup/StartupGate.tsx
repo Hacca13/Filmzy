@@ -16,6 +16,31 @@ export type StartupState =
   | { name: 'blocked'; block: StartupBlock };
 
 /**
+ * Aspetta il server, e non smette di controllare nemmeno dopo aver detto che non riesce a partire: un
+ * aggiornamento dei dati su un disco lento può metterci più dei 30 secondi di attesa, e chi ha chiuso a metà
+ * farebbe più danni di chi aspetta. Si ferma solo se la pagina si chiude.
+ */
+export async function watchStartup(
+  onState: (state: StartupState) => void,
+  signal: AbortSignal,
+  wait: typeof waitUntilServerIsReady = waitUntilServerIsReady,
+): Promise<void> {
+  // Una funzione: il segnale cambia durante l'attesa, e il compilatore crederebbe di sapere già com'è.
+  const closed = () => signal.aborted;
+  while (!closed()) {
+    try {
+      const health = await wait({ signal });
+      onState(
+        health.status === 'ok' ? { name: 'ready' } : { name: 'blocked', block: health.block },
+      );
+      return;
+    } catch {
+      if (!closed()) onState({ name: 'unreachable' });
+    }
+  }
+}
+
+/**
  * Finché il programma non è pronto non si vede nient'altro (§6.2): tutte le schermate danno per scontato che
  * il server risponda. All'avvio il server può metterci qualche secondo, per esempio se aggiorna i dati.
  */
@@ -26,17 +51,7 @@ export function StartupGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    waitUntilServerIsReady({ signal: controller.signal }).then(
-      (health) => {
-        setState(
-          health.status === 'ok' ? { name: 'ready' } : { name: 'blocked', block: health.block },
-        );
-      },
-      () => {
-        // Se la pagina è stata chiusa durante l'attesa non è un errore da mostrare.
-        if (!controller.signal.aborted) setState({ name: 'unreachable' });
-      },
-    );
+    void watchStartup(setState, controller.signal);
     return () => {
       controller.abort();
     };
@@ -60,6 +75,17 @@ export function StartupGate({ children }: { children: ReactNode }) {
       }}
     />
   );
+}
+
+function dataFailureText({ reason, backupFile }: StartupBlock): string {
+  if (reason === 'database_unreadable') {
+    return backupFile === undefined
+      ? 'Non ho cambiato niente. Controlla che sul disco ci sia spazio, poi riprova.'
+      : 'Non sono riuscito a rimettere la copia di prima, ma c’è ancora. Controlla che sul disco ci sia spazio, poi riprova.';
+  }
+  return backupFile === undefined
+    ? 'I tuoi film sono al sicuro: non ho cambiato niente.'
+    : 'I tuoi film sono al sicuro: ho rimesso la copia di prima.';
 }
 
 /** Quello che si vede: senza stato, così si prova da solo. Nessuna parola tecnica (regola 12). */
@@ -104,20 +130,23 @@ export function StartupScreen({
     );
   }
 
-  const { backupFile } = state.block;
+  const { reason, backupFile, file } = state.block;
+  const place = backupFile ?? file;
   return (
     <main className="startup" role="alert">
       <Brand />
-      <h1>Non riesco ad aggiornare i tuoi dati</h1>
-      <p>
-        {backupFile === undefined
-          ? 'I tuoi film sono al sicuro: non ho cambiato niente.'
-          : 'I tuoi film sono al sicuro: ho rimesso la copia di prima.'}
-      </p>
-      {backupFile === undefined ? null : (
+      <h1>
+        {reason === 'database_unreadable'
+          ? 'Non riesco ad aprire i tuoi dati'
+          : 'Non riesco ad aggiornare i tuoi dati'}
+      </h1>
+      <p>{dataFailureText(state.block)}</p>
+      {place === undefined ? null : (
         <div className="field">
-          <label htmlFor="startup-backup">La copia di sicurezza · sola lettura</label>
-          <input id="startup-backup" type="text" readOnly value={backupFile} />
+          <label htmlFor="startup-place">
+            {backupFile === undefined ? 'I tuoi dati' : 'La copia di sicurezza'} · sola lettura
+          </label>
+          <input id="startup-place" type="text" readOnly value={place} />
         </div>
       )}
       <div className="actions">

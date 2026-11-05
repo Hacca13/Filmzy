@@ -89,6 +89,10 @@ const BY_INVALID_FIELD: Record<string, string> = {
   // Il montaggio (T5.7).
   assembly: 'Per montare il film manca ancora qualcosa: guarda l’elenco qui sopra.',
   assemblyWorking: 'Il film si sta già montando. Aspetta che finisca.',
+  // L'esportazione (T5.8).
+  exportWorking: 'Il film si sta esportando. Aspetta che finisca.',
+  exportSource: 'Monta prima il film: si esporta quello.',
+  shortSide: 'Questa qualità non si può usare per questo film. Aggiorna la pagina e riprova.',
   // Le tracce audio (T5.5, T5.6).
   audioFile:
     'Questo file non è un suono che posso usare. Vanno bene WAV, MP3 o M4A, fino a 100 MB, e dentro deve esserci un suono.',

@@ -6,6 +6,7 @@ import { assetUrl } from '../../api/sheet';
 import { Notice } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
 import { useWatched } from '../use-watched';
+import { ExportSection } from './ExportSection';
 import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-model';
 
 /**
@@ -29,32 +30,37 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
   }, [stamp, reload]);
 
   return (
-    <section className="sheet sound-film" aria-label="Il tuo film">
-      <h3>Il tuo film</h3>
-      {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
-      {value === undefined ? (
-        problem === undefined ? (
-          <p className="hint">Un attimo…</p>
-        ) : null
-      ) : (
-        <AssemblyBody
-          view={value}
-          busy={action.busy}
-          onStart={() => {
-            action.run(async () => {
-              try {
-                setValue(await startAssembly(filmId));
-              } catch (error) {
-                // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
-                await reload();
-                throw error;
-              }
-            });
-          }}
-        />
+    <>
+      <section className="sheet sound-film" aria-label="Il tuo film">
+        <h3>Il tuo film</h3>
+        {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
+        {value === undefined ? (
+          problem === undefined ? (
+            <p className="hint">Un attimo…</p>
+          ) : null
+        ) : (
+          <AssemblyBody
+            view={value}
+            busy={action.busy}
+            onStart={() => {
+              action.run(async () => {
+                try {
+                  setValue(await startAssembly(filmId));
+                } catch (error) {
+                  // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
+                  await reload();
+                  throw error;
+                }
+              });
+            }}
+          />
+        )}
+        {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
+      </section>
+      {value?.film === undefined ? null : (
+        <ExportSection filmId={filmId} behind={!value.upToDate} />
       )}
-      {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
-    </section>
+    </>
   );
 }
 

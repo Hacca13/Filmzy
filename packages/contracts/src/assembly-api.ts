@@ -87,6 +87,12 @@ export const assemblyViewSchema = z.object({
 
 export type AssemblyView = z.infer<typeof assemblyViewSchema>;
 
+/** Il numero di una scena nell'indirizzo: solo cifre, così «0x1» o «1e0» non valgono 1. */
+export const assemblySceneNumberSchema = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .transform(Number);
+
 /** La spunta di una scena. */
 export const setAssemblySceneBodySchema = z.strictObject({ included: z.boolean() });
 

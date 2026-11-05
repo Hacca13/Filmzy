@@ -544,23 +544,14 @@ progress {
   border: 0;
 }
 
-/* La legenda di un fieldset non sta in una griglia, a meno di toglierla dal suo posto speciale. */
 .film-kind-field legend {
-  float: left;
+  margin-bottom: 12px;
   padding: 0;
   font-size: 15px;
   font-weight: 600;
 }
 
-.field-heading {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.field-heading p {
+.film-kind-field > .hint {
   margin: 0;
 }
 

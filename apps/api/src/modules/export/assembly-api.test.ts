@@ -94,11 +94,11 @@ async function filmReady({ withSound = false }: { withSound?: boolean } = {}) {
   return { film, shotIds, takeIds };
 }
 
-/** Una musica caricata sulla prima scena. Dà l'id della clip. */
-async function uploadMusic(filmId: string): Promise<string> {
+/** Un suono caricato sulla prima scena. Dà l'id della clip. */
+async function uploadSound(filmId: string, kind: 'music' | 'dialogue'): Promise<string> {
   const reply = await fetch(
     `${base}/api/projects/${filmId}/audio/uploads?${new URLSearchParams({
-      kind: 'music',
+      kind,
       sceneId: 'scene-1',
       description: 'La mia musica',
     }).toString()}`,
@@ -111,6 +111,8 @@ async function uploadMusic(filmId: string): Promise<string> {
   expect(reply.status).toBe(201);
   return audioClipSchema.parse(await reply.json()).id;
 }
+
+const uploadMusic = (filmId: string): Promise<string> => uploadSound(filmId, 'music');
 
 /** Il file del film montato, dal registro. */
 function filmFile(view: AssemblyView): string {
@@ -217,6 +219,11 @@ describe('scegliere le scene', () => {
     // La musica era sulla scena tolta: non si sente.
     expect(await loudness(filmFile(without))).toBeLessThan(-60);
 
+    // Un suono su una scena tolta non rende indietro il film: dentro non c'è.
+    expect(without.upToDate).toBe(true);
+    await uploadSound(film.id, 'dialogue');
+    expect((await viewOf(film.id)).upToDate).toBe(true);
+
     // Rimessa, torna tutto: i video e i suoni non si erano cancellati.
     const back = assemblyViewSchema.parse(
       (await client.call('PUT', sceneOf(film.id, 1), { included: true })).body,
@@ -248,7 +255,12 @@ describe('scegliere le scene', () => {
     expect(domainErrorSchema.parse(notReady.body).details?.field).toBe('sceneNotReady');
 
     expect((await client.call('PUT', sceneOf(film.id, 99), { included: false })).status).toBe(404);
-    expect((await client.call('PUT', sceneOf(film.id, 'x'), { included: false })).status).toBe(404);
+    // Solo numeri veri: «0x1» e «1e0» varrebbero 1, e cambierebbero una scena per sbaglio.
+    for (const bad of ['x', '0x1', '1e0', '0', '-1']) {
+      expect((await client.call('PUT', sceneOf(film.id, bad), { included: false })).status).toBe(
+        400,
+      );
+    }
     expect((await client.call('PUT', sceneOf(film.id, 1), { included: 'no' })).status).toBe(400);
   });
 

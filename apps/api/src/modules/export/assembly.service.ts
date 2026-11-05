@@ -52,6 +52,7 @@ import { JobRunner } from '../jobs/job-runner.service.js';
 import { registerAssets } from '../media/image-jobs.js';
 import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
@@ -153,10 +154,7 @@ export class AssemblyService implements OnModuleInit {
     if (included && row.gap !== undefined) {
       throw domainError(409, 'invalid_request', { details: { field: 'sceneNotReady' } });
     }
-    this.closeLost(projectId);
-    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
-      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
-    }
+    this.assertNotMounting(projectId);
     this.sceneChoices.setIncluded(projectId, sceneNumber, included);
     return this.view(projectId);
   }
@@ -168,11 +166,7 @@ export class AssemblyService implements OnModuleInit {
       throw domainError(409, 'invalid_request', { details: { field: 'assembly' } });
     }
     // Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo: un doppio clic ne apre uno.
-    this.closeLost(projectId);
-    const open = this.store.latest(projectId)?.assembly.status;
-    if (open === 'queued' || open === 'running') {
-      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
-    }
+    this.assertNotMounting(projectId);
     // Un lavoro alla volta per film: ricodificare usa già tutti i processori.
     if (this.exports.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
@@ -255,10 +249,7 @@ export class AssemblyService implements OnModuleInit {
     if (assetId === this.store.lastSucceeded(projectId)?.assembly.assetId) {
       throw domainError(409, 'invalid_request', { details: { field: 'currentFilm' } });
     }
-    this.closeLost(projectId);
-    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
-      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
-    }
+    this.assertNotMounting(projectId);
     try {
       await rm(file, { force: true });
     } catch (error) {
@@ -287,6 +278,13 @@ export class AssemblyService implements OnModuleInit {
       throw domainError(404, 'not_found');
     }
     return { file, assetId, createdAt: stored.assembly.createdAt };
+  }
+
+  private assertNotMounting(projectId: string): void {
+    this.closeLost(projectId);
+    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
+      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
+    }
   }
 
   /** Il lavoro in coda: un errore si scrive sul tentativo, e il lavoro finisce lo stesso. */
@@ -502,8 +500,10 @@ export class AssemblyService implements OnModuleInit {
     const excluded = this.sceneChoices.excluded(projectId);
     const scenes = tickedScenes(allScenes, kept, excluded);
     const tracks = this.audio.tracks(projectId);
-    const clips = this.audio.clips(projectId);
-    const names = Object.values(this.bible.knownIds(projectId).names.characters);
+    // Solo i suoni delle scene del film: cambiarne uno di una scena tolta non rende indietro il film.
+    const sceneIds = new Set(scenes.map(({ sceneNumber }) => sceneIdOf(sceneNumber)));
+    const clips = this.audio.clips(projectId).filter(({ sceneId }) => sceneIds.has(sceneId));
+    const names = castOf(scenes, this.bible.knownIds(projectId).names.characters);
     const titles: AssemblyTitles = {
       title: project.title,
       ...(names.length === 0 ? {} : { cast: `Con ${joinNames(names)}` }),
@@ -541,6 +541,23 @@ function filmFormat(size: { width: number; height: number } | undefined): FilmFo
   return size === undefined
     ? undefined
     : { width: evenSize(size.width), height: evenSize(size.height), fps: FILM_FPS };
+}
+
+/**
+ * Chi nominare nei titoli: chi si vede nel film, non chi sta in una scena tolta. Finché nessuna scena è nel
+ * film sono tutti, così i titoli si leggono già prima.
+ */
+export function castOf(
+  scenes: readonly ScenePlan[],
+  names: Readonly<Record<string, string>>,
+): string[] {
+  if (scenes.length === 0) return Object.values(names);
+  const seen = new Set(
+    scenes.flatMap((scene) =>
+      scene.shots.flatMap((shot) => shot.characters.map(({ characterId }) => characterId)),
+    ),
+  );
+  return Object.entries(names).flatMap(([id, name]) => (seen.has(id) ? [name] : []));
 }
 
 /** L'elenco «Le scene del film»: tutte le scene nell'ordine della storia, con cosa manca a ognuna. */

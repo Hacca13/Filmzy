@@ -123,6 +123,19 @@ describe('le scene del film', () => {
     expect(startButton(html)).toContain('disabled');
   });
 
+  it('se nessuna scena è pronta non chiede di sceglierne una', () => {
+    const html = body(
+      view({
+        scenes: [ready(1, { included: false, gap: { kind: 'not_planned' } })],
+        filmDurationS: 0,
+      }),
+    );
+
+    expect(html).toContain('Nessuna scena è ancora pronta');
+    expect(html).not.toContain('Scegli almeno una scena.');
+    expect(startButton(html)).toContain('disabled');
+  });
+
   it('una storia senza scene lo dice', () => {
     const html = body(view({ scenes: [], filmDurationS: 0 }));
 

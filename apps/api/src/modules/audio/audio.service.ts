@@ -447,11 +447,20 @@ export class AudioService implements OnModuleInit {
     }
     const { scenes } = await this.plans.plans(projectId);
     const final = this.screenplays.latest(projectId, 'final');
+    // Solo le scene sulle tracce (D88): il suono di una scena nascosta non si vedrebbe. La stesura resta intera.
+    const shown = scenesOnLanes(
+      scenes,
+      this.takes.keptTakes(projectId),
+      this.sceneChoices.excluded(projectId),
+    );
+    const shownNumbers = new Set(shown.map(({ sceneNumber }) => sceneNumber));
     const input: SoundPlannerInput = {
       screenplay: final.screenplay,
-      scenes: final.screenplay.scenes.map((scene) => ({ ...scene, id: sceneIdOf(scene.number) })),
+      scenes: final.screenplay.scenes
+        .filter((scene) => shownNumbers.has(scene.number))
+        .map((scene) => ({ ...scene, id: sceneIdOf(scene.number) })),
       // Solo le inquadrature di un piano che vale: quelle di una scena da rifare spariranno.
-      shots: scenes.filter((scene) => !scene.stale).flatMap((scene) => scene.shots),
+      shots: shown.filter((scene) => !scene.stale).flatMap((scene) => scene.shots),
       ...filmPresets(project, config),
       language: project.language,
     };

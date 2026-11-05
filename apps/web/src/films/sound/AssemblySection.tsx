@@ -33,6 +33,18 @@ export function AssemblySection({
   });
   const action = useAction();
 
+  /** Se il server dice che non si può, o che sta già lavorando, la pagina deve dire lo stesso. */
+  const ask = (request: () => Promise<void>) => {
+    action.run(async () => {
+      try {
+        await request();
+      } catch (error) {
+        await reload();
+        throw error;
+      }
+    });
+  };
+
   const firstStamp = useRef(stamp);
   useEffect(() => {
     if (stamp === firstStamp.current) return;
@@ -54,26 +66,14 @@ export function AssemblySection({
             view={value}
             busy={action.busy}
             onToggleScene={(sceneNumber, included) => {
-              action.run(async () => {
-                try {
-                  setValue(await setAssemblyScene(filmId, sceneNumber, { included }));
-                  await onScenesChanged();
-                } catch (error) {
-                  // Il server dice che non si può, o che sta lavorando: l'elenco deve dire lo stesso.
-                  await reload();
-                  throw error;
-                }
+              ask(async () => {
+                setValue(await setAssemblyScene(filmId, sceneNumber, { included }));
+                await onScenesChanged();
               });
             }}
             onStart={() => {
-              action.run(async () => {
-                try {
-                  setValue(await startAssembly(filmId));
-                } catch (error) {
-                  // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
-                  await reload();
-                  throw error;
-                }
+              ask(async () => {
+                setValue(await startAssembly(filmId));
               });
             }}
           />
@@ -171,6 +171,7 @@ export function AssemblyBody({
   const working = assemblyIsWorking(view);
   const made = film?.assetId;
   const noneTicked = !scenes.some((scene) => scene.included);
+  const someReady = scenes.some((scene) => scene.gap === undefined);
 
   return (
     <>
@@ -232,7 +233,11 @@ export function AssemblyBody({
         </>
       )}
       {scenes.length > 0 && noneTicked && !working ? (
-        <p className="hint">Scegli almeno una scena.</p>
+        <p className="hint">
+          {someReady
+            ? 'Scegli almeno una scena.'
+            : 'Nessuna scena è ancora pronta: ognuna ha bisogno dei suoi video.'}
+        </p>
       ) : null}
 
       <div className="actions">

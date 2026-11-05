@@ -106,11 +106,13 @@ function SoundView({
   const { timeline, clips } = editor;
   const [side, setSide] = useState<Side>();
   const action = useAction();
-  const selected = side?.mode === 'clip' ? clips.find(({ id }) => id === side.clipId) : undefined;
-  // Il suono di una scena che non è nel film non è perso: torna con la scena (D85).
+  // Il suono di una scena che non è nel film non è perso: torna con la scena (D85). Non si elenca fra quelli
+  // da sistemare, e se era aperto il pannello si chiude: direbbe che ha perso il posto, e di eliminarlo.
+  const isHidden = ({ sceneId }: AudioClip) => timeline.hiddenSceneIds.includes(sceneId);
+  const opened = side?.mode === 'clip' ? clips.find(({ id }) => id === side.clipId) : undefined;
+  const selected = opened === undefined || isHidden(opened) ? undefined : opened;
   const orphans = clips.filter(
-    ({ id, sceneId }) =>
-      timeline.placements[id] === undefined && !timeline.hiddenSceneIds.includes(sceneId),
+    (clip) => timeline.placements[clip.id] === undefined && !isHidden(clip),
   );
 
   const openNew = async (clip: AudioClip) => {
@@ -137,6 +139,14 @@ function SoundView({
       </p>
 
       <SuggestSounds filmId={filmId} editor={editor} onAccepted={refresh} />
+
+      {timeline.hiddenSceneIds.length === 0 ? null : (
+        <p className="hint">
+          {timeline.scenes.length === 0
+            ? 'Nessuna scena è nel film: spuntane almeno una per vedere le tracce.'
+            : 'Qui ci sono solo le scene del film. I suoni delle altre non sono persi: tornano con la scena.'}
+        </p>
+      )}
 
       {orphans.length === 0 ? null : (
         <Notice tone="info" title="Questi suoni hanno perso il loro posto">

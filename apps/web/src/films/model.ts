@@ -25,6 +25,22 @@ export interface IdeaDraft {
   durationS?: number;
 }
 
+/**
+ * Quello che si sta scrivendo per un film nuovo, finché il programma è aperto. «Vai alle impostazioni» cambia
+ * pagina: chi non ha ancora attivato un servizio non deve perdere la sua idea per andarlo ad attivare.
+ */
+let unsavedNewFilm: IdeaDraft | undefined;
+
+export const newFilmDraft = (): IdeaDraft | undefined => unsavedNewFilm;
+
+export function rememberNewFilmDraft(draft: IdeaDraft): void {
+  unsavedNewFilm = draft;
+}
+
+export function forgetNewFilmDraft(): void {
+  unsavedNewFilm = undefined;
+}
+
 /** Il wizard si apre con le voci già scelte dal server: per partire basta scrivere l'idea. */
 export function initialDraft(options: ProjectOptions): IdeaDraft {
   return { idea: '', title: '', ...options.defaults };

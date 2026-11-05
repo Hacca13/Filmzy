@@ -1078,6 +1078,11 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 6. **Le spunte sono ferme mentre si monta;** una scena senza video non si può spuntare e il server lo controlla comunque. Con nessuna spunta non si monta.
 7. **Una scena si ricorda dal suo numero,** come i suoni. Se la stesura cambia molto, una scena tolta può risultare un'altra: resta scritto «Tolta da te», e con una spunta si rimette.
 
-**Da misurare:** il limite di 10 minuti del Corto (D85) non è provato con lo sceneggiatore vero: costa, e i servizi veri sono rimandati con T4.0. Un film di 10 minuti vuol dire circa 110 inquadrature in una richiesta sola. Anche il costo indicativo non è mai stato confrontato con una spesa vera.
+**Da misurare:** il limite di 10 minuti del Corto (D85) non è provato con lo sceneggiatore vero: costa, e i servizi veri sono rimandati con T4.0. Un film di 10 minuti vuol dire circa 110 inquadrature in una richiesta sola, con 8.000 token di risposta per lo sceneggiatore e 3.000 per il sound designer e la segretaria: facile che non bastino. Un film più lungo di quanto regge fallirebbe dopo aver pagato qualche tentativo. La prova costa pochi centesimi. Anche il costo indicativo non è mai stato confrontato con una spesa vera.
 
-**Non fatto:** «Suggerisci i suoni» guarda ancora tutta la storia, anche le scene tolte. Non preso dal disegno: vedi `design/riferimenti/04-tipo-di-film-e-scene.md`.
+8. **I suoni delle scene fuori dal film non contano:** non rendono indietro il film, «Suggerisci i suoni» non ne propone (il sound designer legge comunque tutta la storia), e il loro pannello si chiude invece di dire «ha perso il posto». Le tracce lo spiegano in una riga.
+9. **Nei titoli di coda c'è chi si vede nel film,** non chi sta solo in una scena tolta.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 10; la più seria era il pannello del suono che, togliendo una scena, invitava a eliminare suoni già pagati. Restano, per scelta: le scene senza video fuori dalle tracce appena una è pronta (punto 5: il suono di quelle scene si riprende quando hanno i video); il numero della scena (punto 7); il limite dei 10 minuti da misurare (sotto). Da provare con T6.6: con molte scene, le miniature (un video per scena) e le card possono riempire le 6 connessioni del browser.
+
+**Non preso dal disegno:** vedi `design/riferimenti/04-tipo-di-film-e-scene.md`.

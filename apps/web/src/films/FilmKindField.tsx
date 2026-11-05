@@ -71,10 +71,8 @@ export function FilmKindBody({
 
   return (
     <fieldset className="film-kind-field">
-      <div className="field-heading">
-        <legend>Che film vuoi fare?</legend>
-        <p className="hint">Serve allo sceneggiatore per capire quanta storia scrivere.</p>
-      </div>
+      <legend>Che film vuoi fare?</legend>
+      <p className="hint">Serve allo sceneggiatore per capire quanta storia scrivere.</p>
       <div className="film-kinds">
         {kinds.map((option) => {
           const texts = FILM_KIND_TEXTS[option.id];

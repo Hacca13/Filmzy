@@ -5,12 +5,15 @@ import {
   choiceLabel,
   draftOf,
   filmSubtitle,
+  forgetNewFilmDraft,
   formatCostRange,
   formatDuration,
   formatLength,
   initialDraft,
   lengthForKind,
+  newFilmDraft,
   noEstimateText,
+  rememberNewFilmDraft,
   phaseLabel,
   toBody,
 } from './model';
@@ -118,6 +121,18 @@ describe('draftOf', () => {
       kind: 'short',
       durationS: 90,
     });
+  });
+});
+
+describe('la bozza di un film nuovo', () => {
+  it('resta se si cambia pagina, e sparisce quando il film è creato', () => {
+    const draft = { ...initialDraft(options), idea: 'Una scintilla' };
+
+    rememberNewFilmDraft(draft);
+    expect(newFilmDraft()).toEqual(draft);
+
+    forgetNewFilmDraft();
+    expect(newFilmDraft()).toBeUndefined();
   });
 });
 

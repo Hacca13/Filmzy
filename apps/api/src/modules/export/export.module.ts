@@ -1,4 +1,5 @@
 import {
+  assemblySceneNumberSchema,
   setAssemblySceneBodySchema,
   startExportBodySchema,
   type AssemblyView,
@@ -83,7 +84,7 @@ class AssemblyController {
   ): Promise<AssemblyView> {
     return this.assembly.setSceneIncluded(
       projectId,
-      Number(sceneNumber),
+      parseBody(assemblySceneNumberSchema, sceneNumber),
       parseBody(setAssemblySceneBodySchema, body).included,
     );
   }

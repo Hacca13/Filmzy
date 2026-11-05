@@ -7,7 +7,15 @@ import { useResource } from '../lib/use-resource';
 import { describeError } from '../settings/messages';
 import { useAction } from '../settings/use-action';
 import { IdeaForm } from './IdeaForm';
-import { draftOf, initialDraft, toBody, type IdeaDraft } from './model';
+import {
+  draftOf,
+  forgetNewFilmDraft,
+  initialDraft,
+  newFilmDraft,
+  rememberNewFilmDraft,
+  toBody,
+  type IdeaDraft,
+} from './model';
 import { filmHref } from './routes';
 
 /**
@@ -51,7 +59,7 @@ interface EditorProps {
 
 function IdeaEditor({ filmId, options, film }: EditorProps) {
   const [draft, setDraft] = useState<IdeaDraft>(
-    film === undefined ? initialDraft(options) : draftOf(film),
+    film === undefined ? (newFilmDraft() ?? initialDraft(options)) : draftOf(film),
   );
   const action = useAction();
 
@@ -61,6 +69,7 @@ function IdeaEditor({ filmId, options, film }: EditorProps) {
     action.run(async () => {
       const saved =
         filmId === undefined ? await createProject(body) : await updateProject(filmId, body);
+      if (filmId === undefined) forgetNewFilmDraft();
       window.location.hash = filmHref(saved.id);
     });
   };
@@ -73,7 +82,10 @@ function IdeaEditor({ filmId, options, film }: EditorProps) {
       <IdeaForm
         options={options}
         draft={draft}
-        onChange={setDraft}
+        onChange={(next) => {
+          setDraft(next);
+          if (filmId === undefined) rememberNewFilmDraft(next);
+        }}
         onSubmit={submit}
         submitLabel={filmId === undefined ? 'Continua' : 'Salva l’idea'}
         busy={action.busy}

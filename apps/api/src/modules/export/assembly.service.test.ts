@@ -2,7 +2,7 @@ import type { ScenePlan, ShotSpec } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { scenesOnLanes, tickedScenes } from '../audio/timeline.js';
-import { joinNames, sceneRows } from './assembly.service.js';
+import { castOf, joinNames, sceneRows } from './assembly.service.js';
 
 const shot = (id: string): ShotSpec => ({ id, intent: { durationS: 4 } }) as unknown as ShotSpec;
 const take = { takeId: 't', assetId: 'a', nativeAudio: false };
@@ -61,6 +61,29 @@ describe('le scene del film', () => {
   it('finché nessuna è pronta si vedono tutte tranne quelle tolte: il suono si prepara prima', () => {
     expect(scenesOnLanes(all, {}, none)).toEqual(all);
     expect(scenesOnLanes(all, {}, new Set([2]))).toEqual([complete, stale, missingVideos]);
+  });
+});
+
+describe('chi si nomina nei titoli', () => {
+  const inScene = (...ids: string[]) =>
+    scene(1, {
+      shots: [
+        {
+          id: 'a',
+          intent: { durationS: 4 },
+          characters: ids.map((characterId) => ({ characterId })),
+        } as unknown as ShotSpec,
+      ],
+    });
+  const names = { anna: 'Anna', luca: 'Luca' };
+
+  it('chi si vede nel film, non chi sta solo in una scena tolta', () => {
+    expect(castOf([inScene('anna')], names)).toEqual(['Anna']);
+    expect(castOf([inScene('luca', 'anna')], names)).toEqual(['Anna', 'Luca']);
+  });
+
+  it('finché nessuna scena è nel film ci sono tutti', () => {
+    expect(castOf([], names)).toEqual(['Anna', 'Luca']);
   });
 });
 

@@ -102,8 +102,11 @@ export class ProjectsService {
   async update(id: string, body: UpdateProjectBody): Promise<Project> {
     const current = this.get(id);
     this.assertChoicesExist(await this.presets(), body);
-    if (body.kind !== undefined || body.durationS !== undefined) {
-      assertLengthFits(body.kind ?? current.kind, body.durationS ?? current.durationS);
+    // Solo se cambiano: un film già fatto può stare fuori dai limiti di oggi, e l'idea si rivede lo stesso.
+    const kind = body.kind ?? current.kind;
+    const durationS = body.durationS ?? current.durationS;
+    if (kind !== current.kind || durationS !== current.durationS) {
+      assertLengthFits(kind, durationS);
     }
     const text = textOf(body);
     if (text !== '') {

@@ -40,13 +40,7 @@ export class FilmEstimateService {
     const loaded = await this.configSource.load();
     if (loaded.config === undefined) throw domainError(503, 'config_invalid', { retryable: true });
 
-    const characterIds = TYPICAL_REFERENCES.characters.map(({ characterId }) => characterId);
-    const standIn = {
-      prompt: 'Una stima: non si invia mai.',
-      inputs: identityStandIns(TYPICAL_REFERENCES),
-      characterIds,
-      idempotencyKey: 'stima-del-film',
-    };
+    const standIn = { prompt: 'Una stima: non si invia mai.', idempotencyKey: 'stima-del-film' };
     const [video, storyboard] = await Promise.all([
       this.defaultPrice({
         ...standIn,
@@ -71,8 +65,22 @@ export class FilmEstimateService {
     };
   }
 
-  private async defaultPrice(request: MediaRequest): Promise<number | undefined> {
-    const options = await this.troupe.options(request.role, request);
+  /**
+   * Il prezzo del servizio predefinito. Prima con i riferimenti di un'inquadratura tipica, poi senza: un servizio
+   * attivato che non ne accetta ha comunque un prezzo, e dire che non c'è niente di attivato sarebbe falso.
+   */
+  private async defaultPrice(
+    request: Omit<MediaRequest, 'inputs' | 'characterIds'>,
+  ): Promise<number | undefined> {
+    const typical = await this.troupe.options(request.role, {
+      ...request,
+      inputs: identityStandIns(TYPICAL_REFERENCES),
+      characterIds: TYPICAL_REFERENCES.characters.map(({ characterId }) => characterId),
+    });
+    const options =
+      typical.length > 0
+        ? typical
+        : await this.troupe.options(request.role, { ...request, inputs: [], characterIds: [] });
     return (options.find((option) => option.isDefault) ?? options[0])?.estimatedCostUsd;
   }
 }

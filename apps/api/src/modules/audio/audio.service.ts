@@ -2,6 +2,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   audioJobPayloadSchema,
   composerInputSchema,
   sfxArtistInputSchema,
@@ -120,7 +121,22 @@ export class AudioService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(AUDIO_JOB_KIND, (job) => this.makeVariant(job.payload));
+    this.runner.register(
+      AUDIO_JOB_KIND,
+      (job) => this.makeVariant(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /** Il programma si è chiuso prima della fine: la variante si chiude, e un'altra la chiede l'utente (D84). */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { variantId } = audioJobPayloadSchema.parse(rawPayload);
+    const status = this.store.getVariant(variantId)?.variant.status;
+    if (status === 'queued' || status === 'running') {
+      this.store.finishVariant(variantId, { status: 'failed', errorCode: JOB_INTERRUPTED });
+    }
   }
 
   overview(projectId: string): AudioOverview {
@@ -451,13 +467,6 @@ export class AudioService implements OnModuleInit {
       return;
     }
     if (variant.status === 'succeeded' || variant.status === 'failed') return;
-    // Già partita e il programma si è chiuso: il servizio può aver già lavorato, e il suo lavoro è perso.
-    // Rimandarla si pagherebbe due volte (regola 10): si chiude, e un'altra la chiede l'utente.
-    if (variant.status === 'running') {
-      this.log.warn('Variante interrotta da un riavvio: non si rimanda da sola.');
-      this.store.finishVariant(variantId, { status: 'failed', errorCode: 'timeout' });
-      return;
-    }
     if (!isGenerated(stored.clip.kind)) return;
     const role = GENERATED[stored.clip.kind].role;
 

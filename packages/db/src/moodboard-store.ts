@@ -61,7 +61,7 @@ export interface MoodboardStore {
   updateRun: (runId: string, patch: RunPatch) => void;
   /** L'ultima richiesta del film. */
   latestRun: (projectId: string) => MoodboardRun | undefined;
-  /** Una richiesta, per riprendere un lavoro rimasto a metà dopo un riavvio. */
+  /** Una richiesta: per chiudere un lavoro rimasto a metà dopo un riavvio (D84). */
   getRun: (runId: string) => MoodboardRun | undefined;
 }
 

@@ -933,7 +933,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 7. **R8** è un avviso leggero senza pulsante: il video è più recente dell'effetto in uso. Conta quando è partito il take, come R4 e R9, quindi tornare a un take più vecchio non si nota: limite noto.
 8. Il moderatore ha un contesto nuovo, `sound`, legge anche l'atmosfera, e rispetta la conferma del limite di spesa (valeva anche per il ritocco, corretto: con la conferma si restava bloccati).
 9. **Un blocco di musica per scena** (D24), vale anche per un file caricato: per cambiarla si cambia variante o si toglie la clip. La musica parte con la scena.
-10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). Dal 5/11 vale anche per i take video, che costano dollari. Le immagini (storyboard, luoghi, schede, moodboard, ritocco) non sono state toccate e possono ancora ripartire: costano centesimi, da correggere a parte.
+10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). Dal 5/11 vale anche per i take video. Superato da D84, che lo estende a tutti i lavori.
 
 **Limiti noti, segnalati dalla rilettura e tenuti:** una stesura riscritta che rinumera le scene lascia la musica sulla scena con quel numero, senza avviso (se la scena non c'è più non si genera: T5.6 deve mostrarlo); lo stesso file caricato in due film resta nella cartella del primo, come le foto (T4.8); R8 non vede un take partito prima dell'effetto e finito dopo.
 
@@ -965,7 +965,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Realizza** T5.7 (§9, D24, D28, D43). Salvare il file dove vuole l'utente è T5.8.
 **Decisione:**
-1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Per questo un lavoro ripreso dopo un riavvio riparte, al contrario di chi paga (D81.10).
+1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Dopo un riavvio si ferma come tutti gli altri (D84).
 2. **Il suono si mette con le durate vere delle clip,** lette dopo la normalizzazione: un video un po' più lungo del previsto non sposta i suoni dopo di lui. La linea del tempo è la stessa funzione dell'editor (D82).
 3. **Si monta solo se c'è tutto:** ogni scena pensata, con un piano che vale, e un video per ogni inquadratura. L'elenco dice cosa manca. I gialli non bloccano: sono avvisi (D74).
 4. **Il formato è quello della prima clip,** a 24 fotogrammi al secondo; le altre prendono le bande, non si deformano. Il testo dei titoli si rimpicciolisce finché ci sta tutto, anche su un film verticale: la dicitura deve vedersi. Qualità e formato da scegliere sono T5.8.
@@ -976,7 +976,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 9. **L'impronta di ciò che entra** dice se il film montato è rimasto indietro: conta solo ciò che si vede o si sente, ed è quella di ciò che si è montato davvero, non di quando è stato chiesto.
 10. **I pezzi intermedi non restano:** la cartella di lavoro si toglie sempre, anche dopo un errore; ogni giro ha la sua, perché quella di un giro interrotto può essere tenuta aperta da un ffmpeg sopravvissuto. Il film ha il checksum come nome; se c'è già è identico, e si tiene quello.
 11. **Un tentativo che fallisce non nasconde il film buono:** l'interfaccia mostra sempre l'ultimo riuscito. Un suono che non si sente (traccia muta, senza posto) non può fermare il film.
-12. **Un tentativo si dà per perso dall'ultimo segno di vita,** non dalla partenza: ogni clip montata ne dà uno, così un montaggio lungo o ripreso dopo un riavvio non si chiude da solo.
+12. **Un tentativo si dà per perso dall'ultimo segno di vita,** non dalla partenza: ogni clip montata ne dà uno, così un montaggio lungo non si chiude da solo.
 
 **Trovato provandolo dal browser:** ffmpeg su Windows non apre i percorsi oltre i 260 caratteri, e il programma diceva «questo file non è un suono». Ora l'errore è quello vero. Nella cartella normale dei dati quel limite non si raggiunge; **una cartella dei dati con un percorso molto lungo non funzionerebbe**: da riguardare con T6.4.
 
@@ -985,3 +985,16 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Limiti noti:** i film montati prima dell'ultimo restano sul disco finché non c'è un modo di toglierli (T5.8); **ffmpeg non si può fermare:** se il programma si chiude a forza durante un montaggio, ffmpeg può continuare da solo fino a 20 minuti per passo (da risolvere con Electron, T6.4, insieme a D63); se cambiano la stesura o il cast con la sezione aperta, i titoli mostrati restano indietro finché non si rilegge (il server usa quelli veri, e un rifiuto rilegge); la voce di un personaggio non c'è (Fase 2).
 
 **Non fatto:** salvare il file altrove, qualità e formato (T5.8); nessuna prova con video veri dei fornitori (T4.0).
+
+## D84 · Dopo un riavvio nessun lavoro riparte da solo — 05/11/2026
+
+**Decisione dell'autore:** «Tutto dopo un riavvio dà una segnalazione dell'errore, ma è l'utente che caccia i soldi a decidere se rifarlo o meno. Questo vale per tutto». Sostituisce D81.10 e D83.1.
+**Come funziona:**
+1. **La regola sta in un posto solo,** l'esecutore della coda: all'avvio ogni lavoro rimasto da fare si chiude con il codice `interrupted`. Vale per quelli a metà e anche per quelli solo in coda, che non hanno ancora speso: partirebbero a spendere con l'utente magari non davanti al computer, giorni dopo.
+2. **Chi registra un lavoro deve dire come chiuderlo:** è obbligatorio, così un tipo nuovo non può dimenticarsene. Vale per video, storyboard, immagini dei luoghi, schede, moodboard, ritocco, suoni e montaggio. Un tentativo già riuscito resta com'è, e quello che è già arrivato (immagini di una scheda o del moodboard) resta.
+3. **L'interfaccia lo dice:** «Il programma si è chiuso prima che finisse · Non riparte da solo: rifallo solo se vuoi», con «Riprova», «Cambia servizio» e l'invito a guardare i costi nel pannello del servizio, che può aver già lavorato. Prima diceva «il servizio ci ha messo troppo», che era falso.
+4. **Anche il montaggio si ferma,** pur essendo gratis: «vale per tutto», e una regola senza eccezioni è più semplice da capire.
+
+**Tolto:** il moodboard che riprendeva dall'ultima immagine arrivata, e i controlli doppi su video e suoni.
+
+**Limite noto:** un servizio che aveva già finito il lavoro è pagato e il risultato non si recupera (già segnato in T4.3). Recuperarlo senza spendere è possibile, ma è un lavoro a parte.

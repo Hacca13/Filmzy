@@ -199,13 +199,16 @@ describe('dopo una chiusura del programma (§7)', () => {
     const ripresa = createJobQueue(secondo.db);
 
     expect(ripresa.get(messo.id)?.status).toBe('running');
-    expect(ripresa.recoverRunning()).toBe(1);
+    const inCoda = ripresa.enqueue({ kind: 'take.generate', payload: { shotId: 'shot-2' } });
 
-    const ripreso = ripresa.get(messo.id);
-    expect(ripreso?.status).toBe('queued');
-    expect(ripreso?.attempts).toBe(1);
-    expect(ripreso?.payload).toEqual({ shotId: 'shot-1' });
-    expect(ripresa.claim(1).map((job) => job.id)).toEqual([messo.id]);
+    const chiusi = ripresa.closeUnfinished({ code: 'interrupted', message: 'Interrotto.' });
+
+    // Né quello in corso né quello in coda ripartono: chi paga deve decidere (D84).
+    expect(chiusi.map((job) => job.id).sort()).toEqual([messo.id, inCoda.id].sort());
+    expect(chiusi.find((job) => job.id === messo.id)?.payload).toEqual({ shotId: 'shot-1' });
+    expect(ripresa.get(messo.id)).toMatchObject({ status: 'failed', errorCode: 'interrupted' });
+    expect(ripresa.claim(5)).toEqual([]);
+    expect(ripresa.closeUnfinished({ code: 'interrupted', message: 'Interrotto.' })).toEqual([]);
 
     secondo.close();
   });

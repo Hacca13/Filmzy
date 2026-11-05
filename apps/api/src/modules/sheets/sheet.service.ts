@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   SHEET_ANGLES,
   sheetJobPayloadSchema,
   type Character,
@@ -77,7 +78,31 @@ export class SheetService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(SHEET_JOB_KIND, (job) => this.makeSheet(job.payload));
+    this.runner.register(
+      SHEET_JOB_KIND,
+      (job) => this.makeSheet(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: le immagini non ancora arrivate si chiudono, e quelle già
+   * arrivate restano. Un altro tentativo lo chiede l'utente (D84).
+   */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { characterId, attempt } = sheetJobPayloadSchema.parse(rawPayload);
+    const images =
+      this.sheets.get(characterId).attempts.find((item) => item.attempt === attempt)?.images ?? [];
+    for (const image of images) {
+      if (isOpen(image.status)) {
+        this.sheets.update(characterId, attempt, image.angle, {
+          status: 'failed',
+          errorCode: JOB_INTERRUPTED,
+        });
+      }
+    }
   }
 
   /** I servizi tra cui scegliere, con la stima **dell'intera scheda**. */

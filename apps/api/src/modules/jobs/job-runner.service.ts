@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from '@filmzy/contracts';
+import { JOB_INTERRUPTED, type Job, type JobStatus } from '@filmzy/contracts';
 import type { EnqueueInput, JobQueue } from '@filmzy/db';
 import {
   Inject,
@@ -17,11 +17,16 @@ import { EventBus } from '../events/event-bus.js';
  * sa farli e dice com'è andata. Gira nello stesso processo del server, con un limite di quanti
  * lavori insieme: un computer di casa non deve generare quattro video in parallelo.
  *
- * All'avvio rimette in coda i lavori rimasti a metà (il programma si era chiuso mentre li faceva)
- * e alla chiusura aspetta quelli in corso, invece di tagliarli di netto.
+ * All'avvio **nessun lavoro riparte**, né quelli a metà né quelli in coda: può costare, e a decidere è
+ * l'utente, che paga (D84). Ognuno si chiude con «interrotto» e chi l'aveva chiesto lo scrive sul suo
+ * tentativo, così l'interfaccia lo dice e offre di rifarlo. Alla chiusura aspetta quelli in corso, invece
+ * di tagliarli di netto.
  */
 
 export type JobHandler = (job: Job) => Promise<void>;
+
+/** Scrive sul tentativo che il lavoro non si farà più. Non chiama fornitori, e non rifà niente. */
+export type JobInterruptedHandler = (job: Job) => void;
 
 export const JOB_RUNNER_OPTIONS = Symbol('JOB_RUNNER_OPTIONS');
 
@@ -43,6 +48,7 @@ const RETRYABLE_CODES = new Set(['provider_unavailable', 'timeout', 'rate_limite
 export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly log = new Logger('Lavori');
   private readonly handlers = new Map<string, JobHandler>();
+  private readonly interruptedHandlers = new Map<string, JobInterruptedHandler>();
   private readonly inFlight = new Set<Promise<void>>();
   private readonly concurrency: number;
   private readonly pollIntervalMs: number;
@@ -58,19 +64,21 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     this.pollIntervalMs = options.pollIntervalMs ?? 1000;
   }
 
-  /** Chi sa fare un tipo di lavoro si registra all'avvio del suo modulo. */
-  register(kind: string, handler: JobHandler): void {
+  /**
+   * Chi sa fare un tipo di lavoro si registra all'avvio del suo modulo, e dice anche come chiuderlo se il
+   * programma si ferma prima della fine: è obbligatorio, così nessun lavoro resta aperto per dimenticanza.
+   */
+  register(kind: string, handler: JobHandler, onInterrupted: JobInterruptedHandler): void {
     if (this.handlers.has(kind)) {
       throw new Error(`C'è già chi fa il lavoro "${kind}".`);
     }
     this.handlers.set(kind, handler);
+    this.interruptedHandlers.set(kind, onInterrupted);
   }
 
   onApplicationBootstrap(): void {
-    const ripresi = this.queue.recoverRunning();
-    if (ripresi > 0) {
-      this.log.log(`${String(ripresi)} lavori interrotti rimessi in coda.`);
-    }
+    this.stopping = false;
+    this.closeInterrupted();
 
     // Il controllo periodico serve quando nessuno chiama `wake`: un lavoro che aspetta un nuovo
     // tentativo (`runAfter` nel futuro) e il prossimo della fila quando uno finisce. Un secondo di
@@ -80,6 +88,26 @@ export class JobRunner implements OnApplicationBootstrap, OnApplicationShutdown 
     }, this.pollIntervalMs);
     this.timer.unref();
     this.wake();
+  }
+
+  /** I lavori rimasti da fare si chiudono tutti: uno che non si riesce a scrivere non ferma gli altri. */
+  private closeInterrupted(): void {
+    const closed = this.queue.closeUnfinished({
+      code: JOB_INTERRUPTED,
+      message: 'Il programma si è chiuso prima che il lavoro finisse.',
+    });
+    for (const job of closed) {
+      try {
+        this.interruptedHandlers.get(job.kind)?.(job);
+      } catch (error) {
+        const reason = error instanceof Error ? error.name : 'errore';
+        this.log.warn(`Lavoro "${job.kind}" (${job.id}) interrotto, non scritto: ${reason}.`);
+      }
+      this.announce(job, 'failed');
+    }
+    if (closed.length > 0) {
+      this.log.warn(`${String(closed.length)} lavori interrotti: non ripartono da soli.`);
+    }
   }
 
   async onApplicationShutdown(): Promise<void> {

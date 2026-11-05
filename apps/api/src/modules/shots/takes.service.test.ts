@@ -1,4 +1,5 @@
 import {
+  JOB_INTERRUPTED,
   ROLE_INPUT_EXAMPLES,
   cinematographerInputSchema,
   shotPlannerInputSchema,
@@ -95,6 +96,7 @@ let openedDb: Awaited<ReturnType<typeof openFilmzyDatabase>>['db'];
 let store: ShotStore;
 let takes: TakeStore;
 let handlers: Map<string, (job: { payload: unknown }) => Promise<void>>;
+let interrupted: Map<string, (job: { payload: unknown }) => void>;
 let enqueued: EnqueueInput[];
 let registered: { id: string }[];
 let written: { role: string; input: unknown; ctx: GenerationContext }[];
@@ -190,8 +192,13 @@ function build() {
   };
   const spend: SpendGuard = { check: () => Promise.resolve(breach) };
   const runner = {
-    register: (kind: string, handler: (job: { payload: unknown }) => Promise<void>) => {
+    register: (
+      kind: string,
+      handler: (job: { payload: unknown }) => Promise<void>,
+      onInterrupted: (job: { payload: unknown }) => void,
+    ) => {
       handlers.set(kind, handler);
+      interrupted.set(kind, onInterrupted);
     },
     enqueue: (input: EnqueueInput) => {
       enqueued.push(input);
@@ -251,6 +258,14 @@ async function runQueued(index = 0): Promise<void> {
   await handler({ payload: job.payload });
 }
 
+/** Come all'avvio, dopo una chiusura: il lavoro in coda non si fa, e lo si scrive sul take. */
+function interruptedQueued(index = 0): void {
+  const job = enqueued[index];
+  const close = interrupted.get(TAKE_JOB_KIND);
+  if (job === undefined || close === undefined) throw new Error('nessun lavoro in coda');
+  close({ payload: job.payload });
+}
+
 const only = () => {
   const [first] = takes.list('shot-1');
   if (first === undefined) throw new Error('doveva esserci un take');
@@ -291,6 +306,7 @@ beforeEach(async () => {
   });
 
   handlers = new Map();
+  interrupted = new Map();
   enqueued = [];
   registered = [];
   written = [];
@@ -581,15 +597,24 @@ describe('il lavoro in coda', () => {
     expect(only()).toMatchObject({ status: 'succeeded', assetId: 'clip-1' });
   });
 
-  it('un take interrotto da un riavvio non si rimanda da solo: si pagherebbe due volte', async () => {
+  it('un take interrotto da un riavvio si chiude col suo motivo, e non si spende niente (D84)', async () => {
     await build().start(film.id, 'shot-1', {});
     takes.finish(only().id, { status: 'running' });
 
-    await runQueued();
+    interruptedQueued();
 
     expect(written).toEqual([]);
     expect(submitted).toEqual([]);
-    expect(only()).toMatchObject({ status: 'failed', errorCode: 'timeout' });
+    expect(only()).toMatchObject({ status: 'failed', errorCode: JOB_INTERRUPTED });
+  });
+
+  it('uno già riuscito resta com’è, anche se il lavoro risultava ancora in corso', async () => {
+    await build().start(film.id, 'shot-1', {});
+    await runQueued();
+
+    interruptedQueued();
+
+    expect(only()).toMatchObject({ status: 'succeeded', assetId: 'clip-1' });
   });
 
   it('se il piano è stato rifatto mentre il lavoro aspettava, non c’è più niente da fare', async () => {

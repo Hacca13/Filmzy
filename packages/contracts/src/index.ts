@@ -202,5 +202,5 @@ export * from './moodboard-api.js';
 export * from './script-check.js';
 export { domainEventSchema, jobChangedEventSchema } from './events.js';
 export type { DomainEvent, JobChangedEvent } from './events.js';
-export { JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';
+export { JOB_INTERRUPTED, JOB_STATUSES, jobSchema, jobStatusSchema } from './jobs.js';
 export type { Job, JobStatus } from './jobs.js';

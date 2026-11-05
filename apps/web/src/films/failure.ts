@@ -39,6 +39,13 @@ const TECHNICAL: Failure = {
 };
 
 const BY_CODE: Record<string, Failure> = {
+  // Il programma si è chiuso prima della fine: non riparte da solo, perché a decidere è chi paga (D84).
+  interrupted: {
+    reason: 'Il programma si è chiuso prima che finisse',
+    advice: 'Non riparte da solo: rifallo solo se vuoi',
+    actions: [retry, changeService],
+    mayHaveCost: true,
+  },
   provider_auth_failed: {
     reason: 'La chiave non è valida',
     advice: 'Sostituisci la chiave',

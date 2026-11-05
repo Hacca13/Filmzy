@@ -219,7 +219,7 @@ describe('creare il moodboard', () => {
   }, 60_000);
 });
 
-describe('un lavoro ripreso dopo un riavvio (regola 10)', () => {
+describe('un lavoro ripetuto (regola 10)', () => {
   /** Il lavoro com'è in coda, rimesso insieme da ciò che la richiesta ha lasciato. */
   async function resumable() {
     const { film } = await filmWithShot(normal.client);
@@ -248,26 +248,6 @@ describe('un lavoro ripreso dopo un riavvio (regola 10)', () => {
 
   const artistReceipts = () =>
     normal.receipts.list().filter((receipt) => receipt.role === 'moodboard_artist').length;
-
-  it('riparte dall’ultima immagine arrivata: le altre non si rifanno né si ripagano', async () => {
-    const { film, payload, references, done, store, service } = await resumable();
-    // Come dopo un riavvio a metà: la seconda immagine non c'era ancora arrivata.
-    store.removeReference(film.id, references[1]?.id ?? '');
-    store.updateRun(payload.runId, {
-      status: 'running',
-      images: 1,
-      costUsd: done.run?.costUsd ?? 0,
-    });
-    const before = artistReceipts();
-
-    await service.makeImages(payload);
-
-    const after = await read(normal, film.id);
-    expect(after.run).toMatchObject({ status: 'succeeded', images: 2 });
-    expect(after.moodboard.film.references).toHaveLength(2);
-    expect(after.moodboard.film.references[0]?.assetId).toBe(references[0]?.assetId);
-    expect(artistReceipts()).toBe(before + 1);
-  }, 90_000);
 
   it('un lavoro già finito non fa niente', async () => {
     const { film, payload, service } = await resumable();

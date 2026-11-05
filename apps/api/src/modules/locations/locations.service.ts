@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   locationJobPayloadSchema,
   type AddLocationBody,
   type Location,
@@ -90,7 +91,30 @@ export class LocationsService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(LOCATION_JOB_KIND, (job) => this.makeImages(job.payload));
+    this.runner.register(
+      LOCATION_JOB_KIND,
+      (job) => this.makeImages(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: il tentativo si chiude, e un altro lo chiede l'utente (D84).
+   * Vale anche per il ritocco, che è un tentativo del luogo come gli altri.
+   */
+  closeInterrupted(rawPayload: unknown): void {
+    const { locationId, attempt } = locationJobPayloadSchema.parse(rawPayload);
+    const status = this.store
+      .images(locationId)
+      .attempts.find((candidate) => candidate.attempt === attempt)?.status;
+    if (status === 'queued' || status === 'running') {
+      this.store.finishAttempt(locationId, attempt, {
+        status: 'failed',
+        errorCode: JOB_INTERRUPTED,
+      });
+    }
   }
 
   /** I luoghi del film e quelli proposti dalla bozza che non sono ancora stati aggiunti. */

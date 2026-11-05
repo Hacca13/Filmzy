@@ -614,12 +614,12 @@ sequenceDiagram
 
 1. L'utente preme "Genera", oppure «Cambia servizio» per sceglierne un altro: in quel caso l'app chiede alla troupe l'elenco (`troupe.options`, con nome, costo e voto) e la richiesta porta il `modelId` scelto (D36). L'app chiede alla troupe la stima (`troupe.estimate`, che fissa il servizio, scelto o predefinito, e il suo costo) e controlla i tetti di spesa (D30): se ne supera uno, mostra la cifra e chiede conferma. Crea lo scontrino (`queued`) e mette in coda `take.generate` con una chiave di idempotenza.
 2. Il lavoro assembla Bibbia e ShotSpec. La troupe usa il servizio fissato al passo 1 (il router lo ricontrolla: se nel frattempo, per esempio, una chiave è sparita, `no_eligible_model`), il direttore della fotografia scrive il prompt per la sua famiglia, il traduttore costruisce la richiesta e l'adapter la invia. Scontrino `running`.
-3. Un controllo periodico (polling) chiede a fal se il lavoro è finito. La coda è salvata in SQLite: se l'app si chiude, al riavvio i lavori ripartono dal polling.
+3. Un controllo periodico (polling) chiede a fal se il lavoro è finito. La coda è salvata in SQLite: se l'app si chiude, al riavvio **nessun lavoro riparte**, né a metà né in coda. Ognuno si chiude con il codice `interrupted`, l'interfaccia lo dice e decide l'utente, che paga (D84).
 4. Appena è pronto, l'app copia il video nella cartella del progetto, crea asset e take (collegati allo scontrino, che dice il servizio che ha lavorato), chiude lo scontrino con costo reale e tempi (che alimentano la spesa del film) e pubblica `take.ready`.
 5. L'interfaccia riceve l'evento via SSE e mostra il take nella card.
 6. Se qualcosa va storto: errori tecnici → pochi nuovi tentativi sullo stesso servizio, poi il lavoro si ferma e l'interfaccia dice perché e cosa fare (§4.10), senza passare a un altro servizio; `content_rejected` → take rifiutato con un messaggio semplice; nessuna risposta entro il tempo massimo → `failed`.
 
-Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa: la chiave di idempotenza sta nello scontrino.
+Un lavoro ripetuto non conta due volte nella spesa: la chiave di idempotenza sta nello scontrino.
 
 ### 7.1 Com'è fatta la coda
 
@@ -654,7 +654,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - Nei titoli compare la dicitura "Contiene contenuti generati con intelligenza artificiale".
 - Marcatura leggibile dalle macchine (C2PA): opzione dopo l'MVP (`c2pa_marking`, D31). Filigrane e metadati dei fornitori non si rimuovono, ma l'esportazione ricodifica i video, quindi non è garantito che sopravvivano.
 - Il file finale si salva nella cartella del progetto e l'app lo mostra nella cartella di esportazione.
-- **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, se è indietro, i titoli) e `POST /projects/:id/assembly`. Il montaggio non chiama fornitori: non costa, e un lavoro ripreso dopo un riavvio riparte da capo.
+- **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, se è indietro, i titoli) e `POST /projects/:id/assembly`. Il montaggio non chiama fornitori e non costa; dopo un riavvio si ferma come ogni altro lavoro (D84).
 
 ## 10. Sicurezza, privacy e responsabilità
 

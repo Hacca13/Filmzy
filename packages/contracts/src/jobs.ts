@@ -12,6 +12,12 @@ import { projectIdSchema } from './ids.js';
  */
 export const JOB_STATUSES = ['queued', 'running', 'done', 'failed', 'cancelled'] as const;
 
+/**
+ * Il motivo di un lavoro trovato da fare all'avvio: il programma si è chiuso prima che finisse. Non riparte
+ * mai da solo, perché può costare, e a decidere è l'utente, che paga (D84).
+ */
+export const JOB_INTERRUPTED = 'interrupted';
+
 export const jobStatusSchema = z.enum(JOB_STATUSES);
 
 export type JobStatus = z.infer<typeof jobStatusSchema>;

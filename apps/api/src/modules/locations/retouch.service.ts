@@ -87,7 +87,13 @@ export class RetouchService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(RETOUCH_JOB_KIND, (job) => this.retouch(job.payload));
+    this.runner.register(
+      RETOUCH_JOB_KIND,
+      (job) => this.retouch(job.payload),
+      (job) => {
+        this.locations.closeInterrupted(job.payload);
+      },
+    );
   }
 
   /** I servizi tra cui scegliere per questo ritocco, con la stima. */

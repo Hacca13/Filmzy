@@ -20,7 +20,7 @@ export interface StoredAssembly {
   projectId: string;
   /** L'impronta di ciò che è entrato nel film: se cambia, il film montato è indietro. */
   fingerprint: string;
-  /** L'ultimo segno di vita (ms): un montaggio lungo o ripreso dopo un riavvio è vivo. */
+  /** L'ultimo segno di vita (ms): un montaggio lungo è vivo. */
   lastActivityAt: number;
   assembly: FilmAssembly;
 }

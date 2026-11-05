@@ -2,13 +2,13 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import type { DomainEvent } from '@filmzy/contracts';
+import { JOB_INTERRUPTED, type DomainEvent } from '@filmzy/contracts';
 import { createJobQueue, openFilmzyDatabase, type JobQueue, type OpenedDatabase } from '@filmzy/db';
 import { Logger } from '@nestjs/common';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { EventBus } from '../events/event-bus.js';
-import { JobRunner } from './job-runner.service.js';
+import { JobRunner, type JobHandler, type JobInterruptedHandler } from './job-runner.service.js';
 
 /** I test non devono sporcare l'uscita: il registro di Nest si spegne una volta per tutte. */
 beforeAll(() => {
@@ -37,10 +37,19 @@ afterEach(async () => {
   aperto.close();
 });
 
+/** Registra un lavoro: come chiuderlo dopo un riavvio serve solo alle prove che lo guardano. */
+const register = (
+  kind: string,
+  handler: JobHandler,
+  onInterrupted: JobInterruptedHandler = () => undefined,
+) => {
+  runner.register(kind, handler, onInterrupted);
+};
+
 describe("l'esecutore della coda (§7)", () => {
   it('fa il lavoro e lo chiude', async () => {
     const fatti: string[] = [];
-    runner.register('prova', (job) => {
+    register('prova', (job) => {
       fatti.push(job.id);
       return Promise.resolve();
     });
@@ -54,7 +63,7 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('dice all’interfaccia quando un lavoro parte e quando finisce, con il film e ciò a cui si riferisce (T4.4)', async () => {
-    runner.register('prova', () => Promise.resolve());
+    register('prova', () => Promise.resolve());
     const messo = queue.enqueue({
       kind: 'prova',
       payload: { shotId: 'shot-1', segreto: 'testo dell’utente' },
@@ -80,7 +89,7 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('mettere un lavoro in coda dal modulo lo annuncia «in coda» e lo fa partire (T4.4)', async () => {
-    runner.register('prova', () => Promise.resolve());
+    register('prova', () => Promise.resolve());
 
     const messo = runner.enqueue({
       kind: 'prova',
@@ -98,10 +107,10 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('un lavoro fallito lo dice come tale; uno che ritenta torna «in coda»', async () => {
-    runner.register('tecnico', () =>
+    register('tecnico', () =>
       Promise.reject(Object.assign(new Error('Non risponde.'), { code: 'timeout' })),
     );
-    runner.register('rifiuto', () =>
+    register('rifiuto', () =>
       Promise.reject(Object.assign(new Error('Rifiutato.'), { code: 'content_rejected' })),
     );
     queue.enqueue({ kind: 'tecnico', payload: {}, maxAttempts: 2 });
@@ -137,7 +146,7 @@ describe("l'esecutore della coda (§7)", () => {
     let massimo = 0;
     const liberi: (() => void)[] = [];
 
-    runner.register('lento', () => {
+    register('lento', () => {
       insieme += 1;
       massimo = Math.max(massimo, insieme);
       return new Promise<void>((resolve) => {
@@ -166,10 +175,10 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('un errore tecnico torna in coda, uno no si ferma (§4.10)', async () => {
-    runner.register('tecnico', () =>
+    register('tecnico', () =>
       Promise.reject(Object.assign(new Error('Il servizio non risponde.'), { code: 'timeout' })),
     );
-    runner.register('rifiuto', () =>
+    register('rifiuto', () =>
       Promise.reject(
         Object.assign(new Error('Contenuto rifiutato.'), { code: 'content_rejected' }),
       ),
@@ -187,7 +196,7 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('un errore senza codice non si ritenta: sarebbe un errore nostro', async () => {
-    runner.register('rotto', () => Promise.reject(new TypeError('x.y non esiste')));
+    register('rotto', () => Promise.reject(new TypeError('x.y non esiste')));
 
     const messo = queue.enqueue({ kind: 'rotto', payload: {}, maxAttempts: 3 });
     runner.wake();
@@ -206,26 +215,129 @@ describe("l'esecutore della coda (§7)", () => {
     expect(queue.get(messo.id)?.errorCode).toBe('config_invalid');
   });
 
-  it("all'avvio rimette in coda i lavori rimasti a metà", async () => {
-    const messo = queue.enqueue({ kind: 'prova', payload: {} });
+  it('all’avvio nessun lavoro riparte: né a metà né in coda, e ognuno lo scrive sul suo tentativo', async () => {
+    const aMeta = queue.enqueue({ kind: 'prova', payload: { n: 1 } });
     queue.claim(1); // come se il programma si fosse chiuso qui
-    expect(queue.get(messo.id)?.status).toBe('running');
+    const inCoda = queue.enqueue({ kind: 'prova', payload: { n: 2 } });
 
     const fatti: string[] = [];
-    runner.register('prova', (job) => {
+    const chiusi: unknown[] = [];
+    register(
+      'prova',
+      (job) => {
+        fatti.push(job.id);
+        return Promise.resolve();
+      },
+      (job) => {
+        chiusi.push(job.payload);
+      },
+    );
+    await runner.start();
+    await runner.drain();
+
+    expect(fatti).toEqual([]);
+    expect(chiusi).toHaveLength(2);
+    expect(chiusi).toEqual(expect.arrayContaining([{ n: 1 }, { n: 2 }]));
+    for (const job of [aMeta, inCoda]) {
+      expect(queue.get(job.id)).toMatchObject({ status: 'failed', errorCode: JOB_INTERRUPTED });
+    }
+  });
+
+  it('un lavoro che non si riesce a chiudere non ferma gli altri', async () => {
+    queue.enqueue({ kind: 'rotto', payload: {} });
+    queue.enqueue({ kind: 'prova', payload: {} });
+    const chiusi: string[] = [];
+    register(
+      'rotto',
+      () => Promise.resolve(),
+      () => {
+        throw new Error('tentativo illeggibile');
+      },
+    );
+    register(
+      'prova',
+      () => Promise.resolve(),
+      (job) => {
+        chiusi.push(job.kind);
+      },
+    );
+
+    await runner.start();
+    await runner.drain();
+
+    expect(chiusi).toEqual(['prova']);
+    // Anche quello che non si è riuscito a scrivere è chiuso: in coda partirebbe, e spenderebbe.
+    expect(queue.unfinished()).toEqual([]);
+  });
+
+  it('un lavoro di un tipo che nessuno sa chiudere si chiude comunque', async () => {
+    const messo = queue.enqueue({ kind: 'tolto.con.un.aggiornamento', payload: {} });
+
+    await runner.start();
+    await runner.drain();
+
+    expect(queue.get(messo.id)).toMatchObject({ status: 'failed', errorCode: JOB_INTERRUPTED });
+  });
+
+  it('mentre chiude non si prende nessun lavoro, e aspetta le chiusure che tolgono file', async () => {
+    const messo = queue.enqueue({ kind: 'prova', payload: {} });
+    const fatti: string[] = [];
+    let durante: string | undefined;
+    register(
+      'prova',
+      (job) => {
+        fatti.push(job.id);
+        return Promise.resolve();
+      },
+      async () => {
+        runner.wake();
+        await Promise.resolve();
+        durante = queue.get(messo.id)?.status;
+      },
+    );
+
+    await runner.start();
+    await runner.drain();
+
+    expect(durante).toBe('queued');
+    expect(fatti).toEqual([]);
+    expect(queue.get(messo.id)?.status).toBe('failed');
+  });
+
+  it('prima delle chiusure fa le pulizie di chi non ha un lavoro in coda', async () => {
+    const fatte: string[] = [];
+    runner.atStart(() => {
+      fatte.push('prima');
+    });
+    runner.atStart(() => {
+      throw new Error('rotta');
+    });
+    runner.atStart(() => {
+      fatte.push('dopo una rotta');
+    });
+
+    await runner.start();
+
+    expect(fatte).toEqual(['prima', 'dopo una rotta']);
+  });
+
+  it('un lavoro chiesto dopo l’avvio parte normalmente', async () => {
+    const fatti: string[] = [];
+    register('prova', (job) => {
       fatti.push(job.id);
       return Promise.resolve();
     });
-    runner.onApplicationBootstrap();
+    await runner.start();
+
+    const messo = runner.enqueue({ kind: 'prova', payload: {} });
     await runner.drain();
 
     expect(fatti).toEqual([messo.id]);
     expect(queue.get(messo.id)?.status).toBe('done');
-    expect(queue.get(messo.id)?.attempts).toBe(2);
   });
 
   it('dopo la chiusura non prende lavori nuovi', async () => {
-    runner.register('prova', () => Promise.resolve());
+    register('prova', () => Promise.resolve());
     await runner.onApplicationShutdown();
 
     const messo = queue.enqueue({ kind: 'prova', payload: {} });
@@ -236,10 +348,10 @@ describe("l'esecutore della coda (§7)", () => {
   });
 
   it('due moduli non possono fare lo stesso lavoro', () => {
-    runner.register('prova', () => Promise.resolve());
+    register('prova', () => Promise.resolve());
 
     expect(() => {
-      runner.register('prova', () => Promise.resolve());
+      register('prova', () => Promise.resolve());
     }).toThrow(/già chi fa/);
   });
 });

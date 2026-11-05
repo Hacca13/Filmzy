@@ -17,7 +17,6 @@ import {
   soundSuggestionsSchema,
   type AudioClip,
 } from '@filmzy/contracts';
-import type { AudioStore, ReceiptStore } from '@filmzy/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -31,9 +30,6 @@ import {
 import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import { ModerationService } from '../moderation/moderation.service.js';
-import { RECEIPT_STORE } from '../troupe/tokens.js';
-import { AUDIO_JOB_KIND } from './audio.service.js';
-import { AUDIO_STORE } from './tokens.js';
 
 /** Musica ed effetti col server vero, la coda e il fornitore finto: nessuna spesa (regola 5). */
 let app: NestExpressApplication;
@@ -493,39 +489,6 @@ describe('prima di spendere', () => {
       spy.mockRestore();
     }
     expect((await generate(client, audio, clip.id)).chosenVariantId).toBeDefined();
-  });
-
-  it('una variante interrotta da un riavvio non si rimanda da sola: si pagherebbe due volte', async () => {
-    const { film } = await filmWithFinal(client);
-    const audio = audioOf(film.id);
-    const clip = await clipOf(client, audio);
-    const store = app.get<AudioStore>(AUDIO_STORE, { strict: false });
-    const receipts = app.get<ReceiptStore>(RECEIPT_STORE, { strict: false });
-    const variant = store.startVariant(clip.id, { modelId: 'music-stable-audio-3' });
-    store.finishVariant(variant.id, { status: 'running' });
-    const before = receipts.list().filter((r) => r.projectId === film.id).length;
-
-    app.get(JobRunner, { strict: false }).enqueue({
-      kind: AUDIO_JOB_KIND,
-      payload: {
-        projectId: film.id,
-        clipId: clip.id,
-        variantId: variant.id,
-        modelId: 'music-stable-audio-3',
-      },
-      projectId: film.id,
-      idempotencyKey: `prova:${variant.id}`,
-    });
-
-    for (let attempt = 0; attempt < 150; attempt += 1) {
-      if (store.getVariant(variant.id)?.variant.status === 'failed') break;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    expect(store.getVariant(variant.id)?.variant).toMatchObject({
-      status: 'failed',
-      errorCode: 'timeout',
-    });
-    expect(receipts.list().filter((r) => r.projectId === film.id)).toHaveLength(before);
   });
 
   it('una funzione spenta dopo aver creato la clip non spende', async () => {

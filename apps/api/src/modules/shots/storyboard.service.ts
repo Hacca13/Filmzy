@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   storyboardJobPayloadSchema,
   type ModelOption,
   type SheetOptions,
@@ -49,6 +50,7 @@ import {
   storyboardTarget,
 } from './storyboard-input.js';
 import { SHOT_STORE } from './tokens.js';
+import { isOpenStatus } from './work.js';
 
 const ROLE = 'storyboard_artist';
 
@@ -115,7 +117,27 @@ export class StoryboardService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(STORYBOARD_JOB_KIND, (job) => this.makeImages(job.payload));
+    this.runner.register(
+      STORYBOARD_JOB_KIND,
+      (job) => this.makeImages(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /** Il programma si è chiuso prima della fine: il tentativo si chiude, e un altro lo chiede l'utente (D84). */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { shotId, mode, attempt } = storyboardJobPayloadSchema.parse(rawPayload);
+    const current = this.store
+      .storyboard(shotId, mode)
+      .attempts.find((candidate) => candidate.attempt === attempt);
+    if (isOpenStatus(current?.status)) {
+      this.store.finishStoryboard(shotId, mode, attempt, {
+        status: 'failed',
+        errorCode: JOB_INTERRUPTED,
+      });
+    }
   }
 
   /** I servizi tra cui scegliere, con la stima di tutto il tentativo (testo e immagini). */
@@ -242,8 +264,8 @@ export class StoryboardService implements OnModuleInit {
       return;
     }
 
-    // Un lavoro ripetuto (per esempio dopo un riavvio) su un tentativo già chiuso non rifà niente:
-    // non si paga due volte (regola 10) e non si cancellano le varianti già pronte.
+    // Un lavoro ripetuto su un tentativo già chiuso non rifà niente: non si paga due volte (regola 10) e
+    // non si cancellano le varianti già pronte.
     const current = this.store
       .storyboard(shotId, mode)
       .attempts.find((candidate) => candidate.attempt === attempt);

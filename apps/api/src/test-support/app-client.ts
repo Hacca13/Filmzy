@@ -7,7 +7,7 @@ import { draftViewSchema, type DraftView } from '@filmzy/contracts';
 import type { ConfigEnvironment } from '@filmzy/troupe';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 
-import { createApp } from '../create-app.js';
+import { createApp, listenAndStart } from '../create-app.js';
 import type { SecretCipher } from '../modules/secrets/secret-cipher.js';
 
 /** La cartella `config/` del repository: i file di seme veri. */
@@ -54,8 +54,10 @@ export async function startApp(
   cipher?: SecretCipher,
   environment: ConfigEnvironment | 'none' = 'offline',
   configDir: string = CONFIG_DIR,
+  /** La cartella di un film già fatto: per provare un riavvio vero. */
+  existingDataDir?: string,
 ) {
-  const dataDir = await mkdtemp(path.join(tmpdir(), 'filmzy-impostazioni-'));
+  const dataDir = existingDataDir ?? (await mkdtemp(path.join(tmpdir(), 'filmzy-impostazioni-')));
   const app: NestExpressApplication = await createApp({
     logger: false,
     dataDir,
@@ -63,7 +65,7 @@ export async function startApp(
     ...(environment === 'none' ? {} : { environment }),
     ...(cipher === undefined ? {} : { cipher }),
   });
-  await app.listen(0, '127.0.0.1');
+  await listenAndStart(app, 0, '127.0.0.1');
   return { app, dataDir, client: new Client(await app.getUrl()) };
 }
 

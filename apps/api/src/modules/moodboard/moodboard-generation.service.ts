@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   moodboardJobPayloadSchema,
   type GenerateMoodboardBody,
   type MoodboardDesignerInput,
@@ -89,7 +90,17 @@ export class MoodboardGenerationService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(MOODBOARD_JOB_KIND, (job) => this.makeImages(job.payload));
+    this.runner.register(
+      MOODBOARD_JOB_KIND,
+      (job) => this.makeImages(job.payload),
+      // Le richieste aperte le chiude la pulizia qui sotto, che le prende tutte.
+      () => undefined,
+    );
+    // La richiesta si apre prima di scrivere i consigli e il lavoro va in coda solo dopo: chiudendo in mezzo
+    // non c'è nessun lavoro da cui risalire, quindi si guardano le richieste. Le immagini arrivate restano.
+    this.runner.atStart(() => {
+      this.store.closeOpenRuns(JOB_INTERRUPTED);
+    });
   }
 
   /** I servizi per le immagini, con la stima di **tutto** il lavoro: il testo e le immagini. */
@@ -167,19 +178,17 @@ export class MoodboardGenerationService implements OnModuleInit {
 
   /**
    * Il lavoro in coda: un'immagine per prompt, una dopo l'altra. Se una fallisce la richiesta si ferma
-   * col suo motivo (e le immagini già arrivate restano): un'altra richiesta la decide l'utente. Un
-   * lavoro ripreso dopo un riavvio riparte dall'ultima immagine arrivata, senza rifare né ripagare le
-   * altre (regola 10).
+   * col suo motivo (e le immagini già arrivate restano): un'altra richiesta la decide l'utente.
    */
   async makeImages(rawPayload: unknown): Promise<void> {
     const payload = moodboardJobPayloadSchema.parse(rawPayload);
     const { projectId, runId } = payload;
 
-    const previous = this.store.getRun(runId);
-    if (previous?.status === 'succeeded') return;
-    const alreadyMade = previous?.images ?? 0;
-    let images = alreadyMade;
-    let costUsd = previous?.costUsd ?? 0;
+    // Una richiesta già chiusa non rifà niente: si pagherebbe due volte (regola 10).
+    const status = this.store.getRun(runId)?.status;
+    if (status === 'succeeded' || status === 'failed') return;
+    let images = 0;
+    let costUsd = 0;
     try {
       this.store.updateRun(runId, { status: 'running' });
       const project = this.projects.get(projectId);
@@ -187,7 +196,6 @@ export class MoodboardGenerationService implements OnModuleInit {
       const media = this.mediaFor(path.join(projectsDir(this.dataDir), projectId, 'immagini'));
 
       for (const [index, prompt] of payload.prompts.entries()) {
-        if (index < alreadyMade) continue;
         const request = await this.artistRequest(
           project,
           config,

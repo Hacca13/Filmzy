@@ -49,7 +49,7 @@ FILMZY_DATA_DIR=./dati-di-prova pnpm dev            # dati in una cartella di pr
 7. **Nessun segreto nel repository:** nella configurazione solo `env:NOME` oppure `secret:NOME` (le chiavi inserite dall'utente, nel portachiavi del sistema); `.env` resta fuori da git.
 8. **La logica sta nel backend.** L'interfaccia mostra e invia, non decide.
 9. **Lavori lunghi in coda.** Nessuna chiamata a un modello immagine o video dentro una richiesta HTTP.
-10. **Idempotenza:** un lavoro ripetuto (per esempio dopo un riavvio) non deve contare due volte nella spesa.
+10. **Idempotenza:** un lavoro ripetuto non deve contare due volte nella spesa. **Dopo un riavvio nessun lavoro riparte da solo:** si chiude con il motivo e decide l'utente, che paga (D84).
 11. **I file dei fornitori si copiano subito** nella cartella del progetto: mai salvare solo il loro link.
 12. **Interfaccia in italiano e semplice:** nelle schermate normali l'utente finale non vede mai "prompt", "modello", "token" o "temperatura". Fanno eccezione «Chi fa cosa» e le impostazioni avanzate, dove si sceglie fornitore, modello, versione delle istruzioni e «Creatività» (la temperatura): D38.
 

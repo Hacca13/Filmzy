@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   locationJobPayloadSchema,
   type AddLocationBody,
   type Location,
@@ -49,6 +50,7 @@ import { SCREENPLAY_STORE } from '../screenplay/tokens.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { UPLOAD_STORE } from '../uploads/tokens.js';
 import { LOCATION_STORE } from './tokens.js';
+import { isOpenStatus } from '../shots/work.js';
 
 const ROLE = 'set_designer';
 
@@ -90,7 +92,30 @@ export class LocationsService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(LOCATION_JOB_KIND, (job) => this.makeImages(job.payload));
+    this.runner.register(
+      LOCATION_JOB_KIND,
+      (job) => this.makeImages(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: il tentativo si chiude, e un altro lo chiede l'utente (D84).
+   * Vale anche per il ritocco, che è un tentativo del luogo come gli altri.
+   */
+  closeInterrupted(rawPayload: unknown): void {
+    const { locationId, attempt } = locationJobPayloadSchema.parse(rawPayload);
+    const current = this.store
+      .images(locationId)
+      .attempts.find((candidate) => candidate.attempt === attempt);
+    if (isOpenStatus(current?.status)) {
+      this.store.finishAttempt(locationId, attempt, {
+        status: 'failed',
+        errorCode: JOB_INTERRUPTED,
+      });
+    }
   }
 
   /** I luoghi del film e quelli proposti dalla bozza che non sono ancora stati aggiunti. */

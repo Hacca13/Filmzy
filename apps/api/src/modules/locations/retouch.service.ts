@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -87,7 +87,31 @@ export class RetouchService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(RETOUCH_JOB_KIND, (job) => this.retouch(job.payload));
+    this.runner.register(
+      RETOUCH_JOB_KIND,
+      (job) => this.retouch(job.payload),
+      (job) => this.closeInterrupted(job.payload),
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: il tentativo si chiude (D84), e i file provvisori del film si
+   * tolgono, perché il lavoro che doveva farlo non ripartirà. All'avvio nessun ritocco è in corso.
+   */
+  private async closeInterrupted(rawPayload: unknown): Promise<void> {
+    this.locations.closeInterrupted(rawPayload);
+    const { projectId } = locationJobPayloadSchema.parse(rawPayload);
+    const folder = path.join(projectsDir(this.dataDir), projectId, 'ritocco');
+    const names = await readdir(folder).catch((): string[] => []);
+    await Promise.all(
+      names
+        .filter((name) => name.startsWith('maschera-') || name.startsWith('marcata-'))
+        .map((name) =>
+          rm(path.join(folder, name), { force: true }).catch(() => {
+            this.log.warn('Un file provvisorio del ritocco non si è potuto togliere.');
+          }),
+        ),
+    );
   }
 
   /** I servizi tra cui scegliere per questo ritocco, con la stima. */

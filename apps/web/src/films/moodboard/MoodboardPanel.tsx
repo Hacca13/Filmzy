@@ -17,7 +17,7 @@ import {
 import { assetUrl } from '../../api/sheet';
 import { Chip, Notice, ToneIcon } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
-import { failureText } from '../failure';
+import { COST_NOTE, failureOf, failureText } from '../failure';
 import { GenerateBar, useGeneration } from '../generation';
 import { UploadControl } from '../uploads/UploadControl';
 import { useWatched } from '../use-watched';
@@ -289,6 +289,7 @@ function RunState({
       <div className="sheet-placeholder wide" data-tone="error">
         <ToneIcon tone="error" size={26} />
         {failureText(run.errorCode)}
+        {failureOf(run.errorCode).mayHaveCost ? <p className="hint">{COST_NOTE}</p> : null}
       </div>
     );
   }

@@ -2,6 +2,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   audioJobPayloadSchema,
   composerInputSchema,
   sfxArtistInputSchema,
@@ -64,7 +65,7 @@ import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { assertPlanCurrent, shotOf } from '../shots/shot-access.js';
 import { SHOT_STORE, TAKE_STORE } from '../shots/tokens.js';
-import { STALE_WORK_MS } from '../shots/work.js';
+import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
 import { readAudioBody } from './audio-file.js';
 import { settleCues } from './sound-cues.js';
@@ -120,7 +121,21 @@ export class AudioService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(AUDIO_JOB_KIND, (job) => this.makeVariant(job.payload));
+    this.runner.register(
+      AUDIO_JOB_KIND,
+      (job) => this.makeVariant(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /** Il programma si è chiuso prima della fine: la variante si chiude, e un'altra la chiede l'utente (D84). */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { variantId } = audioJobPayloadSchema.parse(rawPayload);
+    if (isOpenStatus(this.store.getVariant(variantId)?.variant.status)) {
+      this.store.finishVariant(variantId, { status: 'failed', errorCode: JOB_INTERRUPTED });
+    }
   }
 
   overview(projectId: string): AudioOverview {
@@ -451,13 +466,6 @@ export class AudioService implements OnModuleInit {
       return;
     }
     if (variant.status === 'succeeded' || variant.status === 'failed') return;
-    // Già partita e il programma si è chiuso: il servizio può aver già lavorato, e il suo lavoro è perso.
-    // Rimandarla si pagherebbe due volte (regola 10): si chiude, e un'altra la chiede l'utente.
-    if (variant.status === 'running') {
-      this.log.warn('Variante interrotta da un riavvio: non si rimanda da sola.');
-      this.store.finishVariant(variantId, { status: 'failed', errorCode: 'timeout' });
-      return;
-    }
     if (!isGenerated(stored.clip.kind)) return;
     const role = GENERATED[stored.clip.kind].role;
 

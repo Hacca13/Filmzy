@@ -186,7 +186,7 @@ Interfaccia e istruzioni sono in italiano. I prompt per immagini e video li scri
 **Aggiorna** parti di D1 (database, coda e distribuzione), D2 (configurazione e pannello admin), D7 (webhook di fal), D11 (Drizzle, ora con SQLite), D19 (la regola sulle persone) e D25 (le chiavi).
 **Decisione:** il programma è un'app per Windows, macOS e Linux, impacchettata con Electron e installabile con un doppio clic, con aggiornamenti da GitHub Releases. Prima dell'installatore si lavora con un'app locale che parte da riga di comando.
 - **Dati:** SQLite (con Drizzle) nella cartella dell'app; i file dei progetti in cartelle locali, un film una cartella; un progetto si esporta e si importa come copia di sicurezza.
-- **Lavori:** un solo processo. La coda è interna e salvata in SQLite, così i lavori ripartono dopo un riavvio. Niente Redis, BullMQ, MinIO, R2, Docker né Caddy.
+- **Lavori:** un solo processo. La coda è interna e salvata in SQLite, così i lavori sopravvivono a un riavvio (che ripartano è stato superato da D84: si chiudono e decide l'utente). Niente Redis, BullMQ, MinIO, R2, Docker né Caddy.
 - **Fornitori:** solo polling. La verifica dei webhook non si implementa.
 - **Chiavi:** nel portachiavi del sistema operativo (Electron `safeStorage`), inserite dall'utente da Impostazioni > Connessioni.
 - **Eliminati:** account, ruoli, crediti, pagamenti, segnalazioni e rimozioni. La configurazione avanzata della troupe diventa «Impostazioni avanzate».
@@ -635,10 +635,10 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Realizza** una richiesta dell'utente (dopo T4.1, D62); da fare con Electron (T6.4). Nessun codice ancora.
 **Decisione:**
-1. **Se si chiude il programma con lavori a pagamento in coda o in corso, la chiusura si ferma** e compare una finestra: dice quanti lavori ci sono («Sto ancora lavorando a 2 cose»), che chiudendo adesso al riavvio il programma le rifà e **potresti pagarle due volte**, e offre tre scelte: «Aspetta che finisca» (il programma si chiude da solo appena ha finito; è la scelta in evidenza), «Torna al film» e «Chiudi lo stesso».
+1. **Se si chiude il programma con lavori a pagamento in coda o in corso, la chiusura si ferma** e compare una finestra: dice quanti lavori ci sono («Sto ancora lavorando a 2 cose»), che chiudendo adesso quei lavori si fermano, **il servizio può averli già fatti e addebitati**, e al riavvio non ripartono da soli (D84), e offre tre scelte: «Aspetta che finisca» (il programma si chiude da solo appena ha finito; è la scelta in evidenza), «Torna al film» e «Chiudi lo stesso».
 2. **«Chiudi lo stesso» non si impedisce:** l'utente deve poter sempre chiudere, e se lo sceglie la responsabilità è sua (la finestra lo dice). Senza lavori in corso la chiusura è immediata, senza finestra.
 3. **Lo spegnimento del computer** non può mostrare la finestra in modo affidabile: lì vale solo il ripiego del punto 4.
-4. **Ripiego, da valutare dopo:** salvare l'id della richiesta fatta al fornitore e, alla ripartenza, riprendere ad aspettare quella invece di rifarla. Oggi un lavoro interrotto a metà ricomincia da capo (schede, luoghi, storyboard); un lavoro già chiuso non si rifà (D62). Il ripiego dipende da quanto a lungo il fornitore conserva una richiesta.
+4. **Ripiego, da valutare dopo:** salvare l'id della richiesta fatta al fornitore e, alla ripartenza, riprendere ad aspettare quella invece di rifarla. Oggi un lavoro interrotto si chiude e non riparte (D84); un lavoro già chiuso non si rifà (D62). Il ripiego dipende da quanto a lungo il fornitore conserva una richiesta.
 
 **Perché:** chiudere per distrazione non deve costare soldi senza che l'utente lo sappia; ma un programma che non si lascia chiudere è peggio.
 **Scartate:** impedire la chiusura senza via d'uscita; avvisare solo dopo, alla riapertura (il costo c'è già).
@@ -933,7 +933,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 7. **R8** è un avviso leggero senza pulsante: il video è più recente dell'effetto in uso. Conta quando è partito il take, come R4 e R9, quindi tornare a un take più vecchio non si nota: limite noto.
 8. Il moderatore ha un contesto nuovo, `sound`, legge anche l'atmosfera, e rispetta la conferma del limite di spesa (valeva anche per il ritocco, corretto: con la conferma si restava bloccati).
 9. **Un blocco di musica per scena** (D24), vale anche per un file caricato: per cambiarla si cambia variante o si toglie la clip. La musica parte con la scena.
-10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). Dal 5/11 vale anche per i take video, che costano dollari. Le immagini (storyboard, luoghi, schede, moodboard, ritocco) non sono state toccate e possono ancora ripartire: costano centesimi, da correggere a parte.
+10. **Una variante interrotta da un riavvio non si rimanda da sola:** si chiude e decide l'utente, perché il servizio può aver già lavorato (regola 10). Dal 5/11 vale anche per i take video. Superato da D84, che lo estende a tutti i lavori.
 
 **Limiti noti, segnalati dalla rilettura e tenuti:** una stesura riscritta che rinumera le scene lascia la musica sulla scena con quel numero, senza avviso (se la scena non c'è più non si genera: T5.6 deve mostrarlo); lo stesso file caricato in due film resta nella cartella del primo, come le foto (T4.8); R8 non vede un take partito prima dell'effetto e finito dopo.
 
@@ -965,7 +965,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Realizza** T5.7 (§9, D24, D28, D43). Salvare il file dove vuole l'utente è T5.8.
 **Decisione:**
-1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Per questo un lavoro ripreso dopo un riavvio riparte, al contrario di chi paga (D81.10).
+1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Dopo un riavvio si ferma come tutti gli altri (D84).
 2. **Il suono si mette con le durate vere delle clip,** lette dopo la normalizzazione: un video un po' più lungo del previsto non sposta i suoni dopo di lui. La linea del tempo è la stessa funzione dell'editor (D82).
 3. **Si monta solo se c'è tutto:** ogni scena pensata, con un piano che vale, e un video per ogni inquadratura. L'elenco dice cosa manca. I gialli non bloccano: sono avvisi (D74).
 4. **Il formato è quello della prima clip,** a 24 fotogrammi al secondo; le altre prendono le bande, non si deformano. Il testo dei titoli si rimpicciolisce finché ci sta tutto, anche su un film verticale: la dicitura deve vedersi. Qualità e formato da scegliere sono T5.8.
@@ -976,7 +976,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 9. **L'impronta di ciò che entra** dice se il film montato è rimasto indietro: conta solo ciò che si vede o si sente, ed è quella di ciò che si è montato davvero, non di quando è stato chiesto.
 10. **I pezzi intermedi non restano:** la cartella di lavoro si toglie sempre, anche dopo un errore; ogni giro ha la sua, perché quella di un giro interrotto può essere tenuta aperta da un ffmpeg sopravvissuto. Il film ha il checksum come nome; se c'è già è identico, e si tiene quello.
 11. **Un tentativo che fallisce non nasconde il film buono:** l'interfaccia mostra sempre l'ultimo riuscito. Un suono che non si sente (traccia muta, senza posto) non può fermare il film.
-12. **Un tentativo si dà per perso dall'ultimo segno di vita,** non dalla partenza: ogni clip montata ne dà uno, così un montaggio lungo o ripreso dopo un riavvio non si chiude da solo.
+12. **Un tentativo si dà per perso dall'ultimo segno di vita,** non dalla partenza: ogni clip montata ne dà uno, così un montaggio lungo non si chiude da solo.
 
 **Trovato provandolo dal browser:** ffmpeg su Windows non apre i percorsi oltre i 260 caratteri, e il programma diceva «questo file non è un suono». Ora l'errore è quello vero. Nella cartella normale dei dati quel limite non si raggiunge; **una cartella dei dati con un percorso molto lungo non funzionerebbe**: da riguardare con T6.4.
 
@@ -985,3 +985,22 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Limiti noti:** i film montati prima dell'ultimo restano sul disco finché non c'è un modo di toglierli (T5.8); **ffmpeg non si può fermare:** se il programma si chiude a forza durante un montaggio, ffmpeg può continuare da solo fino a 20 minuti per passo (da risolvere con Electron, T6.4, insieme a D63); se cambiano la stesura o il cast con la sezione aperta, i titoli mostrati restano indietro finché non si rilegge (il server usa quelli veri, e un rifiuto rilegge); la voce di un personaggio non c'è (Fase 2).
 
 **Non fatto:** salvare il file altrove, qualità e formato (T5.8); nessuna prova con video veri dei fornitori (T4.0).
+
+## D84 · Dopo un riavvio nessun lavoro riparte da solo — 05/11/2026
+
+**Decisione dell'autore:** «Tutto dopo un riavvio dà una segnalazione dell'errore, ma è l'utente che caccia i soldi a decidere se rifarlo o meno. Questo vale per tutto». Sostituisce D81.10 e D83.1.
+**Come funziona:**
+1. **La regola sta in un posto solo,** l'esecutore della coda: all'avvio ogni lavoro rimasto da fare si chiude con il codice `interrupted`. Vale per quelli a metà e anche per quelli solo in coda, che non hanno ancora speso: partirebbero a spendere con l'utente magari non davanti al computer, giorni dopo.
+2. **Chi registra un lavoro deve dire come chiuderlo:** è obbligatorio, così un tipo nuovo non può dimenticarsene. Vale per video, storyboard, immagini dei luoghi, schede, moodboard, ritocco, suoni e montaggio. Un tentativo già riuscito resta com'è, e quello che è già arrivato (immagini di una scheda o del moodboard) resta.
+3. **L'interfaccia lo dice:** «Il programma si è chiuso prima che finisse · Non riparte da solo: rifallo solo se vuoi» e l'invito a guardare i costi nel pannello del servizio, che può aver già lavorato. Prima diceva «il servizio ci ha messo troppo», che era falso. Dove c'è il riquadro degli errori offre «Riprova» e «Cambia servizio»; schede e moodboard hanno già il loro pulsante per rifare.
+4. **Anche il montaggio si ferma,** pur essendo gratis: «vale per tutto», e una regola senza eccezioni è più semplice da capire.
+5. **Prima si scrive sul tentativo, poi si chiude il lavoro:** se il programma si chiude anche durante questo giro, al prossimo avvio riprende da lì. Un lavoro si chiude comunque, anche se scrivere non riesce: se restasse in coda partirebbe, e spenderebbe. In quel caso il motivo va nel registro.
+6. **Gli scontrini aperti si chiudono:** uno mai partito non è costato niente; uno già partito resta contato alla stima, perché il servizio può aver addebitato e una spesa sottostimata farebbe superare i limiti senza saperlo. Se poi l'utente rifà il lavoro, si contano tutti e due: se il servizio non aveva addebitato, la spesa mostrata è un po' più alta di quella vera.
+7. **La coda parte dopo aver aperto la porta:** un secondo Filmzy lanciato per sbaglio trova la porta presa e si ferma, senza chiudere come interrotti i lavori del primo.
+8. **Anche ciò che resta senza un lavoro si chiude:** il moodboard apre la richiesta prima di scrivere i consigli, e va in coda solo dopo. I file provvisori del ritocco e i pezzi del montaggio si tolgono subito.
+
+**Tolto:** il moodboard che riprendeva dall'ultima immagine arrivata, e i controlli doppi su video e suoni.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate e corrette; le più serie sono i punti 5, 6, 7 e 8. Il test ora fa un riavvio vero, su una seconda app con la stessa cartella dei dati, e fallisce da solo se si aggiunge un tipo di lavoro senza provarlo.
+
+**Limite noto:** un servizio che aveva già finito il lavoro è pagato e il risultato non si recupera (già segnato in T4.3). Recuperarlo senza spendere è possibile, ma è un lavoro a parte.

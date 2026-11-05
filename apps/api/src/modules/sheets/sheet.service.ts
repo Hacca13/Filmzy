@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   SHEET_ANGLES,
   sheetJobPayloadSchema,
   type Character,
@@ -39,6 +40,7 @@ import { moodboardBriefFor } from '../moodboard/brief.js';
 import { MOODBOARD_STORE } from '../moodboard/tokens.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../troupe/tokens.js';
+import { isOpenStatus } from '../shots/work.js';
 
 const ROLE = 'character_designer';
 
@@ -77,7 +79,31 @@ export class SheetService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(SHEET_JOB_KIND, (job) => this.makeSheet(job.payload));
+    this.runner.register(
+      SHEET_JOB_KIND,
+      (job) => this.makeSheet(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: le immagini non ancora arrivate si chiudono, e quelle già
+   * arrivate restano. Un altro tentativo lo chiede l'utente (D84).
+   */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { characterId, attempt } = sheetJobPayloadSchema.parse(rawPayload);
+    const images =
+      this.sheets.get(characterId).attempts.find((item) => item.attempt === attempt)?.images ?? [];
+    for (const image of images) {
+      if (isOpenStatus(image.status)) {
+        this.sheets.update(characterId, attempt, image.angle, {
+          status: 'failed',
+          errorCode: JOB_INTERRUPTED,
+        });
+      }
+    }
   }
 
   /** I servizi tra cui scegliere, con la stima **dell'intera scheda**. */
@@ -113,7 +139,7 @@ export class SheetService implements OnModuleInit {
     // qui, dopo le attese e subito prima di aprire il tentativo, senza altre attese in mezzo: con un
     // doppio clic la seconda richiesta lo trova già aperto.
     const current = this.sheets.get(characterId);
-    if (current.attempts[0]?.images.some((image) => isOpen(image.status)) === true) {
+    if (current.attempts[0]?.images.some((image) => isOpenStatus(image.status)) === true) {
       throw domainError(409, 'invalid_request', { details: { field: 'sheet' } });
     }
     const attempt = this.sheets.startAttempt(characterId);
@@ -289,8 +315,6 @@ export class SheetService implements OnModuleInit {
     return loaded.config;
   }
 }
-
-const isOpen = (status: string): boolean => status === 'queued' || status === 'running';
 
 /** `troupe.options` stima **una** immagine: la scheda ne vuole tre, e l'utente deve vedere il totale. */
 function wholeSheet(option: ModelOption): ModelOption {

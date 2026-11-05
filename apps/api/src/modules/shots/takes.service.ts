@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import {
+  JOB_INTERRUPTED,
   takeJobPayloadSchema,
   type ModelOption,
   type SheetOptions,
@@ -47,7 +48,7 @@ import { CONFIG_SOURCE, MEDIA_RUNNER_FACTORY, SPEND_LEDGER, TROUPE } from '../tr
 import { assertPlanCurrent, shotOf } from './shot-access.js';
 import { cinematographerInputFor, familyOf } from './storyboard-input.js';
 import { SHOT_STORE, TAKE_STORE } from './tokens.js';
-import { STALE_WORK_MS } from './work.js';
+import { STALE_WORK_MS, isOpenStatus } from './work.js';
 import { videoImages, videoStandInRequest, videoTarget, type VideoImages } from './video-inputs.js';
 
 const ROLE = 'camera_operator';
@@ -92,7 +93,24 @@ export class TakesService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.runner.register(TAKE_JOB_KIND, (job) => this.makeTake(job.payload));
+    this.runner.register(
+      TAKE_JOB_KIND,
+      (job) => this.makeTake(job.payload),
+      (job) => {
+        this.closeInterrupted(job.payload);
+      },
+    );
+  }
+
+  /**
+   * Il programma si è chiuso prima della fine: il servizio può aver già lavorato, e un video costa dollari.
+   * Il take si chiude col suo motivo e un altro lo chiede l'utente (D84). Uno già riuscito resta com'è.
+   */
+  private closeInterrupted(rawPayload: unknown): void {
+    const { takeId } = takeJobPayloadSchema.parse(rawPayload);
+    if (isOpenStatus(this.takes.get(takeId)?.take.status)) {
+      this.takes.finish(takeId, { status: 'failed', errorCode: JOB_INTERRUPTED });
+    }
   }
 
   list(projectId: string, shotId: string): ShotTakes {
@@ -198,17 +216,9 @@ export class TakesService implements OnModuleInit {
       this.log.warn('Take richiesto per un’inquadratura che non c’è più: lavoro lasciato perdere.');
       return;
     }
-    // Un lavoro ripetuto (per esempio dopo un riavvio) su un take già chiuso non rifà niente: non si
-    // paga due volte (regola 10) e non si cancella la clip già pronta.
+    // Un lavoro ripetuto su un take già chiuso non rifà niente: non si paga due volte (regola 10) e non si
+    // cancella la clip già pronta.
     if (current.take.status === 'succeeded' || current.take.status === 'failed') return;
-    // Già partito e il programma si è chiuso: il servizio può aver già lavorato, e il suo lavoro è perso.
-    // Rimandarlo si pagherebbe due volte, e un video costa dollari: si chiude e decide l'utente.
-    if (current.take.status === 'running') {
-      this.log.warn('Take interrotto da un riavvio: non si rimanda da solo.');
-      this.takes.finish(takeId, { status: 'failed', errorCode: 'timeout' });
-      return;
-    }
-
     try {
       this.takes.finish(takeId, { status: 'running' });
       const config = await this.config();

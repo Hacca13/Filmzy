@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LEVEL_OF, heardClips, planMix, type MixPlanInput } from './mix-plan.js';
 
 const timeline = (placements: AudioTimeline['placements']): AudioTimeline => ({
+  hiddenSceneIds: [],
   durationS: 20,
   scenes: [
     { sceneId: 'scene-1', sceneNumber: 1, heading: 'UNO', startS: 0, durationS: 10, stale: false },

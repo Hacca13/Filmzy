@@ -39,6 +39,7 @@ export type {
   AssemblyStoreOptions,
   StoredAssembly,
 } from './assembly-store.js';
+export { createSceneChoiceStore, type SceneChoiceStore } from './scene-choice-store.js';
 export { createAudioStore } from './audio-store.js';
 export type {
   AudioStore,

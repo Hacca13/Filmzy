@@ -258,6 +258,11 @@ export const audioTimelineSchema = z.object({
   scenes: z.array(audioTimelineSceneSchema),
   shots: z.array(audioTimelineShotSchema),
   placements: z.record(idSchema, audioPlacementSchema),
+  /**
+   * Le scene che non stanno sulle tracce perché non entrano nel film (D85). I loro suoni non hanno posto ma
+   * non sono persi: tornano con la scena, e l'interfaccia non li elenca fra quelli da sistemare.
+   */
+  hiddenSceneIds: z.array(z.string()),
 });
 
 export type AudioTimeline = z.infer<typeof audioTimelineSchema>;

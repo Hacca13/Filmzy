@@ -213,7 +213,7 @@ function SceneSection({
   };
 
   return (
-    <section className="scene-shots">
+    <section className="scene-shots" id={`scena-${String(scene.sceneNumber)}`}>
       <div className="scene-head">
         <h3>
           Scena {scene.sceneNumber} · {scene.heading}

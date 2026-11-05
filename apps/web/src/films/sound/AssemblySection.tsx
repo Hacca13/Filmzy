@@ -1,27 +1,49 @@
-import type { AssemblyView } from '@filmzy/contracts';
+import type { AssemblyScene, AssemblyView } from '@filmzy/contracts';
 import { useCallback, useEffect, useRef } from 'react';
 
-import { fetchAssembly, startAssembly } from '../../api/assembly';
+import { fetchAssembly, setAssemblyScene, startAssembly } from '../../api/assembly';
 import { assetUrl } from '../../api/sheet';
 import { Notice } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
+import { formatDuration } from '../model';
 import { useWatched } from '../use-watched';
 import { EarlierFilms } from './EarlierFilms';
 import { ExportSection } from './ExportSection';
-import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-model';
+import { assemblyFailureText, assemblyIsWorking, filmLengthLine, gapText } from './assembly-model';
 
 /**
  * «Il tuo film» (T5.7, §9): mette in fila i video scelti, mixa le tracce e aggiunge i titoli con la
  * dicitura AI. Lavora sul computer dell'utente, quindi non costa niente e si può rifare quante volte si
  * vuole. `stamp` cambia quando cambia qualcosa nel film: si rilegge se il film montato è rimasto indietro.
+ * `onScenesChanged` avvisa le tracce: seguono le scene spuntate (D85).
  */
-export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unknown }) {
+export function AssemblySection({
+  filmId,
+  stamp,
+  onScenesChanged,
+}: {
+  filmId: string;
+  stamp: unknown;
+  onScenesChanged: () => Promise<void>;
+}) {
   const load = useCallback((signal: AbortSignal) => fetchAssembly(filmId, signal), [filmId]);
   const { value, problem, reload, setValue } = useWatched(load, assemblyIsWorking, {
     kinds: ['film_assemble', 'film_export'],
     projectId: filmId,
   });
   const action = useAction();
+
+  /** Se il server dice che non si può, o che sta già lavorando, la pagina deve dire lo stesso. */
+  const ask = (request: () => Promise<void>) => {
+    action.run(async () => {
+      try {
+        await request();
+      } catch (error) {
+        await reload();
+        throw error;
+      }
+    });
+  };
 
   const firstStamp = useRef(stamp);
   useEffect(() => {
@@ -43,15 +65,15 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
           <AssemblyBody
             view={value}
             busy={action.busy}
+            onToggleScene={(sceneNumber, included) => {
+              ask(async () => {
+                setValue(await setAssemblyScene(filmId, sceneNumber, { included }));
+                await onScenesChanged();
+              });
+            }}
             onStart={() => {
-              action.run(async () => {
-                try {
-                  setValue(await startAssembly(filmId));
-                } catch (error) {
-                  // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
-                  await reload();
-                  throw error;
-                }
+              ask(async () => {
+                setValue(await startAssembly(filmId));
               });
             }}
           />
@@ -72,19 +94,84 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
   );
 }
 
+/** Una scena nell'elenco: con la spunta, oppure con cosa le manca e il modo di andarci. */
+function SceneRow({
+  scene,
+  locked,
+  onToggle,
+}: {
+  scene: AssemblyScene;
+  locked: boolean;
+  onToggle: (included: boolean) => void;
+}) {
+  const { sceneNumber, heading, durationS, previewAssetId, included, gap } = scene;
+  const name = `Scena ${String(sceneNumber)} · ${heading}`;
+  return (
+    <li className="film-scene" data-included={included} data-ready={gap === undefined}>
+      <label>
+        <input
+          type="checkbox"
+          checked={included}
+          disabled={locked || gap !== undefined}
+          aria-label={name}
+          onChange={(event) => {
+            onToggle(event.target.checked);
+          }}
+        />
+        {previewAssetId === undefined ? (
+          <span className="film-scene-preview" />
+        ) : (
+          <video
+            className="film-scene-preview"
+            muted
+            preload="metadata"
+            aria-hidden="true"
+            // Il primo fotogramma può essere nero: si guarda un attimo dopo.
+            src={`${assetUrl(previewAssetId)}#t=0.1`}
+          />
+        )}
+        <span className="film-scene-text">
+          <span className="film-scene-name">{name}</span>
+          {gap === undefined ? null : <span className="hint">{gapText(gap)}</span>}
+          {gap === undefined && !included ? <span className="chip">Tolta da te</span> : null}
+        </span>
+      </label>
+      {gap === undefined ? (
+        <span className="hint">{formatDuration(Math.round(durationS))}</span>
+      ) : (
+        <button
+          type="button"
+          className="button"
+          onClick={() => {
+            document
+              .getElementById(`scena-${String(sceneNumber)}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        >
+          Vai alla scena
+        </button>
+      )}
+    </li>
+  );
+}
+
 /** Quello che si vede del montaggio: senza stato, così si prova da solo. */
 export function AssemblyBody({
   view,
   busy,
+  onToggleScene,
   onStart,
 }: {
   view: AssemblyView;
   busy: boolean;
+  onToggleScene: (sceneNumber: number, included: boolean) => void;
   onStart: () => void;
 }) {
-  const { latest, film, gaps, titles, upToDate, exportWorking } = view;
+  const { latest, film, scenes, titles, upToDate, exportWorking } = view;
   const working = assemblyIsWorking(view);
   const made = film?.assetId;
+  const noneTicked = !scenes.some((scene) => scene.included);
+  const someReady = scenes.some((scene) => scene.gap === undefined);
 
   return (
     <>
@@ -104,17 +191,6 @@ export function AssemblyBody({
         <Notice tone="error">{assemblyFailureText(latest.errorCode)}</Notice>
       ) : null}
 
-      {gaps.length === 0 ? null : (
-        <div>
-          <p className="hint">Per montare il film manca ancora:</p>
-          <ul className="sound-orphans">
-            {gaps.map((gap) => (
-              <li key={`${String(gap.sceneNumber ?? 0)}:${gap.kind}`}>{gapText(gap)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       <dl className="details">
         <div>
           <dt>Titolo</dt>
@@ -132,15 +208,47 @@ export function AssemblyBody({
         </div>
       </dl>
 
+      <h4>Le scene del film</h4>
+      {scenes.length === 0 ? (
+        <p className="hint">La storia non ha ancora nessuna scena.</p>
+      ) : (
+        <>
+          <p className="hint">
+            Scegli quali scene entrano nel film. Una scena tolta non si cancella: la rimetti quando
+            vuoi, con i suoi video e i suoi suoni.
+          </p>
+          <ul className="film-scenes">
+            {scenes.map((scene) => (
+              <SceneRow
+                key={scene.sceneNumber}
+                scene={scene}
+                locked={busy || working}
+                onToggle={(included) => {
+                  onToggleScene(scene.sceneNumber, included);
+                }}
+              />
+            ))}
+          </ul>
+          <p className="hint">{filmLengthLine(view)}</p>
+        </>
+      )}
+      {scenes.length > 0 && noneTicked && !working ? (
+        <p className="hint">
+          {someReady
+            ? 'Scegli almeno una scena.'
+            : 'Nessuna scena è ancora pronta: ognuna ha bisogno dei suoi video.'}
+        </p>
+      ) : null}
+
       <div className="actions">
         <button
           type="button"
           className="button"
-          data-kind="primary"
-          disabled={busy || working || exportWorking || gaps.length > 0}
+          {...(made !== undefined && upToDate ? {} : { 'data-kind': 'primary' })}
+          disabled={busy || working || exportWorking || noneTicked}
           onClick={onStart}
         >
-          {made === undefined ? 'Monta il film' : 'Monta di nuovo'}
+          {working ? 'Montaggio in corso' : made === undefined ? 'Monta il film' : 'Monta di nuovo'}
         </button>
       </div>
       <p className="hint">Lavora sul tuo computer: non costa niente e non rifà i video.</p>

@@ -190,6 +190,8 @@ export const projects = sqliteTable(
     cinematography: text('cinematography').notNull(),
     language: text('language').notNull(),
     durationS: integer('duration_s').notNull(),
+    /** Che film si vuole fare (D85). I film creati prima sono corti, o spot sotto il minuto. */
+    kind: text('kind').notNull().default('short'),
     phase: text('phase').notNull(),
     /** Quando la fotografia del film è stata cambiata l'ultima volta, dopo la creazione (T5.1, R4). */
     cinematographyChangedAt: integer('cinematography_changed_at'),
@@ -714,6 +716,19 @@ export const filmAssemblies = sqliteTable(
 );
 
 export type FilmAssemblyRow = typeof filmAssemblies.$inferSelect;
+
+/**
+ * Le scene che l'utente ha tolto dal film (D85). Si salvano quelle tolte e non quelle spuntate: una scena
+ * nuova o finita dopo entra da sola nel film, e toglierla è una scelta.
+ */
+export const filmSceneExclusions = sqliteTable(
+  'film_scene_exclusions',
+  {
+    projectId: text('project_id').notNull(),
+    sceneNumber: integer('scene_number').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.sceneNumber] })],
+);
 
 /**
  * Le esportazioni di un film (T5.8): il file finale, fatto dal film montato alla qualità scelta. Non si

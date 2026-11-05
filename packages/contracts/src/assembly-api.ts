@@ -10,17 +10,31 @@ import { sheetImageStatusSchema } from './sheet-api.js';
  */
 
 /** Perché una scena non si può ancora montare. */
-export const ASSEMBLY_GAP_KINDS = ['no_scenes', 'not_planned', 'stale', 'no_take'] as const;
+export const ASSEMBLY_GAP_KINDS = ['not_planned', 'stale', 'no_take'] as const;
 
 export const assemblyGapSchema = z.object({
-  /** Quale scena: manca solo per `no_scenes`, una storia senza scene. */
-  sceneNumber: z.number().int().positive().optional(),
   kind: z.enum(ASSEMBLY_GAP_KINDS),
   /** Quante inquadrature della scena non hanno ancora un video (per `no_take`). */
   missing: z.number().int().positive().optional(),
 });
 
 export type AssemblyGap = z.infer<typeof assemblyGapSchema>;
+
+/**
+ * Una scena nell'elenco «Le scene del film» (D85): entra nel film se è spuntata. Una scena con `gap` non si
+ * può spuntare, ma non blocca le altre. Una tolta dall'utente non si cancella: si rimette quando vuole.
+ */
+export const assemblySceneSchema = z.object({
+  sceneNumber: z.number().int().positive(),
+  heading: z.string(),
+  durationS: z.number().nonnegative(),
+  /** Il primo video della scena, per riconoscerla. Manca se non ce l'ha ancora. */
+  previewAssetId: assetIdSchema.optional(),
+  included: z.boolean(),
+  gap: assemblyGapSchema.optional(),
+});
+
+export type AssemblyScene = z.infer<typeof assemblySceneSchema>;
 
 export const filmAssemblySchema = z.object({
   id: idSchema,
@@ -46,11 +60,15 @@ export const assemblyTitlesSchema = z.object({
 export type AssemblyTitles = z.infer<typeof assemblyTitlesSchema>;
 
 /**
- * A che punto è il montaggio: cosa manca, l'ultimo tentativo, e se dopo è cambiato qualcosa. Una stesura
+ * A che punto è il montaggio: le scene, l'ultimo tentativo, e se dopo è cambiato qualcosa. Una stesura
  * che non c'è ancora è «non trovato», come per le inquadrature.
  */
 export const assemblyViewSchema = z.object({
-  gaps: z.array(assemblyGapSchema),
+  scenes: z.array(assemblySceneSchema),
+  /** Quanto dura il film con le scene spuntate, senza i titoli. */
+  filmDurationS: z.number().nonnegative(),
+  /** Quanto si era indicato all'inizio: è un'informazione, il film dura quello che si monta (D85). */
+  plannedDurationS: z.number().positive(),
   /** L'ultimo tentativo, com'è andato. */
   latest: filmAssemblySchema.optional(),
   /** L'ultimo film riuscito: un tentativo che fallisce o che sta lavorando non lo nasconde. */
@@ -68,6 +86,17 @@ export const assemblyViewSchema = z.object({
 });
 
 export type AssemblyView = z.infer<typeof assemblyViewSchema>;
+
+/** Il numero di una scena nell'indirizzo: solo cifre, così «0x1» o «1e0» non valgono 1. */
+export const assemblySceneNumberSchema = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .transform(Number);
+
+/** La spunta di una scena. */
+export const setAssemblySceneBodySchema = z.strictObject({ included: z.boolean() });
+
+export type SetAssemblySceneBody = z.infer<typeof setAssemblySceneBodySchema>;
 
 /** Cosa porta in coda il lavoro «monta il film» (`film_assemble`). */
 export const assemblyJobPayloadSchema = z.object({

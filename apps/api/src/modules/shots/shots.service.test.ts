@@ -49,6 +49,7 @@ const film: Project = {
   cinematography: 'noir',
   language: 'it',
   durationS: 90,
+  kind: 'short',
   phase: 'final',
   createdAt: '2026-11-02T10:00:00.000Z',
   updatedAt: '2026-11-02T10:00:00.000Z',

@@ -6,7 +6,7 @@ import path from 'node:path';
 import {
   JOB_INTERRUPTED,
   assemblyJobPayloadSchema,
-  type AssemblyGap,
+  type AssemblyScene,
   type AssemblyTitles,
   type AssemblyView,
   type AudioClip,
@@ -19,6 +19,7 @@ import {
   type AssemblyStore,
   type AudioStore,
   type KeptTake,
+  type SceneChoiceStore,
   type SheetStore,
   type StoredAssembly,
   type TakeStore,
@@ -42,8 +43,8 @@ import { ProviderError } from '@filmzy/troupe';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { domainError } from '../../http/domain-error.js';
-import { buildTimeline } from '../audio/timeline.js';
-import { AUDIO_STORE } from '../audio/tokens.js';
+import { buildTimeline, sceneGap, sceneLengthS, tickedScenes } from '../audio/timeline.js';
+import { AUDIO_STORE, SCENE_CHOICES } from '../audio/tokens.js';
 import { BibleService } from '../bible/bible.service.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
@@ -51,6 +52,7 @@ import { JobRunner } from '../jobs/job-runner.service.js';
 import { registerAssets } from '../media/image-jobs.js';
 import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { sceneIdOf } from '../shots/plan-shots.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { isLostWork, isOpenStatus } from '../shots/work.js';
@@ -80,8 +82,11 @@ const WORK_PREFIX = 'lavoro-';
 
 /** Quello che finisce nel film in questo momento. */
 interface Snapshot {
+  /** Solo le scene spuntate: le altre non entrano nel film, e nemmeno i loro suoni (D85). */
   scenes: ScenePlan[];
-  gaps: AssemblyGap[];
+  /** Tutte le scene, per l'elenco. */
+  rows: AssemblyScene[];
+  plannedDurationS: number;
   kept: Record<string, KeptTake>;
   tracks: AudioTrack[];
   clips: AudioClip[];
@@ -102,6 +107,7 @@ export class AssemblyService implements OnModuleInit {
   constructor(
     @Inject(ASSEMBLY_STORE) private readonly store: AssemblyStore,
     @Inject(AUDIO_STORE) private readonly audio: AudioStore,
+    @Inject(SCENE_CHOICES) private readonly sceneChoices: SceneChoiceStore,
     @Inject(TAKE_STORE) private readonly takes: TakeStore,
     @Inject(SHEET_STORE) private readonly files: SheetStore,
     @Inject(DATA_DIR) private readonly dataDir: string,
@@ -136,18 +142,31 @@ export class AssemblyService implements OnModuleInit {
     return this.viewOf(projectId, await this.snapshot(projectId));
   }
 
-  /** «Monta il film»: controlla che ci sia tutto, poi mette in coda. Non costa niente. */
+  /** La spunta di una scena (D85): togliere non cancella niente, e una scena senza video non si spunta. */
+  async setSceneIncluded(
+    projectId: string,
+    sceneNumber: number,
+    included: boolean,
+  ): Promise<AssemblyView> {
+    const { rows } = await this.snapshot(projectId);
+    const row = rows.find((candidate) => candidate.sceneNumber === sceneNumber);
+    if (row === undefined) throw domainError(404, 'not_found');
+    if (included && row.gap !== undefined) {
+      throw domainError(409, 'invalid_request', { details: { field: 'sceneNotReady' } });
+    }
+    this.assertNotMounting(projectId);
+    this.sceneChoices.setIncluded(projectId, sceneNumber, included);
+    return this.view(projectId);
+  }
+
+  /** «Monta il film»: controlla che ci sia almeno una scena, poi mette in coda. Non costa niente. */
   async start(projectId: string): Promise<AssemblyView> {
     const snapshot = await this.snapshot(projectId);
-    if (snapshot.gaps.length > 0) {
+    if (snapshot.scenes.length === 0) {
       throw domainError(409, 'invalid_request', { details: { field: 'assembly' } });
     }
     // Il controllo sta qui, dopo le attese e subito prima di aprire il tentativo: un doppio clic ne apre uno.
-    this.closeLost(projectId);
-    const open = this.store.latest(projectId)?.assembly.status;
-    if (open === 'queued' || open === 'running') {
-      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
-    }
+    this.assertNotMounting(projectId);
     // Un lavoro alla volta per film: ricodificare usa già tutti i processori.
     if (this.exports.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
@@ -176,7 +195,12 @@ export class AssemblyService implements OnModuleInit {
     const latest = this.store.latest(projectId);
     const [film, ...others] = this.store.succeeded(projectId);
     return {
-      gaps: snapshot.gaps,
+      scenes: snapshot.rows,
+      filmDurationS: snapshot.rows.reduce(
+        (total, { included, durationS }) => (included ? total + durationS : total),
+        0,
+      ),
+      plannedDurationS: snapshot.plannedDurationS,
       ...(latest === undefined ? {} : { latest: latest.assembly }),
       ...(film === undefined ? {} : { film: film.assembly }),
       earlier: await this.earlierFilms(film, others),
@@ -225,10 +249,7 @@ export class AssemblyService implements OnModuleInit {
     if (assetId === this.store.lastSucceeded(projectId)?.assembly.assetId) {
       throw domainError(409, 'invalid_request', { details: { field: 'currentFilm' } });
     }
-    this.closeLost(projectId);
-    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
-      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
-    }
+    this.assertNotMounting(projectId);
     try {
       await rm(file, { force: true });
     } catch (error) {
@@ -259,6 +280,13 @@ export class AssemblyService implements OnModuleInit {
     return { file, assetId, createdAt: stored.assembly.createdAt };
   }
 
+  private assertNotMounting(projectId: string): void {
+    this.closeLost(projectId);
+    if (isOpenStatus(this.store.latest(projectId)?.assembly.status)) {
+      throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
+    }
+  }
+
   /** Il lavoro in coda: un errore si scrive sul tentativo, e il lavoro finisce lo stesso. */
   private async makeFilm(rawPayload: unknown): Promise<void> {
     const { projectId, assemblyId } = assemblyJobPayloadSchema.parse(rawPayload);
@@ -281,9 +309,9 @@ export class AssemblyService implements OnModuleInit {
       await this.removeLeftovers(filmDir, workDir);
 
       const snapshot = await this.snapshot(projectId);
-      if (snapshot.gaps.length > 0) {
+      if (snapshot.scenes.length === 0) {
         // Qualcosa è cambiato mentre il lavoro aspettava: l'utente rilegge cosa manca e rifà.
-        throw new ProviderError('invalid_request', false, 'Manca qualcosa per montare il film.');
+        throw new ProviderError('invalid_request', false, 'Non c’è nessuna scena da montare.');
       }
       // Da qui vale ciò che si monta davvero, non ciò che c'era quando è stato chiesto.
       this.store.finish(assemblyId, { status: 'running', fingerprint: snapshot.fingerprint });
@@ -464,14 +492,18 @@ export class AssemblyService implements OnModuleInit {
     return file;
   }
 
-  /** Cosa finirebbe nel film adesso, e cosa manca ancora. */
+  /** Cosa finirebbe nel film adesso, con le scene spuntate. */
   private async snapshot(projectId: string): Promise<Snapshot> {
     const project = this.projects.get(projectId);
-    const { scenes } = await this.plans.plans(projectId);
+    const { scenes: allScenes } = await this.plans.plans(projectId);
     const kept = this.takes.keptTakes(projectId);
+    const excluded = this.sceneChoices.excluded(projectId);
+    const scenes = tickedScenes(allScenes, kept, excluded);
     const tracks = this.audio.tracks(projectId);
-    const clips = this.audio.clips(projectId);
-    const names = Object.values(this.bible.knownIds(projectId).names.characters);
+    // Solo i suoni delle scene del film: cambiarne uno di una scena tolta non rende indietro il film.
+    const sceneIds = new Set(scenes.map(({ sceneNumber }) => sceneIdOf(sceneNumber)));
+    const clips = this.audio.clips(projectId).filter(({ sceneId }) => sceneIds.has(sceneId));
+    const names = castOf(scenes, this.bible.knownIds(projectId).names.characters);
     const titles: AssemblyTitles = {
       title: project.title,
       ...(names.length === 0 ? {} : { cast: `Con ${joinNames(names)}` }),
@@ -479,7 +511,8 @@ export class AssemblyService implements OnModuleInit {
     };
     return {
       scenes,
-      gaps: gapsOf(scenes, kept),
+      rows: sceneRows(allScenes, kept, scenes),
+      plannedDurationS: project.durationS,
       kept,
       tracks,
       clips,
@@ -510,18 +543,40 @@ function filmFormat(size: { width: number; height: number } | undefined): FilmFo
     : { width: evenSize(size.width), height: evenSize(size.height), fps: FILM_FPS };
 }
 
-/** Cosa manca per montare: una storia vuota, una scena da pensare, una da rifare, inquadrature senza video. */
-export function gapsOf(
+/**
+ * Chi nominare nei titoli: chi si vede nel film, non chi sta in una scena tolta. Finché nessuna scena è nel
+ * film sono tutti, così i titoli si leggono già prima.
+ */
+export function castOf(
+  scenes: readonly ScenePlan[],
+  names: Readonly<Record<string, string>>,
+): string[] {
+  if (scenes.length === 0) return Object.values(names);
+  const seen = new Set(
+    scenes.flatMap((scene) =>
+      scene.shots.flatMap((shot) => shot.characters.map(({ characterId }) => characterId)),
+    ),
+  );
+  return Object.entries(names).flatMap(([id, name]) => (seen.has(id) ? [name] : []));
+}
+
+/** L'elenco «Le scene del film»: tutte le scene nell'ordine della storia, con cosa manca a ognuna. */
+export function sceneRows(
   scenes: readonly ScenePlan[],
   kept: Readonly<Record<string, KeptTake>>,
-): AssemblyGap[] {
-  if (scenes.length === 0) return [{ kind: 'no_scenes' }];
-  return scenes.flatMap((scene): AssemblyGap[] => {
-    const { sceneNumber } = scene;
-    if (!scene.planned || scene.shots.length === 0) return [{ sceneNumber, kind: 'not_planned' }];
-    if (scene.stale) return [{ sceneNumber, kind: 'stale' }];
-    const missing = scene.shots.filter((shot) => kept[shot.id] === undefined).length;
-    return missing === 0 ? [] : [{ sceneNumber, kind: 'no_take', missing }];
+  ticked: readonly ScenePlan[],
+): AssemblyScene[] {
+  return scenes.map((scene) => {
+    const gap = sceneGap(scene, kept);
+    const preview = scene.shots[0] === undefined ? undefined : kept[scene.shots[0].id]?.assetId;
+    return {
+      sceneNumber: scene.sceneNumber,
+      heading: scene.heading,
+      durationS: sceneLengthS(scene.shots, scene.durationS),
+      ...(preview === undefined ? {} : { previewAssetId: preview }),
+      included: ticked.includes(scene),
+      ...(gap === undefined ? {} : { gap }),
+    };
   });
 }
 

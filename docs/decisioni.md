@@ -485,7 +485,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Decisione:**
 1. **Il film nasce al «Continua» del wizard**, con idea, titolo facoltativo, genere, tono, stile, fotografia e durata, e parte dalla fase `draft` (la bozza della storia): è la fase da cui si riprende. Sta nella tabella `projects` (migrazione `0004`) e l'elenco dei film mostra «Prossimo passo: La storia».
 2. **Le scelte vengono dai preset della release attiva** (generi, toni, stili, fotografie), non dal codice (regola 2). Si offrono solo le voci attive; il server rifiuta una voce che non esiste o è spenta con `invalid_request` e il campo da correggere. Le frasi in inglese dei preset non escono mai dal server. Le voci già scelte all'apertura (la prima di ogni gruppo, un minuto di durata) le dice il server (regola 8): per partire basta scrivere l'idea.
-3. **Le durate sono 30 s, 1 min, 1 min 30 s, 2 min e 3 min**, una costante dei contratti e non un preset: la durata decide quanto costa il film e il server deve poter dire di no a una cifra che non conosce. Un film già salvato conserva la sua durata anche se l'elenco cambia (la lettura non la restringe).
+3. _(Superato da D85 e D88: tipo di film e cursore.)_ **Le durate sono 30 s, 1 min, 1 min 30 s, 2 min e 3 min**, una costante dei contratti e non un preset: la durata decide quanto costa il film e il server deve poter dire di no a una cifra che non conosce. Un film già salvato conserva la sua durata anche se l'elenco cambia (la lettura non la restringe).
 4. **Il titolo è facoltativo:** se manca lo propone il server dalle prime cinque parole dell'idea; se l'utente lo svuota dopo, torna quello proposto.
 5. **L'idea si rivede in qualsiasi fase** (`PATCH /projects/:id`, solo i campi mandati) e non sposta la fase: le differenze si ricalcolano al riepilogo (§3.1). **Le fasi si spostano con i compiti che le fanno** (T3.4 in poi): per ora non c'è una rotta per cambiarle a mano.
 6. **Creare o rivedere un film non spende:** il controllo del moderatore sul testo dell'idea arriva con T3.3, prima di ogni spesa.
@@ -967,7 +967,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Decisione:**
 1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Dopo un riavvio si ferma come tutti gli altri (D84).
 2. **Il suono si mette con le durate vere delle clip,** lette dopo la normalizzazione: un video un po' più lungo del previsto non sposta i suoni dopo di lui. La linea del tempo è la stessa funzione dell'editor (D82).
-3. **Si monta solo se c'è tutto:** ogni scena pensata, con un piano che vale, e un video per ogni inquadratura. L'elenco dice cosa manca. I gialli non bloccano: sono avvisi (D74).
+3. _(Superato da D85 e D88: ogni scena ha una spunta.)_ **Si monta solo se c'è tutto:** ogni scena pensata, con un piano che vale, e un video per ogni inquadratura. L'elenco dice cosa manca. I gialli non bloccano: sono avvisi (D74).
 4. **Il formato è quello della prima clip,** a 24 fotogrammi al secondo; le altre prendono le bande, non si deformano. Il testo dei titoli si rimpicciolisce finché ci sta tutto, anche su un film verticale: la dicitura deve vedersi. Qualità e formato da scegliere sono T5.8.
 5. **La dicitura AI è sempre nei titoli di coda** (D28), anche se per ora non c'è un interruttore per toglierla. Titolo del film e nomi dei personaggi vengono dai dati e non si modificano qui. Apertura di 3 secondi, chiusura di 5.
 6. **I testi non entrano mai nella riga dei filtri di ffmpeg:** titoli e font stanno in file con nomi scelti dal programma (`textfile`, `expansion=none`), così un titolo con «:», «'» o «%{...}» resta testo.
@@ -1042,7 +1042,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 14: le più serie sono un film chiamato «lavoro-…» cancellato come avanzo, l'errore grezzo se ffmpeg manca, il file già fatto nascosto se il film montato non si legge, e «Apri la cartella» che su Linux non diceva niente se non si apriva. Per il cambio di titolo si è scelto di non cancellare (punto 4). Le correzioni non hanno avuto una seconda rilettura completa.
 
-**Limite noto:** ffmpeg ha 20 minuti per passo (D83): su un computer lento un film lungo alla qualità più bassa può fermarsi con «ci ha messo troppo». Mai provato con video veri dei fornitori (T4.0).
+**Limite noto:** ffmpeg ha 20 minuti per passo (D83): su un computer lento un film lungo alla qualità più bassa può fermarsi con «ci ha messo troppo». Mai provato con video veri dei fornitori (T4.0). _Corretto da D87.7._
 
 ## D87 · Esportazione: formato e tipo di file si scelgono; i film di prima li toglie l'utente — 05/11/2026
 
@@ -1065,3 +1065,24 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 14. Quella rimasta è la dicitura AI a 480p in verticale o quadrato, alta circa 9 px invece dei 10 del minimo di `layoutTitle`: guardata su un fotogramma vero, si legge, e non si è cambiato niente.
 
 **Da sapere:** i film di prima occupano spazio finché l'utente non li toglie; l'elenco non dice ancora quanto pesano. Si esporta solo l'ultimo film: quelli di prima si salvano così come sono. WebM usa un codec provato su Windows e nella CI su Linux, non su macOS (T6.5). Mai provato con video veri dei fornitori (T4.0).
+
+## D88 · Tipo di film e scene: come funziona nel programma — 05/11/2026
+
+**Realizza** D85 (T5.9) dai disegni del prompt 07.
+**Decisione:**
+1. **Limiti:** Spot da 15 s a 1 minuto, a passi di 5 s, parte da 30 s. Corto da 1 a 10 minuti, a passi di 30 s, parte da 1 minuto. Il server li controlla sul tipo e sulla durata che il film avrà. Mediometraggio e Lungometraggio si vedono e il server li rifiuta.
+2. **I film già creati:** sotto il minuto diventano Spot, gli altri Corto. Una durata già salvata resta com'è; i limiti valgono solo quando la si cambia.
+3. **Il costo indicativo si calcola così:** un'inquadratura ogni 5,5 secondi (la media fra 3 e 8), ognuna con storyboard e video dei servizi predefiniti, per un'inquadratura tipica con due personaggi e il set. Il numero alto aggiunge un secondo video per ogni inquadratura. Non conta il testo che scrive le istruzioni, che pesa pochissimo. Legge solo il catalogo: non chiama nessun servizio e non lascia scontrini.
+4. **Si salvano le scene tolte, non quelle spuntate:** una scena finita dopo entra da sola, e toglierla è una scelta. Togliere non tocca video né suoni, e rimetterla riporta tutto.
+5. **Sulle tracce stanno solo le scene del film,** così righello e blocchi dicono com'è davvero. Finché nessuna scena è pronta si vedono tutte tranne quelle tolte: il suono si può preparare prima dei video (D82). I suoni delle scene nascoste non sono «persi»: non finiscono nell'elenco da sistemare.
+6. **Le spunte sono ferme mentre si monta;** una scena senza video non si può spuntare e il server lo controlla comunque. Con nessuna spunta non si monta.
+7. **Una scena si ricorda dal suo numero,** come i suoni. Se la stesura cambia molto, una scena tolta può risultare un'altra: resta scritto «Tolta da te», e con una spunta si rimette.
+
+**Da misurare:** il limite di 10 minuti del Corto (D85) non è provato con lo sceneggiatore vero: costa, e i servizi veri sono rimandati con T4.0. Un film di 10 minuti vuol dire circa 110 inquadrature in una richiesta sola, con 8.000 token di risposta per lo sceneggiatore e 3.000 per il sound designer e la segretaria: facile che non bastino. Un film più lungo di quanto regge fallirebbe dopo aver pagato qualche tentativo. La prova costa pochi centesimi. Anche il costo indicativo non è mai stato confrontato con una spesa vera.
+
+8. **I suoni delle scene fuori dal film non contano:** non rendono indietro il film, «Suggerisci i suoni» non ne propone (il sound designer legge comunque tutta la storia), e il loro pannello si chiude invece di dire «ha perso il posto». Le tracce lo spiegano in una riga.
+9. **Nei titoli di coda c'è chi si vede nel film,** non chi sta solo in una scena tolta.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 10; la più seria era il pannello del suono che, togliendo una scena, invitava a eliminare suoni già pagati. Restano, per scelta: le scene senza video fuori dalle tracce appena una è pronta (punto 5: il suono di quelle scene si riprende quando hanno i video); il numero della scena (punto 7); il limite dei 10 minuti da misurare (sotto). Da provare con T6.6: con molte scene, le miniature (un video per scena) e le card possono riempire le 6 connessioni del browser.
+
+**Non preso dal disegno:** vedi `design/riferimenti/04-tipo-di-film-e-scene.md`.

@@ -43,6 +43,7 @@ function toProject(row: ProjectRow): Project {
     cinematography: row.cinematography,
     language: row.language,
     durationS: row.durationS,
+    kind: row.kind,
     phase: row.phase,
     createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),

@@ -15,21 +15,30 @@ export function assemblyIsWorking(view: AssemblyView): boolean {
   return status === 'queued' || status === 'running';
 }
 
-/** «Scena 2: 3 inquadrature senza video». */
-export function gapText({ sceneNumber = 1, kind, missing = 1 }: AssemblyGap): string {
-  const scene = `Scena ${String(sceneNumber)}`;
+/** «3 inquadrature senza video»: perché una scena non si può spuntare. */
+export function gapText({ kind, missing = 1 }: AssemblyGap): string {
   switch (kind) {
-    case 'no_scenes':
-      return 'La storia non ha ancora nessuna scena';
     case 'not_planned':
-      return `${scene}: le inquadrature sono ancora da pensare`;
+      return 'Le inquadrature sono ancora da pensare';
     case 'stale':
-      return `${scene}: è cambiata, rifai le inquadrature`;
+      return 'È cambiata: rifai le inquadrature';
     case 'no_take':
       return missing === 1
-        ? `${scene}: un’inquadratura senza video`
-        : `${scene}: ${String(missing)} inquadrature senza video`;
+        ? 'Un’inquadratura senza video'
+        : `${String(missing)} inquadrature senza video`;
   }
+}
+
+/**
+ * «4 scene su 6 · il film dura 1 min 2 s · all'inizio avevi indicato circa 1 min 30 s». È un'informazione, mai
+ * un avviso: un film può venire più lungo o più corto del previsto (D85).
+ */
+export function filmLengthLine({ scenes, filmDurationS, plannedDurationS }: AssemblyView): string {
+  const included = scenes.filter((scene) => scene.included).length;
+  const count = `${String(included)} ${included === 1 ? 'scena' : 'scene'} su ${String(scenes.length)}`;
+  const lasts = formatDuration(Math.round(filmDurationS));
+  const planned = formatDuration(plannedDurationS);
+  return `${count} · il film dura ${lasts} · all’inizio avevi indicato circa ${planned}`;
 }
 
 const FAILURES: Record<string, string> = {
@@ -37,7 +46,7 @@ const FAILURES: Record<string, string> = {
     'Il programma si è chiuso mentre montava. Non riparte da solo: monta di nuovo quando vuoi.',
   ffmpeg_missing: 'Manca il programma che monta i video. Reinstalla Filmzy.',
   not_found: 'Un video o un suono del film non c’è più sul computer. Rifallo, poi monta di nuovo.',
-  invalid_request: 'Mentre aspettava è cambiato qualcosa. Controlla cosa manca e riprova.',
+  invalid_request: 'Mentre aspettava è cambiato qualcosa. Controlla le scene e riprova.',
   timeout: 'Il montaggio ci ha messo troppo. Chiudi gli altri programmi e riprova.',
   disk_full:
     'Il disco è pieno. Togli qualche film montato prima o libera un po’ di spazio, e riprova.',

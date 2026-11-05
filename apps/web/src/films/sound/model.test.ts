@@ -48,6 +48,7 @@ const clip = (patch: Partial<AudioClip> = {}): AudioClip => ({
 });
 
 const timeline: AudioTimeline = {
+  hiddenSceneIds: [],
   durationS: 12,
   scenes: [
     { sceneId: 'scene-1', sceneNumber: 1, heading: 'UNO', startS: 0, durationS: 7, stale: false },

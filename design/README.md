@@ -18,7 +18,7 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 |---|---|
 | `prossimo-prompt.md` | l'unico prompt da lanciare adesso, con le note su cosa controllare nella risposta |
 | `storico/` | i prompt già lanciati, uno per file, numerati nell'ordine in cui sono stati dati (`NN-nome-breve.md`) |
-| `riferimenti/` | il codice delle schermate scaricato da Figma via MCP (un `.tsx` per schermata, con testi, colori e misure esatti), non le immagini; per le tavole più grandi un riassunto (`03-inquadrature.md`). `riferimenti/02-film-e-app/` ha l'indice dei file e dei nodi di Figma; si riscarica dopo ogni prompt di correzione, e le versioni precedenti restano nella storia di git (così `git diff` mostra cosa è cambiato) |
+| `riferimenti/` | il codice delle schermate scaricato da Figma via MCP (un `.tsx` per schermata, con testi, colori e misure esatti), non le immagini; per le tavole più grandi un riassunto (`03-inquadrature.md`, `04-tipo-di-film-e-scene.md`). `riferimenti/02-film-e-app/` ha l'indice dei file e dei nodi di Figma; si riscarica dopo ogni prompt di correzione, e le versioni precedenti restano nella storia di git (così `git diff` mostra cosa è cambiato) |
 
 ## Storico dei prompt lanciati
 
@@ -30,6 +30,7 @@ Nello storico restano solo i prompt davvero lanciati: quelli ancora da lanciare 
 | 04 | [`storico/04-schermata-di-caricamento.md`](storico/04-schermata-di-caricamento.md) | via la landing page; al suo posto una schermata di caricamento all'avvio | 22/10/2026 | fatto; corretto dal prompt 05 |
 | 05 | [`storico/05-correzioni-del-mockup.md`](storico/05-correzioni-del-mockup.md) | le correzioni dopo la lettura via MCP: parole, intestazione e passi uguali ovunque, finestra di aggiornamento, avvio, «Le scene», suono, impostazioni, consigli di UX, tavola «Componenti», ordine delle tavole | 22/10/2026 | fatto; il codice delle 42 schermate è in `riferimenti/02-film-e-app/` |
 | 06 | [`storico/06-inquadrature-storyboard-e-immagini.md`](storico/06-inquadrature-storyboard-e-immagini.md) | tre schermate nuove: «Le inquadrature» (striscia di card per scena), il pannello con «Storyboard», «Imposta le immagini» e «Ultimo fotogramma», e i loro stati; più i testi a 11 px portati a 13 px | 02/11/2026 | fatto il 02/11: tre tavole nuove (nodi `82:7538`, `82:7704`, `82:8455`), riassunte in `riferimenti/03-inquadrature.md`; preso nell'interfaccia quasi tutto (l'elenco di cosa no è lì); i testi a 13 px sulle schermate vecchie non sono stati riscaricati |
+| 07 | [`storico/07-tipo-di-film-e-scene.md`](storico/07-tipo-di-film-e-scene.md) | in «La tua idea» il tipo di film con durata e costo indicativi; in «Montaggio ed esporta» la scelta delle scene; due tavole di stati | 05/11/2026 | fatto il 05/11: riassunto in `riferimenti/04-tipo-di-film-e-scene.md`; preso nell'interfaccia con T5.9, l'elenco di cosa no è lì |
 
 ## Chi fa il design
 

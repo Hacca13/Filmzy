@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { ServerStatus } from './components/ServerStatus';
 import { FilmPage } from './films/FilmPage';
 import { FilmsHome } from './films/FilmsHome';
 import { IdeaWizard } from './films/IdeaWizard';
@@ -8,6 +7,7 @@ import { parseFilmRoute, type FilmRoute } from './films/routes';
 import { FilmSpendPage } from './films/spend/FilmSpendPage';
 import { useHashPath } from './lib/route';
 import { SettingsPage } from './settings/SettingsPage';
+import { StartupGate } from './startup/StartupGate';
 import { FirstRunGate } from './welcome/FirstRunGate';
 import { WelcomePage } from './welcome/WelcomePage';
 
@@ -19,7 +19,6 @@ function Home() {
     <main className="app">
       <h1>Filmzy</h1>
       <p>I tuoi cortometraggi, con l'intelligenza artificiale.</p>
-      <ServerStatus />
       <p>
         <a href="#/impostazioni/connessioni">Impostazioni</a>
       </p>
@@ -46,6 +45,14 @@ function FilmScreen({ route }: { route: FilmRoute }) {
 }
 
 export function App() {
+  return (
+    <StartupGate>
+      <Screens />
+    </StartupGate>
+  );
+}
+
+function Screens() {
   const path = useHashPath();
   const filmRoute = parseFilmRoute(path);
 

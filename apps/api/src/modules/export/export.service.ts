@@ -29,8 +29,7 @@ import {
   exportFileName,
   failureReason,
   fileErrorCode,
-  launch,
-  openFolderCommand,
+  openFolder,
   otherAspects,
   qualitiesFor,
   removeEntries,
@@ -56,9 +55,7 @@ const BEAT_MS = 5 * 60 * 1000;
 @Injectable()
 export class FolderOpener {
   open(folder: string): Promise<void> {
-    const [command, target] = openFolderCommand(process.platform, folder);
-    // Su Windows explorer.exe esce con 1 anche quando la cartella si è aperta.
-    return launch(command, [target], { ignoreExitCode: process.platform === 'win32' });
+    return openFolder(folder);
   }
 }
 

@@ -59,12 +59,82 @@ h2 {
   font-size: 2.5rem;
 }
 
-.status {
-  color: var(--muted);
+.brand {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
 }
 
-.status[data-status='ready'] {
-  color: var(--accent);
+.brand img {
+  width: 24px;
+  height: 24px;
+}
+
+.brand[data-size='large'] {
+  gap: 16px;
+  font-size: 52px;
+  line-height: 1.2;
+}
+
+.brand[data-size='large'] img {
+  width: 64px;
+  height: 64px;
+}
+
+/* L'avvio: una colonna al centro della finestra, con la luce del proiettore dietro come nel disegno. */
+.startup {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 16px;
+  text-align: center;
+  background: radial-gradient(
+    ellipse 440px 325px at center,
+    rgb(245 181 68 / 5%),
+    rgb(245 181 68 / 0%)
+  );
+}
+
+.startup h1 {
+  max-width: 660px;
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+}
+
+.startup p {
+  margin: 0;
+}
+
+.startup .field {
+  width: min(660px, 100%);
+  text-align: left;
+}
+
+.startup-spinner {
+  width: 22px;
+  height: 22px;
+  animation: startup-spin 1s linear infinite;
+}
+
+@keyframes startup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-spinner {
+    animation: none;
+  }
 }
 
 /* Impostazioni: menu a sinistra e contenuto a destra, come nel mockup. */

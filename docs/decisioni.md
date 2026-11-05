@@ -960,3 +960,24 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Guardato in un browser** (Edge senza finestra, col fornitore finto): tracce e pannello aperto. Ha mostrato difetti che i test non vedono, corretti: titoli dei blocchi tagliati, tracce senza spazio col pannello aperto (la sezione ora esce dalla colonna della pagina, come nel disegno), «1 scene», tacche ripetute sul righello. Non sono stati premuti tutti i pulsanti.
 
 **Non fatto:** nessuna prova con i servizi veri (T4.0).
+
+## D83 · Montaggio: gratis, da capo ogni volta, con le durate vere — 05/11/2026
+
+**Realizza** T5.7 (§9, D24, D28, D43). Salvare il file dove vuole l'utente è T5.8.
+**Decisione:**
+1. **Si lavora in coda e si rifà da capo:** non chiama nessun fornitore, quindi non costa. Per questo un lavoro ripreso dopo un riavvio riparte, al contrario di chi paga (D81.10).
+2. **Il suono si mette con le durate vere delle clip,** lette dopo la normalizzazione: un video un po' più lungo del previsto non sposta i suoni dopo di lui. La linea del tempo è la stessa funzione dell'editor (D82).
+3. **Si monta solo se c'è tutto:** ogni scena pensata, con un piano che vale, e un video per ogni inquadratura. L'elenco dice cosa manca. I gialli non bloccano: sono avvisi (D74).
+4. **Il formato è quello della prima clip,** a 24 fotogrammi al secondo; le altre prendono le bande, non si deformano. Qualità e formato da scegliere sono T5.8.
+5. **La dicitura AI è sempre nei titoli di coda** (D28), anche se per ora non c'è un interruttore per toglierla. Titolo del film e nomi dei personaggi vengono dai dati e non si modificano qui. Apertura di 3 secondi, chiusura di 5.
+6. **I testi non entrano mai nella riga dei filtri di ffmpeg:** titoli e font stanno in file con nomi scelti dal programma (`textfile`, `expansion=none`), così un titolo con «:», «'» o «%{...}» resta testo.
+7. **Il font viaggia col programma** (`dejavu-fonts-ttf`, licenza libera): quelli installati cambiano da un computer all'altro. Va ricordato nel pacchetto di Electron (T6.4), come ffmpeg.
+8. **Mix:** ogni suono si allunga col silenzio fino alla fine, così `amix` divide sempre per lo stesso numero e il volume non salta (questa versione di ffmpeg non ha `normalize=0`); poi un limitatore e `loudnorm` a -16 LUFS. Due musiche di scene vicine si incrociano per un secondo, se il file lo permette.
+9. **L'impronta di ciò che entra** dice se il film montato è rimasto indietro: conta solo ciò che si vede o si sente.
+10. **I pezzi intermedi non restano:** la cartella di lavoro si toglie sempre, anche dopo un errore. Il film ha il checksum come nome, come ogni altro file.
+
+**Trovato provandolo dal browser:** ffmpeg su Windows non apre i percorsi oltre i 260 caratteri, e il programma diceva «questo file non è un suono». Ora l'errore è quello vero. Nella cartella normale dei dati quel limite non si raggiunge; **una cartella dei dati con un percorso molto lungo non funzionerebbe**: da riguardare con T6.4.
+
+**Limiti noti:** i film montati prima dell'ultimo restano sul disco finché non c'è un modo di toglierli (T5.8); dopo un riavvio il montaggio riparte dall'inizio; la voce di un personaggio non c'è (Fase 2).
+
+**Non fatto:** salvare il file altrove, qualità e formato (T5.8); nessuna prova con video veri dei fornitori (T4.0).

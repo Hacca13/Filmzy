@@ -1526,3 +1526,7 @@ button.sound-block {
   margin: 8px 0 0;
   padding-left: 18px;
 }
+
+.sound-film .take-video {
+  max-width: 720px;
+}

@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   concatClips,
+  layoutTitle,
   mixSounds,
   muxFilm,
   normalizeClip,
@@ -149,6 +150,31 @@ describe('i titoli', () => {
     expect(wrapText('', 5)).toEqual([]);
   });
 
+  it('su un film verticale il testo si rimpicciolisce e ci sta tutto, dicitura compresa', () => {
+    const notice = 'Contiene contenuti generati con intelligenza artificiale';
+    const rows = layoutTitle(
+      [
+        { text: 'Una storia lunghissima che non finisce mai di finire '.repeat(2), scale: 0.07 },
+        { text: notice, scale: 0.035 },
+      ],
+      720,
+      1280,
+    );
+
+    const height = rows.reduce((sum, { fontSize }) => sum + fontSize * 1.5, 0);
+    expect(height).toBeLessThanOrEqual(1280 * 0.9);
+    for (const { row, fontSize } of rows) {
+      expect(row.length * fontSize * 0.62).toBeLessThanOrEqual(720 * 0.84);
+    }
+    expect(rows.map(({ row }) => row).join(' ')).toContain(notice);
+  });
+
+  it('una parola troppo lunga fa rimpicciolire il testo, invece di uscire ai lati', () => {
+    const [row] = layoutTitle([{ text: 'x'.repeat(60), scale: 0.09 }], 720, 1280);
+
+    expect((row?.row.length ?? 0) * (row?.fontSize ?? 0) * 0.62).toBeLessThanOrEqual(720 * 0.84);
+  });
+
   it('un titolo è una clip del film, anche con caratteri che ffmpeg potrebbe capire male', async () => {
     const workDir = await mkdtemp(path.join(dir, 'titoli con spazi '));
     const output = 'apertura.mp4';
@@ -187,8 +213,24 @@ describe('dai pezzi al film', () => {
     const mix = path.join(workDir, 'mix.m4a');
     await mixSounds({
       sounds: [
-        { file: beep, startS: 0.5, durationS: 1, volume: 1, fadeInS: 0.1, fadeOutS: 0.1 },
-        { file: beep, startS: 1, durationS: 1, volume: 0.5, fadeInS: 0, fadeOutS: 0 },
+        {
+          file: beep,
+          startS: 0.5,
+          durationS: 1,
+          volume: 1,
+          fadeInS: 0.1,
+          fadeOutS: 0.1,
+          levelLufs: -20,
+        },
+        {
+          file: beep,
+          startS: 1,
+          durationS: 1,
+          volume: 0.5,
+          fadeInS: 0,
+          fadeOutS: 0,
+          levelLufs: -20,
+        },
       ],
       durationS: total,
       output: mix,
@@ -203,6 +245,27 @@ describe('dai pezzi al film', () => {
     expect(await videoDurationS(film)).toBeCloseTo(total, 0);
     expect(await loudness(film)).toBeGreaterThan(-30);
   }, 120_000);
+
+  it('il volume scelto si sente anche con un suono solo: il livellamento non lo cancella', async () => {
+    const workDir = await mkdtemp(path.join(dir, 'volume-'));
+    const mixAt = async (volume: number, name: string) => {
+      const output = path.join(workDir, name);
+      await mixSounds({
+        sounds: [
+          { file: beep, startS: 0, durationS: 1, volume, fadeInS: 0, fadeOutS: 0, levelLufs: -20 },
+        ],
+        durationS: 1,
+        output,
+        workDir,
+      });
+      return loudness(output);
+    };
+
+    const full = await mixAt(1, 'pieno.m4a');
+    const low = await mixAt(0.2, 'basso.m4a');
+
+    expect(full - low).toBeGreaterThan(10);
+  }, 60_000);
 
   it('senza suoni il film resta col suo silenzio', async () => {
     const workDir = await mkdtemp(path.join(dir, 'muto-'));

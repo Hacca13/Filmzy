@@ -10,10 +10,11 @@ import { sheetImageStatusSchema } from './sheet-api.js';
  */
 
 /** Perché una scena non si può ancora montare. */
-export const ASSEMBLY_GAP_KINDS = ['not_planned', 'stale', 'no_take'] as const;
+export const ASSEMBLY_GAP_KINDS = ['no_scenes', 'not_planned', 'stale', 'no_take'] as const;
 
 export const assemblyGapSchema = z.object({
-  sceneNumber: z.number().int().positive(),
+  /** Quale scena: manca solo per `no_scenes`, una storia senza scene. */
+  sceneNumber: z.number().int().positive().optional(),
   kind: z.enum(ASSEMBLY_GAP_KINDS),
   /** Quante inquadrature della scena non hanno ancora un video (per `no_take`). */
   missing: z.number().int().positive().optional(),
@@ -50,8 +51,11 @@ export type AssemblyTitles = z.infer<typeof assemblyTitlesSchema>;
  */
 export const assemblyViewSchema = z.object({
   gaps: z.array(assemblyGapSchema),
+  /** L'ultimo tentativo, com'è andato. */
   latest: filmAssemblySchema.optional(),
-  /** Il film montato contiene tutto ciò che c'è adesso: niente è cambiato dopo. */
+  /** L'ultimo film riuscito: un tentativo che fallisce o che sta lavorando non lo nasconde. */
+  film: filmAssemblySchema.optional(),
+  /** Quel film contiene tutto ciò che c'è adesso: niente è cambiato dopo. */
   upToDate: z.boolean(),
   titles: assemblyTitlesSchema,
 });

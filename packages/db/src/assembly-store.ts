@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { filmAssemblySchema, type FilmAssembly, type SheetImageStatus } from '@filmzy/contracts';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import { filmAssemblies, type FilmAssemblyRow } from './schema.js';
@@ -11,6 +11,8 @@ export interface AssemblyPatch {
   assetId?: string;
   durationS?: number;
   errorCode?: string;
+  /** Quello che si sta montando davvero, che può essere cambiato da quando è stato chiesto. */
+  fingerprint?: string;
 }
 
 /** Un tentativo col film a cui appartiene e con ciò che conteneva. */
@@ -18,6 +20,8 @@ export interface StoredAssembly {
   projectId: string;
   /** L'impronta di ciò che è entrato nel film: se cambia, il film montato è indietro. */
   fingerprint: string;
+  /** L'ultimo segno di vita (ms): un montaggio lungo o ripreso dopo un riavvio è vivo. */
+  lastActivityAt: number;
   assembly: FilmAssembly;
 }
 
@@ -27,6 +31,8 @@ export interface AssemblyStore {
   finish: (assemblyId: string, patch: AssemblyPatch) => void;
   get: (assemblyId: string) => StoredAssembly | undefined;
   latest: (projectId: string) => StoredAssembly | undefined;
+  /** L'ultimo riuscito: un tentativo che fallisce non lo cancella. */
+  lastSucceeded: (projectId: string) => StoredAssembly | undefined;
 }
 
 export interface AssemblyStoreOptions {
@@ -37,6 +43,7 @@ function toStored(row: FilmAssemblyRow): StoredAssembly {
   return {
     projectId: row.projectId,
     fingerprint: row.fingerprint,
+    lastActivityAt: row.updatedAt,
     assembly: filmAssemblySchema.parse({
       id: row.id,
       status: row.status,
@@ -79,6 +86,7 @@ export function createAssemblyStore(
           assetId: patch.assetId ?? null,
           durationS: patch.durationS ?? null,
           errorCode: patch.errorCode ?? null,
+          ...(patch.fingerprint === undefined ? {} : { fingerprint: patch.fingerprint }),
           updatedAt: now().getTime(),
         })
         .where(eq(filmAssemblies.id, assemblyId))
@@ -95,6 +103,17 @@ export function createAssemblyStore(
         .select()
         .from(filmAssemblies)
         .where(eq(filmAssemblies.projectId, projectId))
+        .orderBy(desc(filmAssemblies.createdAt))
+        .limit(1)
+        .get();
+      return row === undefined ? undefined : toStored(row);
+    },
+
+    lastSucceeded(projectId) {
+      const row = db
+        .select()
+        .from(filmAssemblies)
+        .where(and(eq(filmAssemblies.projectId, projectId), eq(filmAssemblies.status, 'succeeded')))
         .orderBy(desc(filmAssemblies.createdAt))
         .limit(1)
         .get();

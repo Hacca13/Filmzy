@@ -16,12 +16,12 @@ const view = (patch: Partial<AssemblyView> = {}): AssemblyView => ({
   ...patch,
 });
 
-const made = {
+const made: NonNullable<AssemblyView['film']> = {
   id: 'm-1',
   status: 'succeeded',
   assetId: 'film',
   createdAt: '2026-11-05T10:00:00.000Z',
-} as const;
+};
 
 const body = (value: AssemblyView) =>
   renderToStaticMarkup(<AssemblyBody view={value} busy={false} onStart={() => undefined} />);
@@ -30,6 +30,7 @@ const startButton = (html: string) => /<button[^>]*>[^<]*<\/button>/.exec(html)?
 
 describe('cosa manca', () => {
   it('si scrive in parole semplici', () => {
+    expect(gapText({ kind: 'no_scenes' })).toBe('La storia non ha ancora nessuna scena');
     expect(gapText({ sceneNumber: 2, kind: 'not_planned' })).toBe(
       'Scena 2: le inquadrature sono ancora da pensare',
     );
@@ -73,7 +74,7 @@ describe('il montaggio', () => {
   });
 
   it('riuscito mostra il film e si può rifare', () => {
-    const html = body(view({ latest: made, upToDate: true }));
+    const html = body(view({ latest: made, film: made, upToDate: true }));
 
     expect(html).toContain('<video');
     expect(startButton(html)).toContain('Monta di nuovo');
@@ -81,7 +82,28 @@ describe('il montaggio', () => {
   });
 
   it('se dopo è cambiato qualcosa lo dice', () => {
-    expect(body(view({ latest: made, upToDate: false }))).toContain('hai cambiato qualcosa');
+    expect(body(view({ latest: made, film: made, upToDate: false }))).toContain(
+      'hai cambiato qualcosa',
+    );
+  });
+
+  it('un tentativo fallito o in corso non nasconde il film buono', () => {
+    const failed = body(
+      view({
+        latest: { id: 'm-2', status: 'failed', errorCode: 'timeout', createdAt: 'x' },
+        film: made,
+        upToDate: true,
+      }),
+    );
+    const working = body(
+      view({ latest: { id: 'm-2', status: 'running', createdAt: 'x' }, film: made }),
+    );
+
+    expect(failed).toContain('<video');
+    expect(failed).toContain('ci ha messo troppo');
+    expect(startButton(failed)).toContain('Monta di nuovo');
+    expect(working).toContain('<video');
+    expect(working).not.toContain('hai cambiato qualcosa');
   });
 
   it('fallito dice perché, in parole semplici, e si può riprovare', () => {

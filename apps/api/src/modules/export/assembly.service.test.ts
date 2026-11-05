@@ -16,6 +16,10 @@ const scene = (sceneNumber: number, patch: Partial<ScenePlan> = {}): ScenePlan =
   }) as unknown as ScenePlan;
 
 describe('cosa manca per montare', () => {
+  it('una storia senza scene non ha niente da montare', () => {
+    expect(gapsOf([], {})).toEqual([{ kind: 'no_scenes' }]);
+  });
+
   it('niente, se ogni inquadratura di ogni scena ha il suo video', () => {
     expect(gapsOf([scene(1)], { a: take })).toEqual([]);
   });

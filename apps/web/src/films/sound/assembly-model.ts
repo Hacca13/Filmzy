@@ -11,9 +11,11 @@ export function assemblyIsWorking(view: AssemblyView): boolean {
 }
 
 /** «Scena 2: 3 inquadrature senza video». */
-export function gapText({ sceneNumber, kind, missing = 1 }: AssemblyGap): string {
+export function gapText({ sceneNumber = 1, kind, missing = 1 }: AssemblyGap): string {
   const scene = `Scena ${String(sceneNumber)}`;
   switch (kind) {
+    case 'no_scenes':
+      return 'La storia non ha ancora nessuna scena';
     case 'not_planned':
       return `${scene}: le inquadrature sono ancora da pensare`;
     case 'stale':

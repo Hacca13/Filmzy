@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -10,7 +10,6 @@ import {
   type AssemblyView,
   type AudioClip,
   type AudioTrack,
-  type FilmAssembly,
   type ScenePlan,
 } from '@filmzy/contracts';
 import {
@@ -51,7 +50,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS } from '../shots/work.js';
-import { planMix, type SoundFile } from './mix-plan.js';
+import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che monta il film. */
@@ -62,10 +61,10 @@ const AI_NOTICE = 'Contiene contenuti generati con intelligenza artificiale';
 
 const OPENING_S = 3;
 const CLOSING_S = 5;
-
-/** La misura del film se nessun video la dice: non dovrebbe succedere, ma il montaggio non si ferma per questo. */
-const FALLBACK_SIZE = { width: 1280, height: 720 };
 const FILM_FPS = 24;
+
+/** Il prefisso delle cartelle di lavoro: una per ogni giro, per riconoscerle e toglierle. */
+const WORK_PREFIX = 'lavoro-';
 
 /** Le misure devono essere pari: il formato video più comune non ne accetta altre. */
 const even = (value: number): number => value - (value % 2);
@@ -108,16 +107,7 @@ export class AssemblyService implements OnModuleInit {
   }
 
   async view(projectId: string): Promise<AssemblyView> {
-    const snapshot = await this.snapshot(projectId);
-    this.closeLost(projectId);
-    const stored = this.store.latest(projectId);
-    return {
-      gaps: snapshot.gaps,
-      ...(stored === undefined ? {} : { latest: stored.assembly }),
-      upToDate:
-        stored?.assembly.status === 'succeeded' && stored.fingerprint === snapshot.fingerprint,
-      titles: snapshot.titles,
-    };
+    return this.viewOf(projectId, await this.snapshot(projectId));
   }
 
   /** «Monta il film»: controlla che ci sia tutto, poi mette in coda. Non costa niente. */
@@ -147,7 +137,21 @@ export class AssemblyService implements OnModuleInit {
       throw error;
     }
     this.projects.reach(projectId, 'export');
-    return this.view(projectId);
+    return this.viewOf(projectId, snapshot);
+  }
+
+  /** L'ultimo tentativo e l'ultimo film riuscito: uno che fallisce non nasconde quello buono. */
+  private viewOf(projectId: string, snapshot: Snapshot): AssemblyView {
+    this.closeLost(projectId);
+    const latest = this.store.latest(projectId);
+    const film = this.store.lastSucceeded(projectId);
+    return {
+      gaps: snapshot.gaps,
+      ...(latest === undefined ? {} : { latest: latest.assembly }),
+      ...(film === undefined ? {} : { film: film.assembly }),
+      upToDate: film?.fingerprint === snapshot.fingerprint,
+      titles: snapshot.titles,
+    };
   }
 
   /** Il lavoro in coda: un errore si scrive sul tentativo, e il lavoro finisce lo stesso. */
@@ -163,24 +167,33 @@ export class AssemblyService implements OnModuleInit {
     if (stored.assembly.status === 'succeeded' || stored.assembly.status === 'failed') return;
 
     const filmDir = path.join(projectsDir(this.dataDir), projectId, 'montaggio');
-    const workDir = path.join(filmDir, `lavoro-${assemblyId}`);
+    // Una cartella per ogni giro: quella di un giro interrotto può essere ancora in uso da un ffmpeg
+    // sopravvissuto, e Windows non la lascerebbe togliere.
+    const workDir = path.join(filmDir, `${WORK_PREFIX}${randomUUID()}`);
     try {
       this.store.finish(assemblyId, { status: 'running' });
-      // Un lavoro ripreso dopo un riavvio riparte pulito.
-      await rm(workDir, { recursive: true, force: true });
       await mkdir(workDir, { recursive: true });
+      await this.removeLeftovers(filmDir, workDir);
 
       const snapshot = await this.snapshot(projectId);
       if (snapshot.gaps.length > 0) {
         // Qualcosa è cambiato mentre il lavoro aspettava: l'utente rilegge cosa manca e rifà.
         throw new ProviderError('invalid_request', false, 'Manca qualcosa per montare il film.');
       }
-      const { assetId, durationS } = await this.assemble(projectId, snapshot, workDir, filmDir);
+      // Da qui vale ciò che si monta davvero, non ciò che c'era quando è stato chiesto.
+      this.store.finish(assemblyId, { status: 'running', fingerprint: snapshot.fingerprint });
+      const beat = () => {
+        this.store.finish(assemblyId, { status: 'running' });
+      };
+      const { assetId, durationS } = await this.assemble(
+        { projectId, snapshot, workDir, filmDir },
+        beat,
+      );
       this.store.finish(assemblyId, { status: 'succeeded', assetId, durationS });
     } catch (error) {
       const errorCode =
         error instanceof MediaError || error instanceof ProviderError ? error.code : 'unknown';
-      this.log.warn(`Montaggio fallito: ${errorCode}.`);
+      this.log.warn(`Montaggio fallito: ${this.reasonFor(error)}.`);
       this.store.finish(assemblyId, { status: 'failed', errorCode });
     } finally {
       // I pezzi intermedi pesano quanto il film: non restano, qualunque cosa sia successa.
@@ -190,20 +203,46 @@ export class AssemblyService implements OnModuleInit {
     }
   }
 
+  /** Per il registro: il motivo, senza il percorso dei dati, che porta il nome dell'utente. */
+  private reasonFor(error: unknown): string {
+    if (error instanceof MediaError || error instanceof ProviderError) {
+      return `${error.code}: ${error.message.replaceAll(this.dataDir, '<dati>')}`;
+    }
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    return code === undefined ? 'unknown' : `unknown (${code})`;
+  }
+
+  /** Le cartelle di giri interrotti: si tolgono se si può, e se sono ancora in uso resteranno al prossimo giro. */
+  private async removeLeftovers(filmDir: string, current: string): Promise<void> {
+    const names = await readdir(filmDir);
+    await Promise.all(
+      names
+        .filter((name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current)
+        .map((name) =>
+          rm(path.join(filmDir, name), { recursive: true, force: true }).catch(() => {
+            // Un ffmpeg sopravvissuto la tiene aperta: non ferma il montaggio di adesso.
+          }),
+        ),
+    );
+  }
+
   private async assemble(
-    projectId: string,
-    snapshot: Snapshot,
-    workDir: string,
-    filmDir: string,
+    place: { projectId: string; snapshot: Snapshot; workDir: string; filmDir: string },
+    beat: () => void,
   ): Promise<{ assetId: string; durationS: number }> {
+    const { projectId, snapshot, workDir, filmDir } = place;
     const { scenes, kept, tracks, clips, titles } = snapshot;
     const shots = scenes.flatMap((scene) => scene.shots);
-    const firstClip = this.keptFile(kept[shots[0]?.id ?? '']);
-    const format = filmFormat(await videoSize(firstClip));
-    const nativeOn = tracks.find(({ kind }) => kind === 'native')?.muted === false;
+    const inputs = new Map<string, string>();
+    for (const shot of shots) inputs.set(shot.id, await this.keptFile(kept[shot.id]));
 
-    // Una clip alla volta: la ricodifica usa già tutti i processori.
-    const realS = new Map<string, number>();
+    const firstInput = inputs.get(shots[0]?.id ?? '');
+    const format = firstInput === undefined ? undefined : filmFormat(await videoSize(firstInput));
+    if (format === undefined)
+      throw new MediaError('ffmpeg_failed', 'La prima clip non è un video.');
+    const native = tracks.find(({ kind }) => kind === 'native');
+    const nativeHeard = native !== undefined && !native.muted && native.volume > 0;
+
     const pieces = ['apertura.mp4'];
     await renderTitleCard({
       output: 'apertura.mp4',
@@ -212,20 +251,24 @@ export class AssemblyService implements OnModuleInit {
       durationS: OPENING_S,
       lines: [{ text: titles.title, scale: 0.09 }],
     });
+
+    // Una clip alla volta: la ricodifica usa già tutti i processori.
+    const realS = new Map<string, number>();
+    let anyNative = false;
     for (const [index, shot] of shots.entries()) {
-      const take = kept[shot.id];
-      const input = this.keptFile(take);
+      const input = inputs.get(shot.id);
+      if (input === undefined) throw new ProviderError('not_found', false, 'Manca un video.');
+      const keepAudio =
+        nativeHeard && kept[shot.id]?.nativeAudio === true && (await hasAudioStream(input));
+      anyNative ||= keepAudio;
       const piece = `clip-${String(index)}.mp4`;
       const output = path.join(workDir, piece);
-      await normalizeClip({
-        input,
-        output,
-        format,
-        keepAudio: nativeOn && take?.nativeAudio === true && (await hasAudioStream(input)),
-      });
+      await normalizeClip({ input, output, format, keepAudio });
       realS.set(shot.id, (await videoDurationS(output)) ?? shot.intent.durationS);
       pieces.push(piece);
+      beat();
     }
+
     await renderTitleCard({
       output: 'chiusura.mp4',
       workDir,
@@ -239,6 +282,7 @@ export class AssemblyService implements OnModuleInit {
     });
     pieces.push('chiusura.mp4');
     await concatClips({ inputs: pieces, output: 'video.mp4', workDir });
+    beat();
 
     // Le posizioni si rifanno con le durate vere: un video più lungo del previsto non sposta i suoni dopo.
     const timeline = buildTimeline(withRealDurations(scenes, realS), kept, clips);
@@ -248,23 +292,20 @@ export class AssemblyService implements OnModuleInit {
       timeline,
       clips,
       tracks,
-      files: await this.soundFiles(clips),
+      files: await this.soundFiles(heardClips(clips, tracks, timeline)),
       offsetS: OPENING_S,
     });
-    const native = tracks.find(({ kind }) => kind === 'native');
-    if (native !== undefined && !native.muted && native.volume > 0) {
-      const anyOn = shots.some((shot) => kept[shot.id]?.nativeAudio === true);
-      if (anyOn) {
-        // L'audio dei take sta già nel video, al suo posto: entra nel mix come una traccia.
-        sounds.push({
-          file: video,
-          startS: 0,
-          durationS: totalS,
-          volume: native.volume,
-          fadeInS: 0,
-          fadeOutS: 0,
-        });
-      }
+    if (nativeHeard && anyNative) {
+      // L'audio dei take sta già nel video, al suo posto: entra nel mix come una traccia.
+      sounds.push({
+        file: video,
+        startS: 0,
+        durationS: totalS,
+        volume: native.volume,
+        fadeInS: 0,
+        fadeOutS: 0,
+        levelLufs: LEVEL_OF.native,
+      });
     }
 
     const finished = path.join(workDir, 'film.mp4');
@@ -281,11 +322,16 @@ export class AssemblyService implements OnModuleInit {
     return { assetId, durationS };
   }
 
-  /** Il film resta nella cartella del film col checksum come nome, come ogni altro file (regola 11). */
+  /**
+   * Il film resta nella cartella del film col checksum come nome, come ogni altro file (regola 11). Se c'è
+   * già vuol dire che è identico: si tiene quello, che il lettore può avere aperto e Windows non lo
+   * lascerebbe sostituire.
+   */
   private async keepFilm(projectId: string, file: string, filmDir: string): Promise<string> {
     const checksum = await checksumOf(file);
     const target = path.join(filmDir, `${checksum}.mp4`);
-    await rename(file, target);
+    const existing = await stat(target).catch(() => undefined);
+    if (existing === undefined) await rename(file, target);
     const { size } = await stat(target);
     registerAssets(this.files, { dataDir: this.dataDir, projectId }, [
       { assetId: checksum, path: target, contentType: 'video/mp4', bytes: size, checksum },
@@ -293,30 +339,32 @@ export class AssemblyService implements OnModuleInit {
     return checksum;
   }
 
-  /** Il file in uso di ogni clip che ne ha uno, con la sua durata vera: serve a sapere quanto si può sentire. */
+  /** Il file in uso di ogni suono che si sente, con la sua durata vera: serve a sapere quanto si può sentire. */
   private async soundFiles(clips: readonly AudioClip[]): Promise<Record<string, SoundFile>> {
-    const files: Record<string, SoundFile> = {};
-    for (const clip of clips) {
-      const variant = clip.variants.find(({ id }) => id === clip.chosenVariantId);
-      if (variant?.assetId === undefined) continue;
-      const found = assetFile(this.files, this.dataDir, variant.assetId);
-      if (found === undefined) {
-        throw new ProviderError('not_found', false, 'Il file di un suono non c’è più.');
-      }
-      const durationS = await audioDurationS(found.file);
-      if (durationS === undefined) {
-        throw new MediaError('ffmpeg_failed', 'Un suono in uso non ha una durata leggibile.');
-      }
-      files[clip.id] = { file: found.file, durationS };
-    }
-    return files;
+    const entries = await Promise.all(
+      clips.map(async (clip): Promise<[string, SoundFile]> => {
+        const variant = clip.variants.find(({ id }) => id === clip.chosenVariantId);
+        const file = await this.existingFile(variant?.assetId);
+        const durationS = await audioDurationS(file);
+        if (durationS === undefined) {
+          throw new MediaError('ffmpeg_failed', 'Un suono in uso non ha una durata leggibile.');
+        }
+        return [clip.id, { file, durationS }];
+      }),
+    );
+    return Object.fromEntries(entries);
   }
 
-  private keptFile(take: KeptTake | undefined): string {
-    const found =
-      take === undefined ? undefined : assetFile(this.files, this.dataDir, take.assetId);
-    if (found === undefined) {
-      throw new ProviderError('not_found', false, 'Il file di un video non c’è più.');
+  private keptFile(take: KeptTake | undefined): Promise<string> {
+    return this.existingFile(take?.assetId);
+  }
+
+  /** Dov'è un file del film, se c'è davvero: nel registro può esserci ancora, e sul disco non più. */
+  private async existingFile(assetId: string | undefined): Promise<string> {
+    const found = assetId === undefined ? undefined : assetFile(this.files, this.dataDir, assetId);
+    const onDisk = found === undefined ? undefined : await stat(found.file).catch(() => undefined);
+    if (found === undefined || onDisk === undefined) {
+      throw new ProviderError('not_found', false, 'Un file del film non c’è più.');
     }
     return found.file;
   }
@@ -345,29 +393,34 @@ export class AssemblyService implements OnModuleInit {
     };
   }
 
-  /** Un tentativo rimasto a metà da troppo tempo si è perso: si chiude, o bloccherebbe il pulsante. */
+  /**
+   * Un tentativo fermo da troppo tempo si è perso: si chiude, o bloccherebbe il pulsante. Conta l'ultimo
+   * segno di vita, non la partenza: un montaggio lungo o ripreso dopo un riavvio è vivo.
+   */
   private closeLost(projectId: string): void {
     const stored = this.store.latest(projectId);
     if (stored === undefined) return;
-    const { status, createdAt, id } = stored.assembly;
+    const { status, id } = stored.assembly;
     const open = status === 'queued' || status === 'running';
-    if (open && Date.now() - Date.parse(createdAt) > STALE_WORK_MS) {
+    if (open && Date.now() - stored.lastActivityAt > STALE_WORK_MS) {
       this.store.finish(id, { status: 'failed', errorCode: 'timeout' });
     }
   }
 }
 
-/** Il formato del film: quello della prima clip, con misure pari. */
-function filmFormat(size: { width: number; height: number } | undefined): FilmFormat {
-  const { width, height } = size ?? FALLBACK_SIZE;
-  return { width: even(width), height: even(height), fps: FILM_FPS };
+/** Il formato del film: quello della prima clip, con misure pari. Senza misura non è un video. */
+function filmFormat(size: { width: number; height: number } | undefined): FilmFormat | undefined {
+  return size === undefined
+    ? undefined
+    : { width: even(size.width), height: even(size.height), fps: FILM_FPS };
 }
 
-/** Cosa manca per montare: una scena da pensare, una da rifare, inquadrature senza video. */
+/** Cosa manca per montare: una storia vuota, una scena da pensare, una da rifare, inquadrature senza video. */
 export function gapsOf(
   scenes: readonly ScenePlan[],
   kept: Readonly<Record<string, KeptTake>>,
 ): AssemblyGap[] {
+  if (scenes.length === 0) return [{ kind: 'no_scenes' }];
   return scenes.flatMap((scene): AssemblyGap[] => {
     const { sceneNumber } = scene;
     if (!scene.planned || scene.shots.length === 0) return [{ sceneNumber, kind: 'not_planned' }];
@@ -439,5 +492,3 @@ function checksumOf(file: string): Promise<string> {
       });
   });
 }
-
-export type { FilmAssembly };

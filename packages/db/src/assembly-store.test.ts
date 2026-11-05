@@ -39,6 +39,31 @@ describe('i montaggi di un film', () => {
     expect(failed?.assetId).toBeUndefined();
   });
 
+  it('l’impronta si aggiorna con ciò che si monta davvero, e ogni passo è un segno di vita', () => {
+    const started = store.start('film-1', 'chiesta');
+    const before = store.get(started.id)?.lastActivityAt ?? 0;
+    clock = new Date(clock.getTime() + 5000);
+
+    store.finish(started.id, { status: 'running', fingerprint: 'montata' });
+
+    expect(store.get(started.id)?.fingerprint).toBe('montata');
+    expect(store.get(started.id)?.lastActivityAt).toBe(before + 5000);
+    store.finish(started.id, { status: 'running' });
+    expect(store.get(started.id)?.fingerprint).toBe('montata');
+  });
+
+  it('l’ultimo riuscito resta anche se dopo uno fallisce', () => {
+    const good = store.start('film-1', 'buono');
+    store.finish(good.id, { status: 'succeeded', assetId: 'a-1', durationS: 10 });
+    clock = new Date(clock.getTime() + 1000);
+    const bad = store.start('film-1', 'rotto');
+    store.finish(bad.id, { status: 'failed', errorCode: 'ffmpeg_failed' });
+
+    expect(store.latest('film-1')?.assembly.id).toBe(bad.id);
+    expect(store.lastSucceeded('film-1')?.assembly.id).toBe(good.id);
+    expect(store.lastSucceeded('film-2')).toBeUndefined();
+  });
+
   it('si legge l’ultimo del film, e un film senza montaggi non ne ha', () => {
     store.start('film-1', 'primo');
     clock = new Date(clock.getTime() + 1000);

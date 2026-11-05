@@ -42,7 +42,13 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
           busy={action.busy}
           onStart={() => {
             action.run(async () => {
-              setValue(await startAssembly(filmId));
+              try {
+                setValue(await startAssembly(filmId));
+              } catch (error) {
+                // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
+                await reload();
+                throw error;
+              }
             });
           }}
         />
@@ -62,9 +68,9 @@ export function AssemblyBody({
   busy: boolean;
   onStart: () => void;
 }) {
-  const { latest, gaps, titles, upToDate } = view;
+  const { latest, film, gaps, titles, upToDate } = view;
   const working = assemblyIsWorking(view);
-  const made = latest?.status === 'succeeded' ? latest.assetId : undefined;
+  const made = film?.assetId;
 
   return (
     <>
@@ -86,7 +92,7 @@ export function AssemblyBody({
           <p className="hint">Per montare il film manca ancora:</p>
           <ul className="sound-orphans">
             {gaps.map((gap) => (
-              <li key={`${String(gap.sceneNumber)}:${gap.kind}`}>{gapText(gap)}</li>
+              <li key={`${String(gap.sceneNumber ?? 0)}:${gap.kind}`}>{gapText(gap)}</li>
             ))}
           </ul>
         </div>

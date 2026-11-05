@@ -18,6 +18,7 @@ export {
 } from './ffmpeg.js';
 export {
   concatClips,
+  layoutTitle,
   mixSounds,
   muxFilm,
   normalizeClip,
@@ -33,4 +34,5 @@ export {
   type NormalizeClipOptions,
   type TitleCardOptions,
   type TitleLine,
+  type TitleRow,
 } from './assemble.js';

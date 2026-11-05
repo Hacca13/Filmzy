@@ -123,7 +123,7 @@ export async function normalizeClip(options: NormalizeClipOptions): Promise<void
 
 export interface TitleLine {
   text: string;
-  /** Quanto è alto il testo, rispetto all'altezza del film. */
+  /** Quanto è alto il testo, rispetto al lato più corto del film. */
   scale: number;
 }
 
@@ -159,6 +159,47 @@ const CHAR_WIDTH_RATIO = 0.62;
 /** Un film non è mai un titolo a tutta larghezza: si lascia un margine. */
 const TEXT_WIDTH_RATIO = 0.84;
 const LINE_SPACING = 1.5;
+/** Quanta parte dell'altezza può occupare il testo: la dicitura non deve finire fuori dal fotogramma. */
+const TEXT_HEIGHT_RATIO = 0.9;
+/** A ogni giro il testo si rimpicciolisce un po', finché non ci sta. */
+const SHRINK_STEP = 0.9;
+const MIN_FONT_PX = 10;
+
+export interface TitleRow {
+  row: string;
+  fontSize: number;
+}
+
+/**
+ * Le righe di un titolo, con la loro misura: il testo si rimpicciolisce finché ci sta tutto, anche su un
+ * film verticale o con un titolo lunghissimo. La dicitura AI deve sempre vedersi (D28).
+ */
+export function layoutTitle(
+  lines: readonly TitleLine[],
+  width: number,
+  height: number,
+): TitleRow[] {
+  const shortSide = Math.min(width, height);
+  const textWidth = width * TEXT_WIDTH_RATIO;
+  const rowsAt = (shrink: number): TitleRow[] =>
+    lines.flatMap(({ text, scale }) => {
+      const fontSize = Math.max(MIN_FONT_PX, Math.round(shortSide * scale * shrink));
+      const maxChars = Math.floor(textWidth / (fontSize * CHAR_WIDTH_RATIO));
+      return wrapText(text, maxChars).map((row) => ({ row, fontSize }));
+    });
+  const fits = (rows: readonly TitleRow[]): boolean =>
+    rows.reduce((sum, { fontSize }) => sum + fontSize * LINE_SPACING, 0) <=
+      height * TEXT_HEIGHT_RATIO &&
+    rows.every(({ row, fontSize }) => row.length * fontSize * CHAR_WIDTH_RATIO <= textWidth);
+
+  let shrink = 1;
+  let rows = rowsAt(shrink);
+  while (!fits(rows) && rows.some(({ fontSize }) => fontSize > MIN_FONT_PX)) {
+    shrink *= SHRINK_STEP;
+    rows = rowsAt(shrink);
+  }
+  return rows;
+}
 
 /**
  * Un titolo su fondo nero, in silenzio, nel formato del film. Il testo sta in un file (`textfile`) con
@@ -170,11 +211,7 @@ export async function renderTitleCard(options: TitleCardOptions): Promise<void> 
   const font = 'titoli.ttf';
   await copyFile(titleFontPath(), path.join(workDir, font));
 
-  const rows = lines.flatMap(({ text, scale }) => {
-    const fontSize = Math.round(height * scale);
-    const maxChars = Math.floor((width * TEXT_WIDTH_RATIO) / (fontSize * CHAR_WIDTH_RATIO));
-    return wrapText(text, maxChars).map((row) => ({ row, fontSize }));
-  });
+  const rows = layoutTitle(lines, width, height);
   const total = rows.reduce((sum, { fontSize }) => sum + fontSize * LINE_SPACING, 0);
 
   const base = path.parse(output).name;
@@ -248,6 +285,8 @@ export interface MixSound {
   volume: number;
   fadeInS: number;
   fadeOutS: number;
+  /** A che livello si porta prima di mixarlo (LUFS): i file arrivano ognuno col suo volume. */
+  levelLufs: number;
 }
 
 export interface MixOptions extends StepOptions {
@@ -268,6 +307,8 @@ function soundChain(sound: MixSound, index: number, totalS: number): string {
   const parts = [
     `atrim=0:${seconds(sound.durationS)}`,
     'asetpts=PTS-STARTPTS',
+    // Il livellamento sta prima del volume: dopo cancellerebbe il cursore dell'utente.
+    `loudnorm=I=${String(sound.levelLufs)}:TP=-2:LRA=11`,
     `aformat=sample_rates=${String(SAMPLE_RATE)}:channel_layouts=stereo`,
     `volume=${sound.volume.toFixed(3)}`,
     ...(sound.fadeInS > 0 ? [`afade=t=in:st=0:d=${seconds(sound.fadeInS)}`] : []),
@@ -282,11 +323,11 @@ function soundChain(sound: MixSound, index: number, totalS: number): string {
 }
 
 /**
- * Il mix delle tracce, con il volume livellato. Ogni suono si allunga col silenzio fino alla fine del
- * film: così `amix` divide sempre per lo stesso numero (questa versione non ha `normalize=0`) e il volume
- * non salta quando un suono finisce; `volume=N` riporta il livello, il limitatore evita che due suoni
- * insieme gracchino e `loudnorm` porta il film a un volume da film. La descrizione sta in un file: su
- * Windows una riga di comando troppo lunga non parte.
+ * Il mix delle tracce, con il volume livellato. Ogni suono si porta al suo livello e poi al volume scelto
+ * dall'utente; poi si allunga col silenzio fino alla fine del film: così `amix` divide sempre per lo stesso
+ * numero (questa versione non ha `normalize=0`) e il volume non salta quando un suono finisce. `volume=N`
+ * riporta il livello e il limitatore evita che due suoni insieme gracchino. La descrizione sta in un file:
+ * su Windows una riga di comando troppo lunga non parte.
  */
 export async function mixSounds(options: MixOptions): Promise<void> {
   const { sounds, durationS, output, workDir } = options;
@@ -297,7 +338,7 @@ export async function mixSounds(options: MixOptions): Promise<void> {
   const labels = sounds.map((_, index) => `[s${String(index)}]`).join('');
   const graph = [
     ...sounds.map((sound, index) => soundChain(sound, index, durationS)),
-    `${labels}amix=inputs=${String(sounds.length)}:duration=longest:dropout_transition=0,volume=${String(sounds.length)},alimiter=limit=0.95:level=disabled,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=${String(SAMPLE_RATE)},atrim=0:${seconds(durationS)}[mix]`,
+    `${labels}amix=inputs=${String(sounds.length)}:duration=longest:dropout_transition=0,volume=${String(sounds.length)},alimiter=limit=0.95:level=disabled,atrim=0:${seconds(durationS)}[mix]`,
   ].join(';\n');
   await writeFile(path.join(workDir, script), graph, 'utf8');
 

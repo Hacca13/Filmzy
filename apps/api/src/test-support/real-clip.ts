@@ -46,8 +46,12 @@ export async function realVideo(
   return file;
 }
 
+/** Ogni suono è diverso dagli altri: il nome di un file è il suo checksum, e due film non devono dividerlo. */
+let nextFrequency = 300;
+
 /** Un suono vero, che si sente: un WAV da caricare. */
 export async function realSound(dataDir: string, seconds = 1): Promise<Buffer> {
+  nextFrequency += 10;
   const dir = await mkdtemp(path.join(dataDir, 'prova-'));
   const file = path.join(dir, 'suono.wav');
   await run(
@@ -59,7 +63,7 @@ export async function realSound(dataDir: string, seconds = 1): Promise<Buffer> {
       '-f',
       'lavfi',
       '-i',
-      `sine=frequency=880:duration=${String(seconds)}`,
+      `sine=frequency=${String(nextFrequency)}:duration=${String(seconds)}`,
       file,
     ],
     { windowsHide: true },

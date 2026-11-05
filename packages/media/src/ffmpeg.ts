@@ -128,7 +128,18 @@ export async function audioDurationS(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<number | undefined> {
   const { stderr } = await run(['-hide_banner', '-i', input], env);
+  assertFound(stderr);
   return /Stream #[^\n]*: Audio:/.test(stderr) ? durationIn(stderr) : undefined;
+}
+
+/**
+ * ffmpeg non ha trovato il file: non vuol dire che dentro non c'è un suono. Su Windows succede anche con
+ * un percorso oltre i 260 caratteri, che questa versione di ffmpeg non sa aprire.
+ */
+function assertFound(stderr: string): void {
+  if (/No such file or directory/i.test(stderr)) {
+    throw new MediaError('ffmpeg_failed', 'ffmpeg non trova il file.');
+  }
 }
 
 /**

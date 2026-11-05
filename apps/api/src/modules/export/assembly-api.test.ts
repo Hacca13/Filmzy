@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 
 import {
   assemblyViewSchema,
+  audioClipSchema,
   audioOverviewSchema,
   domainErrorSchema,
   projectOptionsSchema,
@@ -13,16 +14,29 @@ import {
   shotPlansSchema,
   type AssemblyView,
 } from '@filmzy/contracts';
-import type { ReceiptStore, SheetStore } from '@filmzy/db';
+import {
+  createAssemblyStore,
+  type AssemblyStore,
+  type AudioStore,
+  type OpenedDatabase,
+  type ReceiptStore,
+  type SheetStore,
+} from '@filmzy/db';
 import { ffmpegPath, hasAudioStream, videoDurationS } from '@filmzy/media';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { startApp, type Client } from '../../test-support/app-client.js';
 import { filmWithFinal } from '../../test-support/film-with-shot.js';
 import { realSound, realVideo, takeWithFile } from '../../test-support/real-clip.js';
+import { AUDIO_STORE } from '../audio/tokens.js';
 import { SHEET_STORE } from '../cast/tokens.js';
+import { OPENED_DATABASE } from '../database/database.module.js';
+import { JobRunner } from '../jobs/job-runner.service.js';
+import { STALE_WORK_MS } from '../shots/work.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
+import { ASSEMBLY_JOB_KIND } from './assembly.service.js';
+import { ASSEMBLY_STORE } from './tokens.js';
 
 /** Il montaggio col server vero, la coda e ffmpeg vero, su video veri fatti da ffmpeg. Nessuna spesa. */
 let app: NestExpressApplication;
@@ -72,9 +86,27 @@ async function filmReady({ withSound = false }: { withSound?: boolean } = {}) {
   return { film, shotIds, takeIds };
 }
 
+/** Una musica caricata sulla prima scena. Dà l'id della clip. */
+async function uploadMusic(filmId: string): Promise<string> {
+  const reply = await fetch(
+    `${base}/api/projects/${filmId}/audio/uploads?${new URLSearchParams({
+      kind: 'music',
+      sceneId: 'scene-1',
+      description: 'La mia musica',
+    }).toString()}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'audio/wav' },
+      body: await realSound(dataDir, 3),
+    },
+  );
+  expect(reply.status).toBe(201);
+  return audioClipSchema.parse(await reply.json()).id;
+}
+
 /** Il file del film montato, dal registro. */
 function filmFile(view: AssemblyView): string {
-  const assetId = view.latest?.assetId;
+  const assetId = view.film?.assetId;
   if (assetId === undefined) throw new Error('doveva esserci il film');
   const record = app.get<SheetStore>(SHEET_STORE, { strict: false }).getAsset(assetId);
   if (record === undefined) throw new Error('il film doveva essere registrato');
@@ -146,6 +178,149 @@ describe('cosa manca per montare', () => {
   });
 });
 
+describe('quando qualcosa va storto', () => {
+  it('un montaggio che fallisce non nasconde il film buono di prima', async () => {
+    const { film } = await filmReady();
+    await client.call('POST', assemblyOf(film.id));
+    const good = await settled(film.id);
+    expect(good.film?.assetId).toBeDefined();
+
+    const plans = shotPlansSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/shots`)).body,
+    );
+    const clipId = plans.scenes.flatMap((scene) => Object.values(scene.clips))[0] ?? '';
+    const record = app.get<SheetStore>(SHEET_STORE, { strict: false }).getAsset(clipId);
+    if (record === undefined) throw new Error('doveva esserci un video');
+    await rm(path.join(dataDir, record.path));
+
+    await client.call('POST', assemblyOf(film.id));
+    const view = await settled(film.id);
+
+    expect(view.latest?.status).toBe('failed');
+    expect(view.film?.assetId).toBe(good.film?.assetId);
+    expect(view.upToDate).toBe(true);
+  }, 180_000);
+
+  it('rifare lo stesso film dà lo stesso file, senza errori anche se è aperto', async () => {
+    const { film } = await filmReady();
+    await client.call('POST', assemblyOf(film.id));
+    const first = await settled(film.id);
+    const served = await fetch(`${base}/api/assets/${first.film?.assetId ?? ''}`);
+    // Un lettore che tiene il file aperto: il corpo non è stato ancora letto.
+    expect(served.ok).toBe(true);
+
+    await client.call('POST', assemblyOf(film.id));
+    const second = await settled(film.id);
+
+    expect(second.latest?.status).toBe('succeeded');
+    await served.body?.cancel();
+  }, 180_000);
+
+  it('un suono che non si sente non ferma il film, anche se il suo file non c’è più', async () => {
+    const { film } = await filmReady();
+    const clipId = await uploadMusic(film.id);
+    const audio = app.get<AudioStore>(AUDIO_STORE, { strict: false });
+    const assetId = audio.getClip(clipId)?.clip.variants[0]?.assetId ?? '';
+    const record = app.get<SheetStore>(SHEET_STORE, { strict: false }).getAsset(assetId);
+    if (record === undefined) throw new Error('doveva esserci il file');
+    await rm(path.join(dataDir, record.path));
+
+    await client.call('POST', assemblyOf(film.id));
+    const heard = await settled(film.id);
+    expect(heard.latest?.errorCode).toBe('not_found');
+
+    const { tracks } = audioOverviewSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio`)).body,
+    );
+    const music = tracks.find(({ kind }) => kind === 'music');
+    await client.call('PUT', `/projects/${film.id}/audio/tracks/${music?.id ?? ''}`, {
+      muted: true,
+    });
+    await client.call('POST', assemblyOf(film.id));
+    expect((await settled(film.id)).latest?.status).toBe('succeeded');
+  }, 180_000);
+
+  it('l’audio originale con la traccia a zero non si sente', async () => {
+    const { film, takeIds } = await filmReady({ withSound: true });
+    for (const takeId of takeIds) {
+      await client.call('PUT', `/projects/${film.id}/audio/takes/${takeId}/native`, { on: true });
+    }
+    const { tracks } = audioOverviewSchema.parse(
+      (await client.call('GET', `/projects/${film.id}/audio`)).body,
+    );
+    const native = tracks.find(({ kind }) => kind === 'native');
+    await client.call('PUT', `/projects/${film.id}/audio/tracks/${native?.id ?? ''}`, {
+      volume: 0,
+    });
+
+    await client.call('POST', assemblyOf(film.id));
+    const view = await settled(film.id);
+
+    expect(view.latest?.status).toBe('succeeded');
+    expect(await loudness(filmFile(view))).toBeLessThan(-60);
+  }, 180_000);
+
+  it('se la coda non accetta il lavoro il tentativo non resta aperto', async () => {
+    const { film } = await filmReady();
+    const runner = app.get(JobRunner, { strict: false });
+    const enqueue = vi.spyOn(runner, 'enqueue').mockImplementationOnce(() => {
+      throw new Error('coda rotta');
+    });
+
+    const reply = await client.call('POST', assemblyOf(film.id));
+    enqueue.mockRestore();
+
+    expect(reply.status).toBeGreaterThanOrEqual(500);
+    expect((await viewOf(film.id)).latest).toMatchObject({
+      status: 'failed',
+      errorCode: 'unknown',
+    });
+    expect((await client.call('POST', assemblyOf(film.id))).status).toBe(201);
+    await settled(film.id);
+  }, 180_000);
+
+  it('se mentre aspettava è cambiato qualcosa, si ferma con il motivo', async () => {
+    const { film } = await filmWithFinal(client);
+    const assemblies = app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false });
+    const assembly = assemblies.start(film.id, 'x');
+
+    app.get(JobRunner, { strict: false }).enqueue({
+      kind: ASSEMBLY_JOB_KIND,
+      payload: { projectId: film.id, assemblyId: assembly.id },
+      projectId: film.id,
+      idempotencyKey: `prova:${assembly.id}`,
+    });
+
+    expect((await settled(film.id)).latest).toMatchObject({
+      status: 'failed',
+      errorCode: 'invalid_request',
+    });
+  }, 60_000);
+
+  it('un tentativo fermo da troppo tempo si chiude, e quello ripreso conta dall’ultimo segno di vita', async () => {
+    const { film } = await filmWithFinal(client);
+    const opened = app.get<OpenedDatabase>(OPENED_DATABASE, { strict: false });
+    const old = createAssemblyStore(opened.db, {
+      now: () => new Date(Date.now() - STALE_WORK_MS - 60_000),
+    });
+    const stuck = old.start(film.id, 'x');
+
+    const view = await viewOf(film.id);
+
+    expect(view.latest).toMatchObject({ id: stuck.id, status: 'failed', errorCode: 'timeout' });
+
+    const alive = old.start(film.id, 'y');
+    app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false }).finish(alive.id, {
+      status: 'running',
+    });
+    expect((await viewOf(film.id)).latest).toMatchObject({ id: alive.id, status: 'running' });
+    app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false }).finish(alive.id, {
+      status: 'failed',
+      errorCode: 'unknown',
+    });
+  }, 60_000);
+});
+
 describe('montare il film', () => {
   it('dà un film con i titoli, il suo silenzio, e non spende niente', async () => {
     const { film, shotIds } = await filmReady();
@@ -180,16 +355,7 @@ describe('montare il film', () => {
 
   it('una musica caricata si sente, e cambiarla rende il film indietro senza toccare i video', async () => {
     const { film } = await filmReady();
-    const sound = await realSound(dataDir, 3);
-    const uploaded = await fetch(
-      `${base}/api/projects/${film.id}/audio/uploads?${new URLSearchParams({
-        kind: 'music',
-        sceneId: 'scene-1',
-        description: 'La mia musica',
-      }).toString()}`,
-      { method: 'POST', headers: { 'content-type': 'audio/wav' }, body: sound },
-    );
-    expect(uploaded.status).toBe(201);
+    await uploadMusic(film.id);
 
     await client.call('POST', assemblyOf(film.id));
     const view = await settled(film.id);
@@ -255,7 +421,7 @@ describe('montare il film', () => {
     const view = await settled(film.id);
 
     expect(view.latest?.status).toBe('failed');
-    expect(view.latest?.errorCode).toBeDefined();
+    expect(view.latest?.errorCode).toBe('not_found');
     expect(view.upToDate).toBe(false);
     const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
     expect(await readdir(folder)).toEqual([]);

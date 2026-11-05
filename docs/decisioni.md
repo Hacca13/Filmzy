@@ -1112,3 +1112,20 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 - Senza chiave, Anthropic diceva «la chiave non è valida»: ora dice che manca (`secret_missing`).
 
 **Limiti della misura:** una sola storia. Per il sound designer e la segretaria le 120 inquadrature sono ricavate dalla stesura, non scritte dall'aiuto regista. Con i limiti esatti di 16.000 e 12.000 non si è rilanciato: i consumi misurati ci stanno. L'aiuto regista non è misurato, perché lavora una scena alla volta. La qualità delle storie non è giudicata qui.
+
+## D90 · L'avvio e il primo incontro col programma — 05/11/2026
+
+**Realizza** T6.1 (§6.2), dai disegni dei prompt 02–05.
+**Decisione:**
+1. **Finché il programma non è pronto non si vede nient'altro.** Tutte le schermate danno per scontato che il server risponda: lo controlla un solo punto (`StartupGate`), una volta all'avvio.
+2. **Se i dati non si aprono il server non si spegne.** Da spento l'interfaccia saprebbe dire solo «non riesce a partire». Resta acceso in forma ridotta, solo per dire perché: dati di una versione più nuova, oppure aggiornamento fallito con la copia di sicurezza rimessa e il suo percorso. Niente lavora su quei dati: ogni altra rotta è «non trovato». Le regole di sicurezza del server restano (solo `127.0.0.1`, `Host` locale).
+3. **«Riprova» riprova davvero:** il server ridotto si spegne, libera la porta e riparte il programma vero; se è ancora rotto torna a dirlo. Mentre si spegne risponde 503, così l'interfaccia aspetta invece di credere che sia già fallito.
+4. **Ogni altro guasto ferma il programma,** per esempio la porta occupata o un'installazione rotta: lì l'utente non può fare niente, e la schermata dice di chiudere e riaprire.
+5. **Il benvenuto prende tutta la finestra,** e la home compare dopo. Prima stava sopra l'elenco dei film. «Indietro» torna al passo prima, invece di saltare tutta la procedura.
+6. **Dove si prende la chiave è un dato:** `key_url` nelle connessioni, solo `https` perché finisce in un collegamento (regola 2). Verificati il 05/11 gli indirizzi di Anthropic e fal; quello di OpenRouter non è verificato, e il fornitore è spento.
+7. **«Salvato sul tuo computer» solo dove è vero:** nella home. Nel benvenuto la scelta dei fornitori non è ancora salvata, e nel modulo «La tua idea» il film non esiste ancora (il disegno la scrive ovunque).
+8. **Una frase del disegno è cambiata:** «se ti fa stare tranquilla» diventa «per stare tranquilli»: non sappiamo chi legge.
+
+**Corretto insieme:** sostituire un file appena scritto ora riprova per meno di due secondi prima di dire che è occupato. Su Windows un file nuovo può restare occupato per un attimo: l'utente avrebbe letto «è aperto in un altro programma» senza motivo. È la causa probabile di un test che falliva ogni tanto sotto carico; non è stata confermata leggendo il codice d'errore.
+
+**Non preso dal disegno:** la barra della finestra coi tre pulsanti e «Chiudi» (T6.4); «Aggiorna Filmzy» (T6.4); nella home i filtri, «Apri un film salvato» (T6.3), il menu del film e «Ti serve una mano?»; nel benvenuto i pulsanti nel piede della finestra e il passo «Tutto pronto» a parte; la barra dei passi del film; le pagine delle Impostazioni, che tengono la loro intestazione.

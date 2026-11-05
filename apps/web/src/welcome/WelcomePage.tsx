@@ -271,9 +271,6 @@ function WelcomeLayout({
         </aside>
         <div className="welcome-content">{children}</div>
       </div>
-      <footer className="welcome-foot">
-        <span className="hint">Salvato sul tuo computer</span>
-      </footer>
     </main>
   );
 }

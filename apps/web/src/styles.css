@@ -53,10 +53,23 @@ h2 {
   padding: 4rem 1.5rem;
 }
 
-.app h1 {
-  margin-bottom: 0.5rem;
-  color: var(--accent);
-  font-size: 2.5rem;
+.app[data-page='home'] {
+  max-width: 62rem;
+  padding-top: 2.5rem;
+}
+
+.app-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-bar > a:first-child {
+  display: inline-flex;
+  text-decoration: none;
 }
 
 .brand {
@@ -264,16 +277,6 @@ h2 {
 
 .welcome-note p {
   margin: 8px 0 0;
-}
-
-.welcome-foot {
-  padding: 16px 32px;
-  text-align: right;
-  border-top: 1px solid var(--border);
-}
-
-.welcome-foot .hint {
-  margin: 0;
 }
 
 @media (max-width: 800px) {
@@ -995,7 +998,39 @@ progress {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 32px;
+}
+
+.films-head h1 {
+  margin: 4px 0 8px;
+  font-size: 36px;
+}
+
+.films-head p {
+  margin: 0;
+}
+
+.resume-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.resume-card h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.resume-card p {
+  margin: 0;
+}
+
+.films-foot {
+  margin: 16px 0 0;
 }
 
 .films-head {

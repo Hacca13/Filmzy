@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { FilmKindBody, type EstimateState } from './FilmKindField';
-import { FilmList } from './FilmsHome';
+import { FilmList, ResumeCard } from './FilmsHome';
 import { IdeaForm } from './IdeaForm';
 import { initialDraft } from './model';
 
@@ -215,6 +215,18 @@ describe('IdeaForm', () => {
     expect(render(initialDraft(options), { problem: 'Filmzy non risponde.' })).toContain(
       'Filmzy non risponde.',
     );
+  });
+});
+
+describe('ResumeCard', () => {
+  it('riparte dal punto a cui era arrivato il film', () => {
+    const html = renderToStaticMarkup(<ResumeCard film={film} options={options} />);
+
+    expect(html).toContain('LA TUA STORIA CONTINUA');
+    expect(html).toContain('L’ultima corsa');
+    expect(html).toContain('Una bobina dimenticata');
+    expect(html).toContain('href="#/film/film-1"');
+    expect(html).toContain('Riprendi · La storia');
   });
 });
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
+import { Brand } from './components/Brand';
 import { FilmPage } from './films/FilmPage';
 import { FilmsHome } from './films/FilmsHome';
 import { IdeaWizard } from './films/IdeaWizard';
@@ -10,6 +11,31 @@ import { SettingsPage } from './settings/SettingsPage';
 import { StartupGate } from './startup/StartupGate';
 import { FirstRunGate } from './welcome/FirstRunGate';
 import { WelcomePage } from './welcome/WelcomePage';
+
+/** La barra del programma: il marchio porta a casa, e le impostazioni sono sempre lì. */
+function AppBar() {
+  return (
+    <header className="app-bar">
+      <a href="#/" aria-label="I miei film">
+        <Brand />
+      </a>
+      <a className="button" href="#/impostazioni/connessioni">
+        Impostazioni
+      </a>
+    </header>
+  );
+}
+
+function Framed({ page, children }: { page?: string; children: ReactNode }) {
+  return (
+    <>
+      <AppBar />
+      <main className="app" data-page={page}>
+        {children}
+      </main>
+    </>
+  );
+}
 
 function Home() {
   // Chiudere la procedura fa ricontrollare i fornitori: se ora ce n'è uno, il benvenuto sparisce.
@@ -22,26 +48,21 @@ function Home() {
         setChecks(checks + 1);
       }}
     >
-      <main className="app">
-        <h1>Filmzy</h1>
-        <p>I tuoi cortometraggi, con l'intelligenza artificiale.</p>
-        <p>
-          <a href="#/impostazioni/connessioni">Impostazioni</a>
-        </p>
+      <Framed page="home">
         <FilmsHome />
-      </main>
+      </Framed>
     </FirstRunGate>
   );
 }
 
 function FilmScreen({ route }: { route: FilmRoute }) {
   return (
-    <main className="app">
+    <Framed>
       {route.page === 'new' ? <IdeaWizard /> : null}
       {route.page === 'idea' ? <IdeaWizard filmId={route.id} /> : null}
       {route.page === 'film' ? <FilmPage filmId={route.id} /> : null}
       {route.page === 'spend' ? <FilmSpendPage filmId={route.id} /> : null}
-    </main>
+    </Framed>
   );
 }
 

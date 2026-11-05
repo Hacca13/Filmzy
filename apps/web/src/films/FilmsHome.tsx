@@ -9,17 +9,22 @@ import { filmSubtitle, phaseLabel } from './model';
 import { NEW_FILM_HREF, filmHref } from './routes';
 
 /**
- * «I tuoi film» (T3.2): l'elenco dei film, l'ultimo toccato per primo, e il pulsante per
+ * «I tuoi film» (T3.2, T6.1): l'ultimo film toccato in evidenza, poi l'elenco, e il pulsante per
  * cominciarne uno. È la porta d'ingresso: da qui si riprende un film dal punto in cui era.
  */
 export function FilmsHome() {
   const films = useResource(fetchProjects);
   const options = useResource(fetchProjectOptions);
+  const choices = options.state.status === 'ready' ? options.state.data : undefined;
 
   return (
     <section className="films">
       <div className="films-head">
-        <h2>I tuoi film</h2>
+        <div>
+          <p className="eyebrow">IL TUO PICCOLO GRANDE CINEMA</p>
+          <h1>I tuoi film</h1>
+          <p className="hint">Un’idea, qualche scena, il tuo prossimo film. Da dove ripartiamo?</p>
+        </div>
         <a className="button" data-kind="primary" href={NEW_FILM_HREF}>
           Nuovo film
         </a>
@@ -29,12 +34,36 @@ export function FilmsHome() {
       ) : films.state.status === 'loading' ? (
         <p className="hint">Un attimo…</p>
       ) : (
-        <FilmList
-          films={films.state.data.projects}
-          options={options.state.status === 'ready' ? options.state.data : undefined}
-        />
+        <>
+          {films.state.data.projects[0] === undefined ? null : (
+            <ResumeCard film={films.state.data.projects[0]} options={choices} />
+          )}
+          <FilmList films={films.state.data.projects} options={choices} />
+        </>
       )}
+      <p className="hint films-foot">Salvato sul tuo computer</p>
     </section>
+  );
+}
+
+/** Il film su cui si stava lavorando: si riparte da lì con un clic. */
+export function ResumeCard({
+  film,
+  options,
+}: {
+  film: Project;
+  options: ProjectOptions | undefined;
+}) {
+  return (
+    <article className="resume-card">
+      <p className="eyebrow">LA TUA STORIA CONTINUA</p>
+      <h2>{film.title}</h2>
+      <p className="hint">{film.idea}</p>
+      <p className="hint">{filmSubtitle(film, options)}</p>
+      <a className="button" data-kind="primary" href={filmHref(film.id)}>
+        Riprendi · {phaseLabel(film.phase)}
+      </a>
+    </article>
   );
 }
 
@@ -47,7 +76,10 @@ export function FilmList({
 }) {
   if (films.length === 0) {
     return (
-      <p className="hint">Non hai ancora nessun film. Parti da un’idea: bastano poche righe.</p>
+      <p className="hint">
+        Non hai ancora nessun film. Ogni grande film comincia con una piccola idea: bastano poche
+        righe.
+      </p>
     );
   }
   return (

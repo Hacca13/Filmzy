@@ -23,7 +23,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "1.1.0"
+    "@ffmpeg-installer/ffmpeg": "1.1.0",
+    "dejavu-fonts-ttf": "2.37.3"
   },
   "devDependencies": {
     "@types/node": "24.19.2"

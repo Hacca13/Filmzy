@@ -654,6 +654,7 @@ Un lavoro ripetuto (per esempio dopo un riavvio) non conta due volte nella spesa
 - Nei titoli compare la dicitura "Contiene contenuti generati con intelligenza artificiale".
 - Marcatura leggibile dalle macchine (C2PA): opzione dopo l'MVP (`c2pa_marking`, D31). Filigrane e metadati dei fornitori non si rimuovono, ma l'esportazione ricodifica i video, quindi non è garantito che sopravvivano.
 - Il file finale si salva nella cartella del progetto e l'app lo mostra nella cartella di esportazione.
+- **Oggi (T5.7, D83):** modulo `export`, lavoro `film_assemble`, tabella `film_assemblies`, file in `progetti/<film>/montaggio/`. Rotte: `GET /projects/:id/assembly` (cosa manca, l'ultimo montaggio, se è indietro, i titoli) e `POST /projects/:id/assembly`. Il montaggio non chiama fornitori: non costa, e un lavoro ripreso dopo un riavvio riparte da capo.
 
 ## 10. Sicurezza, privacy e responsabilità
 

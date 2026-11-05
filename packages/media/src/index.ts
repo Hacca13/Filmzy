@@ -16,3 +16,23 @@ export {
   type ShrinkImageOptions,
   type MediaErrorCode,
 } from './ffmpeg.js';
+export {
+  concatClips,
+  layoutTitle,
+  mixSounds,
+  muxFilm,
+  normalizeClip,
+  renderTitleCard,
+  titleFontPath,
+  videoSize,
+  wrapText,
+  type ConcatOptions,
+  type FilmFormat,
+  type MixOptions,
+  type MixSound,
+  type MuxOptions,
+  type NormalizeClipOptions,
+  type TitleCardOptions,
+  type TitleLine,
+  type TitleRow,
+} from './assemble.js';

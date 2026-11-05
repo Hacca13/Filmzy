@@ -58,16 +58,22 @@ interface Run {
 }
 
 /** Lancia ffmpeg con questi argomenti; un errore del sistema (non parte, troppo lento) diventa `MediaError`. */
-function run(
+export function run(
   args: readonly string[],
   env: NodeJS.ProcessEnv,
   timeoutMs = TIMEOUT_MS,
+  cwd?: string,
 ): Promise<Run & { code: number }> {
   return new Promise((resolve, reject) => {
     execFile(
       ffmpegPath(env),
       [...args],
-      { timeout: timeoutMs, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
+      {
+        timeout: timeoutMs,
+        windowsHide: true,
+        maxBuffer: 4 * 1024 * 1024,
+        ...(cwd === undefined ? {} : { cwd }),
+      },
       (error: ExecFileException | null, stdout: string, stderr: string) => {
         if (error === null) {
           resolve({ stdout, stderr, code: 0 });
@@ -98,7 +104,7 @@ function run(
 }
 
 /** Le ultime righe di ciò che ffmpeg ha detto: bastano a capire, senza riempire il registro. */
-const tail = (text: string): string => text.trim().split('\n').slice(-3).join(' | ');
+export const tail = (text: string): string => text.trim().split('\n').slice(-3).join(' | ');
 
 /**
  * La durata di un video, in secondi. ffmpeg la scrive leggendo il file (`Duration: 00:00:05.04`),
@@ -122,7 +128,18 @@ export async function audioDurationS(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<number | undefined> {
   const { stderr } = await run(['-hide_banner', '-i', input], env);
+  assertFound(stderr);
   return /Stream #[^\n]*: Audio:/.test(stderr) ? durationIn(stderr) : undefined;
+}
+
+/**
+ * ffmpeg non ha trovato il file: non vuol dire che dentro non c'è un suono. Su Windows succede anche con
+ * un percorso oltre i 260 caratteri, che questa versione di ffmpeg non sa aprire.
+ */
+function assertFound(stderr: string): void {
+  if (/No such file or directory/i.test(stderr)) {
+    throw new MediaError('ffmpeg_failed', 'ffmpeg non trova il file.');
+  }
 }
 
 /**

@@ -124,6 +124,14 @@ describe('hasAudioStream', () => {
   });
 });
 
+describe('un file che ffmpeg non trova', () => {
+  it('è un errore, non un file senza suono', async () => {
+    expect((await failure(() => audioDurationS(path.join(dir, 'non-c-e.wav')))).code).toBe(
+      'ffmpeg_failed',
+    );
+  });
+});
+
 describe('audioDurationS', () => {
   it('dà la durata di un file che ha un suono', async () => {
     const sound = path.join(dir, 'suono.wav');

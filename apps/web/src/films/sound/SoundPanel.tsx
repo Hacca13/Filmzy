@@ -13,6 +13,7 @@ import { useAction } from '../../settings/use-action';
 import { formatDuration } from '../model';
 import { useWatched } from '../use-watched';
 import { AddSoundForm, type AddKind } from './AddSoundForm';
+import { AssemblySection } from './AssemblySection';
 import { ClipPanel } from './ClipPanel';
 import { SoundLanes } from './SoundLanes';
 import { SuggestSounds } from './SuggestSounds';
@@ -115,6 +116,8 @@ function SoundView({
 
   return (
     <>
+      <AssemblySection filmId={filmId} stamp={editor} />
+
       <div className="panel-head">
         <div>
           <h3>Montaggio multitraccia</h3>

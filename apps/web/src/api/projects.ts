@@ -1,4 +1,5 @@
 import {
+  filmEstimateSchema,
   projectOptionsSchema,
   projectSchema,
   projectsListSchema,
@@ -12,6 +13,13 @@ import { getJson, sendJson } from './client';
 
 export function fetchProjectOptions(signal?: AbortSignal) {
   return getJson('/projects/options', projectOptionsSchema, { signal });
+}
+
+/** Il costo indicativo di un film di questa durata (D85): legge solo il catalogo, e non costa. */
+export function fetchFilmEstimate(durationS: number, signal?: AbortSignal) {
+  return getJson(`/projects/estimate?durationS=${String(durationS)}`, filmEstimateSchema, {
+    signal,
+  });
 }
 
 export function fetchProjects(signal?: AbortSignal) {

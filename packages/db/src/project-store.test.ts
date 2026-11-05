@@ -13,6 +13,7 @@ const film: NewProject = {
   cinematography: 'handheld_warm',
   language: 'it',
   durationS: 60,
+  kind: 'short',
   phase: 'draft',
 };
 

@@ -536,6 +536,140 @@ progress {
   gap: 16px;
 }
 
+.film-kind-field {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* La legenda di un fieldset non sta in una griglia, a meno di toglierla dal suo posto speciale. */
+.film-kind-field legend {
+  float: left;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.field-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.field-heading p {
+  margin: 0;
+}
+
+.film-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.film-kind {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.film-kind[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.film-kind[data-available='false'] {
+  cursor: not-allowed;
+}
+
+.film-kind[data-available='false'] .film-kind-name {
+  color: var(--muted);
+}
+
+.film-kind:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Il pulsante di scelta resta nella tessera ma non si vede: la tessera stessa è il bersaglio. */
+.film-kind input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.film-kind .chip {
+  align-self: flex-end;
+}
+
+.film-kind-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.film-length {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.film-length-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.film-length-column p {
+  margin: 0;
+}
+
+.film-length-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.film-length-row label {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.film-length-slider {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.film-length-slider span {
+  white-space: nowrap;
+}
+
+.film-length-slider input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.film-cost {
+  font-size: 24px;
+  font-weight: 600;
+}
+
 .choice-group {
   margin: 0;
   padding: 0;

@@ -1,7 +1,13 @@
 import { TITLE_MAX_LENGTH, type TroupePresetsData } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { defaultTitle, projectOptions, unknownChoice } from './project-choices.js';
+import {
+  defaultTitle,
+  kindOfLength,
+  lengthProblem,
+  projectOptions,
+  unknownChoice,
+} from './project-choices.js';
 
 const presets: TroupePresetsData = {
   genres: [
@@ -64,6 +70,7 @@ describe('le voci già scelte', () => {
       tone: 'dark',
       style: 'realistic',
       cinematography: 'noir',
+      kind: 'short',
       durationS: 60,
     });
   });
@@ -74,8 +81,36 @@ describe('le voci già scelte', () => {
     expect(projectOptions(none).defaults).toEqual({
       tone: 'dark',
       cinematography: 'noir',
+      kind: 'short',
       durationS: 60,
     });
+  });
+});
+
+describe('tipo e durata', () => {
+  it('i tipi si offrono tutti, e i film lunghi non si possono ancora scegliere', () => {
+    const { kinds } = projectOptions(presets);
+
+    expect(kinds.map(({ id, available }) => [id, available])).toEqual([
+      ['spot', true],
+      ['short', true],
+      ['medium', false],
+      ['feature', false],
+    ]);
+  });
+
+  it('senza tipo si deduce: sotto il minuto è uno spot', () => {
+    expect(kindOfLength(30)).toBe('spot');
+    expect(kindOfLength(60)).toBe('short');
+    expect(kindOfLength(180)).toBe('short');
+  });
+
+  it('dice cosa non va', () => {
+    expect(lengthProblem('short', 300)).toBeUndefined();
+    expect(lengthProblem('spot', 60)).toBeUndefined();
+    expect(lengthProblem('short', 30)).toBe('durationS');
+    expect(lengthProblem('spot', 90)).toBe('durationS');
+    expect(lengthProblem('medium', 1800)).toBe('kind');
   });
 });
 

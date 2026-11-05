@@ -1,14 +1,17 @@
 import {
   domainErrorSchema,
+  filmEstimateSchema,
   projectOptionsSchema,
   projectSchema,
   projectsListSchema,
   type CreateProjectBody,
 } from '@filmzy/contracts';
+import type { ReceiptStore } from '@filmzy/db';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startApp, type Client } from '../../test-support/app-client.js';
+import { RECEIPT_STORE } from '../troupe/tokens.js';
 
 /**
  * Il giro del wizard «La tua idea» (T3.2), col server vero e i preset di seme: si leggono le
@@ -58,10 +61,45 @@ describe('le scelte del wizard', () => {
     expect(choices.styles.map((style) => style.id)).toContain('realistic');
     // Nel seme gli altri stili sono spenti: non si possono scegliere.
     expect(choices.styles.map((style) => style.id)).not.toContain('anime');
-    expect(choices.durationsS).toContain(60);
+    expect(choices.kinds.map(({ id }) => id)).toEqual(['spot', 'short', 'medium', 'feature']);
+    expect(choices.kinds.filter(({ available }) => available).map(({ id }) => id)).toEqual([
+      'spot',
+      'short',
+    ]);
     // Le voci già scelte sono fra quelle offerte: un film si può creare scrivendo solo l'idea.
     expect(choices.styles.map((style) => style.id)).toContain(choices.defaults.style);
-    expect(choices.durationsS).toContain(choices.defaults.durationS);
+    expect(choices.defaults).toMatchObject({ kind: 'short', durationS: 60 });
+  });
+});
+
+describe('il costo indicativo', () => {
+  const estimateOf = async (durationS: number | string) => {
+    const reply = await client.call('GET', `/projects/estimate?durationS=${String(durationS)}`);
+    return { status: reply.status, body: reply.body };
+  };
+
+  it('è una forchetta che cresce con la durata, e il numero alto è più del basso', async () => {
+    const short = filmEstimateSchema.parse((await estimateOf(60)).body);
+    const long = filmEstimateSchema.parse((await estimateOf(600)).body);
+    if (!short.available || !long.available) throw new Error('la stima doveva esserci');
+
+    expect(short.lowUsd).toBeGreaterThan(0);
+    expect(short.highUsd).toBeGreaterThan(short.lowUsd);
+    expect(long.lowUsd).toBeGreaterThan(short.lowUsd);
+  });
+
+  it('non registra nessuna spesa', async () => {
+    const receipts = app.get<ReceiptStore>(RECEIPT_STORE, { strict: false });
+    const before = receipts.list().length;
+
+    await estimateOf(120);
+
+    expect(receipts.list()).toHaveLength(before);
+  });
+
+  it('una durata sbagliata si rifiuta', async () => {
+    expect((await estimateOf('tanto')).status).toBe(400);
+    expect((await estimateOf(0)).status).toBe(400);
   });
 });
 
@@ -96,10 +134,58 @@ describe('creare un film', () => {
     });
   });
 
-  it('rifiuta un’idea vuota, una durata fuori elenco e un campo in più', async () => {
+  it('un film appena creato ricorda tipo e durata; senza tipo si deduce dalla durata', async () => {
+    const created = async (patch: Record<string, unknown>) =>
+      projectSchema.parse(
+        (await client.call('POST', '/projects', { ...(await validBody()), ...patch })).body,
+      );
+
+    expect(await created({ kind: 'spot', durationS: 45 })).toMatchObject({
+      kind: 'spot',
+      durationS: 45,
+    });
+    expect(await created({ kind: 'short', durationS: 600 })).toMatchObject({ kind: 'short' });
+    expect((await created({ durationS: 30 })).kind).toBe('spot');
+    expect((await created({ durationS: 90 })).kind).toBe('short');
+  });
+
+  it('una durata fuori dai limiti del tipo, o un tipo che non c’è ancora, si rifiutano', async () => {
+    const asked = async (patch: Record<string, unknown>) =>
+      failure(await client.call('POST', '/projects', { ...(await validBody()), ...patch }));
+
+    for (const patch of [
+      { kind: 'short', durationS: 45 },
+      { kind: 'short', durationS: 601 },
+      { kind: 'spot', durationS: 61 },
+      { kind: 'spot', durationS: 14 },
+    ]) {
+      expect((await asked(patch)).details).toEqual({ field: 'durationS' });
+    }
+    for (const kind of ['medium', 'feature']) {
+      expect((await asked({ kind, durationS: 3600 })).details).toEqual({ field: 'kind' });
+    }
+  });
+
+  it('rivedendo un film i limiti valgono sul tipo e sulla durata che avrà', async () => {
+    const film = projectSchema.parse(
+      (await client.call('POST', '/projects', await validBody())).body,
+    );
+    const changed = (body: Record<string, unknown>) =>
+      client.call('PATCH', `/projects/${film.id}`, body);
+
+    expect((await changed({ durationS: 300 })).status).toBe(200);
+    expect((await changed({ durationS: 700 })).status).toBe(400);
+    // Spot con 300 secondi non sta nei limiti: il tipo cambia solo insieme alla durata.
+    expect((await changed({ kind: 'spot' })).status).toBe(400);
+    expect(
+      projectSchema.parse((await changed({ kind: 'spot', durationS: 40 })).body),
+    ).toMatchObject({ kind: 'spot', durationS: 40 });
+  });
+
+  it('rifiuta un’idea vuota, una durata che non è un numero intero e un campo in più', async () => {
     const empty = failure(await client.call('POST', '/projects', await validBody({ idea: '   ' })));
     const duration = failure(
-      await client.call('POST', '/projects', await validBody({ durationS: 45 as 60 })),
+      await client.call('POST', '/projects', await validBody({ durationS: 45.5 })),
     );
     const extra = failure(
       await client.call('POST', '/projects', { ...(await validBody()), phase: 'final' }),

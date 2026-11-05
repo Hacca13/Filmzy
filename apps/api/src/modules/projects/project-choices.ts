@@ -1,6 +1,8 @@
 import {
+  FILM_KINDS,
+  FILM_KIND_RANGES,
   IDEA_MAX_LENGTH,
-  PROJECT_DURATIONS_S,
+  type FilmKind,
   type ProjectDefaults,
   TITLE_MAX_LENGTH,
   type ProjectChoice,
@@ -20,8 +22,8 @@ const TITLE_WORDS = 5;
 
 const FALLBACK_TITLE = 'Il mio film';
 
-/** La durata proposta se c'è fra le scelte: un minuto, che costa il giusto per una prima prova. */
-const DEFAULT_DURATION_S = 60;
+/** Il tipo proposto: un corto di un minuto, che costa il giusto per una prima prova (D85). */
+const DEFAULT_KIND: FilmKind = 'short';
 
 /** Punteggiatura e spazi che non stanno bene in fondo a un titolo. */
 const TRAILING_PUNCTUATION = /[\s.,;:!?…«»"'’‘“”-]+$/u;
@@ -50,14 +52,13 @@ function defaultsOf(options: Omit<ProjectOptions, 'defaults'>): ProjectDefaults 
   const tone = firstId(options.tones);
   const style = firstId(options.styles);
   const cinematography = firstId(options.cinematography);
-  const durationS =
-    options.durationsS.find((duration) => duration === DEFAULT_DURATION_S) ?? options.durationsS[0];
   return {
     ...(genre === undefined ? {} : { genre }),
     ...(tone === undefined ? {} : { tone }),
     ...(style === undefined ? {} : { style }),
     ...(cinematography === undefined ? {} : { cinematography }),
-    ...(durationS === undefined ? {} : { durationS }),
+    kind: DEFAULT_KIND,
+    durationS: FILM_KIND_RANGES[DEFAULT_KIND].defaultS,
   };
 }
 
@@ -67,11 +68,23 @@ export function projectOptions(presets: TroupePresetsData): ProjectOptions {
     tones: enabledChoices(presets.tones),
     styles: enabledChoices(presets.styles),
     cinematography: enabledChoices(presets.cinematography),
-    durationsS: [...PROJECT_DURATIONS_S],
+    kinds: FILM_KINDS.map((id) => ({ id, ...FILM_KIND_RANGES[id] })),
     ideaMaxLength: IDEA_MAX_LENGTH,
     titleMaxLength: TITLE_MAX_LENGTH,
   };
   return { ...options, defaults: defaultsOf(options) };
+}
+
+/** Il tipo di un film per cui non è stato detto: serve alle richieste che mandano solo la durata. */
+export function kindOfLength(durationS: number): FilmKind {
+  return durationS < FILM_KIND_RANGES.short.minS ? 'spot' : 'short';
+}
+
+/** Cosa non va in un tipo e in una durata; niente se stanno bene insieme e il tipo si può già scegliere. */
+export function lengthProblem(kind: FilmKind, durationS: number): 'kind' | 'durationS' | undefined {
+  const { minS, maxS, available } = FILM_KIND_RANGES[kind];
+  if (!available) return 'kind';
+  return durationS < minS || (maxS !== undefined && durationS > maxS) ? 'durationS' : undefined;
 }
 
 /** Il primo campo scelto che non è fra le voci attive dei preset: serve a dire quale correggere. */

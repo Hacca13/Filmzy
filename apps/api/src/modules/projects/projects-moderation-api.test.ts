@@ -129,12 +129,9 @@ describe('il moderatore davanti all’idea', () => {
 
     it('cambiare solo le scelte non ripassa dal moderatore: non c’è testo nuovo', async () => {
       const project = await film();
-      const options = projectOptionsSchema.parse(
-        (await client.call('GET', '/projects/options')).body,
-      );
 
       const reply = await client.call('PATCH', `/projects/${project.id}`, {
-        durationS: options.durationsS.find((duration) => duration !== project.durationS),
+        durationS: project.durationS + 30,
       });
 
       expect(reply.status).toBe(200);

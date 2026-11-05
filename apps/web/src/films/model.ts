@@ -1,6 +1,7 @@
 import {
-  PROJECT_DURATIONS_S,
   type CreateProjectBody,
+  type FilmEstimate,
+  type FilmKind,
   type Project,
   type ProjectChoice,
   type ProjectOptions,
@@ -20,6 +21,7 @@ export interface IdeaDraft {
   tone?: string;
   style?: string;
   cinematography?: string;
+  kind?: FilmKind;
   durationS?: number;
 }
 
@@ -37,6 +39,7 @@ export function draftOf(project: Project): IdeaDraft {
     tone: project.tone,
     style: project.style,
     cinematography: project.cinematography,
+    kind: project.kind,
     durationS: project.durationS,
   };
 }
@@ -47,13 +50,14 @@ export function draftOf(project: Project): IdeaDraft {
  */
 export function toBody(draft: IdeaDraft): CreateProjectBody | undefined {
   const idea = draft.idea.trim();
-  const durationS = PROJECT_DURATIONS_S.find((duration) => duration === draft.durationS);
+  const { kind, durationS } = draft;
   if (
     idea === '' ||
     draft.genre === undefined ||
     draft.tone === undefined ||
     draft.style === undefined ||
     draft.cinematography === undefined ||
+    kind === undefined ||
     durationS === undefined
   ) {
     return undefined;
@@ -65,6 +69,7 @@ export function toBody(draft: IdeaDraft): CreateProjectBody | undefined {
     tone: draft.tone,
     style: draft.style,
     cinematography: draft.cinematography,
+    kind,
     durationS,
   };
 }
@@ -75,6 +80,59 @@ export function formatDuration(seconds: number): string {
   const rest = seconds % 60;
   if (minutes === 0) return `${String(rest)} s`;
   return rest === 0 ? `${String(minutes)} min` : `${String(minutes)} min ${String(rest)} s`;
+}
+
+const plural = (count: number, one: string, many: string): string =>
+  `${String(count)} ${count === 1 ? one : many}`;
+
+/** «30 secondi», «1 minuto», «1 minuto e 30 secondi»: la durata scritta per intero, sul cursore. */
+export function formatLength(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  const inMinutes = plural(minutes, 'minuto', 'minuti');
+  const inSeconds = plural(rest, 'secondo', 'secondi');
+  if (minutes === 0) return inSeconds;
+  return rest === 0 ? inMinutes : `${inMinutes} e ${inSeconds}`;
+}
+
+/** Il nome, la riga che lo spiega e la durata di ogni tipo di film (D85). */
+export const FILM_KIND_TEXTS: Record<FilmKind, { name: string; idea: string; length: string }> = {
+  spot: { name: 'Spot', idea: 'Un’idea sola, in pochi secondi', length: 'Fino a 1 minuto' },
+  short: { name: 'Corto', idea: 'Una storia breve e completa', length: 'Da 1 a 10 minuti' },
+  medium: {
+    name: 'Mediometraggio',
+    idea: 'Una storia con più respiro',
+    length: 'Da 10 a 60 minuti',
+  },
+  feature: { name: 'Lungometraggio', idea: 'Un film vero e proprio', length: 'Oltre 60 minuti' },
+};
+
+/** La durata scegliendo un altro tipo: quella di adesso se ci sta, altrimenti quella di partenza del tipo. */
+export function lengthForKind(
+  { minS, maxS, defaultS }: { minS: number; maxS?: number | undefined; defaultS: number },
+  current: number | undefined,
+): number {
+  return current !== undefined && current >= minS && (maxS === undefined || current <= maxS)
+    ? current
+    : defaultS;
+}
+
+/** «circa 35–70 $»: è solo un'indicazione, e i centesimi darebbero una precisione che non c'è. */
+export function formatCostRange(lowUsd: number, highUsd: number): string {
+  const whole = (usd: number): string => String(Math.max(1, Math.round(usd)));
+  const low = whole(lowUsd);
+  const high = whole(highUsd);
+  return low === high ? `circa ${low} $` : `circa ${low}–${high} $`;
+}
+
+const NO_ESTIMATE: Record<Extract<FilmEstimate, { available: false }>['reason'], string> = {
+  no_video_service: 'Non riesco a fare la stima: non hai ancora attivato un servizio video.',
+  no_image_service:
+    'Non riesco a fare la stima: non hai ancora attivato un servizio per le immagini.',
+};
+
+export function noEstimateText(reason: keyof typeof NO_ESTIMATE): string {
+  return NO_ESTIMATE[reason];
 }
 
 /** I nomi dei passi del film, quelli della barra del mockup (architettura §3.1). */

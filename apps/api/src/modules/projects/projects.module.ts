@@ -1,17 +1,30 @@
 import {
   createProjectBodySchema,
+  filmEstimateQuerySchema,
   updateProjectBodySchema,
+  type FilmEstimate,
   type Project,
   type ProjectOptions,
   type ProjectsList,
 } from '@filmzy/contracts';
 import { createProjectStore, type OpenedDatabase, type ProjectStore } from '@filmzy/db';
-import { Body, Controller, Get, Module, Param, Patch, Post, UseFilters } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Module,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseFilters,
+} from '@nestjs/common';
 
 import { parseBody } from '../../http/parse-body.js';
 import { ProviderErrorFilter } from '../../http/provider-error.filter.js';
 import { OPENED_DATABASE } from '../database/database.module.js';
 import { ModerationModule } from '../moderation/moderation.module.js';
+import { FilmEstimateService } from './film-estimate.service.js';
 import { ProjectsService } from './projects.service.js';
 import { PROJECT_STORE } from './tokens.js';
 
@@ -22,12 +35,21 @@ import { PROJECT_STORE } from './tokens.js';
 @Controller('projects')
 @UseFilters(ProviderErrorFilter)
 class ProjectsController {
-  constructor(private readonly projects: ProjectsService) {}
+  constructor(
+    private readonly projects: ProjectsService,
+    private readonly estimates: FilmEstimateService,
+  ) {}
 
   // Prima di `:id`, perché «options» non sia preso per l'id di un film.
   @Get('options')
   options(): Promise<ProjectOptions> {
     return this.projects.options();
+  }
+
+  // Anche questa prima di `:id`. Legge solo il catalogo: non chiama nessun servizio e non costa.
+  @Get('estimate')
+  estimate(@Query() query: unknown): Promise<FilmEstimate> {
+    return this.estimates.estimate(parseBody(filmEstimateQuerySchema, query).durationS);
   }
 
   @Get()
@@ -56,6 +78,7 @@ class ProjectsController {
   controllers: [ProjectsController],
   providers: [
     ProjectsService,
+    FilmEstimateService,
     {
       provide: PROJECT_STORE,
       useFactory: (opened: OpenedDatabase): ProjectStore => createProjectStore(opened.db),

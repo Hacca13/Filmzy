@@ -5,8 +5,12 @@ import {
   choiceLabel,
   draftOf,
   filmSubtitle,
+  formatCostRange,
   formatDuration,
+  formatLength,
   initialDraft,
+  lengthForKind,
+  noEstimateText,
   phaseLabel,
   toBody,
 } from './model';
@@ -16,12 +20,16 @@ const options: ProjectOptions = {
   tones: [{ id: 'moving', label: 'Commovente' }],
   styles: [{ id: 'realistic', label: 'Realistico' }],
   cinematography: [{ id: 'noir', label: 'Noir' }],
-  durationsS: [30, 60],
+  kinds: [
+    { id: 'spot', minS: 15, maxS: 60, stepS: 5, defaultS: 30, available: true },
+    { id: 'short', minS: 60, maxS: 600, stepS: 30, defaultS: 60, available: true },
+  ],
   defaults: {
     genre: 'drama',
     tone: 'moving',
     style: 'realistic',
     cinematography: 'noir',
+    kind: 'short',
     durationS: 60,
   },
   ideaMaxLength: 2000,
@@ -38,6 +46,7 @@ const film: Project = {
   cinematography: 'noir',
   language: 'it',
   durationS: 90,
+  kind: 'short',
   phase: 'draft',
   createdAt: '2026-10-28T10:00:00.000Z',
   updatedAt: '2026-10-28T10:05:00.000Z',
@@ -48,8 +57,13 @@ describe('initialDraft', () => {
     expect(initialDraft(options)).toEqual({ idea: '', title: '', ...options.defaults });
   });
 
-  it('senza voci da proporre i campi restano vuoti', () => {
-    expect(initialDraft({ ...options, defaults: {} })).toEqual({ idea: '', title: '' });
+  it('senza voci da proporre quei campi restano vuoti, e il tipo di film c’è sempre', () => {
+    expect(initialDraft({ ...options, defaults: { kind: 'short', durationS: 60 } })).toEqual({
+      idea: '',
+      title: '',
+      kind: 'short',
+      durationS: 60,
+    });
   });
 });
 
@@ -62,6 +76,7 @@ describe('toBody', () => {
       tone: 'moving',
       style: 'realistic',
       cinematography: 'noir',
+      kind: 'short',
       durationS: 60,
     });
   });
@@ -74,14 +89,16 @@ describe('toBody', () => {
   it('manca una scelta: non si può continuare', () => {
     const withoutTone = initialDraft({
       ...options,
-      defaults: { genre: 'drama', style: 'realistic', cinematography: 'noir', durationS: 60 },
+      defaults: {
+        genre: 'drama',
+        style: 'realistic',
+        cinematography: 'noir',
+        kind: 'short',
+        durationS: 60,
+      },
     });
 
     expect(toBody({ ...withoutTone, idea: 'x' })).toBeUndefined();
-  });
-
-  it('una durata fuori elenco non si manda', () => {
-    expect(toBody({ ...initialDraft(options), idea: 'x', durationS: 45 })).toBeUndefined();
   });
 
   it('un titolo svuotato si manda vuoto: il server propone quello dell’idea', () => {
@@ -98,8 +115,37 @@ describe('draftOf', () => {
       tone: 'moving',
       style: 'realistic',
       cinematography: 'noir',
+      kind: 'short',
       durationS: 90,
     });
+  });
+});
+
+describe('tipo di film e durata', () => {
+  it('la durata si scrive per intero', () => {
+    expect(formatLength(15)).toBe('15 secondi');
+    expect(formatLength(60)).toBe('1 minuto');
+    expect(formatLength(600)).toBe('10 minuti');
+    expect(formatLength(90)).toBe('1 minuto e 30 secondi');
+    expect(formatLength(61)).toBe('1 minuto e 1 secondo');
+  });
+
+  it('cambiando tipo la durata resta se ci sta, altrimenti riparte', () => {
+    const spot = { minS: 15, maxS: 60, defaultS: 30 };
+
+    expect(lengthForKind(spot, 45)).toBe(45);
+    expect(lengthForKind(spot, 300)).toBe(30);
+    expect(lengthForKind(spot, undefined)).toBe(30);
+  });
+
+  it('il costo è una forchetta senza centesimi, e mai zero', () => {
+    expect(formatCostRange(34.6, 70.2)).toBe('circa 35–70 $');
+    expect(formatCostRange(0.2, 0.4)).toBe('circa 1 $');
+  });
+
+  it('se la stima non si può fare dice perché', () => {
+    expect(noEstimateText('no_video_service')).toContain('servizio video');
+    expect(noEstimateText('no_image_service')).toContain('immagini');
   });
 });
 

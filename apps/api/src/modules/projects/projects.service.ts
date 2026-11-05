@@ -1,6 +1,7 @@
 import {
   PROJECT_PHASES,
   type CreateProjectBody,
+  type FilmKind,
   type Project,
   type ProjectOptions,
   type ProjectPhase,
@@ -15,7 +16,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { domainError } from '../../http/domain-error.js';
 import { ModerationService } from '../moderation/moderation.service.js';
 import { CONFIG_SOURCE } from '../troupe/tokens.js';
-import { defaultTitle, projectOptions, unknownChoice } from './project-choices.js';
+import {
+  defaultTitle,
+  kindOfLength,
+  lengthProblem,
+  projectOptions,
+  unknownChoice,
+} from './project-choices.js';
 import { PROJECT_STORE } from './tokens.js';
 
 /** La lingua dei film: l'interfaccia e le storie sono in italiano, per ora. */
@@ -44,6 +51,8 @@ export class ProjectsService {
 
   async create(body: CreateProjectBody): Promise<Project> {
     this.assertChoicesExist(await this.presets(), body);
+    const kind = body.kind ?? kindOfLength(body.durationS);
+    assertLengthFits(kind, body.durationS);
     await this.moderation.assertAllowed({
       text: textOf(body),
       context: 'idea',
@@ -58,6 +67,7 @@ export class ProjectsService {
       cinematography: body.cinematography,
       language: DEFAULT_LANGUAGE,
       durationS: body.durationS,
+      kind,
       phase: 'draft',
     });
   }
@@ -92,6 +102,9 @@ export class ProjectsService {
   async update(id: string, body: UpdateProjectBody): Promise<Project> {
     const current = this.get(id);
     this.assertChoicesExist(await this.presets(), body);
+    if (body.kind !== undefined || body.durationS !== undefined) {
+      assertLengthFits(body.kind ?? current.kind, body.durationS ?? current.durationS);
+    }
     const text = textOf(body);
     if (text !== '') {
       await this.moderation.assertAllowed({
@@ -125,6 +138,11 @@ export class ProjectsService {
     if (loaded.config === undefined) throw domainError(503, 'config_invalid', { retryable: true });
     return loaded.config.presets;
   }
+}
+
+function assertLengthFits(kind: FilmKind, durationS: number): void {
+  const field = lengthProblem(kind, durationS);
+  if (field !== undefined) throw domainError(400, 'invalid_request', { details: { field } });
 }
 
 /** I testi che l'utente ha scritto in questa richiesta: il titolo, se c'è, e l'idea. */

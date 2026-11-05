@@ -3,7 +3,8 @@ import type { ProjectOptions } from '@filmzy/contracts';
 import { Notice } from '../components/ui';
 import { formatCount } from '../lib/format';
 import { ChoiceGroup } from './ChoiceGroup';
-import { formatDuration, toBody, type IdeaDraft } from './model';
+import { FilmKindField } from './FilmKindField';
+import { toBody, type IdeaDraft } from './model';
 
 interface Props {
   options: ProjectOptions;
@@ -17,8 +18,8 @@ interface Props {
 }
 
 /**
- * Il modulo «La tua idea» (T3.2): l'idea in poche righe, un titolo facoltativo e le scelte di
- * genere, tono, stile, fotografia e durata. Mostra e invia: cosa è valido lo decide il server.
+ * Il modulo «La tua idea» (T3.2, D85): l'idea in poche righe, un titolo facoltativo, che film si vuole fare
+ * e le scelte di genere, tono, stile e fotografia. Mostra e invia: cosa è valido lo decide il server.
  */
 export function IdeaForm({
   options,
@@ -77,6 +78,13 @@ export function IdeaForm({
         />
       </div>
 
+      <FilmKindField
+        kinds={options.kinds}
+        kind={draft.kind}
+        durationS={draft.durationS}
+        onChange={set}
+      />
+
       <ChoiceGroup
         legend="Genere"
         name="genre"
@@ -111,18 +119,6 @@ export function IdeaForm({
         value={draft.cinematography}
         onChange={(cinematography) => {
           set({ cinematography });
-        }}
-      />
-      <ChoiceGroup
-        legend="Durata"
-        name="duration"
-        choices={options.durationsS.map((seconds) => ({
-          id: String(seconds),
-          label: formatDuration(seconds),
-        }))}
-        value={draft.durationS === undefined ? undefined : String(draft.durationS)}
-        onChange={(seconds) => {
-          set({ durationS: Number(seconds) });
         }}
       />
 

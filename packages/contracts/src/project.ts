@@ -38,23 +38,36 @@ export const IDEA_MAX_LENGTH = 2000;
 
 export const TITLE_MAX_LENGTH = 80;
 
+/** Che film si vuole fare (D85). Mediometraggio e lungometraggio arrivano con la seconda versione. */
+export const FILM_KINDS = ['spot', 'short', 'medium', 'feature'] as const;
+
+export const filmKindSchema = z.enum(FILM_KINDS);
+
+export type FilmKind = z.infer<typeof filmKindSchema>;
+
 /**
- * Le durate tra cui si sceglie, in secondi. Sono un limite del programma e non un preset: la durata
- * decide quanto costa il film, e il backend deve poter dire di no a una cifra che non conosce.
+ * Quanto può durare ogni tipo di film, in secondi (D85). Sono un limite del programma e non un preset: la
+ * durata decide quanto costa il film, e lo sceneggiatore scrive tutto in una richiesta sola. Un lungometraggio
+ * non ha un massimo. Il limite di 10 minuti del Corto è una stima da misurare con lo sceneggiatore vero.
  */
-export const PROJECT_DURATIONS_S = [30, 60, 90, 120, 180] as const;
-
-export const projectDurationSchema = z.literal(PROJECT_DURATIONS_S);
-
-export type ProjectDuration = z.infer<typeof projectDurationSchema>;
+export const FILM_KIND_RANGES: Record<
+  FilmKind,
+  { minS: number; maxS?: number; stepS: number; defaultS: number; available: boolean }
+> = {
+  spot: { minS: 15, maxS: 60, stepS: 5, defaultS: 30, available: true },
+  short: { minS: 60, maxS: 600, stepS: 30, defaultS: 60, available: true },
+  medium: { minS: 600, maxS: 3600, stepS: 300, defaultS: 1800, available: false },
+  feature: { minS: 3600, stepS: 600, defaultS: 5400, available: false },
+};
 
 /**
  * Il film come lo ricorda il programma (T3.2): il riassunto della Bibbia più lo stile e la
  * fotografia scelti (id dei preset), la fase a cui è arrivato e le date. La fase è quella da cui si
- * riprende (architettura §3.1). La durata è quella salvata, non una delle scelte di oggi: l'elenco
- * può cambiare e un film già fatto non deve diventare illeggibile.
+ * riprende (architettura §3.1). La durata è quella salvata, non una delle scelte di oggi: i limiti
+ * possono cambiare e un film già fatto non deve diventare illeggibile.
  */
 export const projectSchema = projectSummarySchema.extend({
+  kind: filmKindSchema,
   style: configKeySchema,
   cinematography: configKeySchema,
   phase: projectPhaseSchema,

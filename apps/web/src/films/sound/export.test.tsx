@@ -35,13 +35,14 @@ const file: NonNullable<ExportView['file']> = {
 
 const body = (
   view: ExportView,
-  { behind = false, chosen = undefined as number | undefined } = {},
+  { behind = false, mounting = false, chosen = undefined as number | undefined } = {},
 ) =>
   renderToStaticMarkup(
     <ExportBody
       filmId="film-1"
       view={view}
       behind={behind}
+      mounting={mounting}
       chosen={chosen}
       busy={false}
       opening={false}
@@ -76,6 +77,7 @@ describe('come si scrive', () => {
     expect(exportFailureText(JOB_INTERRUPTED)).toContain('Non riparte da solo');
     expect(exportFailureText('disk_full')).toContain('disco è pieno');
     expect(exportFailureText('file_in_use')).toContain('aperto in un altro programma');
+    expect(exportFailureText('no_permission')).toContain('Non riesco a scrivere');
     expect(exportFailureText('not_found')).toContain('Montalo di nuovo');
     expect(exportFailureText('ffmpeg_failed')).toContain('non è riuscita');
     expect(exportFailureText(undefined)).toContain('non è riuscita');
@@ -152,10 +154,29 @@ describe('esportare', () => {
     expect(startButton(html)).not.toContain('disabled');
   });
 
-  it('se il film montato non c’è più lo dice, senza pulsanti', () => {
+  it('mentre si monta non si esporta, e lo dice', () => {
+    const html = body({ source }, { mounting: true });
+
+    expect(html).toContain('si sta montando');
+    expect(startButton(html)).toContain('disabled');
+  });
+
+  it('se il film montato non si legge lo dice, senza pulsante per esportare', () => {
     const html = body({});
 
     expect(html).toContain('montalo di nuovo');
     expect(startButton(html)).toBe('');
+  });
+
+  it('anche senza il film montato, il file già fatto resta, e il motivo di un errore si legge', () => {
+    const html = body({
+      latest: attempt({ id: 'e-2', status: 'failed', errorCode: 'not_found' }),
+      file,
+    });
+
+    expect(html).toContain('montalo di nuovo');
+    expect(html).toContain('Esportazione completata');
+    expect(html).toContain('Apri la cartella');
+    expect(html).toContain('Montalo di nuovo, poi esporta');
   });
 });

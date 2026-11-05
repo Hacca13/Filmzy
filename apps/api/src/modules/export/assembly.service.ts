@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -25,6 +25,7 @@ import {
   MediaError,
   audioDurationS,
   concatClips,
+  evenSize,
   hasAudioStream,
   mixSounds,
   muxFilm,
@@ -46,11 +47,12 @@ import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
 import { registerAssets } from '../media/image-jobs.js';
-import { assetFile } from '../media/references.js';
+import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
-import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
+import { isLostWork, isOpenStatus } from '../shots/work.js';
+import { failureReason, removeEntries } from './export-files.js';
 import { ExportService } from './export.service.js';
 import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
@@ -67,9 +69,6 @@ const FILM_FPS = 24;
 
 /** Il prefisso delle cartelle di lavoro: una per ogni giro, per riconoscerle e toglierle. */
 const WORK_PREFIX = 'lavoro-';
-
-/** Le misure devono essere pari: il formato video più comune non ne accetta altre. */
-const even = (value: number): number => value - (value % 2);
 
 /** Quello che finisce nel film in questo momento. */
 interface Snapshot {
@@ -173,6 +172,7 @@ export class AssemblyService implements OnModuleInit {
       ...(latest === undefined ? {} : { latest: latest.assembly }),
       ...(film === undefined ? {} : { film: film.assembly }),
       upToDate: film?.fingerprint === snapshot.fingerprint,
+      exportWorking: this.exports.isWorking(projectId),
       titles: snapshot.titles,
     };
   }
@@ -218,7 +218,7 @@ export class AssemblyService implements OnModuleInit {
     } catch (error) {
       const errorCode =
         error instanceof MediaError || error instanceof ProviderError ? error.code : 'unknown';
-      this.log.warn(`Montaggio fallito: ${this.reasonFor(error)}.`);
+      this.log.warn(`Montaggio fallito: ${failureReason(error, this.dataDir)}.`);
       this.store.finish(assemblyId, { status: 'failed', errorCode });
     } finally {
       // I pezzi intermedi pesano quanto il film: non restano, qualunque cosa sia successa.
@@ -228,40 +228,19 @@ export class AssemblyService implements OnModuleInit {
     }
   }
 
-  /** Per il registro: il motivo, senza il percorso dei dati, che porta il nome dell'utente. */
-  private reasonFor(error: unknown): string {
-    if (error instanceof MediaError || error instanceof ProviderError) {
-      return `${error.code}: ${error.message.replaceAll(this.dataDir, '<dati>')}`;
-    }
-    const code = (error as NodeJS.ErrnoException | undefined)?.code;
-    return code === undefined ? 'unknown' : `unknown (${code})`;
-  }
-
   /** Le cartelle di giri interrotti: si tolgono se si può, e se sono ancora in uso resteranno al prossimo giro. */
-  private async removeLeftovers(filmDir: string, current?: string): Promise<void> {
-    const names = await readdir(filmDir).catch((): string[] => []);
-    await Promise.all(
-      names
-        .filter((name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current)
-        .map((name) =>
-          rm(path.join(filmDir, name), { recursive: true, force: true }).catch(() => {
-            // Un ffmpeg sopravvissuto la tiene aperta: non ferma il montaggio di adesso.
-          }),
-        ),
+  private removeLeftovers(filmDir: string, current?: string): Promise<void> {
+    return removeEntries(
+      filmDir,
+      (name) => name.startsWith(WORK_PREFIX) && path.join(filmDir, name) !== current,
     );
   }
 
   /** I film montati prima dell'ultimo pesano quanto lui, e non li guarda più nessuno: l'esportazione è una copia. */
-  private async removeOldFilms(filmDir: string, currentAssetId: string): Promise<void> {
-    const names = await readdir(filmDir).catch((): string[] => []);
-    await Promise.all(
-      names
-        .filter((name) => name.endsWith('.mp4') && name !== `${currentAssetId}.mp4`)
-        .map((name) =>
-          rm(path.join(filmDir, name), { force: true }).catch(() => {
-            // Un lettore lo tiene aperto: resta fino al prossimo montaggio, e non è un errore.
-          }),
-        ),
+  private removeOldFilms(filmDir: string, currentAssetId: string): Promise<void> {
+    return removeEntries(
+      filmDir,
+      (name) => name.endsWith('.mp4') && name !== `${currentAssetId}.mp4`,
     );
   }
 
@@ -398,14 +377,16 @@ export class AssemblyService implements OnModuleInit {
     return this.existingFile(take?.assetId);
   }
 
-  /** Dov'è un file del film, se c'è davvero: nel registro può esserci ancora, e sul disco non più. */
+  /** Dov'è un file del film. Se non c'è più si ferma con il motivo. */
   private async existingFile(assetId: string | undefined): Promise<string> {
-    const found = assetId === undefined ? undefined : assetFile(this.files, this.dataDir, assetId);
-    const onDisk = found === undefined ? undefined : await stat(found.file).catch(() => undefined);
-    if (found === undefined || onDisk === undefined) {
+    const file =
+      assetId === undefined
+        ? undefined
+        : await existingAssetFile(this.files, this.dataDir, assetId);
+    if (file === undefined) {
       throw new ProviderError('not_found', false, 'Un file del film non c’è più.');
     }
-    return found.file;
+    return file;
   }
 
   /** Cosa finirebbe nel film adesso, e cosa manca ancora. */
@@ -441,7 +422,7 @@ export class AssemblyService implements OnModuleInit {
     if (stored === undefined) return;
     const { status, id } = stored.assembly;
     const open = status === 'queued' || status === 'running';
-    if (open && Date.now() - stored.lastActivityAt > STALE_WORK_MS) {
+    if (open && isLostWork(stored.lastActivityAt)) {
       this.store.finish(id, { status: 'failed', errorCode: 'timeout' });
     }
   }
@@ -451,7 +432,7 @@ export class AssemblyService implements OnModuleInit {
 function filmFormat(size: { width: number; height: number } | undefined): FilmFormat | undefined {
   return size === undefined
     ? undefined
-    : { width: even(size.width), height: even(size.height), fps: FILM_FPS };
+    : { width: evenSize(size.width), height: evenSize(size.height), fps: FILM_FPS };
 }
 
 /** Cosa manca per montare: una storia vuota, una scena da pensare, una da rifare, inquadrature senza video. */

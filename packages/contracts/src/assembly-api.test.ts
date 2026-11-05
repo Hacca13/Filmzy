@@ -9,6 +9,7 @@ describe('il montaggio', () => {
     const view = assemblyViewSchema.parse({
       gaps: [{ sceneNumber: 1, kind: 'no_take', missing: 2 }],
       upToDate: false,
+      exportWorking: false,
       titles,
     });
 
@@ -21,10 +22,13 @@ describe('il montaggio', () => {
       assemblyViewSchema.safeParse({
         gaps: [{ sceneNumber: 1, kind: 'boh' }],
         upToDate: false,
+        exportWorking: false,
         titles,
       }).success,
     ).toBe(false);
-    expect(assemblyViewSchema.safeParse({ gaps: [], upToDate: false }).success).toBe(false);
+    expect(
+      assemblyViewSchema.safeParse({ gaps: [], upToDate: false, exportWorking: false }).success,
+    ).toBe(false);
   });
 
   it('il lavoro in coda porta il film e il tentativo', () => {

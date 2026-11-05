@@ -346,7 +346,8 @@ describe('montare il film', () => {
     const served = await fetch(`${base}/api/assets/${view.latest?.assetId ?? ''}`);
     expect(served.headers.get('content-type')).toContain('video/mp4');
 
-    // I pezzi intermedi non restano: nella cartella c'è solo il film.
+    // I pezzi intermedi non restano: a lavoro finito nella cartella c'è solo il film.
+    await app.get(JobRunner, { strict: false }).drain();
     const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
     expect(await readdir(folder)).toEqual([path.basename(file)]);
 
@@ -404,6 +405,7 @@ describe('montare il film', () => {
     const second = await settled(film.id);
 
     expect(second.film?.assetId).not.toBe(first.film?.assetId);
+    await app.get(JobRunner, { strict: false }).drain();
     const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
     expect(await readdir(folder)).toEqual([path.basename(filmFile(second))]);
   }, 240_000);
@@ -417,7 +419,9 @@ describe('montare il film', () => {
 
     expect(reply.status).toBe(409);
     expect(domainErrorSchema.parse(reply.body).details?.field).toBe('exportWorking');
+    expect((await viewOf(film.id)).exportWorking).toBe(true);
     exportsStore.finish(open.id, { status: 'failed', errorCode: 'unknown' });
+    expect((await viewOf(film.id)).exportWorking).toBe(false);
   }, 60_000);
 
   it('mentre si monta non se ne apre un altro', async () => {
@@ -450,6 +454,7 @@ describe('montare il film', () => {
     expect(view.latest?.status).toBe('failed');
     expect(view.latest?.errorCode).toBe('not_found');
     expect(view.upToDate).toBe(false);
+    await app.get(JobRunner, { strict: false }).drain();
     const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
     expect(await readdir(folder)).toEqual([]);
     // Non resta bloccato: un altro tentativo si può chiedere.

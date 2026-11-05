@@ -11,6 +11,7 @@ import {
   type ExportView,
 } from '@filmzy/contracts';
 import {
+  createAssemblyStore,
   createExportStore,
   type AssemblyStore,
   type ExportStore,
@@ -55,6 +56,8 @@ const viewOf = async (filmId: string): Promise<ExportView> =>
   exportViewSchema.parse((await client.call('GET', exportsOf(filmId))).body);
 
 const folderOf = (filmId: string) => path.join(dataDir, 'progetti', filmId, 'esportazioni');
+const workDirOf = (filmId: string) =>
+  path.join(dataDir, 'progetti', filmId, 'esportazioni-in-corso');
 
 /** Aspetta che l'ultima esportazione sia chiusa. */
 async function settled(filmId: string): Promise<ExportView> {
@@ -135,11 +138,13 @@ describe('prima di esportare', () => {
   it('una qualità che non c’è, o una richiesta sbagliata, si rifiutano senza aprire niente', async () => {
     const { film } = await mountedFilm('1280x720');
 
-    for (const body of [{ shortSide: 1080 }, { shortSide: 'alta' }, {}, { shortSide: 720, x: 1 }]) {
+    for (const body of [{ shortSide: 1080 }, { shortSide: 'alta' }, {}]) {
       const reply = await client.call('POST', exportsOf(film.id), body);
       expect(reply.status).toBe(400);
       expect(domainErrorSchema.parse(reply.body).details?.field).toBe('shortSide');
     }
+    const extra = await client.call('POST', exportsOf(film.id), { shortSide: 720, x: 1 });
+    expect(extra.status).toBe(400);
     expect((await viewOf(film.id)).latest).toBeUndefined();
   });
 
@@ -166,8 +171,10 @@ describe('esportare', () => {
     expect(done.current).toBe(true);
     expect(await checksum(done.path)).toBe(await checksum(file));
     expect(spent()).toBe(before);
-    // Non resta niente a metà: nella cartella c'è solo il film.
+    // Nella cartella c'è solo il film, e a lavoro finito non resta niente a metà.
     expect(await readdir(folderOf(film.id))).toEqual(['L’ultima corsa - 180p.mp4']);
+    await app.get(JobRunner, { strict: false }).drain();
+    expect(await readdir(workDirOf(film.id))).toEqual([]);
   }, 60_000);
 
   it('a una qualità più bassa rifà il film alle misure giuste', async () => {
@@ -186,6 +193,20 @@ describe('esportare', () => {
 
     expect(path.dirname(done.path)).toBe(path.resolve(folderOf(film.id)));
     expect(path.basename(done.path)).toBe('fuori - 180p.mp4');
+  }, 60_000);
+
+  it('un film che si chiama come un file a metà non viene scambiato per uno di loro', async () => {
+    const { film } = await mountedFilm('1280x720', 'lavoro-di-squadra');
+
+    await exported(film.id, 720);
+    await exported(film.id, 480);
+    await app.get(JobRunner, { strict: false }).drain();
+
+    expect((await readdir(folderOf(film.id))).sort()).toEqual([
+      'lavoro-di-squadra - 480p.mp4',
+      'lavoro-di-squadra - 720p.mp4',
+    ]);
+    expect(await readdir(workDirOf(film.id))).toEqual([]);
   }, 60_000);
 
   it('rifarla alla stessa qualità sostituisce il file; a un’altra ne fa un secondo', async () => {
@@ -251,6 +272,18 @@ describe('quando qualcosa va storto', () => {
     await exported(film.id, 180);
   }, 60_000);
 
+  it('un montaggio perso non blocca l’esportazione', async () => {
+    const { film } = await mountedFilm();
+    const opened = app.get<OpenedDatabase>(OPENED_DATABASE, { strict: false });
+    createAssemblyStore(opened.db, {
+      now: () => new Date(Date.now() - STALE_WORK_MS - 60_000),
+    }).start(film.id, 'perso');
+
+    const done = await exported(film.id, 180);
+
+    expect(path.basename(done.path)).toContain('180p');
+  }, 60_000);
+
   it('un’esportazione alla volta, e non mentre si monta', async () => {
     const { film, assetId } = await mountedFilm();
     const stored = app.get<ExportStore>(EXPORT_STORE, { strict: false });
@@ -306,6 +339,15 @@ describe('salvare una copia', () => {
 
     expect((await client.call('GET', `${exportsOf(other.id)}/${done.id}/file`)).status).toBe(404);
     expect((await client.call('GET', `${exportsOf(film.id)}/nessuno/file`)).status).toBe(404);
+  }, 60_000);
+
+  it('se l’ultimo file è stato tolto si offre quello prima', async () => {
+    const { film } = await mountedFilm('1280x720');
+    await exported(film.id, 720);
+    const last = await exported(film.id, 480);
+    await rm(last.path);
+
+    expect((await viewOf(film.id)).file?.shortSide).toBe(720);
   }, 60_000);
 
   it('un file tolto dalla cartella non si offre più', async () => {

@@ -30,8 +30,8 @@ export interface ExportStore {
   finish: (exportId: string, patch: ExportPatch) => void;
   get: (exportId: string) => StoredExport | undefined;
   latest: (projectId: string) => StoredExport | undefined;
-  /** L'ultimo riuscito: un tentativo che fallisce non toglie il file di prima. */
-  lastSucceeded: (projectId: string) => StoredExport | undefined;
+  /** Quelli riusciti, dal più recente: un tentativo che fallisce non toglie il file di prima. */
+  succeeded: (projectId: string) => StoredExport[];
 }
 
 export interface ExportStoreOptions {
@@ -104,15 +104,14 @@ export function createExportStore(db: FilmzyDb, options: ExportStoreOptions = {}
       return row === undefined ? undefined : toStored(row);
     },
 
-    lastSucceeded(projectId) {
-      const row = db
+    succeeded(projectId) {
+      return db
         .select()
         .from(filmExports)
         .where(and(eq(filmExports.projectId, projectId), eq(filmExports.status, 'succeeded')))
         .orderBy(desc(filmExports.createdAt))
-        .limit(1)
-        .get();
-      return row === undefined ? undefined : toStored(row);
+        .all()
+        .map(toStored);
     },
   };
 }

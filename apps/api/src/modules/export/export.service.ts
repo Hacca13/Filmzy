@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -20,32 +19,30 @@ import { domainError } from '../../http/domain-error.js';
 import { SHEET_STORE } from '../cast/tokens.js';
 import { DATA_DIR } from '../database/database.module.js';
 import { JobRunner } from '../jobs/job-runner.service.js';
-import { assetFile } from '../media/references.js';
+import { existingAssetFile } from '../media/references.js';
 import { ProjectsService } from '../projects/projects.service.js';
-import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
-import { exportFileName, fileErrorCode, openFolderCommand, qualitiesFor } from './export-files.js';
+import { isLostWork, isOpenStatus } from '../shots/work.js';
+import {
+  exportFileName,
+  failureReason,
+  fileErrorCode,
+  launch,
+  openFolderCommand,
+  qualitiesFor,
+  removeEntries,
+} from './export-files.js';
 import { ASSEMBLY_STORE, EXPORT_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che esporta il film. */
 export const EXPORT_JOB_KIND = 'film_export';
-
-/** Il prefisso dei file a metà: ogni giro ha il suo, per riconoscerli e toglierli. */
-const WORK_PREFIX = 'lavoro-';
 
 /** Apre una cartella nel programma del sistema. A parte, così i test non aprono finestre. */
 @Injectable()
 export class FolderOpener {
   open(folder: string): Promise<void> {
     const [command, target] = openFolderCommand(process.platform, folder);
-    return new Promise((resolve, reject) => {
-      // Conta solo se parte: su Windows explorer.exe esce con 1 anche quando la cartella si è aperta.
-      const child = spawn(command, [target], { detached: true, stdio: 'ignore' });
-      child.once('error', reject);
-      child.once('spawn', () => {
-        child.unref();
-        resolve();
-      });
-    });
+    // Su Windows explorer.exe esce con 1 anche quando la cartella si è aperta.
+    return launch(command, [target], { ignoreExitCode: process.platform === 'win32' });
   }
 }
 
@@ -84,13 +81,13 @@ export class ExportService implements OnModuleInit {
     if (isOpenStatus(this.store.get(exportId)?.export.status)) {
       this.store.finish(exportId, { status: 'failed', errorCode: JOB_INTERRUPTED });
     }
-    await this.removeLeftovers(this.folderOf(projectId));
+    await removeEntries(this.workDirOf(projectId), () => true);
   }
 
   async view(projectId: string): Promise<ExportView> {
     this.projects.get(projectId);
     this.closeLost(projectId);
-    const film = this.assemblies.lastSucceeded(projectId)?.assembly.assetId;
+    const film = this.filmOf(projectId);
     const source = film === undefined ? undefined : await this.sourceOf(film);
     const file = await this.fileOf(projectId, film);
     const latest = this.store.latest(projectId)?.export;
@@ -104,8 +101,10 @@ export class ExportService implements OnModuleInit {
   /** «Esporta il film»: controlla che si possa, poi mette in coda. Non costa niente. */
   async start(projectId: string, shortSide: number): Promise<ExportView> {
     this.projects.get(projectId);
-    const film = this.assemblies.lastSucceeded(projectId)?.assembly.assetId;
+    const film = this.filmOf(projectId);
     const source = film === undefined ? undefined : await this.sourceOf(film);
+    // Durante l'attesa un montaggio può aver finito e tolto questo film: si riparte da quello nuovo.
+    if (this.filmOf(projectId) !== film) return this.start(projectId, shortSide);
     if (film === undefined || source === undefined) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportSource' } });
     }
@@ -113,12 +112,16 @@ export class ExportService implements OnModuleInit {
       throw domainError(400, 'invalid_request', { details: { field: 'shortSide' } });
     }
     // I controlli stanno qui, dopo le attese e subito prima di aprire il tentativo: un doppio clic ne apre uno.
-    this.closeLost(projectId);
     if (this.isWorking(projectId)) {
       throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
     }
     // Un nuovo montaggio toglie il film di prima: non si esporta qualcosa che sta per sparire.
-    if (isOpenStatus(this.assemblies.latest(projectId)?.assembly.status)) {
+    const mounting = this.assemblies.latest(projectId);
+    if (
+      mounting !== undefined &&
+      isOpenStatus(mounting.assembly.status) &&
+      !isLostWork(mounting.lastActivityAt)
+    ) {
       throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
     }
 
@@ -163,26 +166,47 @@ export class ExportService implements OnModuleInit {
       await mkdir(folder, { recursive: true });
       await this.opener.open(folder);
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException | undefined)?.code ?? 'unknown';
-      this.log.warn(`La cartella delle esportazioni non si è potuta aprire: ${code}.`);
+      this.log.warn(`La cartella non si è potuta aprire: ${failureReason(error, this.dataDir)}.`);
       throw domainError(500, 'media_failed', { details: { field: 'folder' } });
     }
+  }
+
+  private filmOf(projectId: string): string | undefined {
+    return this.assemblies.lastSucceeded(projectId)?.assembly.assetId;
   }
 
   private folderOf(projectId: string): string {
     return path.resolve(projectsDir(this.dataDir), projectId, 'esportazioni');
   }
 
-  /** Il film da esportare con le sue qualità; se il file non c'è più o non si legge, niente. */
-  private async sourceOf(assetId: string): Promise<ExportSource | undefined> {
-    const size = await this.sizeOf(assetId);
-    if (size === undefined) return undefined;
-    return { ...size, qualities: qualitiesFor(size, EXPORT_SHORT_SIDES) };
+  /**
+   * I file a metà stanno a parte: chi apre la cartella non deve trovare un film incompleto, e fra i file
+   * finiti, che prendono il nome dal titolo, non si potrebbe distinguerli. Stesso disco: spostarli è immediato.
+   */
+  private workDirOf(projectId: string): string {
+    return path.resolve(projectsDir(this.dataDir), projectId, 'esportazioni-in-corso');
   }
 
-  private async sizeOf(assetId: string): Promise<{ width: number; height: number } | undefined> {
-    const file = await this.filmFile(assetId);
+  /** Il film da esportare con le sue qualità. Se non c'è più o non si legge, niente: lo dice l'interfaccia. */
+  private async sourceOf(assetId: string): Promise<ExportSource | undefined> {
+    const file = await existingAssetFile(this.files, this.dataDir, assetId);
     if (file === undefined) return undefined;
+    try {
+      const size = await this.sizeOf(assetId, file);
+      return size === undefined
+        ? undefined
+        : { ...size, qualities: qualitiesFor(size, EXPORT_SHORT_SIDES) };
+    } catch (error) {
+      if (!(error instanceof MediaError)) throw error;
+      this.log.warn(`Il film montato non si legge: ${failureReason(error, this.dataDir)}.`);
+      return undefined;
+    }
+  }
+
+  private async sizeOf(
+    assetId: string,
+    file: string,
+  ): Promise<{ width: number; height: number } | undefined> {
     const known = this.sizes.get(assetId);
     if (known !== undefined) return known;
     const size = await videoSize(file);
@@ -190,28 +214,26 @@ export class ExportService implements OnModuleInit {
     return size;
   }
 
-  /** Dov'è il film montato, se c'è davvero: nel registro può esserci ancora, e sul disco non più. */
-  private async filmFile(assetId: string): Promise<string | undefined> {
-    const file = assetFile(this.files, this.dataDir, assetId)?.file;
-    const onDisk = file === undefined ? undefined : await stat(file).catch(() => undefined);
-    return onDisk === undefined ? undefined : file;
-  }
-
-  /** L'ultimo file riuscito, se c'è ancora nella cartella: l'utente può averlo spostato o tolto. */
+  /** L'ultimo file riuscito che c'è ancora nella cartella: l'utente può aver spostato o tolto gli altri. */
   private async fileOf(
     projectId: string,
     film: string | undefined,
   ): Promise<ExportedFile | undefined> {
-    const stored = this.store.lastSucceeded(projectId);
-    if (stored?.fileName === undefined) return undefined;
-    const file = await this.existingExport(projectId, stored.fileName);
-    if (file === undefined) return undefined;
-    return {
-      id: stored.export.id,
-      shortSide: stored.export.shortSide,
-      path: file,
-      current: stored.sourceAssetId === film,
-    };
+    for (const stored of this.store.succeeded(projectId)) {
+      const file =
+        stored.fileName === undefined
+          ? undefined
+          : await this.existingExport(projectId, stored.fileName);
+      if (file !== undefined) {
+        return {
+          id: stored.export.id,
+          shortSide: stored.export.shortSide,
+          path: file,
+          current: stored.sourceAssetId === film,
+        };
+      }
+    }
+    return undefined;
   }
 
   /** Il percorso di un file esportato, se c'è ed è davvero nella cartella (CLAUDE.md, «Sicuro»). */
@@ -236,23 +258,26 @@ export class ExportService implements OnModuleInit {
     if (!isOpenStatus(stored.export.status)) return;
 
     const folder = this.folderOf(projectId);
-    const work = path.join(folder, `${WORK_PREFIX}${randomUUID()}.mp4`);
+    const workDir = this.workDirOf(projectId);
+    const work = path.join(workDir, `${randomUUID()}.mp4`);
+    let replacing = false;
     try {
       this.store.finish(exportId, { status: 'running' });
-      await mkdir(folder, { recursive: true });
-      await this.removeLeftovers(folder, work);
+      await Promise.all([mkdir(folder, { recursive: true }), mkdir(workDir, { recursive: true })]);
+      // Si lavora un'esportazione alla volta per film: ciò che c'è è di un giro interrotto.
+      await removeEntries(workDir, () => true);
 
       await this.writeFile(stored.sourceAssetId, stored.export.shortSide, work);
       const fileName = exportFileName(this.projects.get(projectId).title, stored.export.shortSide);
-      // Sul nome definitivo solo a file finito: chi apre la cartella non trova mai un film a metà.
+      replacing = true;
       await rename(work, path.join(folder, fileName));
       this.store.finish(exportId, { status: 'succeeded', fileName });
     } catch (error) {
       const errorCode =
         error instanceof MediaError || error instanceof ProviderError
           ? error.code
-          : fileErrorCode(error);
-      this.log.warn(`Esportazione fallita: ${errorCode}.`);
+          : fileErrorCode(error, replacing);
+      this.log.warn(`Esportazione fallita: ${failureReason(error, this.dataDir)}.`);
       this.store.finish(exportId, { status: 'failed', errorCode });
     } finally {
       await rm(work, { force: true }).catch(() => {
@@ -263,11 +288,11 @@ export class ExportService implements OnModuleInit {
 
   /** Alla qualità del film si copia, senza perdere niente; a una più bassa si rifà il video. */
   private async writeFile(sourceAssetId: string, shortSide: number, output: string): Promise<void> {
-    const input = await this.filmFile(sourceAssetId);
+    const input = await existingAssetFile(this.files, this.dataDir, sourceAssetId);
     if (input === undefined) {
       throw new ProviderError('not_found', false, 'Il film montato non c’è più.');
     }
-    const size = await this.sizeOf(sourceAssetId);
+    const size = await this.sizeOf(sourceAssetId, input);
     if (size === undefined) throw new MediaError('ffmpeg_failed', 'Il film montato non si legge.');
     if (shortSide === Math.min(size.width, size.height)) {
       await copyFile(input, output);
@@ -276,25 +301,11 @@ export class ExportService implements OnModuleInit {
     await resizeFilm({ input, output, ...scaledSize(size, shortSide) });
   }
 
-  /** I file a metà di giri interrotti: se uno è ancora in uso resterà fino al prossimo giro. */
-  private async removeLeftovers(folder: string, current?: string): Promise<void> {
-    const names = await readdir(folder).catch((): string[] => []);
-    await Promise.all(
-      names
-        .filter((name) => name.startsWith(WORK_PREFIX) && path.join(folder, name) !== current)
-        .map((name) =>
-          rm(path.join(folder, name), { force: true }).catch(() => {
-            // Un ffmpeg sopravvissuto lo tiene aperto: non ferma l'esportazione di adesso.
-          }),
-        ),
-    );
-  }
-
   /** Un tentativo fermo da troppo tempo si è perso: si chiude, o bloccherebbe il pulsante. */
   private closeLost(projectId: string): void {
     const stored = this.store.latest(projectId);
     if (stored === undefined || !isOpenStatus(stored.export.status)) return;
-    if (Date.now() - stored.lastActivityAt > STALE_WORK_MS) {
+    if (isLostWork(stored.lastActivityAt)) {
       this.store.finish(stored.export.id, { status: 'failed', errorCode: 'timeout' });
     }
   }

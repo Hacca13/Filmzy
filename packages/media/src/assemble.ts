@@ -386,17 +386,19 @@ export async function muxFilm(options: MuxOptions): Promise<void> {
   );
 }
 
+/** Le misure di un video devono essere pari: il formato video più comune non ne accetta altre. */
+export const evenSize = (value: number): number => value - (value % 2);
+
 /** Le misure di un film a una qualità: lo stesso formato, con misure pari come vuole il codec. */
 export function scaledSize(
   size: { width: number; height: number },
   shortSide: number,
 ): { width: number; height: number } {
   const ratio = shortSide / Math.min(size.width, size.height);
-  const even = (value: number): number => {
-    const rounded = Math.round(value);
-    return rounded - (rounded % 2);
+  return {
+    width: evenSize(Math.round(size.width * ratio)),
+    height: evenSize(Math.round(size.height * ratio)),
   };
-  return { width: even(size.width * ratio), height: even(size.height * ratio) };
 }
 
 export interface ResizeFilmOptions extends StepOptions {

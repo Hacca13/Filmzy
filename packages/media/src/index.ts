@@ -18,6 +18,7 @@ export {
 } from './ffmpeg.js';
 export {
   concatClips,
+  evenSize,
   layoutTitle,
   mixSounds,
   muxFilm,

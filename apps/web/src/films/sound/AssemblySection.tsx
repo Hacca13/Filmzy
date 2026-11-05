@@ -17,7 +17,7 @@ import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-mode
 export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unknown }) {
   const load = useCallback((signal: AbortSignal) => fetchAssembly(filmId, signal), [filmId]);
   const { value, problem, reload, setValue } = useWatched(load, assemblyIsWorking, {
-    kinds: ['film_assemble'],
+    kinds: ['film_assemble', 'film_export'],
     projectId: filmId,
   });
   const action = useAction();
@@ -58,7 +58,11 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
         {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
       </section>
       {value?.film === undefined ? null : (
-        <ExportSection filmId={filmId} behind={!value.upToDate} />
+        <ExportSection
+          filmId={filmId}
+          behind={!value.upToDate}
+          mounting={assemblyIsWorking(value)}
+        />
       )}
     </>
   );
@@ -74,7 +78,7 @@ export function AssemblyBody({
   busy: boolean;
   onStart: () => void;
 }) {
-  const { latest, film, gaps, titles, upToDate } = view;
+  const { latest, film, gaps, titles, upToDate, exportWorking } = view;
   const working = assemblyIsWorking(view);
   const made = film?.assetId;
 
@@ -89,6 +93,9 @@ export function AssemblyBody({
         </Notice>
       ) : null}
       {working ? <p className="hint">Sto montando il film… Può volerci qualche minuto.</p> : null}
+      {exportWorking ? (
+        <p className="hint">Il film si sta esportando: potrai montarlo quando ha finito.</p>
+      ) : null}
       {latest?.status === 'failed' ? (
         <Notice tone="error">{assemblyFailureText(latest.errorCode)}</Notice>
       ) : null}
@@ -126,7 +133,7 @@ export function AssemblyBody({
           type="button"
           className="button"
           data-kind="primary"
-          disabled={busy || working || gaps.length > 0}
+          disabled={busy || working || exportWorking || gaps.length > 0}
           onClick={onStart}
         >
           {made === undefined ? 'Monta il film' : 'Monta di nuovo'}

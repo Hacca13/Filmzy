@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { SheetStore } from '@filmzy/db';
@@ -32,6 +32,17 @@ export function assetFile(
   const root = path.resolve(dataDir);
   const file = path.resolve(root, record.path);
   return file.startsWith(root + path.sep) ? { file, contentType: record.contentType } : undefined;
+}
+
+/** Come `assetFile`, se il file c'è davvero: nel registro può esserci ancora, e sul disco non più. */
+export async function existingAssetFile(
+  files: Pick<SheetStore, 'getAsset'>,
+  dataDir: string,
+  assetId: string,
+): Promise<string | undefined> {
+  const found = assetFile(files, dataDir, assetId);
+  const onDisk = found === undefined ? undefined : await stat(found.file).catch(() => undefined);
+  return onDisk === undefined ? undefined : found?.file;
 }
 
 export async function referenceInput(

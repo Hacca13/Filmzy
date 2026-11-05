@@ -1,34 +1,32 @@
+import { spawn } from 'node:child_process';
+import { readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+
+import { MediaError } from '@filmzy/media';
+import { ProviderError } from '@filmzy/troupe';
+
 /**
- * Le piccole decisioni sui file esportati, fuori dal servizio così si provano a parte.
+ * Le piccole decisioni sui file del montaggio e dell'esportazione, fuori dai servizi così si provano a parte.
  */
 
-/** Caratteri che Windows non accetta in un nome, più i caratteri di controllo. */
+/** Caratteri che i sistemi non accettano in un nome, più i caratteri di controllo. */
 // eslint-disable-next-line no-control-regex -- togliere i caratteri di controllo è proprio ciò che serve qui.
 const FORBIDDEN_IN_NAME = /[<>:"/\\|?*\u0000-\u001f]/g;
-
-/** Nomi che Windows riserva ai dispositivi: un film che si chiama «Con» non si potrebbe salvare. */
-const RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
-
-/** Un titolo può essere lungo, e il percorso intero ha un limite: si tiene quanto basta a riconoscerlo. */
-const MAX_TITLE_CHARS = 80;
 
 const FALLBACK_TITLE = 'Film';
 
 /**
  * Il nome del file finale: «L'ultima corsa - 1080p.mp4». Viene dal titolo, che scrive l'utente: non deve
- * poter uscire dalla cartella né dare un nome che il sistema rifiuta (CLAUDE.md, «Sicuro»). Ogni qualità
- * ha il suo file: esportare di nuovo alla stessa qualità sostituisce quello di prima.
+ * poter uscire dalla cartella né dare un nome che il sistema rifiuta (CLAUDE.md, «Sicuro»). Un punto davanti
+ * nasconderebbe il file su Linux e macOS. Il titolo ha già un limite di lunghezza (`TITLE_MAX_LENGTH`).
  */
 export function exportFileName(title: string, shortSide: number): string {
   const cleaned = title
     .replace(FORBIDDEN_IN_NAME, ' ')
     .replace(/\s+/g, ' ')
-    .slice(0, MAX_TITLE_CHARS)
-    // Windows toglie da solo punti e spazi in fondo: il nome salvato non sarebbe più quello scritto qui.
-    .replace(/[.\s]+$/, '')
-    .replace(/^[.\s]+/, '');
-  const usable = cleaned === '' || RESERVED_NAME.test(cleaned) ? FALLBACK_TITLE : cleaned;
-  return `${usable} - ${String(shortSide)}p.mp4`;
+    .replace(/^[.\s]+/, '')
+    .trim();
+  return `${cleaned === '' ? FALLBACK_TITLE : cleaned} - ${String(shortSide)}p.mp4`;
 }
 
 /**
@@ -43,23 +41,80 @@ export function qualitiesFor(
   return [own, ...standard.filter((shortSide) => shortSide < own)];
 }
 
-/** I codici di errore del file system che hanno una frase propria: il resto resta `unknown`. */
-const FILE_ERRORS: Readonly<Record<string, string>> = {
-  ENOSPC: 'disk_full',
-  EPERM: 'file_in_use',
-  EBUSY: 'file_in_use',
-  EACCES: 'file_in_use',
-};
-
-/** Il motivo di un errore del file system, per l'interfaccia. */
-export function fileErrorCode(error: unknown): string {
+/**
+ * Il motivo di un errore del file system, per l'interfaccia. `replacing` dice che si stava mettendo il file
+ * al suo posto: su Windows, sostituire un file aperto in un altro programma dà un errore di permessi.
+ */
+export function fileErrorCode(error: unknown, replacing = false): string {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
-  return (code === undefined ? undefined : FILE_ERRORS[code]) ?? 'unknown';
+  if (code === 'ENOSPC') return 'disk_full';
+  if (code === 'EBUSY') return 'file_in_use';
+  if (code === 'EPERM' || code === 'EACCES') return replacing ? 'file_in_use' : 'no_permission';
+  return 'unknown';
 }
 
-/** Il comando che apre una cartella in ogni sistema, con gli argomenti a parte (CLAUDE.md, «Sicuro»). */
+/** Per il registro: il motivo, senza il percorso dei dati, che porta il nome dell'utente. */
+export function failureReason(error: unknown, dataDir: string): string {
+  if (error instanceof MediaError || error instanceof ProviderError) {
+    return `${error.code}: ${error.message.replaceAll(dataDir, '<dati>')}`;
+  }
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return code === undefined ? 'unknown' : `unknown (${code})`;
+}
+
+/** Toglie da una cartella ciò che va tolto. Quello che non si riesce a togliere resta, senza fermare il lavoro. */
+export async function removeEntries(
+  folder: string,
+  shouldGo: (name: string) => boolean,
+): Promise<void> {
+  const names = await readdir(folder).catch((): string[] => []);
+  await Promise.all(
+    names.filter(shouldGo).map((name) =>
+      rm(path.join(folder, name), { recursive: true, force: true }).catch(() => {
+        // Un lettore o un ffmpeg sopravvissuto lo tiene aperto: resta fino al prossimo giro.
+      }),
+    ),
+  );
+}
+
+/** Il comando che apre una cartella in ogni sistema, con il percorso a parte (CLAUDE.md, «Sicuro»). */
 export function openFolderCommand(platform: NodeJS.Platform, folder: string): [string, string] {
   if (platform === 'win32') return ['explorer.exe', folder];
   if (platform === 'darwin') return ['open', folder];
   return ['xdg-open', folder];
+}
+
+/** Dopo quanto un programma ancora acceso vuol dire che ha funzionato: alcuni restano finché si chiude la finestra. */
+const LAUNCH_WAIT_MS = 3000;
+
+/**
+ * Lancia un programma del sistema senza aspettare che si chiuda. `ignoreExitCode` serve a chi esce con un
+ * errore anche quando va bene; agli altri, un'uscita con errore vuol dire che non ha aperto niente.
+ */
+export function launch(
+  command: string,
+  args: readonly string[],
+  { ignoreExitCode }: { ignoreExitCode: boolean },
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { detached: true, stdio: 'ignore' });
+    child.unref();
+    child.once('error', reject);
+    if (ignoreExitCode) {
+      child.once('spawn', () => {
+        resolve();
+      });
+      return;
+    }
+    const stillOpen = setTimeout(resolve, LAUNCH_WAIT_MS);
+    stillOpen.unref();
+    child.once('error', () => {
+      clearTimeout(stillOpen);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(stillOpen);
+      if (code === 0) resolve();
+      else reject(new Error(`Il comando è uscito con il codice ${String(code)}.`));
+    });
+  });
 }

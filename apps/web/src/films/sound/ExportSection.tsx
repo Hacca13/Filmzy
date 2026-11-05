@@ -18,7 +18,15 @@ import {
  * computer dell'utente, quindi non costa niente. Ascolta anche il montaggio: un film nuovo cambia le qualità
  * possibili e rende indietro il file già fatto.
  */
-export function ExportSection({ filmId, behind }: { filmId: string; behind: boolean }) {
+export function ExportSection({
+  filmId,
+  behind,
+  mounting,
+}: {
+  filmId: string;
+  behind: boolean;
+  mounting: boolean;
+}) {
   const load = useCallback((signal: AbortSignal) => fetchExport(filmId, signal), [filmId]);
   const { value, problem, reload, setValue } = useWatched(load, exportIsWorking, {
     kinds: ['film_export', 'film_assemble'],
@@ -41,6 +49,7 @@ export function ExportSection({ filmId, behind }: { filmId: string; behind: bool
           filmId={filmId}
           view={value}
           behind={behind}
+          mounting={mounting}
           chosen={chosen}
           busy={starting.busy}
           opening={opening.busy}
@@ -72,6 +81,7 @@ export function ExportBody({
   filmId,
   view,
   behind,
+  mounting,
   chosen,
   busy,
   opening,
@@ -83,6 +93,8 @@ export function ExportBody({
   view: ExportView;
   /** Dopo l'ultimo montaggio è cambiato qualcosa nel film. */
   behind: boolean;
+  /** Il film si sta montando: un nuovo film toglie quello di prima. */
+  mounting: boolean;
   chosen: number | undefined;
   busy: boolean;
   opening: boolean;
@@ -93,55 +105,67 @@ export function ExportBody({
   const { source, latest, file } = view;
   const working = exportIsWorking(view);
 
-  if (source === undefined) {
-    return <Notice tone="info">Il film montato non c’è più sul computer: montalo di nuovo.</Notice>;
-  }
   // Una scelta di prima può non valere più: un film nuovo può avere altre qualità.
   const quality =
-    chosen !== undefined && source.qualities.includes(chosen) ? chosen : source.qualities[0];
+    chosen !== undefined && source?.qualities.includes(chosen) === true
+      ? chosen
+      : source?.qualities[0];
 
   return (
     <>
-      <div className="field">
-        <label htmlFor="export-quality">Qualità di esportazione</label>
-        <select
-          id="export-quality"
-          value={quality}
-          disabled={working}
-          onChange={(event) => {
-            onChoose(Number(event.target.value));
-          }}
-        >
-          {source.qualities.map((shortSide) => (
-            <option key={shortSide} value={shortSide}>
-              {qualityLabel(shortSide)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <dl className="details">
-        <div>
-          <dt>Formato</dt>
-          <dd>{formatLabel(source)}</dd>
-        </div>
-      </dl>
-      {behind ? (
-        <p className="hint">Esporti l’ultimo film montato: le modifiche fatte dopo non ci sono.</p>
-      ) : null}
+      {source === undefined ? (
+        <Notice tone="info">
+          Non riesco a leggere il film montato sul computer: montalo di nuovo per esportarlo.
+        </Notice>
+      ) : (
+        <>
+          <div className="field">
+            <label htmlFor="export-quality">Qualità di esportazione</label>
+            <select
+              id="export-quality"
+              value={quality}
+              disabled={working}
+              onChange={(event) => {
+                onChoose(Number(event.target.value));
+              }}
+            >
+              {source.qualities.map((shortSide) => (
+                <option key={shortSide} value={shortSide}>
+                  {qualityLabel(shortSide)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <dl className="details">
+            <div>
+              <dt>Formato</dt>
+              <dd>{formatLabel(source)}</dd>
+            </div>
+          </dl>
+          {behind ? (
+            <p className="hint">
+              Esporti l’ultimo film montato: le modifiche fatte dopo non ci sono.
+            </p>
+          ) : null}
+          {mounting ? (
+            <p className="hint">Il film si sta montando: potrai esportarlo quando ha finito.</p>
+          ) : null}
 
-      <div className="actions">
-        <button
-          type="button"
-          className="button"
-          data-kind="primary"
-          disabled={busy || working || quality === undefined}
-          onClick={() => {
-            if (quality !== undefined) onStart(quality);
-          }}
-        >
-          Esporta il film
-        </button>
-      </div>
+          <div className="actions">
+            <button
+              type="button"
+              className="button"
+              data-kind="primary"
+              disabled={busy || working || mounting || quality === undefined}
+              onClick={() => {
+                if (quality !== undefined) onStart(quality);
+              }}
+            >
+              Esporta il film
+            </button>
+          </div>
+        </>
+      )}
 
       {working ? <p className="hint">Sto esportando il film… Può volerci qualche minuto.</p> : null}
       {latest?.status === 'failed' ? (

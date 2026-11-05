@@ -6,10 +6,10 @@ import {
   type ExportStore,
   type OpenedDatabase,
 } from '@filmzy/db';
-import { Body, Controller, Get, HttpCode, Module, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Logger, Module, Param, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { domainError } from '../../http/domain-error.js';
+import { parseBody } from '../../http/parse-body.js';
 import { AudioStoreModule } from '../audio/audio-store.module.js';
 import { BibleModule } from '../bible/bible.module.js';
 import { CastModule } from '../cast/cast.module.js';
@@ -41,6 +41,8 @@ class AssemblyController {
 /** Le rotte dell'esportazione (T5.8). Nessuna logica: decide il servizio. */
 @Controller('projects/:projectId/exports')
 class ExportController {
+  private readonly log = new Logger('Esportazione');
+
   constructor(private readonly exports: ExportService) {}
 
   @Get()
@@ -51,11 +53,7 @@ class ExportController {
   /** «Esporta il film»: lavora in coda, e non costa niente. */
   @Post()
   start(@Param('projectId') projectId: string, @Body() body: unknown): Promise<ExportView> {
-    const parsed = startExportBodySchema.safeParse(body);
-    if (!parsed.success) {
-      throw domainError(400, 'invalid_request', { details: { field: 'shortSide' } });
-    }
-    return this.exports.start(projectId, parsed.data.shortSide);
+    return this.exports.start(projectId, parseBody(startExportBodySchema, body).shortSide);
   }
 
   /** «Apri la cartella». */
@@ -75,7 +73,13 @@ class ExportController {
     const { file, name } = await this.exports.download(projectId, exportId);
     // Il permesso sui punti serve su Linux: la cartella dei dati sta in `~/.local`, e senza darebbe 404.
     response.download(file, name, { dotfiles: 'allow' }, (error) => {
-      if (error !== undefined && !response.headersSent) response.status(404).end();
+      if (error === undefined) return;
+      const { code } = error as NodeJS.ErrnoException;
+      // Chi interrompe il download ha deciso lui: non è un errore da registrare.
+      if (code !== 'ECONNABORTED') {
+        this.log.warn(`Il file esportato non si è potuto inviare: ${code ?? 'unknown'}.`);
+      }
+      if (!response.headersSent) response.status(404).json({ code: 'not_found', retryable: false });
     });
   }
 }

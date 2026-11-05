@@ -6,6 +6,10 @@
  */
 export const STALE_WORK_MS = 45 * 60 * 1000;
 
+/** Vero se un lavoro aperto non dà segni di vita da troppo tempo: conta l'ultimo, non la partenza. */
+export const isLostWork = (lastActivityAt: number): boolean =>
+  Date.now() - lastActivityAt > STALE_WORK_MS;
+
 /** Un tentativo che non è ancora chiuso: in coda o in lavorazione. */
 export const isOpenStatus = (status: string | undefined): boolean =>
   status === 'queued' || status === 'running';

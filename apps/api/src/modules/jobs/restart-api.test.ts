@@ -176,9 +176,9 @@ describe('dopo un riavvio', () => {
     const spentBefore = app.get<ReceiptStore>(RECEIPT_STORE, { strict: false }).list().length;
 
     // Un film a metà di un'esportazione interrotta: pesa, e il lavoro che doveva toglierlo non ripartirà.
-    const exportDir = path.join(dataDir, 'progetti', exportable.film.id, 'esportazioni');
-    await mkdir(exportDir, { recursive: true });
-    await writeFile(path.join(exportDir, 'lavoro-a-meta.mp4'), 'a metà');
+    const exportWork = path.join(dataDir, 'progetti', exportable.film.id, 'esportazioni-in-corso');
+    await mkdir(exportWork, { recursive: true });
+    await writeFile(path.join(exportWork, 'a-meta.mp4'), 'a metà');
 
     await close(first);
 
@@ -217,7 +217,7 @@ describe('dopo un riavvio', () => {
     // I file provvisori non restano: il lavoro che doveva toglierli non ripartirà.
     const retouchDir = path.join(dataDir, 'progetti', other.film.id, 'ritocco');
     expect(await readdir(retouchDir)).toEqual([]);
-    expect(await readdir(exportDir)).toEqual([]);
+    expect(await readdir(exportWork)).toEqual([]);
 
     // Decide l'utente: un altro lo può chiedere, e questo sì che parte.
     expect((await second.client.call('POST', takesUrl, {})).status).toBe(201);

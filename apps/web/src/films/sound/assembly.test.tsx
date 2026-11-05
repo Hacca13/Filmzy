@@ -8,6 +8,7 @@ import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-mode
 const view = (patch: Partial<AssemblyView> = {}): AssemblyView => ({
   gaps: [],
   upToDate: false,
+  exportWorking: false,
   titles: {
     title: 'L’ultima corsa',
     cast: 'Con Anna e Marco',
@@ -79,6 +80,13 @@ describe('il montaggio', () => {
     expect(html).toContain('<video');
     expect(startButton(html)).toContain('Monta di nuovo');
     expect(html).not.toContain('hai cambiato qualcosa');
+  });
+
+  it('mentre il film si esporta non si monta, e lo dice', () => {
+    const html = body(view({ latest: made, film: made, upToDate: true, exportWorking: true }));
+
+    expect(html).toContain('si sta esportando');
+    expect(startButton(html)).toContain('disabled');
   });
 
   it('se dopo è cambiato qualcosa lo dice', () => {

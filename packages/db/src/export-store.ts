@@ -30,12 +30,12 @@ export interface StoredExport {
   export: FilmExport;
 }
 
-/** Cosa si chiede di esportare. Senza formato vale quello del film, senza tipo di file MP4. */
+/** Cosa si chiede di esportare. Senza formato vale quello del film. */
 export interface ExportRequest {
   sourceAssetId: string;
   shortSide: number;
   aspect?: ExportAspect | undefined;
-  container?: ExportContainer | undefined;
+  container: ExportContainer;
 }
 
 /** Le esportazioni di un film (T5.8): contano l'ultimo tentativo e l'ultimo file riuscito. */
@@ -85,7 +85,7 @@ export function createExportStore(db: FilmzyDb, options: ExportStoreOptions = {}
           sourceAssetId,
           shortSide,
           aspect: aspect ?? null,
-          container: container ?? 'mp4',
+          container,
           createdAt: at,
           updatedAt: at,
         })

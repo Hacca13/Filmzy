@@ -89,7 +89,8 @@ const FAILURES: Record<string, string> = {
     'Il programma si è chiuso mentre esportava. Non riparte da solo: esporta di nuovo quando vuoi.',
   ffmpeg_missing: 'Manca il programma che lavora i video. Reinstalla Filmzy.',
   not_found: 'Il film montato non c’è più sul computer. Montalo di nuovo, poi esporta.',
-  disk_full: 'Il disco è pieno. Libera un po’ di spazio e riprova.',
+  disk_full:
+    'Il disco è pieno. Togli qualche film montato prima o libera un po’ di spazio, e riprova.',
   file_in_use: 'Il file di prima è aperto in un altro programma. Chiudilo e riprova.',
   no_permission: 'Non riesco a scrivere nella cartella del film. Controlla che non sia protetta.',
   timeout: 'L’esportazione ci ha messo troppo. Chiudi gli altri programmi e riprova.',

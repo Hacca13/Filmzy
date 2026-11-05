@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -47,6 +48,15 @@ export function exportFileName(
   const { shortSide, aspect, container } = choice;
   const format = aspect === undefined ? '' : ` - ${aspect.replace(':', 'x')}`;
   return `${titleInName(title)} - ${String(shortSide)}p${format}.${container}`;
+}
+
+/**
+ * L'id di un film montato. Il checksum da solo non basta: il registro dei file è unico per tutti i film, e due
+ * film uguali (stesso titolo, stessi video) finirebbero sulla stessa riga. Togliendone uno si toglierebbe il
+ * file dell'altro.
+ */
+export function filmAssetId(projectId: string, checksum: string): string {
+  return createHash('sha256').update(`${projectId}:${checksum}`).digest('hex');
 }
 
 /** Il nome di una copia di un film montato prima: «L'ultima corsa - montato il 2026-11-05 14.20.mp4». */

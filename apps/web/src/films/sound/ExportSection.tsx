@@ -106,7 +106,7 @@ export function ExportBody({
   view: ExportView;
   /** Dopo l'ultimo montaggio è cambiato qualcosa nel film. */
   behind: boolean;
-  /** Il film si sta montando: un nuovo film toglie quello di prima. */
+  /** Il film si sta montando: un lavoro alla volta, ricodificare usa già tutti i processori. */
   mounting: boolean;
   chosen: ExportChoice;
   busy: boolean;
@@ -186,7 +186,10 @@ export function ExportBody({
               ))}
             </select>
             {container === 'webm' ? (
-              <p className="hint">Questo tipo di file ci mette di più: il film si rifà da capo.</p>
+              <p className="hint">
+                Questo tipo di file ci mette molto di più: il film si rifà da capo, e può volerci
+                anche più di mezz’ora.
+              </p>
             ) : null}
           </div>
           {behind ? (

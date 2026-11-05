@@ -39,6 +39,9 @@ const FAILURES: Record<string, string> = {
   not_found: 'Un video o un suono del film non c’è più sul computer. Rifallo, poi monta di nuovo.',
   invalid_request: 'Mentre aspettava è cambiato qualcosa. Controlla cosa manca e riprova.',
   timeout: 'Il montaggio ci ha messo troppo. Chiudi gli altri programmi e riprova.',
+  disk_full:
+    'Il disco è pieno. Togli qualche film montato prima o libera un po’ di spazio, e riprova.',
+  no_permission: 'Non riesco a scrivere nella cartella del film. Controlla che non sia protetta.',
 };
 
 /** «5 novembre 2026, 14:20 · 1 min 2 s»: i film di prima si riconoscono da quando sono stati montati. */

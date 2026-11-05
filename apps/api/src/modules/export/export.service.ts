@@ -14,7 +14,7 @@ import {
   type StartExportBody,
 } from '@filmzy/contracts';
 import { projectsDir, type AssemblyStore, type ExportStore, type SheetStore } from '@filmzy/db';
-import { MediaError, convertFilm, scaledSize, videoSize } from '@filmzy/media';
+import { MediaError, convertFilm, scaledSize, videoDurationS, videoSize } from '@filmzy/media';
 import { ProviderError } from '@filmzy/troupe';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
@@ -39,6 +39,18 @@ import { ASSEMBLY_STORE, EXPORT_STORE } from './tokens.js';
 
 /** Il tipo di lavoro in coda che esporta il film. */
 export const EXPORT_JOB_KIND = 'film_export';
+
+/** Il tempo minimo per rifare un film, anche cortissimo, su un computer lento (ms). */
+const MIN_CONVERT_MS = 20 * 60 * 1000;
+
+/**
+ * Quante volte la sua durata può metterci un film a rifarsi. WebM è il più lento: su un computer veloce sta a
+ * circa 2 volte, e su un portatile anche a 10. Un limite fisso fermerebbe sempre i film più lunghi.
+ */
+const CONVERT_TIME_FACTOR = 20;
+
+/** Ogni quanto un'esportazione lunga dà un segno di vita: altrimenti sembrerebbe persa (`STALE_WORK_MS`). */
+const BEAT_MS = 5 * 60 * 1000;
 
 /** Apre una cartella nel programma del sistema. A parte, così i test non aprono finestre. */
 @Injectable()
@@ -279,6 +291,10 @@ export class ExportService implements OnModuleInit {
     const workDir = this.workDirOf(projectId);
     const work = path.join(workDir, `${randomUUID()}.${stored.export.container}`);
     let replacing = false;
+    const beat = setInterval(() => {
+      this.store.finish(exportId, { status: 'running' });
+    }, BEAT_MS);
+    beat.unref();
     try {
       this.store.finish(exportId, { status: 'running' });
       await Promise.all([mkdir(folder, { recursive: true }), mkdir(workDir, { recursive: true })]);
@@ -298,6 +314,7 @@ export class ExportService implements OnModuleInit {
       this.log.warn(`Esportazione fallita: ${failureReason(error, this.dataDir)}.`);
       this.store.finish(exportId, { status: 'failed', errorCode });
     } finally {
+      clearInterval(beat);
       await rm(work, { force: true }).catch(() => {
         this.log.warn('Il file a metà dell’esportazione non si è potuto togliere.');
       });
@@ -322,6 +339,7 @@ export class ExportService implements OnModuleInit {
       await copyFile(input, output);
       return;
     }
+    const durationS = (await videoDurationS(input)) ?? 0;
     await convertFilm({
       input,
       output,
@@ -329,6 +347,7 @@ export class ExportService implements OnModuleInit {
       ...target,
       bars: aspect !== undefined,
       samePicture,
+      timeoutMs: Math.max(MIN_CONVERT_MS, durationS * 1000 * CONVERT_TIME_FACTOR),
     });
   }
 

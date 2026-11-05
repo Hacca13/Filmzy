@@ -33,14 +33,19 @@ export function EarlierFilms({
         confirming={confirming}
         busy={removing.busy}
         onWatch={setWatching}
-        onConfirm={setConfirming}
+        onConfirm={(assemblyId) => {
+          removing.clearProblem();
+          setConfirming(assemblyId);
+        }}
         onRemove={(assemblyId) => {
           removing.run(async () => {
-            // Il lettore aperto terrebbe il file: su Windows non si potrebbe togliere.
-            setWatching(undefined);
-            await removeEarlierFilm(filmId, assemblyId);
-            setConfirming(undefined);
-            await onRemoved();
+            try {
+              await removeEarlierFilm(filmId, assemblyId);
+              setConfirming(undefined);
+            } finally {
+              // Anche se non è riuscito: può darsi che il file sia già stato tolto a mano.
+              await onRemoved();
+            }
           }, removeFilmFailureText);
         }}
       />
@@ -127,6 +132,7 @@ export function EarlierFilmsList({
                 <button
                   type="button"
                   className="button"
+                  disabled={busy}
                   onClick={() => {
                     onConfirm(film.id);
                   }}

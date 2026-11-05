@@ -5,6 +5,7 @@ import {
   earlierFilmName,
   exportFileName as nameWith,
   failureReason,
+  filmAssetId,
   fileErrorCode,
   launch,
   openFolderCommand,
@@ -15,6 +16,13 @@ import {
 /** Il nome in MP4, nel formato del film: il caso di tutti i controlli sul titolo. */
 const exportFileName = (title: string, shortSide: number): string =>
   nameWith(title, { shortSide, container: 'mp4' });
+
+describe('l’id di un film montato', () => {
+  it('due film uguali di due progetti non si confondono; nello stesso progetto è lo stesso', () => {
+    expect(filmAssetId('film-a', 'abc')).not.toBe(filmAssetId('film-b', 'abc'));
+    expect(filmAssetId('film-a', 'abc')).toBe(filmAssetId('film-a', 'abc'));
+  });
+});
 
 describe('i formati da offrire', () => {
   it('sono tutti tranne quello del film', () => {

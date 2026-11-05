@@ -4,6 +4,7 @@ export {
   dominantColors,
   dominantFromRgb,
   extractFrame,
+  failureCode,
   hasAudioStream,
   ffmpegPath,
   markArea,

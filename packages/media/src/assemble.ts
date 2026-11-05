@@ -2,7 +2,7 @@ import { copyFile, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { MediaError, run, tail } from './ffmpeg.js';
+import { MediaError, failureCode, run, tail } from './ffmpeg.js';
 
 /**
  * Il montaggio (T5.7, architettura §9): è deterministico, quindi non è un ruolo. Ogni clip si porta allo
@@ -71,7 +71,7 @@ async function step(
     cwd,
   );
   if (code !== 0) {
-    throw new MediaError('ffmpeg_failed', `ffmpeg non è riuscito: ${tail(stderr)}`);
+    throw new MediaError(failureCode(stderr), `ffmpeg non è riuscito: ${tail(stderr)}`);
   }
   const written = await stat(cwd === undefined ? output : path.resolve(cwd, output)).catch(
     () => undefined,

@@ -138,9 +138,9 @@ describe('esportare', () => {
 
     expect(html).toMatch(/<option value="mp4" selected[^>]*>MP4/);
     expect(html).toContain('MOV · per i programmi di montaggio');
-    expect(html).not.toContain('ci mette di più');
+    expect(html).not.toContain('ci mette molto di più');
 
-    expect(body({ source }, { chosen: { container: 'webm' } })).toContain('ci mette di più');
+    expect(body({ source }, { chosen: { container: 'webm' } })).toContain('ci mette molto di più');
   });
 
   it('mentre lavora lo dice, e non si chiede di nuovo', () => {

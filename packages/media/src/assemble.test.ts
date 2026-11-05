@@ -23,6 +23,7 @@ import {
 import {
   MediaError,
   audioDurationS,
+  failureCode,
   ffmpegPath,
   hasAudioStream,
   videoDurationS,
@@ -254,6 +255,13 @@ describe('il film a una qualità più bassa', () => {
       }),
     ).rejects.toMatchObject({ code: 'ffmpeg_failed' });
   }, 60_000);
+});
+
+describe('perché ffmpeg non è riuscito', () => {
+  it('un disco pieno si riconosce: si risolve liberando spazio', () => {
+    expect(failureCode('film.mp4: No space left on device')).toBe('disk_full');
+    expect(failureCode('Invalid data found when processing input')).toBe('ffmpeg_failed');
+  });
 });
 
 describe('il film in un altro formato o tipo di file', () => {

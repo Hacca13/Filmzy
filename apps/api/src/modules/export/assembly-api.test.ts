@@ -181,6 +181,39 @@ describe('i film montati prima', () => {
     expect((await stat(second.file)).size).toBeGreaterThan(0);
   }, 60_000);
 
+  it('rifatto identico si elenca una volta, e se è anche l’ultimo non si elenca né si toglie', async () => {
+    const { film, first, second } = await twoFilms();
+    const assemblies = app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false });
+    const again = assemblies.start(film.id, 'prova');
+    assemblies.finish(again.id, { status: 'succeeded', assetId: first.assetId, durationS: 1 });
+
+    const view = await viewOf(film.id);
+
+    // L'ultimo è di nuovo il primo file: nell'elenco resta solo il secondo.
+    expect(view.film?.assetId).toBe(first.assetId);
+    expect(view.earlier.map(({ assetId }) => assetId)).toEqual([second.assetId]);
+
+    const twin = assemblies.succeeded(film.id).at(-1);
+    expect(twin?.assembly.assetId).toBe(first.assetId);
+    const reply = await client.call('DELETE', `${assemblyOf(film.id)}/${twin?.assembly.id ?? ''}`);
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('currentFilm');
+    expect((await stat(first.file)).size).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('mentre si monta non si toglie: rifare un film identico riusa lo stesso file', async () => {
+    const { film, first, earlier } = await twoFilms();
+    const assemblies = app.get<AssemblyStore>(ASSEMBLY_STORE, { strict: false });
+    const mounting = assemblies.start(film.id, 'in corso');
+
+    const reply = await client.call('DELETE', `${assemblyOf(film.id)}/${earlier.id}`);
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('assemblyWorking');
+    expect((await stat(first.file)).size).toBeGreaterThan(0);
+    assemblies.finish(mounting.id, { status: 'failed', errorCode: 'unknown' });
+  }, 60_000);
+
   it('un film tolto a mano dalla cartella sparisce dall’elenco', async () => {
     const { film, first } = await twoFilms();
 
@@ -211,6 +244,7 @@ describe('i film montati prima', () => {
     expect(reply.status).toBe(409);
     expect(domainErrorSchema.parse(reply.body)).toMatchObject({
       code: 'media_failed',
+      retryable: true,
       details: { field: 'earlierFilm' },
     });
     expect((await viewOf(film.id)).earlier).toHaveLength(1);
@@ -509,7 +543,11 @@ describe('montare il film', () => {
   it('mentre si esporta non si monta: un film alla volta', async () => {
     const { film } = await filmReady();
     const exportsStore = app.get<ExportStore>(EXPORT_STORE, { strict: false });
-    const open = exportsStore.start(film.id, { sourceAssetId: 'film', shortSide: 720 });
+    const open = exportsStore.start(film.id, {
+      sourceAssetId: 'film',
+      shortSide: 720,
+      container: 'mp4',
+    });
 
     const reply = await client.call('POST', assemblyOf(film.id));
 

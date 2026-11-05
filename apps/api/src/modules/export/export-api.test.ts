@@ -284,7 +284,11 @@ describe('quando qualcosa va storto', () => {
     const { film, assetId, file } = await mountedFilm();
     await rm(file);
     const stored = app.get<ExportStore>(EXPORT_STORE, { strict: false });
-    const started = stored.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const started = stored.start(film.id, {
+      sourceAssetId: assetId,
+      shortSide: 180,
+      container: 'mp4',
+    });
 
     app.get(JobRunner, { strict: false }).enqueue({
       kind: EXPORT_JOB_KIND,
@@ -331,7 +335,11 @@ describe('quando qualcosa va storto', () => {
   it('un’esportazione alla volta, e non mentre si monta', async () => {
     const { film, assetId } = await mountedFilm();
     const stored = app.get<ExportStore>(EXPORT_STORE, { strict: false });
-    const open = stored.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const open = stored.start(film.id, {
+      sourceAssetId: assetId,
+      shortSide: 180,
+      container: 'mp4',
+    });
 
     const again = await client.call('POST', exportsOf(film.id), { shortSide: 180 });
     expect(again.status).toBe(409);
@@ -352,7 +360,7 @@ describe('quando qualcosa va storto', () => {
     const old = createExportStore(opened.db, {
       now: () => new Date(Date.now() - STALE_WORK_MS - 60_000),
     });
-    const stuck = old.start(film.id, { sourceAssetId: assetId, shortSide: 180 });
+    const stuck = old.start(film.id, { sourceAssetId: assetId, shortSide: 180, container: 'mp4' });
 
     expect((await viewOf(film.id)).latest).toMatchObject({
       id: stuck.id,

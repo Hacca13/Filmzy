@@ -113,6 +113,14 @@ describe('i film montati prima', () => {
     expect(html).toContain('Annulla');
   });
 
+  it('mentre ne toglie uno non si comincia a toglierne un altro', () => {
+    expect(list({ busy: true })).toMatch(/<button[^>]*disabled[^>]*>Togli/);
+  });
+
+  it('se il disco è pieno dice cosa fare', () => {
+    expect(assemblyFailureText('disk_full')).toContain('Togli qualche film montato prima');
+  });
+
   it('se è aperto e non si toglie lo dice, in parole semplici', () => {
     expect(
       removeFilmFailureText(new ApiError('http_error', { serverCode: 'media_failed' })),

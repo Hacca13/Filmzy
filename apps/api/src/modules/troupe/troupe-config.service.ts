@@ -363,6 +363,7 @@ export class TroupeConfigService implements OnApplicationBootstrap {
       ...validateConfig(effective.config, {
         ...(this.environment === undefined ? {} : { environment: this.environment }),
         secrets: this.secrets,
+        secretsRequired: false,
       }),
       ...(await validateInstructions(
         effective.config,

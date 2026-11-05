@@ -14,6 +14,12 @@ import { secretPresence, type SecretSources } from './secrets.js';
 export interface ValidateOptions {
   /** Dove cercare le chiavi. Il validatore chiede solo se ci sono, mai quali sono (D25). */
   secrets?: SecretSources;
+  /**
+   * Il programma mette `false`: chi ha appena installato non ha ancora nessuna chiave, ed è normale. Una
+   * chiave mancante resta un avviso, altrimenti non partirebbe niente, nemmeno la procedura per inserirla;
+   * il servizio dice «manca la chiave» quando serve. `pnpm troupe check` la tiene per un errore.
+   */
+  secretsRequired?: boolean;
   /** Per la freschezza dei prezzi: iniettabile, così i test non dipendono dalla data di oggi. */
   now?: Date;
   /** In `test` le chiavi non servono (§4.6 punto 5), come con il fornitore finto. */
@@ -317,7 +323,8 @@ function checkSecrets(
 
       const name = presence?.parsed.kind === 'none' ? undefined : presence?.parsed.name;
       issues.push({
-        severity: 'error',
+        // Un riferimento scritto male è un errore sempre: non si risolverà aggiungendo una chiave.
+        severity: presence === undefined || options.secretsRequired !== false ? 'error' : 'warning',
         code: 'secret_missing',
         message:
           presence === undefined

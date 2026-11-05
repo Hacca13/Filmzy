@@ -1126,6 +1126,8 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 7. **«Salvato sul tuo computer» solo dove è vero:** nella home. Nel benvenuto la scelta dei fornitori non è ancora salvata, e nel modulo «La tua idea» il film non esiste ancora (il disegno la scrive ovunque).
 8. **Una frase del disegno è cambiata:** «se ti fa stare tranquilla» diventa «per stare tranquilli»: non sappiamo chi legge.
 
+9. **Una chiave mancante non blocca il programma.** Era il guasto più grave trovato qui: senza chiavi la configurazione iniziale veniva rifiutata, e un utente appena installato non poteva fare niente, nemmeno inserirle. Nessuna prova lo mostrava perché giravano tutte col fornitore finto. Ora nel programma è un avviso, e il servizio dice «manca la chiave» quando serve. `pnpm troupe check` la tiene per un errore. C'è una prova col server vero senza chiavi.
+
 **Corretto insieme:** sostituire un file appena scritto ora riprova per meno di due secondi prima di dire che è occupato. Su Windows un file nuovo può restare occupato per un attimo: l'utente avrebbe letto «è aperto in un altro programma» senza motivo. È la causa probabile di un test che falliva ogni tanto sotto carico; non è stata confermata leggendo il codice d'errore.
 
 **Non preso dal disegno:** la barra della finestra coi tre pulsanti e «Chiudi» (T6.4); «Aggiorna Filmzy» (T6.4); nella home i filtri, «Apri un film salvato» (T6.3), il menu del film e «Ti serve una mano?»; nel benvenuto i pulsanti nel piede della finestra e il passo «Tutto pronto» a parte; la barra dei passi del film; le pagine delle Impostazioni, che tengono la loro intestazione.

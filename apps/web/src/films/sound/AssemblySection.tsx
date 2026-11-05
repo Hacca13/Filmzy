@@ -6,6 +6,7 @@ import { assetUrl } from '../../api/sheet';
 import { Notice } from '../../components/ui';
 import { useAction } from '../../settings/use-action';
 import { useWatched } from '../use-watched';
+import { ExportSection } from './ExportSection';
 import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-model';
 
 /**
@@ -16,7 +17,7 @@ import { assemblyFailureText, assemblyIsWorking, gapText } from './assembly-mode
 export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unknown }) {
   const load = useCallback((signal: AbortSignal) => fetchAssembly(filmId, signal), [filmId]);
   const { value, problem, reload, setValue } = useWatched(load, assemblyIsWorking, {
-    kinds: ['film_assemble'],
+    kinds: ['film_assemble', 'film_export'],
     projectId: filmId,
   });
   const action = useAction();
@@ -29,32 +30,41 @@ export function AssemblySection({ filmId, stamp }: { filmId: string; stamp: unkn
   }, [stamp, reload]);
 
   return (
-    <section className="sheet sound-film" aria-label="Il tuo film">
-      <h3>Il tuo film</h3>
-      {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
-      {value === undefined ? (
-        problem === undefined ? (
-          <p className="hint">Un attimo…</p>
-        ) : null
-      ) : (
-        <AssemblyBody
-          view={value}
-          busy={action.busy}
-          onStart={() => {
-            action.run(async () => {
-              try {
-                setValue(await startAssembly(filmId));
-              } catch (error) {
-                // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
-                await reload();
-                throw error;
-              }
-            });
-          }}
+    <>
+      <section className="sheet sound-film" aria-label="Il tuo film">
+        <h3>Il tuo film</h3>
+        {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
+        {value === undefined ? (
+          problem === undefined ? (
+            <p className="hint">Un attimo…</p>
+          ) : null
+        ) : (
+          <AssemblyBody
+            view={value}
+            busy={action.busy}
+            onStart={() => {
+              action.run(async () => {
+                try {
+                  setValue(await startAssembly(filmId));
+                } catch (error) {
+                  // Il server dice che manca qualcosa o che sta già lavorando: l'elenco deve dire lo stesso.
+                  await reload();
+                  throw error;
+                }
+              });
+            }}
+          />
+        )}
+        {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
+      </section>
+      {value?.film === undefined ? null : (
+        <ExportSection
+          filmId={filmId}
+          behind={!value.upToDate}
+          mounting={assemblyIsWorking(value)}
         />
       )}
-      {action.problem === undefined ? null : <Notice tone="error">{action.problem}</Notice>}
-    </section>
+    </>
   );
 }
 
@@ -68,7 +78,7 @@ export function AssemblyBody({
   busy: boolean;
   onStart: () => void;
 }) {
-  const { latest, film, gaps, titles, upToDate } = view;
+  const { latest, film, gaps, titles, upToDate, exportWorking } = view;
   const working = assemblyIsWorking(view);
   const made = film?.assetId;
 
@@ -83,6 +93,9 @@ export function AssemblyBody({
         </Notice>
       ) : null}
       {working ? <p className="hint">Sto montando il film… Può volerci qualche minuto.</p> : null}
+      {exportWorking ? (
+        <p className="hint">Il film si sta esportando: potrai montarlo quando ha finito.</p>
+      ) : null}
       {latest?.status === 'failed' ? (
         <Notice tone="error">{assemblyFailureText(latest.errorCode)}</Notice>
       ) : null}
@@ -120,7 +133,7 @@ export function AssemblyBody({
           type="button"
           className="button"
           data-kind="primary"
-          disabled={busy || working || gaps.length > 0}
+          disabled={busy || working || exportWorking || gaps.length > 0}
           onClick={onStart}
         >
           {made === undefined ? 'Monta il film' : 'Monta di nuovo'}

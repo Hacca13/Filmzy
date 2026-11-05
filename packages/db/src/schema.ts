@@ -714,3 +714,25 @@ export const filmAssemblies = sqliteTable(
 );
 
 export type FilmAssemblyRow = typeof filmAssemblies.$inferSelect;
+
+/**
+ * Le esportazioni di un film (T5.8): il file finale, fatto dal film montato alla qualità scelta. Non si
+ * salva il percorso intero ma il nome del file: la cartella si può spostare (architettura §6.1).
+ */
+export const filmExports = sqliteTable(
+  'film_exports',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id').notNull(),
+    status: text('status').notNull(),
+    sourceAssetId: text('source_asset_id').notNull(),
+    shortSide: integer('short_side').notNull(),
+    fileName: text('file_name'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('film_exports_per_film').on(table.projectId, table.createdAt)],
+);
+
+export type FilmExportRow = typeof filmExports.$inferSelect;

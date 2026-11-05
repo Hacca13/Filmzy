@@ -982,9 +982,9 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 
 **Riletto con Opus xhigh:** 15 segnalazioni e 4 minori, verificate e corrette, tranne quelle elencate nei limiti. Le più serie: l'audio originale con la traccia a zero si sentiva al massimo; il cursore del volume non cambiava niente con un suono solo; rifare lo stesso film falliva se il lettore lo teneva aperto; un montaggio fallito nascondeva il film buono; la correzione dell'errore di ffmpeg scritta qui sotto non era mai stata applicata (uno script era fallito senza che lo vedessi).
 
-**Limiti noti:** i film montati prima dell'ultimo restano sul disco finché non c'è un modo di toglierli (T5.8); **ffmpeg non si può fermare:** se il programma si chiude a forza durante un montaggio, ffmpeg può continuare da solo fino a 20 minuti per passo (da risolvere con Electron, T6.4, insieme a D63); se cambiano la stesura o il cast con la sezione aperta, i titoli mostrati restano indietro finché non si rilegge (il server usa quelli veri, e un rifiuto rilegge); la voce di un personaggio non c'è (Fase 2).
+**Limiti noti:** i film montati prima dell'ultimo restavano sul disco (risolto con T5.8, D86); **ffmpeg non si può fermare:** se il programma si chiude a forza durante un montaggio, ffmpeg può continuare da solo fino a 20 minuti per passo (da risolvere con Electron, T6.4, insieme a D63); se cambiano la stesura o il cast con la sezione aperta, i titoli mostrati restano indietro finché non si rilegge (il server usa quelli veri, e un rifiuto rilegge); la voce di un personaggio non c'è (Fase 2).
 
-**Non fatto:** salvare il file altrove, qualità e formato (T5.8); nessuna prova con video veri dei fornitori (T4.0).
+**Non fatto:** salvare il file altrove e la qualità (poi fatti con T5.8, D86); nessuna prova con video veri dei fornitori (T4.0).
 
 ## D84 · Dopo un riavvio nessun lavoro riparte da solo — 05/11/2026
 
@@ -1020,3 +1020,26 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Da misurare:** il limite di 10 minuti del Corto è una stima, perché lo sceneggiatore scrive tutto in una richiesta. Va provato con lo sceneggiatore vero prima di chiudere T5.9. Anche i costi del disegno sono esempi fatti a mano sui prezzi del 21/10.
 
 **Seconda versione:** Mediometraggio e Lungometraggio (piano, «Dopo l'MVP»). Per ora `CLAUDE.md` e `docs/contesto-progetto.md` restano come sono: dicono «cortometraggi», e fino ad allora è vero.
+
+## D86 · Esportazione: una copia del film montato, alla qualità scelta — 05/11/2026
+
+**Realizza** T5.8 (§9).
+**Decisione:**
+1. **Si esporta l'ultimo film montato,** in coda e gratis: non chiama nessun fornitore. Dopo un riavvio si ferma come tutti gli altri lavori (D84), e il file a metà si toglie.
+2. **La qualità parte da quella del film e scende:** 1080p, 720p e 480p, se sono più basse. Sopra non si va: il file peserebbe di più senza vedersi meglio. Alla qualità del film si copia il file, senza perdere niente; a una più bassa si rifà il video e il suono resta com'è.
+3. **Il formato si legge e non si sceglie.** Viene dai video generati (D83.4): cambiarlo qui vorrebbe dire tagliare l'immagine o aggiungere bande. Il disegno lo mostra allo stesso modo, senza menu.
+4. **Un file per qualità,** in `progetti/<film>/esportazioni/`, col nome che viene dal titolo: «L'ultima corsa - 1080p.mp4». Esportare di nuovo alla stessa qualità lo sostituisce. Se nel frattempo il titolo è cambiato, il file col vecchio nome resta: sta nella cartella che l'utente vede, e non si toglie da soli. Il titolo non può uscire dalla cartella né dare un nome che il sistema rifiuta. I file a metà stanno in `esportazioni-in-corso/`: chi apre la cartella trova solo film finiti, e un film che si chiama «lavoro-…» non si scambia per un avanzo.
+5. **«Salva una copia…» lascia decidere dove:** il server manda il file come allegato e nessun percorso scelto dall'utente arriva al server. Nel programma installato dovrebbe aprirsi la finestra «Salva con nome»; nel browser dipende dalle sue impostazioni. Va controllato con T6.4.
+6. **«Apri la cartella» parte dal server,** col comando del sistema e il percorso come argomento a parte. La cartella viene dal film, non dalla richiesta. Su Windows si guarda solo se il programma parte: `explorer.exe` esce con 1 anche quando va bene.
+7. **Montaggio ed esportazione dello stesso film non lavorano insieme.** Un nuovo montaggio toglie il film di prima, e l'esportazione lo sta leggendo: mentre uno lavora il pulsante dell'altro è spento e lo dice. Il server lo controlla comunque.
+8. **I film montati prima dell'ultimo si tolgono,** subito dopo aver scritto il nuovo: chiude il limite di D83. Se un lettore ne tiene aperto uno, resta fino al prossimo montaggio. I file esportati sono copie e non si toccano.
+9. **Si può esportare un film rimasto indietro:** se manca una scena, l'ultimo film buono sarebbe altrimenti bloccato. Un testo dice che le modifiche fatte dopo non ci sono, e un file di un montaggio precedente lo dice anche lui.
+10. **Se il film montato non si legge** (tolto a mano, ffmpeg che manca o non risponde) si dice di rimontarlo, senza errori grezzi, e il file già esportato resta raggiungibile. Se l'ultimo file è stato tolto dalla cartella si offre quello prima.
+
+**Corretto insieme:** i file del film non si aprivano se la cartella dei dati ha un punto nel nome, com'è su Linux (`~/.local/share/filmzy`): la libreria che li serve li rifiuta di default. Lì non si sarebbe vista nessuna immagine. C'è un test.
+
+**Non preso dal disegno:** la modifica dei titoli di coda (la matita) e il riquadro a pagina intera di «Esportazione completata» con «Torna al film»: qui sta nella stessa pagina.
+
+**Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette 14: le più serie sono un film chiamato «lavoro-…» cancellato come avanzo, l'errore grezzo se ffmpeg manca, il file già fatto nascosto se il film montato non si legge, e «Apri la cartella» che su Linux non diceva niente se non si apriva. Per il cambio di titolo si è scelto di non cancellare (punto 4). Le correzioni non hanno avuto una seconda rilettura completa.
+
+**Limite noto:** ffmpeg ha 20 minuti per passo (D83): su un computer lento un film lungo alla qualità più bassa può fermarsi con «ci ha messo troppo». Mai provato con video veri dei fornitori (T4.0).

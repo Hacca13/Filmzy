@@ -18,11 +18,14 @@ export {
 } from './ffmpeg.js';
 export {
   concatClips,
+  evenSize,
   layoutTitle,
   mixSounds,
   muxFilm,
   normalizeClip,
   renderTitleCard,
+  resizeFilm,
+  scaledSize,
   titleFontPath,
   videoSize,
   wrapText,
@@ -32,6 +35,7 @@ export {
   type MixSound,
   type MuxOptions,
   type NormalizeClipOptions,
+  type ResizeFilmOptions,
   type TitleCardOptions,
   type TitleLine,
   type TitleRow,

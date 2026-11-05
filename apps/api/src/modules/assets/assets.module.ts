@@ -37,7 +37,8 @@ class AssetsController {
     // Il nome del file è il suo contenuto: non cambia mai, quindi si può tenere in memoria.
     response.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
     response.type(record.contentType);
-    response.sendFile(file, (error) => {
+    // Il permesso sui punti serve su Linux: la cartella dei dati sta in `~/.local`, e senza darebbe 404.
+    response.sendFile(file, { dotfiles: 'allow' }, (error) => {
       if (error !== undefined && !response.headersSent) response.status(404).end();
     });
   }

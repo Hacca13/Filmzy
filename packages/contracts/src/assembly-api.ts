@@ -57,6 +57,8 @@ export const assemblyViewSchema = z.object({
   film: filmAssemblySchema.optional(),
   /** Quel film contiene tutto ciò che c'è adesso: niente è cambiato dopo. */
   upToDate: z.boolean(),
+  /** Il film si sta esportando: finché lavora non si monta, perché un nuovo film toglie quello di prima. */
+  exportWorking: z.boolean(),
   titles: assemblyTitlesSchema,
 });
 

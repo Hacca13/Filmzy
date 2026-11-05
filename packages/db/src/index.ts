@@ -30,6 +30,8 @@ export type { NewProject, ProjectChanges, ProjectStore } from './project-store.j
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';
 export { createShotStore } from './shot-store.js';
+export { createExportStore } from './export-store.js';
+export type { ExportPatch, ExportStore, ExportStoreOptions, StoredExport } from './export-store.js';
 export { createAssemblyStore } from './assembly-store.js';
 export type {
   AssemblyPatch,

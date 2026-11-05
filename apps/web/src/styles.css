@@ -1530,3 +1530,12 @@ button.sound-block {
 .sound-film .take-video {
   max-width: 720px;
 }
+
+.sound-film select {
+  max-width: 320px;
+}
+
+.export-done h4,
+.export-done p {
+  margin: 0;
+}

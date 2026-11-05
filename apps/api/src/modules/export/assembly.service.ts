@@ -51,6 +51,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { ShotsService } from '../shots/shots.service.js';
 import { TAKE_STORE } from '../shots/tokens.js';
 import { STALE_WORK_MS, isOpenStatus } from '../shots/work.js';
+import { ExportService } from './export.service.js';
 import { LEVEL_OF, heardClips, planMix, type SoundFile } from './mix-plan.js';
 import { ASSEMBLY_STORE } from './tokens.js';
 
@@ -101,6 +102,7 @@ export class AssemblyService implements OnModuleInit {
     private readonly projects: ProjectsService,
     private readonly plans: ShotsService,
     private readonly bible: BibleService,
+    private readonly exports: ExportService,
   ) {}
 
   onModuleInit(): void {
@@ -138,6 +140,10 @@ export class AssemblyService implements OnModuleInit {
     const open = this.store.latest(projectId)?.assembly.status;
     if (open === 'queued' || open === 'running') {
       throw domainError(409, 'invalid_request', { details: { field: 'assemblyWorking' } });
+    }
+    // Un nuovo film toglie quello di prima: l'esportazione lo sta leggendo.
+    if (this.exports.isWorking(projectId)) {
+      throw domainError(409, 'invalid_request', { details: { field: 'exportWorking' } });
     }
 
     const assembly = this.store.start(projectId, snapshot.fingerprint);
@@ -207,6 +213,8 @@ export class AssemblyService implements OnModuleInit {
         beat,
       );
       this.store.finish(assemblyId, { status: 'succeeded', assetId, durationS });
+      // Solo dopo aver scritto il nuovo: se ci si ferma prima, il film di prima resta quello buono.
+      await this.removeOldFilms(filmDir, assetId);
     } catch (error) {
       const errorCode =
         error instanceof MediaError || error instanceof ProviderError ? error.code : 'unknown';
@@ -238,6 +246,20 @@ export class AssemblyService implements OnModuleInit {
         .map((name) =>
           rm(path.join(filmDir, name), { recursive: true, force: true }).catch(() => {
             // Un ffmpeg sopravvissuto la tiene aperta: non ferma il montaggio di adesso.
+          }),
+        ),
+    );
+  }
+
+  /** I film montati prima dell'ultimo pesano quanto lui, e non li guarda più nessuno: l'esportazione è una copia. */
+  private async removeOldFilms(filmDir: string, currentAssetId: string): Promise<void> {
+    const names = await readdir(filmDir).catch((): string[] => []);
+    await Promise.all(
+      names
+        .filter((name) => name.endsWith('.mp4') && name !== `${currentAssetId}.mp4`)
+        .map((name) =>
+          rm(path.join(filmDir, name), { force: true }).catch(() => {
+            // Un lettore lo tiene aperto: resta fino al prossimo montaggio, e non è un errore.
           }),
         ),
     );

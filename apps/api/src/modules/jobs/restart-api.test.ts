@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -12,6 +12,7 @@ import {
   castSuggestionsSchema,
   characterSchema,
   characterSheetSchema,
+  exportViewSchema,
   locationImagesSchema,
   moodboardViewSchema,
   scenePlanSchema,
@@ -26,7 +27,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, listenAndStart } from '../../create-app.js';
 import { CONFIG_DIR, startApp, type Client } from '../../test-support/app-client.js';
 import { filmWithFinal, filmWithShot } from '../../test-support/film-with-shot.js';
-import { realVideo, takeWithFile } from '../../test-support/real-clip.js';
+import { filmAlreadyMounted, realVideo, takeWithFile } from '../../test-support/real-clip.js';
 import { JOB_QUEUE } from '../database/database.module.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
 import { JobRunner } from './job-runner.service.js';
@@ -122,6 +123,11 @@ describe('dopo un riavvio', () => {
       }
     }
 
+    // Un film già montato per l'esportazione: mentre si monta non si esporta, quindi è un altro film.
+    const exportable = await filmWithFinal(client);
+    const exportUrl = `/projects/${exportable.film.id}/exports`;
+    await filmAlreadyMounted(app, dataDir, { filmId: exportable.film.id, size: '320x180' });
+
     const suggestion = castSuggestionsSchema.parse(
       (await client.call('POST', `${filmUrl}/cast/suggestions`, { count: 1 })).body,
     ).suggestions[0];
@@ -156,6 +162,7 @@ describe('dopo un riavvio', () => {
       client.call('POST', `${filmUrl}/moodboard/generate`, {}),
       client.call('POST', `${filmUrl}/audio/clips/${clip.id}/variants`, {}),
       client.call('POST', `/projects/${mounted.film.id}/assembly`),
+      client.call('POST', exportUrl, { shortSide: 180 }),
       fetch(
         `${base}/api${other.places}/${other.location.id}/retouch?assetId=${setAsset}&operation=remove`,
         { method: 'POST', headers: { 'content-type': 'image/png' }, body: mask },
@@ -167,6 +174,11 @@ describe('dopo un riavvio', () => {
     const queued = app.get<JobQueue>(JOB_QUEUE, { strict: false }).list({ status: 'queued' });
     expect([...new Set(queued.map((job) => job.kind))].sort()).toEqual([...kinds].sort());
     const spentBefore = app.get<ReceiptStore>(RECEIPT_STORE, { strict: false }).list().length;
+
+    // Un film a metà di un'esportazione interrotta: pesa, e il lavoro che doveva toglierlo non ripartirà.
+    const exportDir = path.join(dataDir, 'progetti', exportable.film.id, 'esportazioni');
+    await mkdir(exportDir, { recursive: true });
+    await writeFile(path.join(exportDir, 'lavoro-a-meta.mp4'), 'a metà');
 
     await close(first);
 
@@ -200,10 +212,12 @@ describe('dopo un riavvio', () => {
     expect(
       assemblyViewSchema.parse(await read(`/projects/${mounted.film.id}/assembly`)).latest,
     ).toMatchObject(closedLike);
+    expect(exportViewSchema.parse(await read(exportUrl)).latest).toMatchObject(closedLike);
 
-    // I file provvisori del ritocco non restano: il lavoro che doveva toglierli non ripartirà.
+    // I file provvisori non restano: il lavoro che doveva toglierli non ripartirà.
     const retouchDir = path.join(dataDir, 'progetti', other.film.id, 'ritocco');
     expect(await readdir(retouchDir)).toEqual([]);
+    expect(await readdir(exportDir)).toEqual([]);
 
     // Decide l'utente: un altro lo può chiedere, e questo sì che parte.
     expect((await second.client.call('POST', takesUrl, {})).status).toBe(201);

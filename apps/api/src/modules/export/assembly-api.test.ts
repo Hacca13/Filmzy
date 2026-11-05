@@ -18,6 +18,7 @@ import {
   createAssemblyStore,
   type AssemblyStore,
   type AudioStore,
+  type ExportStore,
   type OpenedDatabase,
   type ReceiptStore,
   type SheetStore,
@@ -36,7 +37,7 @@ import { JobRunner } from '../jobs/job-runner.service.js';
 import { STALE_WORK_MS } from '../shots/work.js';
 import { RECEIPT_STORE } from '../troupe/tokens.js';
 import { ASSEMBLY_JOB_KIND } from './assembly.service.js';
-import { ASSEMBLY_STORE } from './tokens.js';
+import { ASSEMBLY_STORE, EXPORT_STORE } from './tokens.js';
 
 /** Il montaggio col server vero, la coda e ffmpeg vero, su video veri fatti da ffmpeg. Nessuna spesa. */
 let app: NestExpressApplication;
@@ -392,6 +393,32 @@ describe('montare il film', () => {
     expect(heard.latest?.status).toBe('succeeded');
     expect(await loudness(filmFile(heard))).toBeGreaterThan(-40);
   }, 240_000);
+
+  it('un nuovo film toglie quello di prima: pesa quanto lui, e non lo guarda più nessuno', async () => {
+    const { film } = await filmReady();
+    await client.call('POST', assemblyOf(film.id));
+    const first = await settled(film.id);
+    await uploadMusic(film.id);
+
+    await client.call('POST', assemblyOf(film.id));
+    const second = await settled(film.id);
+
+    expect(second.film?.assetId).not.toBe(first.film?.assetId);
+    const folder = path.join(dataDir, 'progetti', film.id, 'montaggio');
+    expect(await readdir(folder)).toEqual([path.basename(filmFile(second))]);
+  }, 240_000);
+
+  it('mentre si esporta non si monta: l’esportazione sta leggendo il film', async () => {
+    const { film } = await filmReady();
+    const exportsStore = app.get<ExportStore>(EXPORT_STORE, { strict: false });
+    const open = exportsStore.start(film.id, { sourceAssetId: 'film', shortSide: 720 });
+
+    const reply = await client.call('POST', assemblyOf(film.id));
+
+    expect(reply.status).toBe(409);
+    expect(domainErrorSchema.parse(reply.body).details?.field).toBe('exportWorking');
+    exportsStore.finish(open.id, { status: 'failed', errorCode: 'unknown' });
+  }, 60_000);
 
   it('mentre si monta non se ne apre un altro', async () => {
     const { film } = await filmReady();

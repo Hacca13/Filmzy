@@ -149,7 +149,7 @@ export function ExportBody({
       ) : null}
 
       {file === undefined || working ? null : (
-        <div className="sheet">
+        <div className="sheet export-done">
           <h4>Esportazione completata</h4>
           <p>Il tuo film è pronto da guardare.</p>
           {file.current ? null : (

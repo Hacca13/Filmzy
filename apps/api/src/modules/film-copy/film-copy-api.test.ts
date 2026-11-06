@@ -268,6 +268,28 @@ describe('aprire una copia su un altro computer', () => {
     expect(kept.title).toBe('Cambiato qui');
   });
 
+  it('una copia di una versione passata si apre aggiornata, come i dati veri (D94)', async () => {
+    const film = await newFilm(from.client);
+    const { manifest } = await contentsOf((await copyOf(film.id)).bytes);
+    // Com'era allo schema 30, prima del tipo di film: la migrazione dopo lo calcola dalla durata.
+    const before = Object.fromEntries(
+      Object.entries(manifest.tables.projects?.[0] ?? {}).filter(([column]) => column !== 'kind'),
+    );
+    const old = {
+      ...manifest,
+      schemaVersion: 30,
+      tables: { ...manifest.tables, projects: [{ ...before, duration_s: 30 }] },
+    };
+
+    const opened = await importInto(
+      to,
+      await handMade({ [FILM_COPY_MANIFEST]: JSON.stringify(old) }),
+    );
+
+    expect(opened.status).toBe(201);
+    expect(projectSchema.parse(opened.body)).toMatchObject({ durationS: 30, kind: 'spot' });
+  });
+
   it('un’immagine che due film hanno in comune viaggia con quello che si copia', async () => {
     // Il nome di un file è il suo contenuto: la riga è del primo film, ma ognuno ha il file nella sua cartella.
     const [first, second] = await Promise.all([newFilm(from.client), newFilm(from.client)]);

@@ -60,7 +60,7 @@ pnpm pacchetto                                      # l'installatore del program
 - Configurazione in snake_case; oggetti del dominio e variabili delle istruzioni in camelCase.
 - Un modulo NestJS per dominio (`apps/api/src/modules/<modulo>`); niente logica nei controller.
 - Errori del dominio con codici (`content_rejected`, `spend_cap_reached`, …); i messaggi per l'utente stanno nell'interfaccia.
-- Migrazioni Drizzle generate e committate insieme al cambio di schema.
+- Migrazioni Drizzle generate e committate insieme al cambio di schema. Quelle già pubblicate non si cambiano né si tolgono: servono anche ad aggiornare le copie dei film fatte con versioni vecchie (D94). Quando esce una versione, la sua copia di prova va in `packages/db/test/copie`.
 - Test accanto al codice (`*.test.ts`); fixture dei fornitori in `packages/troupe/test/fixtures/`.
 - Niente `any` senza un commento che spieghi perché.
 - `.env` e `bench-output/` (video e report delle prove) restano fuori da git.

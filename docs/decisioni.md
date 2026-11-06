@@ -1156,7 +1156,7 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 5. **Il film tiene il suo id, e uno che c'è già non si tocca:** il programma dice che il film è già su questo computer. Sostituirlo era la prima idea, tolta dopo la rilettura: si perdeva il lavoro fatto dopo la copia, e gli scontrini di una generazione finita nel frattempo. Se servirà, arriverà con la seconda versione.
 6. **Con un lavoro aperto la copia non si salva:** porterebbe con sé un'immagine o un video a metà. Il pulsante chiede prima al server, e il messaggio dice di aspettare.
 7. **Lo stesso file in due film:** il nome di un file è il suo contenuto, e la riga del registro è del primo film che l'ha avuto. Nella copia del secondo la riga diventa sua e punta al file nella sua cartella; sull'altro computer, se il file c'è già, resta la riga che c'era.
-8. **Una copia fatta con una versione più nuova non si apre:** potrebbe avere righe che questa non sa leggere. Una più vecchia sì: le colonne nuove prendono il loro valore di partenza. Attenzione: le migrazioni che cambiano i dati (non solo le colonne) non passano sulle righe di una copia vecchia; quando ne arriverà una, l'apertura dovrà rifare quel passo.
+8. **Una copia fatta con una versione più nuova non si apre:** potrebbe avere righe che questa non sa leggere. Una più vecchia sì: le colonne nuove prendono il loro valore di partenza. Anche le migrazioni che cambiano i dati passano sulle righe di una copia vecchia: D94.
 9. **Lo zip si scrive mentre si scarica,** e la copia che arriva si scrive su disco prima di leggerla: un film con molti video non passa dalla memoria. Immagini, video e suoni non si ricomprimono.
 
 **Limiti:** non c'è un limite alla dimensione della copia, e un disco pieno si scopre a metà (si ripulisce e lo si dice). Due film identici sullo stesso computer non si possono avere: hanno lo stesso id. Non provato fra Windows e macOS.
@@ -1177,3 +1177,16 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Perché:** l'utente vuole provarlo subito sul suo computer e, se si rompe, capire cos'è successo dal registro.
 **Scartate:** il server come processo a parte (un secondo programma da avviare e fermare, e i moduli nativi da ricompilare lo stesso); l'installatore Squirrel (aggiornamenti meno controllabili, D44); copiare i `node_modules` del monorepo nel pacchetto (pnpm e electron-builder si capiscono male, e il pacchetto pesava il doppio).
 **Limiti:** l'installatore pesa circa 140 MB (Electron e ffmpeg). Mancano gli aggiornamenti (D44), macOS e Linux, la firma. Non provati: una generazione vera dal programma installato, la chiusura con un lavoro aperto dal vero (la logica ha i suoi test).
+
+## D94 · Le versioni: i dati e le copie di una versione vecchia si aprono con quella nuova — 06/11/2026
+
+**Realizza** una domanda dell'utente («se salvo con la 1.5, lo riapro con la 2.4?»), su D44 e D92.
+**Decisione:**
+1. **Una versione nuova apre tutto quello delle versioni vecchie;** una vecchia non apre quello delle nuove e dice di aggiornare Filmzy. Vale per i dati sul computer (migrazioni all'avvio, con la copia di sicurezza: già così da D44) e per le copie `.filmzy`.
+2. **Una copia di una versione vecchia passa per le stesse migrazioni dei dati veri.** Si apre un database in memoria con lo schema della sua versione (le sue prime migrazioni), ci si scrivono le righe della copia, si applicano le migrazioni che mancano e solo allora le righe entrano nei dati. Così anche le migrazioni che cambiano i dati, non solo le colonne, valgono per le copie: per esempio uno spot salvato prima del «tipo di film» (migrazione 0030) torna spot, non corto. Il controllo delle righe (D92) si rifà dopo l'aggiornamento.
+3. **Le migrazioni pubblicate non si cambiano né si tolgono:** sono la strada da ogni versione vecchia a quella di adesso (regola in CLAUDE.md).
+4. **Una copia di prova per ogni versione pubblicata** in `packages/db/test/copie`, che non si cambia più; un test le apre tutte con la versione di adesso. La prima è `0.1.0.json` (schema 32), da un film fatto col fornitore finto.
+
+**Perché:** una copia salvata oggi deve aprirsi fra due anni; e una migrazione che cambia i dati, senza questo passaggio, avrebbe perso parti delle copie vecchie senza dirlo.
+**Scartate:** scrivere a mano, per ogni migrazione che cambia i dati, la stessa correzione anche per le copie (due strade per la stessa cosa, prima o poi diverse); copie «compatibili» per le versioni vecchie (nessun programma lo fa, e moltiplica i casi).
+**Limiti:** una copia molto vecchia rifà tutte le migrazioni che mancano, in memoria: per un film sono millisecondi.

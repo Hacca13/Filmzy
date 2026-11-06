@@ -1,21 +1,32 @@
+import { readdir, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   FILM_TABLES_LEFT_OUT,
   FILM_TABLE_NAMES,
+  databaseAtVersion,
   foreignRowProblem,
   readFilmRows,
+  upgradeFilmRows,
   writeFilmRows,
+  type FilmRow,
 } from './film-copy.js';
-import { openFilmzyDatabase, type FilmzyDb } from './open.js';
+import { openFilmzyDatabase, type FilmzyDb, type OpenedDatabase } from './open.js';
 import { createProjectStore } from './project-store.js';
 import { tempDataDir } from './test.fixtures.js';
 
+let opened: OpenedDatabase;
 let db: FilmzyDb;
 
+const freshDatabase = async () =>
+  openFilmzyDatabase({ dataDir: await tempDataDir(), appVersion: '0.0.0-test' });
+
 beforeEach(async () => {
-  ({ db } = await openFilmzyDatabase({ dataDir: await tempDataDir(), appVersion: '0.0.0-test' }));
+  opened = await freshDatabase();
+  ({ db } = opened);
 });
 
 const newFilm = (title: string) =>
@@ -114,5 +125,89 @@ describe('righe arrivate da fuori', () => {
     expect(
       foreignRowProblem({ ...rows, characters: [{ id: 'c', project_id: 'f', x: { y: 1 } }] }, 'f'),
     ).toContain('strane');
+  });
+});
+
+/** Un film come lo scriveva una versione passata: le colonne obbligatorie di allora, con valori qualunque. */
+function projectAt(version: number, values: FilmRow): FilmRow {
+  const then = databaseAtVersion(opened, version);
+  try {
+    const columns = then.sqlite
+      .prepare(
+        'select name, type, "notnull" as required, dflt_value as fallback from pragma_table_info(\'projects\')',
+      )
+      .all() as { name: string; type: string; required: number; fallback: unknown }[];
+    const required = columns.filter(
+      ({ required, fallback }) => required === 1 && fallback === null,
+    );
+    return {
+      ...Object.fromEntries(
+        required.map(({ name, type }) => [name, type.toUpperCase().includes('INT') ? 1 : 'x']),
+      ),
+      ...values,
+    };
+  } finally {
+    then.close();
+  }
+}
+
+describe('una copia salvata con una versione passata (D94)', () => {
+  it('passa per gli stessi aggiornamenti dei dati: uno spot di prima del «tipo di film» resta uno spot', () => {
+    // La migrazione 31 (0030) aggiunge il tipo, e lo calcola dalla durata: sotto il minuto è uno spot.
+    const tables = { projects: [projectAt(30, { id: 'film-vecchio', duration_s: 30 })] };
+
+    const rows = upgradeFilmRows(opened, { projectId: 'film-vecchio', schemaVersion: 30, tables });
+    writeFilmRows(db, rows);
+
+    expect(readFilmRows(db, 'film-vecchio').projects?.[0]).toMatchObject({
+      duration_s: 30,
+      kind: 'spot',
+    });
+  });
+
+  it('una copia della stessa versione passa così com’è', () => {
+    const tables = { projects: [{ id: 'f' }] };
+
+    expect(
+      upgradeFilmRows(opened, { projectId: 'f', schemaVersion: opened.schemaVersion, tables }),
+    ).toBe(tables);
+  });
+
+  it('righe che nella loro versione non entrano: errore, e niente di scritto', () => {
+    // Allo schema 1 i film non c'erano ancora.
+    expect(() =>
+      upgradeFilmRows(opened, {
+        projectId: 'f',
+        schemaVersion: 1,
+        tables: { projects: [{ id: 'f' }] },
+      }),
+    ).toThrow();
+    expect(readFilmRows(db, 'f').projects).toEqual([]);
+  });
+});
+
+/** Una copia per ogni versione pubblicata: si aggiunge quando esce, e non si cambia più (D94). */
+const PUBLISHED_COPIES = fileURLToPath(new URL('../test/copie', import.meta.url));
+
+describe('le copie salvate con le versioni pubblicate', () => {
+  it('si aprono tutte con questa versione, senza perdere righe', async () => {
+    const names = (await readdir(PUBLISHED_COPIES)).filter((name) => name.endsWith('.json'));
+    expect(names.length).toBeGreaterThan(0);
+
+    for (const name of names) {
+      const copy = JSON.parse(await readFile(`${PUBLISHED_COPIES}/${name}`, 'utf8')) as {
+        projectId: string;
+        schemaVersion: number;
+        tables: Record<string, FilmRow[]>;
+      };
+      const target = (await freshDatabase()).db;
+
+      writeFilmRows(target, upgradeFilmRows(opened, copy));
+
+      const back = readFilmRows(target, copy.projectId);
+      for (const [table, rows] of Object.entries(copy.tables)) {
+        expect(back[table]?.length, `${name}, ${table}`).toBe(rows.length);
+      }
+    }
   });
 });

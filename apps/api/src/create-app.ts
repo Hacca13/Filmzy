@@ -8,6 +8,7 @@ import {
 import type { NestApplicationOptions } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Response } from 'express';
 
 import { JobRunner } from './modules/jobs/job-runner.service.js';
 
@@ -32,18 +33,54 @@ export async function listenAndStart(
   await app.get(JobRunner, { strict: false }).start();
 }
 
-/** Le difese e l'indirizzo comuni a ogni server: quello vero e quello ridotto (D90). */
-export function applyCommonSetup(app: NestExpressApplication): void {
+/**
+ * Le difese e l'indirizzo comuni a ogni server: quello vero e quello ridotto (D90). Anche l'interfaccia, se
+ * c'è: serve pure quando i dati non si aprono, per dire perché. Va dopo le difese: si serve solo a chi la
+ * chiede da questo computer.
+ */
+export function applyCommonSetup(app: NestExpressApplication, webDir?: string): void {
   // Non dichiarare quale framework c'è dietro: un'informazione in meno per chi cerca falle.
   app.disable('x-powered-by');
   app.use(rejectNonLocalAccess);
   app.setGlobalPrefix(API_PREFIX);
+  if (webDir !== undefined) {
+    app.useStaticAssets(webDir, {
+      index: 'index.html',
+      setHeaders: (response: Response) => {
+        response.setHeader('Content-Security-Policy', INTERFACE_CONTENT_POLICY);
+      },
+    });
+  }
 }
 
-export async function createApp(
-  options: Pick<NestApplicationOptions, 'logger'> & AppModuleOptions = {},
-): Promise<NestExpressApplication> {
-  const { logger, ...moduleOptions } = options;
+/**
+ * Cosa può caricare l'interfaccia servita dal programma: solo i suoi file e il server locale. Un testo scritto
+ * da un modello che finisse nella pagina come codice non partirebbe, e niente si scarica da internet (D29).
+ */
+const INTERFACE_CONTENT_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  // React scrive alcuni stili direttamente sugli elementi.
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' blob:",
+  "connect-src 'self'",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+export interface CreateAppOptions extends Pick<NestApplicationOptions, 'logger'>, AppModuleOptions {
+  /**
+   * La cartella dell'interfaccia già compilata: il programma installato la serve da qui, sullo stesso
+   * indirizzo del server (T6.4). In sviluppo la serve Vite, e qui non c'è.
+   */
+  webDir?: string;
+}
+
+export async function createApp(options: CreateAppOptions = {}): Promise<NestExpressApplication> {
+  const { logger, webDir, ...moduleOptions } = options;
 
   // `abortOnError: false`: di default Nest, se l'avvio fallisce, interrompe il processo di colpo.
   // Così invece l'errore arriva a chi chiama, che può mostrare un messaggio comprensibile.
@@ -64,7 +101,7 @@ export async function createApp(
     limit: AUDIO_UPLOAD_MAX_BYTES * 2,
   });
 
-  applyCommonSetup(app);
+  applyCommonSetup(app, webDir);
   // Chiude il server in modo ordinato quando il programma viene fermato (Ctrl+C o chiusura).
   app.enableShutdownHooks();
 

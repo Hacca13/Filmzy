@@ -1,0 +1,38 @@
+# L'impacchettamento di Filmzy (T6.4). Dentro c'è solo il programma compilato da `scripts/build.ts`:
+# documenti, design e codice sorgente restano nel repository. Gli aggiornamenti da GitHub Releases e gli
+# installatori per macOS e Linux arrivano col passo successivo.
+appId: io.github.hacca13.filmzy
+productName: Filmzy
+copyright: Filmzy · AGPL-3.0
+directories:
+  app: dist/app
+  output: release
+  buildResources: build-resources
+# Il server e la finestra sono un file solo: niente da ricompilare, niente node_modules da raccogliere.
+npmRebuild: false
+nodeGypRebuild: false
+asar: true
+# Le porte di servizio di Electron, chiuse: nessuna variabile d'ambiente o opzione trasforma Filmzy.exe in
+# un interprete qualunque, e il programma si carica solo dal suo pacchetto.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+extraResources:
+  - from: dist/resources
+    to: .
+win:
+  target:
+    - nsis
+  icon: build-resources/icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Filmzy
+  artifactName: Filmzy-${version}-installa.${ext}
+  # Disinstallando, i film restano: stanno nella cartella dei dati, non in quella del programma (§6.1).
+  deleteAppDataOnUninstall: false
+publish: null

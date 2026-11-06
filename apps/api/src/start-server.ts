@@ -82,7 +82,7 @@ async function serveUntilRetry(
       abortOnError: false,
     },
   );
-  applyCommonSetup(app);
+  applyCommonSetup(app, appOptions.webDir);
   await app.listen(port, host);
 
   await retried;

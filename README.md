@@ -14,6 +14,10 @@ Cosa ti serve:
 - le chiavi dei servizi AI che vuoi usare. Per cominciare servono **Anthropic** (per il testo) e **fal.ai** (per immagini, video, musica ed effetti). Al primo avvio Filmzy ti guida, e ti dice dove prenderle;
 - un credito presso quei servizi: le generazioni le paghi a loro, non a Filmzy. Prima di ogni generazione vedi quanto costa.
 
+Su Windows l'installatore si chiama `Filmzy-<versione>-installa.exe`. Il programma non è ancora firmato: Windows può mostrare l'avviso «Windows ha protetto il PC»; si va avanti con «Ulteriori informazioni» › «Esegui comunque». Disinstallando, i film restano dove sono.
+
+Se qualcosa si rompe, Filmzy lo scrive nel **registro**: un file al giorno nella cartella `log` dentro la cartella dei tuoi dati (qui sotto). Il registro non contiene le chiavi, e la tua cartella personale ci compare come `~`. Se chiedi aiuto, allega il file del giorno in cui è successo.
+
 ## I tuoi dati
 
 - I film, le immagini e i video stanno solo sul tuo computer. Su Windows in `%APPDATA%\Filmzy`, su macOS in `~/Library/Application Support/Filmzy`, su Linux in `~/.local/share/filmzy`. Li trovi anche in Impostazioni › I tuoi dati.
@@ -39,6 +43,8 @@ Sviluppo (serve Node 24 e pnpm; Docker no):
 pnpm install
 pnpm dev    # server locale su http://127.0.0.1:3001 e interfaccia su http://localhost:5173
 ```
+
+Il programma per computer (Electron, `apps/desktop`): `pnpm pacchetto` costruisce l'installatore per il sistema su cui gira (per ora Windows) in `apps/desktop/release`. Per provarlo senza installare: `pnpm --filter @filmzy/desktop build` e poi `pnpm --filter @filmzy/desktop start`.
 
 Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta); `pnpm dev` lo legge. Una variabile già impostata nel terminale ha la precedenza sul file. Prima di una pull request: `pnpm check`.
 

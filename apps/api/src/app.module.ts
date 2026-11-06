@@ -37,6 +37,8 @@ import { UploadsModule } from './modules/uploads/uploads.module.js';
  */
 export interface AppModuleOptions {
   dataDir?: string;
+  migrationsDir?: string;
+  sqliteBinding?: string;
   configDir?: string;
   environment?: ConfigEnvironment;
   cipher?: SecretCipher;
@@ -50,7 +52,11 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
-        DatabaseModule.forRoot(options.dataDir === undefined ? {} : { dataDir: options.dataDir }),
+        DatabaseModule.forRoot({
+          ...(options.dataDir === undefined ? {} : { dataDir: options.dataDir }),
+          ...(options.migrationsDir === undefined ? {} : { migrationsDir: options.migrationsDir }),
+          ...(options.sqliteBinding === undefined ? {} : { sqliteBinding: options.sqliteBinding }),
+        }),
         SecretsModule.forRoot(options.cipher === undefined ? {} : { cipher: options.cipher }),
         TroupeModule.forRoot({
           ...(options.configDir === undefined ? {} : { configDir: options.configDir }),

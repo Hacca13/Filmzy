@@ -6,6 +6,7 @@ import { waitUntilServerIsReady } from '../api/health';
 import { openStartupFolder, retryStartup } from '../api/startup';
 import { Brand } from '../components/Brand';
 import { Notice } from '../components/ui';
+import { closeDesktopApp, isDesktopApp } from '../lib/desktop';
 import { openFolderFailureText } from '../films/sound/export-model';
 import { useAction } from '../settings/use-action';
 
@@ -73,6 +74,7 @@ export function StartupGate({ children }: { children: ReactNode }) {
       onOpenFolder={() => {
         action.run(openStartupFolder, openFolderFailureText);
       }}
+      {...(isDesktopApp() ? { onClose: closeDesktopApp } : {})}
     />
   );
 }
@@ -95,13 +97,22 @@ export function StartupScreen({
   problem,
   onRetry,
   onOpenFolder,
+  onClose,
 }: {
   state: Exclude<StartupState, { name: 'ready' }>;
   busy: boolean;
   problem: string | undefined;
   onRetry: () => void;
   onOpenFolder: () => void;
+  /** Solo nel programma per computer: lì la finestra si chiude da qui (T6.4). */
+  onClose?: () => void;
 }) {
+  const closeButton =
+    onClose === undefined ? null : (
+      <button type="button" className="button" onClick={onClose}>
+        Chiudi Filmzy
+      </button>
+    );
   if (state.name === 'waiting') {
     return (
       <main className="startup" role="status">
@@ -117,6 +128,7 @@ export function StartupScreen({
         <Brand size="large" />
         <h1>Filmzy non riesce a partire</h1>
         <p>Chiudi il programma e riaprilo.</p>
+        {closeButton === null ? null : <div className="actions">{closeButton}</div>}
       </main>
     );
   }
@@ -126,6 +138,7 @@ export function StartupScreen({
         <Brand />
         <h1>Questi film sono stati creati con una versione più nuova di Filmzy</h1>
         <p>Per aprirli, aggiorna Filmzy. Non abbiamo cambiato niente nei tuoi film.</p>
+        {closeButton === null ? null : <div className="actions">{closeButton}</div>}
       </main>
     );
   }
@@ -156,6 +169,7 @@ export function StartupScreen({
         <button type="button" className="button" disabled={busy} onClick={onOpenFolder}>
           Apri la cartella
         </button>
+        {closeButton}
       </div>
       {problem === undefined ? null : <Notice tone="error">{problem}</Notice>}
     </main>

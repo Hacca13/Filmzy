@@ -1160,3 +1160,20 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 9. **Lo zip si scrive mentre si scarica,** e la copia che arriva si scrive su disco prima di leggerla: un film con molti video non passa dalla memoria. Immagini, video e suoni non si ricomprimono.
 
 **Limiti:** non c'è un limite alla dimensione della copia, e un disco pieno si scopre a metà (si ripulisce e lo si dice). Due film identici sullo stesso computer non si possono avere: hanno lo stesso id. Non provato fra Windows e macOS.
+
+## D93 · Filmzy per computer: un file solo, il registro e la finestra di chiusura — 06/11/2026
+
+**Realizza** la prima parte di T6.4 (§2, §6.1, D44, D45, D63), per provare il programma su Windows.
+**Decisione:**
+1. **Il server sta nello stesso processo della finestra** (il processo principale di Electron): niente Node da installare, niente secondo programma da tenere d'occhio. La finestra carica l'interfaccia dal server locale (`http://127.0.0.1:41731`, o la porta libera successiva), che la serve accanto a `/api` (`webDir`), anche in forma ridotta quando i dati non si aprono (D90).
+2. **Un file solo:** esbuild unisce la finestra, il server e le loro librerie in `main.mjs`, partendo da quello che tsc ha già compilato (Nest legge i tipi dei costruttori, che esbuild da solo non scrive). Fuori restano solo le cose che non sono JavaScript, fra le risorse del programma: configurazione, migrazioni, il modulo nativo di SQLite (better-sqlite3 13 ha già i moduli per tutti i sistemi, con un'interfaccia stabile anche in Electron: niente da ricompilare), ffmpeg e il font dei titoli. Il programma li indica al server in modo esplicito (`migrationsDir`, `sqliteBinding`, `FILMZY_FFMPEG`, `FILMZY_TITLE_FONT`).
+3. **Il registro:** un file al giorno in `<cartella dati>/log`, tenuto 14 giorni, con l'avvio (versioni, sistema), i messaggi del server, gli errori dell'interfaccia, le pagine che cadono e gli errori non gestiti, con lo stack del codice vero (mappe dei sorgenti). La cartella dell'utente diventa `~`, le chiavi non ci arrivano. All'avvio controlla che i file del programma ci siano. Se Filmzy non riesce a partire lo dice, con il pulsante per aprire la cartella del registro.
+4. **Le chiavi** si cifrano con `safeStorage` di Electron (D45): su Windows con l'account dell'utente. Provato: la chiave salvata non compare né nel file né nel registro.
+5. **La finestra «Sto ancora lavorando» (D63)** per ora è quella del sistema, con le tre scelte e le parole di D63; conta tutti i lavori in coda o in corso, non solo quelli a pagamento. Quella disegnata da Figma arriverà con un prompt.
+6. **Sicurezza della finestra:** pagina isolata (sandbox, niente Node), solo il programma resta nella finestra e i link verso fuori si aprono nel browser del sistema; l'interfaccia ha una Content-Security-Policy; i «fuses» di Electron chiudono le porte di servizio (niente `ELECTRON_RUN_AS_NODE`, niente `NODE_OPTIONS`, solo il pacchetto). F12 apre gli strumenti di Chromium, per capire un guasto insieme a chi lo segnala.
+7. **Le cartelle di Chromium** stanno in `finestra/` dentro la cartella dei dati, per non mescolarle ai film.
+8. **L'installatore per Windows è NSIS**, per l'utente (non serve essere amministratore), con la scelta della cartella; disinstallando i film restano. Non è firmato: Windows mostra un avviso.
+
+**Perché:** l'utente vuole provarlo subito sul suo computer e, se si rompe, capire cos'è successo dal registro.
+**Scartate:** il server come processo a parte (un secondo programma da avviare e fermare, e i moduli nativi da ricompilare lo stesso); l'installatore Squirrel (aggiornamenti meno controllabili, D44); copiare i `node_modules` del monorepo nel pacchetto (pnpm e electron-builder si capiscono male, e il pacchetto pesava il doppio).
+**Limiti:** l'installatore pesa circa 140 MB (Electron e ffmpeg). Mancano gli aggiornamenti (D44), macOS e Linux, la firma. Non provati: una generazione vera dal programma installato, la chiusura con un lavoro aperto dal vero (la logica ha i suoi test).

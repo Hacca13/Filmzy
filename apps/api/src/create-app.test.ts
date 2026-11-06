@@ -1,4 +1,7 @@
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { healthResponseSchema, LOCAL_API_HOST } from '@filmzy/contracts';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -90,5 +93,38 @@ describe('server locale', () => {
 
       expect(response.status).toBe(200);
     });
+  });
+});
+
+describe('il programma installato serve anche l’interfaccia', () => {
+  let app: NestExpressApplication;
+  let base: string;
+
+  beforeAll(async () => {
+    const webDir = await mkdtemp(path.join(tmpdir(), 'filmzy-web-'));
+    await writeFile(path.join(webDir, 'index.html'), '<title>Filmzy</title>');
+    app = await createApp({
+      logger: false,
+      webDir,
+      dataDir: await mkdtemp(path.join(tmpdir(), 'filmzy-dati-')),
+    });
+    await app.listen(0, LOCAL_API_HOST);
+    base = await app.getUrl();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('dallo stesso indirizzo del server, che resta sotto /api', async () => {
+    const page = await fetch(`${base}/`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('<title>Filmzy</title>');
+    expect(page.headers.get('content-security-policy')).toContain("script-src 'self'");
+    expect((await fetch(`${base}/api/health`)).status).toBe(200);
+  });
+
+  it('solo a chi la chiede da questo computer', async () => {
+    expect((await send(`${base}/`, 'GET', { host: 'evil.example' })).status).toBe(403);
   });
 });

@@ -1,0 +1,28 @@
+{
+  "name": "@filmzy/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Filmzy per computer: la finestra, il server locale accanto, il portachiavi e il registro",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "start": "electron dist/app",
+    "pacchetto": "electron-builder --publish never",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@filmzy/api": "workspace:*",
+    "@filmzy/contracts": "workspace:*",
+    "@filmzy/db": "workspace:*",
+    "@filmzy/media": "workspace:*",
+    "@filmzy/web": "workspace:*",
+    "@nestjs/common": "12.1.2",
+    "@types/node": "24.19.2",
+    "electron": "44.9.3",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2"
+  }
+}

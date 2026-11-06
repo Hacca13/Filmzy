@@ -31,8 +31,13 @@ export interface OpenDatabaseOptions {
   dataDir: string;
   /** La versione del programma: finisce nel database e nel nome della copia di sicurezza. */
   appVersion: string;
-  /** Per i test: le migrazioni da applicare, se non sono quelle del pacchetto. */
+  /** Le migrazioni da applicare, se non sono quelle del pacchetto: i test, e il programma installato. */
   migrationsDir?: string;
+  /**
+   * Il modulo nativo di SQLite, se non sta accanto al pacchetto: il programma installato lo porta fra le sue
+   * risorse, perché il resto del server viaggia in un file solo (T6.4).
+   */
+  nativeBinding?: string;
 }
 
 export interface OpenedDatabase {
@@ -46,6 +51,9 @@ export interface OpenedDatabase {
 
 /** Le migrazioni che il pacchetto porta con sé: `migrations/` accanto a `dist/`. */
 export const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations', import.meta.url));
+
+const connect = (file: string, nativeBinding: string | undefined) =>
+  new Database(file, nativeBinding === undefined ? {} : { nativeBinding });
 
 const journalSchema = z.object({
   entries: z.array(z.object({ idx: z.number().int(), tag: z.string().min(1) })),
@@ -72,7 +80,7 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
   let found: StoredMeta;
   try {
     await mkdir(options.dataDir, { recursive: true });
-    sqlite = new Database(file);
+    sqlite = connect(file, options.nativeBinding);
     try {
       prepareConnection(sqlite);
       found = readMeta(sqlite);
@@ -142,7 +150,7 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
   // Dopo una migrazione la connessione ha davanti uno schema nuovo: si riapre pulita, così le
   // istruzioni preparate e la cache dello schema non si portano dietro il prima.
   sqlite.close();
-  sqlite = new Database(file);
+  sqlite = connect(file, options.nativeBinding);
   prepareConnection(sqlite);
 
   const db = drizzle(sqlite, { schema });

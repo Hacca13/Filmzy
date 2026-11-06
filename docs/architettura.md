@@ -571,7 +571,8 @@ I dati stanno nella **cartella dati dell'utente** del sistema operativo (`app.ge
 ├─ filmzy.db              database SQLite (film, scontrini, impostazioni, coda)
 ├─ filmzy.db.backup-<versione>   copia fatta prima di una migrazione
 ├─ chiavi.dat             le chiavi dei fornitori, cifrate: fuori dal database (D45, D46)
-├─ log/                   registro degli eventi (pino)
+├─ log/                   il registro: un file al giorno, tenuto 14 giorni (T6.4, D93)
+├─ finestra/              i file di Chromium per la finestra (cache, impostazioni)
 └─ progetti/<id>/         file dei film: immagini, take, audio, esportazioni
 ```
 

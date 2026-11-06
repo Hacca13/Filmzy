@@ -16,3 +16,5 @@ dati-di-prova/
 CLAUDE.local.md
 .claude/settings.local.json
 .DS_Store
+# Gli installatori costruiti da electron-builder.
+apps/desktop/release/

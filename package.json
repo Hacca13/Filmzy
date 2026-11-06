@@ -19,7 +19,8 @@
     "check": "turbo run lint typecheck test build && pnpm format:check && node scripts/check-code-boundaries.mjs",
     "troupe": "turbo run build --filter=@filmzy/api --output-logs=errors-only && node --env-file-if-exists=.env apps/api/dist/cli/bin.js",
     "bench": "turbo run build --filter=@filmzy/bench --output-logs=errors-only && node --env-file-if-exists=.env apps/bench/dist/bin.js",
-    "eval": "turbo run build --filter=@filmzy/bench --output-logs=errors-only && node --env-file-if-exists=.env apps/bench/dist/bin.js eval"
+    "eval": "turbo run build --filter=@filmzy/bench --output-logs=errors-only && node --env-file-if-exists=.env apps/bench/dist/bin.js eval",
+    "pacchetto": "turbo run build --filter=@filmzy/desktop --output-logs=errors-only && pnpm --filter @filmzy/desktop pacchetto"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",

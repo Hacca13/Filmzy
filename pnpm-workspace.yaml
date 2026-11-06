@@ -11,7 +11,11 @@ packages:
 #   @ffmpeg-installer/*  il binario di ffmpeg per Linux e macOS: lo script d'installazione fa solo
 #                   `chmod u+x ffmpeg` (rende eseguibile il programma); non
 #                   elencato, l'installazione su Linux e macOS si ferma.
+#   electron-winstaller  arriva con electron-builder e serve all'installatore Squirrel, che non
+#                   usiamo (l'installatore per Windows è NSIS): il suo script sceglie solo
+#                   quale 7-Zip copiare.
 allowBuilds:
+  electron-winstaller: false
   better-sqlite3: true
   esbuild: false
   '@ffmpeg-installer/linux-x64': true

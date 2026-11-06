@@ -52,9 +52,15 @@ interface StepOptions {
 
 const require_ = createRequire(import.meta.url);
 
-/** Il font dei titoli: viaggia col programma, perché quelli installati cambiano da un computer all'altro. */
-export function titleFontPath(): string {
-  return require_.resolve('dejavu-fonts-ttf/ttf/DejaVuSans.ttf');
+/**
+ * Il font dei titoli: viaggia col programma, perché quelli installati cambiano da un computer all'altro. Il
+ * programma installato lo porta fra le sue risorse e lo indica con `FILMZY_TITLE_FONT` (T6.4).
+ */
+export function titleFontPath(env: NodeJS.ProcessEnv = process.env): string {
+  const own = env['FILMZY_TITLE_FONT'];
+  return own === undefined || own === ''
+    ? require_.resolve('dejavu-fonts-ttf/ttf/DejaVuSans.ttf')
+    : own;
 }
 
 /** Lancia un passo, e controlla che il file ci sia davvero: ffmpeg può uscire bene senza aver scritto niente. */

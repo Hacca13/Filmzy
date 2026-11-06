@@ -29,6 +29,9 @@ export interface DatabaseModuleOptions {
   /** La cartella dati: in Electron la dà il sistema (M6), nei test è una temporanea. */
   dataDir?: string;
   appVersion?: string;
+  /** Il programma installato porta le migrazioni e il modulo di SQLite fra le sue risorse (T6.4). */
+  migrationsDir?: string;
+  sqliteBinding?: string;
 }
 
 /** Chiude il database quando il server si ferma: i file WAL vanno chiusi bene. */
@@ -62,6 +65,12 @@ export class DatabaseModule {
             const opened = await openFilmzyDatabase({
               dataDir,
               appVersion: options.appVersion ?? process.env.FILMZY_APP_VERSION ?? '0.0.0-sviluppo',
+              ...(options.migrationsDir === undefined
+                ? {}
+                : { migrationsDir: options.migrationsDir }),
+              ...(options.sqliteBinding === undefined
+                ? {}
+                : { nativeBinding: options.sqliteBinding }),
             });
 
             const log = new Logger('Database');

@@ -36,6 +36,7 @@ pnpm eval <ruolo> --model <voce>          # a mano: costa
 pnpm bench run config/bench/week1.yaml    # a mano: costa
 pnpm --filter @filmzy/db migrazioni --name <nome>   # genera la migrazione dopo un cambio di schema
 FILMZY_DATA_DIR=./dati-di-prova pnpm dev            # dati in una cartella di prova, non quella vera
+pnpm pacchetto                                      # l'installatore del programma per il sistema su cui gira
 ```
 
 ## Regole d'oro

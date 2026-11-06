@@ -5,6 +5,12 @@
   "description": "Server locale di Filmzy: dominio, lavori in coda ed eventi",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "exports": {
+    "./desktop": {
+      "types": "./dist/desktop.d.ts",
+      "default": "./dist/desktop.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "nest start --watch",

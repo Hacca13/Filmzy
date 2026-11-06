@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+import { isDesktopApp } from '../lib/desktop';
 import { StartupScreen, watchStartup, type StartupState } from './StartupGate';
 
 const screen = (state: Exclude<StartupState, { name: 'ready' }>, problem?: string) =>
@@ -153,5 +154,35 @@ describe('l’avvio', () => {
     for (const word of ['database', 'migrazione', 'server', 'schema']) {
       expect(texts.toLowerCase()).not.toContain(word);
     }
+  });
+});
+
+describe('nel programma per computer', () => {
+  const inDesktop = (state: Exclude<StartupState, { name: 'ready' }>) =>
+    renderToStaticMarkup(
+      <StartupScreen
+        state={state}
+        busy={false}
+        problem={undefined}
+        onRetry={() => undefined}
+        onOpenFolder={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+  it('le schermate che fermano l’avvio si possono chiudere da un pulsante', () => {
+    expect(inDesktop({ name: 'unreachable' })).toContain('Chiudi Filmzy');
+    expect(inDesktop({ name: 'blocked', block: { reason: 'database_too_new' } })).toContain(
+      'Chiudi Filmzy',
+    );
+    expect(inDesktop({ name: 'blocked', block: { reason: 'migration_failed' } })).toContain(
+      'Chiudi Filmzy',
+    );
+  });
+
+  it('nel browser il pulsante non c’è: lì non chiuderebbe niente', () => {
+    expect(screen({ name: 'unreachable' })).not.toContain('Chiudi Filmzy');
+    expect(isDesktopApp('Mozilla/5.0 Chrome/152.0 Electron/44.9.3')).toBe(true);
+    expect(isDesktopApp('Mozilla/5.0 Chrome/152.0 Safari/537.36')).toBe(false);
   });
 });

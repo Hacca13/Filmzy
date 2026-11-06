@@ -44,6 +44,9 @@ export interface OpenedDatabase {
   db: FilmzyDb;
   file: string;
   schemaVersion: number;
+  /** Da dove vengono le migrazioni, e il modulo di SQLite: servono anche ad aggiornare le copie vecchie (D94). */
+  migrationsDir: string;
+  nativeBinding?: string;
   /** Il file della copia, se una migrazione l'ha richiesta. */
   backupFile?: string;
   close: () => void;
@@ -52,7 +55,7 @@ export interface OpenedDatabase {
 /** Le migrazioni che il pacchetto porta con sé: `migrations/` accanto a `dist/`. */
 export const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations', import.meta.url));
 
-const connect = (file: string, nativeBinding: string | undefined) =>
+export const openSqlite = (file: string, nativeBinding: string | undefined): Database.Database =>
   new Database(file, nativeBinding === undefined ? {} : { nativeBinding });
 
 const journalSchema = z.object({
@@ -80,7 +83,7 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
   let found: StoredMeta;
   try {
     await mkdir(options.dataDir, { recursive: true });
-    sqlite = connect(file, options.nativeBinding);
+    sqlite = openSqlite(file, options.nativeBinding);
     try {
       prepareConnection(sqlite);
       found = readMeta(sqlite);
@@ -150,7 +153,7 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
   // Dopo una migrazione la connessione ha davanti uno schema nuovo: si riapre pulita, così le
   // istruzioni preparate e la cache dello schema non si portano dietro il prima.
   sqlite.close();
-  sqlite = connect(file, options.nativeBinding);
+  sqlite = openSqlite(file, options.nativeBinding);
   prepareConnection(sqlite);
 
   const db = drizzle(sqlite, { schema });
@@ -160,6 +163,8 @@ export async function openFilmzyDatabase(options: OpenDatabaseOptions): Promise<
     db,
     file,
     schemaVersion: shipped,
+    migrationsDir,
+    ...(options.nativeBinding === undefined ? {} : { nativeBinding: options.nativeBinding }),
     ...(backupFile === undefined ? {} : { backupFile }),
     close: () => {
       sqlite.close();

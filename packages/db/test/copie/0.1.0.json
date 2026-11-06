@@ -1,0 +1,235 @@
+{
+  "format": "filmzy-film",
+  "formatVersion": 1,
+  "schemaVersion": 32,
+  "appVersion": "0.1.0",
+  "exportedAt": "2026-11-06T08:19:06.197Z",
+  "projectId": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+  "tables": {
+    "projects": [
+      {
+        "id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "title": "Una bobina dimenticata sull’ultimo treno",
+        "idea": "Una bobina dimenticata sull’ultimo treno della sera.",
+        "genre": "comedy",
+        "tone": "light",
+        "style": "realistic",
+        "cinematography": "handheld_warm",
+        "language": "it",
+        "duration_s": 60,
+        "phase": "sound",
+        "created_at": 1793953145795,
+        "updated_at": 1793953146187,
+        "cinematography_changed_at": null,
+        "kind": "short"
+      }
+    ],
+    "screenplays": [
+      {
+        "id": "27efbff6-3d40-4d21-9186-439f16feeb11",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "stage": "draft",
+        "version": 1,
+        "content": "{\"title\":\"Il corto di Anna\",\"logline\":\"Una donna torna nella sua città natale\",\"characters\":[{\"id\":\"anna\",\"name\":\"Anna\",\"role\":\"protagonist\"}],\"locations\":[{\"id\":\"piazza\",\"name\":\"La piazza del paese\",\"description\":\"Piazza centrale al tramonto\",\"prompt\":\"a small town square at sunset\"}],\"scenes\":[{\"number\":1,\"heading\":\"La piazza, tramonto\",\"locationId\":\"piazza\",\"timeOfDay\":\"tramonto\",\"characterIds\":[\"anna\"],\"summary\":\"Anna attraversa la piazza e riconosce un volto\",\"beats\":[],\"durationS\":20}]}",
+        "request": null,
+        "generation_id": "ed2b0039-e34a-4c44-b9f7-95e6d8140c15",
+        "created_at": 1793953145826
+      },
+      {
+        "id": "d82ab72b-5b57-494d-886d-77c81e98e17d",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "stage": "final",
+        "version": 1,
+        "content": "{\"title\":\"Il corto di Anna\",\"logline\":\"Una donna torna nella sua città natale\",\"characters\":[],\"locations\":[],\"scenes\":[{\"number\":1,\"heading\":\"La piazza, tramonto\",\"timeOfDay\":\"tramonto\",\"summary\":\"Anna attraversa la piazza e riconosce un volto\",\"beats\":[],\"durationS\":20,\"characterIds\":[],\"locationId\":\"9b9d992a-d620-42c7-b8f3-a8191725f1d4\"}]}",
+        "request": null,
+        "generation_id": "4dfec6a7-23e2-44b8-9010-bf8cd5f6b30d",
+        "created_at": 1793953145865
+      }
+    ],
+    "characters": [],
+    "character_sheet_images": [],
+    "locations": [
+      {
+        "id": "9b9d992a-d620-42c7-b8f3-a8191725f1d4",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "name": "La piazza del paese",
+        "description": "Piazza centrale al tramonto",
+        "prompt": "a small town square at sunset",
+        "proposal_id": "piazza",
+        "chosen_asset_id": null,
+        "created_at": 1793953145841,
+        "updated_at": 1793953145841,
+        "reference_changed_at": null
+      }
+    ],
+    "location_attempts": [],
+    "assets": [
+      {
+        "id": "99a3ea3a4cf0f8caa460325f529661c5fc08d13405ee273d5dde93d33b166814",
+        "path": "progetti/1db398be-52e0-4e6b-b7cc-2b6f3c5919bd/caricate/99a3ea3a4cf0f8caa460325f529661c5fc08d13405ee273d5dde93d33b166814.wav",
+        "content_type": "audio/wav",
+        "bytes": 176478,
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "generation_id": null,
+        "created_at": 1793953146182
+      }
+    ],
+    "uploads": [],
+    "moodboards": [],
+    "moodboard_scenes": [],
+    "moodboard_references": [],
+    "moodboard_runs": [],
+    "shot_plans": [
+      {
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "scene_number": 1,
+        "scene_hash": "6806aeab174d363e",
+        "screenplay_id": "d82ab72b-5b57-494d-886d-77c81e98e17d",
+        "generation_id": "4ddcab62-90df-4704-8c83-4ac1ea36a009",
+        "notes": null,
+        "created_at": 1793953145908,
+        "previous_exit": null
+      }
+    ],
+    "shots": [
+      {
+        "id": "2e38d261-2952-47f7-8fd8-8807521b3764",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "scene_number": 1,
+        "position": 0,
+        "spec": "{\"schema\":\"shot-spec/0.2\",\"id\":\"2e38d261-2952-47f7-8fd8-8807521b3764\",\"sceneId\":\"scene-1\",\"order\":0,\"intent\":{\"action\":\"Anna guarda in camera e sorride appena\",\"emotion\":\"speranzosa\",\"framing\":\"close_up\",\"cameraMovement\":\"push_in\",\"lighting\":\"luce calda del tramonto\",\"durationS\":5},\"characters\":[],\"location\":{\"locationId\":\"9b9d992a-d620-42c7-b8f3-a8191725f1d4\",\"references\":[]},\"images\":[],\"dialogue\":[],\"cinematography\":\"inherit\",\"continuity\":{\"entry\":{\"locationId\":\"9b9d992a-d620-42c7-b8f3-a8191725f1d4\",\"timeOfDay\":\"tramonto\",\"present\":[],\"costumes\":{},\"props\":[\"lettera\"]},\"exit\":{\"locationId\":\"9b9d992a-d620-42c7-b8f3-a8191725f1d4\",\"timeOfDay\":\"tramonto\",\"present\":[],\"costumes\":{},\"props\":[\"lettera\"]}}}",
+        "chosen_asset_id": null,
+        "chosen_take_id": null,
+        "frames_changed_at": null
+      }
+    ],
+    "storyboard_attempts": [],
+    "takes": [
+      {
+        "id": "2c4243e8-4544-4e19-bdfb-a6764484e6d7",
+        "shot_id": "2e38d261-2952-47f7-8fd8-8807521b3764",
+        "status": "succeeded",
+        "model_id": "video",
+        "model_label": "Video",
+        "asset_id": "b8db4837d7c205d809e0b10e1e996d5cea9b9b71a522bdf2abab8cb891d1ef11",
+        "receipt_id": null,
+        "cost_usd": null,
+        "error_code": null,
+        "created_at": 1793953146006,
+        "updated_at": 1793953146007,
+        "native_audio": 0
+      }
+    ],
+    "take_frames": [],
+    "ignored_flags": [],
+    "script_checks": [],
+    "script_issues": [],
+    "audio_tracks": [
+      {
+        "id": "875bf6f4-a592-47b4-9383-17307417ceeb",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "kind": "dialogue",
+        "muted": 0,
+        "volume": 1
+      },
+      {
+        "id": "9fb54b1a-ff1c-4797-9852-466578136f48",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "kind": "music",
+        "muted": 0,
+        "volume": 1
+      },
+      {
+        "id": "53e1bd52-4333-43d3-8de8-9b9edcf04a6b",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "kind": "native",
+        "muted": 1,
+        "volume": 1
+      },
+      {
+        "id": "77c14cc6-aba7-4693-b2c3-a49175674585",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "kind": "sfx",
+        "muted": 0,
+        "volume": 1
+      }
+    ],
+    "audio_clips": [
+      {
+        "id": "5e6f76e9-4eb3-4e55-a607-0e613d78a28b",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd",
+        "track_id": "9fb54b1a-ff1c-4797-9852-466578136f48",
+        "scene_id": "scene-1",
+        "shot_id": null,
+        "start_s": 0,
+        "duration_s": 2,
+        "volume": 1,
+        "fade_in_s": 0,
+        "fade_out_s": 0,
+        "description": "La mia musica",
+        "mood": null,
+        "chosen_variant_id": "57616afd-07a8-42ab-9428-85e10ebb418e",
+        "source": "uploaded",
+        "created_at": 1793953146183,
+        "updated_at": 1793953146183
+      }
+    ],
+    "audio_variants": [
+      {
+        "id": "57616afd-07a8-42ab-9428-85e10ebb418e",
+        "clip_id": "5e6f76e9-4eb3-4e55-a607-0e613d78a28b",
+        "status": "succeeded",
+        "model_id": null,
+        "model_label": null,
+        "asset_id": "99a3ea3a4cf0f8caa460325f529661c5fc08d13405ee273d5dde93d33b166814",
+        "receipt_id": null,
+        "cost_usd": null,
+        "error_code": null,
+        "created_at": 1793953146183,
+        "updated_at": 1793953146183
+      }
+    ],
+    "film_scene_exclusions": [],
+    "generations": [
+      {
+        "id": "ed2b0039-e34a-4c44-b9f7-95e6d8140c15",
+        "purpose": "product",
+        "role": "screenwriter",
+        "model_id": "claude-sonnet",
+        "status": "succeeded",
+        "estimated_cost_usd": 0.1606,
+        "actual_cost_usd": 0.00124,
+        "created_at": 1793953145800,
+        "receipt": "{\"id\":\"ed2b0039-e34a-4c44-b9f7-95e6d8140c15\",\"role\":\"screenwriter\",\"purpose\":\"product\",\"projectId\":\"1db398be-52e0-4e6b-b7cc-2b6f3c5919bd\",\"releaseId\":\"fd9f68d8-a0b7-46ef-95ba-0aefe0d4893b\",\"roleConfigHash\":\"134ac6ca2c4f6bffd7744289ec753635ebed1d087cc021dc54f1d665c3e6c35a\",\"modelId\":\"claude-sonnet\",\"modelLabel\":\"Claude Sonnet\",\"connectionId\":\"anthropic\",\"providerModel\":\"claude-sonnet-5-5\",\"instructions\":{\"id\":\"screenwriter\",\"version\":1},\"params\":{\"max_tokens\":16000},\"inputHash\":\"07dc5925e9c2b149fbe0708771d80e5faf9ba5b46c87fd7b5145a63f77cd8a8f\",\"idempotencyKey\":\"0c14aa9a75292c1fd92e22657bf192d06876b86247c83f869a53ec43bbe87994\",\"status\":\"succeeded\",\"attempts\":1,\"estimatedCostUsd\":0.1606,\"createdAt\":\"2026-11-06T08:19:05.800Z\",\"usage\":{\"inputTokens\":300,\"outputTokens\":64},\"actualCostUsd\":0.00124,\"durationMs\":25}",
+        "connection_id": "anthropic",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd"
+      },
+      {
+        "id": "4dfec6a7-23e2-44b8-9010-bf8cd5f6b30d",
+        "purpose": "product",
+        "role": "screenwriter",
+        "model_id": "claude-sonnet",
+        "status": "succeeded",
+        "estimated_cost_usd": 0.160956,
+        "actual_cost_usd": 0.001596,
+        "created_at": 1793953145857,
+        "receipt": "{\"id\":\"4dfec6a7-23e2-44b8-9010-bf8cd5f6b30d\",\"role\":\"screenwriter\",\"purpose\":\"product\",\"projectId\":\"1db398be-52e0-4e6b-b7cc-2b6f3c5919bd\",\"releaseId\":\"fd9f68d8-a0b7-46ef-95ba-0aefe0d4893b\",\"roleConfigHash\":\"134ac6ca2c4f6bffd7744289ec753635ebed1d087cc021dc54f1d665c3e6c35a\",\"modelId\":\"claude-sonnet\",\"modelLabel\":\"Claude Sonnet\",\"connectionId\":\"anthropic\",\"providerModel\":\"claude-sonnet-5-5\",\"instructions\":{\"id\":\"screenwriter\",\"version\":1},\"params\":{\"max_tokens\":16000},\"inputHash\":\"eb60d09d0bcb8ce4ad7e063db61c06ae7c55e2967dec83d609208f586eec246e\",\"idempotencyKey\":\"ace9ac6bfc8c2541f90617001ab9fd893480f1d2f8c9c8afbd672fac89bf413e\",\"status\":\"succeeded\",\"attempts\":1,\"estimatedCostUsd\":0.160956,\"createdAt\":\"2026-11-06T08:19:05.857Z\",\"usage\":{\"inputTokens\":478,\"outputTokens\":64},\"actualCostUsd\":0.001596,\"durationMs\":7}",
+        "connection_id": "anthropic",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd"
+      },
+      {
+        "id": "4ddcab62-90df-4704-8c83-4ac1ea36a009",
+        "purpose": "product",
+        "role": "shot_planner",
+        "model_id": "claude-sonnet",
+        "status": "succeeded",
+        "estimated_cost_usd": 0.060922,
+        "actual_cost_usd": 0.001562,
+        "created_at": 1793953145879,
+        "receipt": "{\"id\":\"4ddcab62-90df-4704-8c83-4ac1ea36a009\",\"role\":\"shot_planner\",\"purpose\":\"product\",\"projectId\":\"1db398be-52e0-4e6b-b7cc-2b6f3c5919bd\",\"releaseId\":\"fd9f68d8-a0b7-46ef-95ba-0aefe0d4893b\",\"roleConfigHash\":\"878fb3a470037b86ebad8aed00ed0b9eeda4c0a4ec57fd39b39767ecdbc034d9\",\"modelId\":\"claude-sonnet\",\"modelLabel\":\"Claude Sonnet\",\"connectionId\":\"anthropic\",\"providerModel\":\"claude-sonnet-5-5\",\"instructions\":{\"id\":\"shot_planner\",\"version\":1},\"params\":{\"max_tokens\":6000},\"inputHash\":\"afe20570519ee2d9fc8dbc384e01db8da034c8fa4d9078017614cb55105b37d3\",\"idempotencyKey\":\"55d4e6c9c38b37a74b509614cecf08db7fbb0396bd8961e3ed39ca6b49127a23\",\"status\":\"succeeded\",\"attempts\":1,\"estimatedCostUsd\":0.060922,\"createdAt\":\"2026-11-06T08:19:05.879Z\",\"usage\":{\"inputTokens\":461,\"outputTokens\":64},\"actualCostUsd\":0.001562,\"durationMs\":28}",
+        "connection_id": "anthropic",
+        "project_id": "1db398be-52e0-4e6b-b7cc-2b6f3c5919bd"
+      }
+    ]
+  }
+}

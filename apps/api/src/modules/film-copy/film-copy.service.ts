@@ -20,6 +20,7 @@ import {
   foreignRowProblem,
   projectsDir,
   readFilmRows,
+  upgradeFilmRows,
   writeFilmRows,
   type FilmRow,
   type OpenedDatabase,
@@ -192,12 +193,14 @@ export class FilmCopyService implements OnModuleInit {
 
   private async unpack(archive: string, staging: string): Promise<Project> {
     // Prima l'indice, tutto controllato: nessun file si scrive per una copia che non si può aprire.
-    const { projectId, schemaVersion, tables } = await withZip(archive, readManifest);
-    if (schemaVersion > this.opened.schemaVersion) throw rejected('filmTooNew');
-    if (!isSafeId(projectId) || foreignRowProblem(tables, projectId) !== undefined) {
+    const manifest = await withZip(archive, readManifest);
+    const { projectId } = manifest;
+    if (manifest.schemaVersion > this.opened.schemaVersion) throw rejected('filmTooNew');
+    if (!isSafeId(projectId) || foreignRowProblem(manifest.tables, projectId) !== undefined) {
       throw rejected('copyFile');
     }
     if (filmExists(this.opened.db, projectId)) throw rejected('filmExists');
+    const tables = this.upgraded(manifest);
 
     await withZip(archive, (zip) => extractFiles(zip, staging, projectId));
     await this.putInPlace(projectId, path.join(staging, 'progetti', projectId), () => {
@@ -210,6 +213,23 @@ export class FilmCopyService implements OnModuleInit {
       }
     });
     return this.projects.get(projectId);
+  }
+
+  /**
+   * Una copia di una versione vecchia passa per gli stessi aggiornamenti dei dati veri (D94). Righe che non entrano
+   * nello schema della sua versione vogliono dire una copia rovinata; il disco pieno resta disco pieno. Il
+   * controllo si rifà sulle righe aggiornate: una migrazione non deve poter portare fuori dal film.
+   */
+  private upgraded(manifest: FilmCopyManifest): Readonly<Record<string, readonly FilmRow[]>> {
+    let tables: Readonly<Record<string, readonly FilmRow[]>>;
+    try {
+      tables = upgradeFilmRows(this.opened, manifest);
+    } catch (error) {
+      if (isDiskFull(error)) throw error;
+      throw rejected('copyFile');
+    }
+    if (foreignRowProblem(tables, manifest.projectId) !== undefined) throw rejected('copyFile');
+    return tables;
   }
 
   /**

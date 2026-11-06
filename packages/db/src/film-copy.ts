@@ -1,6 +1,10 @@
+import type Database from 'better-sqlite3';
 import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 
-import type { FilmzyDb } from './open.js';
+import { openSqlite, type FilmzyDb, type OpenedDatabase } from './open.js';
+import * as schema from './schema.js';
 
 /** Una riga così come sta nel database: i nomi delle colonne sono quelli di SQLite. */
 export type FilmRow = Record<string, unknown>;
@@ -169,10 +173,15 @@ export function writeFilmRows(
 ): void {
   db.transaction((tx) => {
     for (const entry of FILM_TABLES) {
+      const rows = tables[entry.table] ?? [];
+      // Una tabella che nello schema di una versione vecchia non c'era ancora: niente da scrivere.
+      if (rows.length === 0) continue;
       const columns = columnsOf(tx, entry.table);
       const verb = CONTENT_ADDRESSED.has(entry.table) ? sql`insert or ignore` : sql`insert`;
-      for (const row of tables[entry.table] ?? []) {
+      for (const row of rows) {
         const names = Object.keys(row).filter((name) => columns.has(name));
+        if (names.length === 0)
+          throw new Error(`Una riga di «${entry.table}» non ha colonne note.`);
         tx.run(
           sql`${verb} into ${id(entry.table)} (${sql.join(names.map(id), sql`, `)}) values (${sql.join(
             names.map((name) => sql`${row[name] as string | number | null}`),
@@ -182,4 +191,78 @@ export function writeFilmRows(
       }
     }
   });
+}
+
+/** Quello che serve per rifare le migrazioni su una copia: dove sono, fin dove arrivano, e SQLite. */
+export type MigrationSource = Pick<
+  OpenedDatabase,
+  'migrationsDir' | 'nativeBinding' | 'schemaVersion'
+>;
+
+/**
+ * Un database vuoto, in memoria, con lo schema di una versione passata: le sue prime `version` migrazioni. Le
+ * altre si applicano con `upgrade`. Nessun file: sparisce con `close`.
+ */
+export interface PastDatabase {
+  sqlite: Database.Database;
+  db: FilmzyDb;
+  upgrade: () => void;
+  close: () => void;
+}
+
+export function databaseAtVersion(source: MigrationSource, version: number): PastDatabase {
+  const migrations = readMigrationFiles({ migrationsFolder: source.migrationsDir });
+  const sqlite = openSqlite(':memory:', source.nativeBinding);
+  try {
+    runMigrations(sqlite, migrations.slice(0, version));
+  } catch (error) {
+    sqlite.close();
+    throw error;
+  }
+  return {
+    sqlite,
+    db: drizzle(sqlite, { schema }),
+    upgrade: () => {
+      runMigrations(sqlite, migrations.slice(version));
+    },
+    close: () => {
+      sqlite.close();
+    },
+  };
+}
+
+function runMigrations(
+  sqlite: Database.Database,
+  migrations: ReturnType<typeof readMigrationFiles>,
+) {
+  sqlite.transaction(() => {
+    for (const statement of migrations.flatMap((migration) => migration.sql)) {
+      if (statement.trim() !== '') sqlite.exec(statement);
+    }
+  })();
+}
+
+/**
+ * Le righe di una copia salvata con una versione vecchia, portate alla versione di adesso (D94). Si scrivono in
+ * un database con lo schema di allora, e su quello si fanno le stesse migrazioni che hanno aggiornato i dati
+ * veri, comprese quelle che cambiano i dati e non solo le colonne. Una copia della stessa versione passa così
+ * com'è.
+ */
+export function upgradeFilmRows(
+  source: MigrationSource,
+  copy: {
+    projectId: string;
+    schemaVersion: number;
+    tables: Readonly<Record<string, readonly FilmRow[]>>;
+  },
+): Readonly<Record<string, readonly FilmRow[]>> {
+  if (copy.schemaVersion === source.schemaVersion) return copy.tables;
+  const then = databaseAtVersion(source, copy.schemaVersion);
+  try {
+    writeFilmRows(then.db, copy.tables);
+    then.upgrade();
+    return readFilmRows(then.db, copy.projectId);
+  } finally {
+    then.close();
+  }
 }

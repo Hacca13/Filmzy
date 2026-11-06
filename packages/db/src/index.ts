@@ -34,6 +34,7 @@ export {
   filmHasOpenJobs,
   foreignRowProblem,
   readFilmRows,
+  upgradeFilmRows,
   writeFilmRows,
   type FilmRow,
 } from './film-copy.js';

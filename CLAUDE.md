@@ -52,7 +52,7 @@ pnpm pacchetto                                      # l'installatore del program
 9. **Lavori lunghi in coda.** Nessuna chiamata a un modello immagine o video dentro una richiesta HTTP.
 10. **Idempotenza:** un lavoro ripetuto non deve contare due volte nella spesa. **Dopo un riavvio nessun lavoro riparte da solo:** si chiude con il motivo e decide l'utente, che paga (D84).
 11. **I file dei fornitori si copiano subito** nella cartella del progetto: mai salvare solo il loro link.
-12. **Interfaccia in italiano e semplice:** nelle schermate normali l'utente finale non vede mai "prompt", "modello", "token" o "temperatura". Fanno eccezione «Chi fa cosa» e le impostazioni avanzate, dove si sceglie fornitore, modello, versione delle istruzioni e «Creatività» (la temperatura): D38.
+12. **Interfaccia in italiano e semplice:** nelle schermate normali l'utente finale non vede mai "prompt", "modello", "token" o "temperatura". Fanno eccezione «Chi fa cosa» e le impostazioni avanzate, dove si sceglie fornitore, modello, versione delle istruzioni, «Creatività» (la temperatura, D38) e «Impegno» (l'effort, D95).
 
 ## Convenzioni
 
@@ -101,6 +101,7 @@ pnpm pacchetto                                      # l'installatore del program
 | Servizio (il modello che l'utente sceglie per una generazione) | `ModelEntry`, `modelId`, `ModelOption` |
 | Scelte dell'utente (servizi attivati, predefiniti, tetti) | `UserSettings`, tabella `settings` |
 | Istruzioni | `Instructions` (`id@version`) |
+| Creatività, impegno | parametri `temperature`, `effort` del ruolo |
 | Bozza, release | `TroupeDraft`, `TroupeRelease` |
 | Traduttore | `Translator` |
 | Scontrino | `GenerationReceipt` |
@@ -131,7 +132,7 @@ pnpm pacchetto                                      # l'installatore del program
 
 - Non introdurre LangChain, LlamaIndex o framework agentici.
 - Non aggirare i filtri dei fornitori né il moderatore.
-- Non mostrare nelle schermate normali prompt, id tecnici dei modelli o parametri. Il nome amichevole di un servizio (`label` del catalogo), con costo e voto, sì: serve a scegliere (D36). «Chi fa cosa» e le impostazioni avanzate mostrano anche modello, versione delle istruzioni e creatività (D38).
+- Non mostrare nelle schermate normali prompt, id tecnici dei modelli o parametri. Il nome amichevole di un servizio (`label` del catalogo), con costo e voto, sì: serve a scegliere (D36). «Chi fa cosa» e le impostazioni avanzate mostrano anche modello, versione delle istruzioni, creatività e impegno (D38, D95).
 - Non accendere `real_people` senza una decisione registrata e la consulenza legale.
 - Non togliere le impostazioni prudenti di default (moderatore, solo persone generate, dicitura AI nei titoli): l'utente le può cambiare, ma con un'avvertenza (D19, D28).
 - Non accettare di default immagini con persone caricate dall'utente e non ritoccare foto di persone: i personaggi li crea Filmzy (D19).

@@ -2,6 +2,7 @@ import type { RoleState } from '@filmzy/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
+  discardedText,
   AS_DEFAULT,
   parseTemperature,
   problemText,
@@ -90,5 +91,16 @@ describe('temperatureToField', () => {
   it("con la virgola, vuoto se non c'è", () => {
     expect(temperatureToField(0.7)).toBe('0,7');
     expect(temperatureToField(undefined)).toBe('');
+  });
+});
+
+describe('discardedText', () => {
+  it('dice cosa si è perso cambiando servizio, e niente se non si è perso niente', () => {
+    expect(discardedText([])).toBeUndefined();
+    expect(discardedText(['temperature'])).toBe(
+      'La creatività che avevi scelto non vale per questo servizio: l’ho tolta.',
+    );
+    expect(discardedText(['effort'])).toContain('L’impegno che avevi scelto');
+    expect(discardedText(['temperature', 'effort'])).toContain('li ho tolti');
   });
 });

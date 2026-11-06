@@ -1,4 +1,5 @@
 import {
+  setRoleEffortBodySchema,
   setRoleServiceBodySchema,
   setRoleTemperatureBodySchema,
   type RoleChangeResult,
@@ -27,5 +28,10 @@ export class RolesController {
   @Put(':id/temperature')
   setTemperature(@Param('id') id: string, @Body() body: unknown): Promise<RoleChangeResult> {
     return this.roles.setTemperature(id, parseBody(setRoleTemperatureBodySchema, body).value);
+  }
+
+  @Put(':id/effort')
+  setEffort(@Param('id') id: string, @Body() body: unknown): Promise<RoleChangeResult> {
+    return this.roles.setEffort(id, parseBody(setRoleEffortBodySchema, body).value);
   }
 }

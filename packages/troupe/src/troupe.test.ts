@@ -127,7 +127,7 @@ describe('run con il fornitore finto', () => {
     expect(data.prompt).toContain('town square');
     expect(receipt.status).toBe('succeeded');
     expect(receipt.modelId).toBe('claude-sonnet');
-    expect(receipt.modelLabel).toBe('Claude Sonnet');
+    expect(receipt.modelLabel).toBe('Claude Sonnet 5.5');
     expect(receipt.instructions).toEqual({ id: 'cinematographer', version: 1, variant: undefined });
     expect(receipt.attempts).toBe(1);
     expect(receipt.actualCostUsd).toBeGreaterThan(0);
@@ -267,7 +267,7 @@ describe('estimate (T2.5)', () => {
       ROLE_INPUT_EXAMPLES.cinematographer as never,
     );
 
-    expect(estimate).toMatchObject({ modelId: 'claude-sonnet', modelLabel: 'Claude Sonnet' });
+    expect(estimate).toMatchObject({ modelId: 'claude-sonnet', modelLabel: 'Claude Sonnet 5.5' });
     expect(estimate.estimatedCostUsd).toBeGreaterThan(0);
     // Stimare non è generare: niente scontrino, niente rete.
     expect(receipts.all()).toEqual([]);

@@ -33,6 +33,30 @@ export function selectedService(role: RoleState): string {
 }
 
 /** Un numero per il campo della creatività: virgola decimale, come si legge in italiano. */
+/** I livelli d'impegno (D95) detti a parole: quanto il servizio ragiona prima di rispondere. */
+export const EFFORT_LABELS: Record<string, string> = {
+  low: 'Basso · più veloce ed economico',
+  medium: 'Medio',
+  high: 'Alto',
+  xhigh: 'Molto alto',
+  max: 'Massimo · più lento e più caro',
+};
+
+export const effortLabel = (level: string) => EFFORT_LABELS[level] ?? level;
+
+/** Cosa dire se cambiando servizio si sono perse delle regolazioni. */
+export function discardedText(discarded: readonly string[]): string | undefined {
+  const temperature = discarded.includes('temperature');
+  const effort = discarded.includes('effort');
+  if (temperature && effort) {
+    return 'La creatività e l’impegno che avevi scelto non valgono per questo servizio: li ho tolti.';
+  }
+  if (temperature)
+    return 'La creatività che avevi scelto non vale per questo servizio: l’ho tolta.';
+  if (effort) return 'L’impegno che avevi scelto non vale per questo servizio: l’ho tolto.';
+  return undefined;
+}
+
 export function temperatureToField(value: number | undefined): string {
   return value === undefined ? '' : String(value).replace('.', ',');
 }

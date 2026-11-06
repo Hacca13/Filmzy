@@ -50,7 +50,7 @@ describe('prova della bozza (T2.5)', () => {
     const { estimate, example } = draftTestEstimateSchema.parse(reply.body);
 
     expect(reply.status).toBe(200);
-    expect(estimate).toMatchObject({ modelId: 'claude-sonnet', modelLabel: 'Claude Sonnet' });
+    expect(estimate).toMatchObject({ modelId: 'claude-sonnet', modelLabel: 'Claude Sonnet 5.5' });
     expect(estimate.estimatedCostUsd).toBeGreaterThan(0);
     expect(example).toMatchObject({ shot: expect.anything() as unknown });
     expect(receipts.list({ purpose: 'draft_test' })).toEqual([]);

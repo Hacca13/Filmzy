@@ -153,3 +153,45 @@ describe('creatività (D42)', () => {
     expect(await statusOf(service.setTemperature('composer', 0.5))).toBe(409);
   });
 });
+
+describe('impegno (D95)', () => {
+  it('compare dove il servizio lo accetta, coi suoi livelli, e senza scelta non ha un valore', async () => {
+    expect((await state('screenwriter')).effort).toEqual({
+      levels: ['low', 'medium', 'high', 'xhigh', 'max'],
+      chosen: false,
+    });
+
+    await service.setService('screenwriter', 'claude-opus-4-6');
+
+    expect((await state('screenwriter')).effort?.levels).toEqual(['low', 'medium', 'high', 'max']);
+  });
+
+  it('si sceglie fra i livelli del servizio, e con null si torna al predefinito', async () => {
+    const result = await service.setEffort('screenwriter', 'xhigh');
+
+    const screenwriter = result.overview.roles.find((role) => role.roleId === 'screenwriter');
+    expect(screenwriter?.effort).toMatchObject({ value: 'xhigh', chosen: true });
+
+    await service.setEffort('screenwriter', null);
+    expect((await state('screenwriter')).effort).toMatchObject({ chosen: false });
+    expect((await state('screenwriter')).effort?.value).toBeUndefined();
+  });
+
+  it('un livello che il servizio non ha è rifiutato, e non cambia niente', async () => {
+    expect(await statusOf(service.setEffort('screenwriter', 'tantissimo'))).toBe(400);
+    expect((await state('screenwriter')).effort?.chosen).toBe(false);
+  });
+
+  it('cambiando servizio, un livello che il nuovo non ha si scarta e lo dice; uno che ha resta', async () => {
+    await service.setEffort('screenwriter', 'xhigh');
+
+    const result = await service.setService('screenwriter', 'claude-opus-4-6');
+    expect(result.discarded).toEqual(['effort']);
+    expect((await state('screenwriter')).effort?.chosen).toBe(false);
+
+    await service.setEffort('screenwriter', 'max');
+    const kept = await service.setService('screenwriter', 'claude-opus');
+    expect(kept.discarded).toEqual([]);
+    expect((await state('screenwriter')).effort).toMatchObject({ value: 'max', chosen: true });
+  });
+});

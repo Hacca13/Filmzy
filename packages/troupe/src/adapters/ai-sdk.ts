@@ -73,6 +73,7 @@ export function aiSdkLlmAdapter(options: AdapterOptions, model: ModelFactory): L
     async generate(req: LlmRequest): Promise<LlmResponse> {
       const temperature = numberParam(req.params?.temperature);
       const maxOutputTokens = numberParam(req.params?.max_tokens);
+      const effort = req.params?.effort;
 
       try {
         const result = await generateText({
@@ -81,6 +82,8 @@ export function aiSdkLlmAdapter(options: AdapterOptions, model: ModelFactory): L
           ...promptOf(req),
           ...(temperature === undefined ? {} : { temperature }),
           ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+          // L'impegno (D95) va al fornitore così com'è: i livelli ammessi li ha già controllati il catalogo.
+          ...(typeof effort === 'string' ? { providerOptions: { anthropic: { effort } } } : {}),
           // Output strutturato: lo schema è quello del ruolo, non un testo nel prompt (§4.9).
           output: Output.object({ schema: req.outputSchema ?? z.unknown() }),
           abortSignal: AbortSignal.timeout(options.connection.timeout_s * 1000),

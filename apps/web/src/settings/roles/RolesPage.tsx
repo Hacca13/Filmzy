@@ -1,13 +1,15 @@
 import type { RoleChangeResult, RoleState } from '@filmzy/contracts';
 import { useState } from 'react';
 
-import { fetchRoles, setRoleService, setRoleTemperature } from '../../api/roles';
+import { fetchRoles, setRoleEffort, setRoleService, setRoleTemperature } from '../../api/roles';
 import { Notice, Panel } from '../../components/ui';
 import { useResource } from '../../lib/use-resource';
 import { describeError } from '../messages';
 import { useAction } from '../use-action';
 import {
   AS_DEFAULT,
+  discardedText,
+  effortLabel,
   parseTemperature,
   roleSummary,
   selectedService,
@@ -16,7 +18,7 @@ import {
 
 /**
  * «Chi fa cosa» (T2.7, D38): per ogni ruolo, quale fornitore e quale servizio lavorano, la
- * creatività (solo dove il servizio la accetta) e la versione delle istruzioni. Le scelte valgono
+ * creatività e l'impegno (solo dove il servizio li accetta, D95) e la versione delle istruzioni. Le scelte valgono
  * subito, senza pubblicare, e vincono sul predefinito e sulla release.
  */
 export function RolesPage() {
@@ -29,11 +31,7 @@ export function RolesPage() {
 
   const applied = (result: RoleChangeResult) => {
     setData(result.overview);
-    setNotice(
-      result.discarded.includes('temperature')
-        ? 'La creatività che avevi scelto non vale per questo servizio: l’ho tolta.'
-        : undefined,
-    );
+    setNotice(discardedText(result.discarded));
   };
 
   return (
@@ -99,6 +97,18 @@ export function RoleRow({ role, open, onToggle, onApplied }: RowProps) {
               }}
             />
           )}
+          {role.effort === undefined ? null : (
+            <EffortChoice
+              role={role}
+              effort={role.effort}
+              busy={action.busy}
+              onChoose={(value) => {
+                action.run(async () => {
+                  onApplied(await setRoleEffort(role.roleId, value));
+                });
+              }}
+            />
+          )}
           {role.instructions === undefined ? null : (
             <p className="hint">
               Istruzioni: {role.instructions.label}
@@ -148,6 +158,46 @@ function ServiceChoice({
       {role.providers.length === 0 ? (
         <p className="hint">Nessun servizio adatto: attivane uno in Connessioni.</p>
       ) : null}
+    </div>
+  );
+}
+
+/** Il predefinito del servizio: nessuna scelta. */
+const SERVICE_DEFAULT = '';
+
+export function EffortChoice({
+  role,
+  effort,
+  busy,
+  onChoose,
+}: {
+  role: RoleState;
+  effort: NonNullable<RoleState['effort']>;
+  busy: boolean;
+  onChoose: (value: string | null) => void;
+}) {
+  return (
+    <div className="field">
+      <label htmlFor={`effort-${role.roleId}`}>Impegno</label>
+      <select
+        id={`effort-${role.roleId}`}
+        value={effort.value ?? SERVICE_DEFAULT}
+        disabled={busy}
+        onChange={(event) => {
+          onChoose(event.target.value === SERVICE_DEFAULT ? null : event.target.value);
+        }}
+      >
+        <option value={SERVICE_DEFAULT}>Quello del servizio</option>
+        {effort.levels.map((level) => (
+          <option key={level} value={level}>
+            {effortLabel(level)}
+          </option>
+        ))}
+      </select>
+      <p className="hint">
+        Quanto il servizio ragiona prima di rispondere: con più impegno le risposte sono più curate,
+        ma più lente e più care.
+      </p>
     </div>
   );
 }

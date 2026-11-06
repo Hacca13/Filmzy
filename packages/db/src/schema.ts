@@ -129,6 +129,8 @@ export type InstructionVersionRow = typeof instructionVersions.$inferSelect;
  * sola, in JSON: è un oggetto che si legge e si riscrive tutto insieme.
  */
 export const USER_SETTINGS_ID = 'utente';
+/** Il seme dei file del programma applicato l'ultima volta (D95). */
+export const APPLIED_SEED_ID = 'seme_applicato';
 
 /** Le preferenze dell'app (audio dei take, controllo aggiornamenti): non riguardano la troupe. */
 export const APP_PREFERENCES_ID = 'preferenze';

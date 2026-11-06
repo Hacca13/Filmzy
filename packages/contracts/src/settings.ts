@@ -15,13 +15,15 @@ export type InstructionsRef = z.infer<typeof instructionsRefSchema>;
 
 /**
  * Regolazioni di un ruolo scelte dall'utente in «Chi fa cosa» (architettura §4.3, §5.6, D38): se ci
- * sono, vincono sul predefinito del gruppo. `params.temperature` si accetta solo se il modello
- * scelto la dichiara e dentro i suoi limiti: il controllo è del validatore (T0.4), non di questo
- * schema.
+ * sono, vincono sul predefinito del gruppo. `params.temperature` e `params.effort` (l'impegno, D95)
+ * si accettano solo se il modello scelto li dichiara e dentro i suoi limiti: il controllo è del
+ * validatore (T0.4), non di questo schema.
  */
 export const roleSettingsSchema = z.object({
   modelId: modelIdSchema.optional(),
-  params: z.object({ temperature: z.number().optional() }).optional(),
+  params: z
+    .object({ temperature: z.number().optional(), effort: z.string().min(1).optional() })
+    .optional(),
   instructions: instructionsRefSchema.optional(),
 });
 

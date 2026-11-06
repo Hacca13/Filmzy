@@ -9,9 +9,12 @@ import {
   type OpenedDatabase,
   type TroupeStore,
 } from '@filmzy/db';
+import type { TroupeConfigData } from '@filmzy/contracts';
 import {
+  configHash,
   createTroupe,
   FileInstructionsSource,
+  loadConfigFiles,
   MemoryReceiptSink,
   type TroupeConfig,
 } from '@filmzy/troupe';
@@ -156,7 +159,7 @@ describe('primo avvio', () => {
     expect(Object.keys(attiva?.config.roles ?? {})).toContain('cinematographer');
   });
 
-  it('agli avvii dopo non fa niente', async () => {
+  it('agli avvii dopo, con gli stessi file, non fa niente', async () => {
     await service.onApplicationBootstrap();
     const prima = store.activeRelease().release?.id;
 
@@ -164,6 +167,59 @@ describe('primo avvio', () => {
 
     expect(store.activeRelease().release?.id).toBe(prima);
     expect(service.releases()).toHaveLength(1);
+  });
+});
+
+describe('una versione nuova con file di seme nuovi (D95)', () => {
+  /** Chi ha installato una versione passata: il seme di allora, senza Opus e senza l'impegno di Sonnet. */
+  async function installatoPrima(): Promise<TroupeConfigData> {
+    const { config: seme } = await loadConfigFiles(CONFIG_DIR);
+    if (seme === undefined) throw new Error('il seme non si è caricato');
+    const vecchio = structuredClone(seme);
+    delete vecchio.models['claude-opus'];
+    const sonnet = vecchio.models['claude-sonnet'];
+    if (sonnet !== undefined) sonnet.params = { max_tokens: { min: 1, max: 128000 } };
+    store.publish({ config: vecchio, hash: configHash(vecchio), author: 'programma' });
+    return vecchio;
+  }
+
+  it('i modelli nuovi arrivano, e quello che l’utente non ha toccato si aggiorna', async () => {
+    await installatoPrima();
+
+    await service.onApplicationBootstrap();
+
+    const attiva = store.activeRelease().release;
+    expect(attiva?.author).toBe('programma');
+    expect(attiva?.config.models['claude-opus']).toBeDefined();
+    expect(attiva?.config.models['claude-sonnet']?.params?.effort).toBeDefined();
+  });
+
+  it('quello che l’utente ha cambiato resta suo, anche nella bozza aperta', async () => {
+    const vecchio = await installatoPrima();
+    const mio = structuredClone(vecchio);
+    const sceneggiatore = mio.roles.screenwriter;
+    if (sceneggiatore === undefined) throw new Error('manca lo sceneggiatore');
+    mio.roles.screenwriter = { ...sceneggiatore, label: 'Il mio sceneggiatore' };
+    store.publish({ config: mio, hash: configHash(mio), author: 'utente' });
+    store.saveDraft(mio);
+
+    await service.onApplicationBootstrap();
+
+    expect(store.activeRelease().release?.config.roles.screenwriter?.label).toBe(
+      'Il mio sceneggiatore',
+    );
+    expect(store.getDraft()?.config.models['claude-opus']).toBeDefined();
+    expect(store.getDraft()?.config.roles.screenwriter?.label).toBe('Il mio sceneggiatore');
+  });
+
+  it('applicato una volta, all’avvio dopo non pubblica di nuovo', async () => {
+    await installatoPrima();
+    await service.onApplicationBootstrap();
+    const dopo = service.releases().length;
+
+    await service.onApplicationBootstrap();
+
+    expect(service.releases()).toHaveLength(dopo);
   });
 });
 

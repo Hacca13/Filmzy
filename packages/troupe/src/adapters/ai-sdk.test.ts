@@ -117,6 +117,25 @@ describe("adapter di testo con l'AI SDK", () => {
     expect(user?.content[1]?.mediaType).toBe('image/png');
   });
 
+  it('l’impegno scelto arriva al fornitore; senza scelta non si manda niente (D95)', async () => {
+    const seen: unknown[] = [];
+    const answering = () =>
+      new MockLanguageModelV4({
+        doGenerate: (call) => {
+          seen.push(call.providerOptions);
+          const model = modelAnswering(JSON.stringify({ allowed: true, reason: 'ok' }))();
+          return (model as MockLanguageModelV4).doGenerate(call);
+        },
+      });
+    const adapter = aiSdkLlmAdapter(options, answering);
+
+    await adapter.generate({ ...request, params: { effort: 'xhigh' } });
+    await adapter.generate({ ...request, params: { max_tokens: 500 } });
+
+    expect(seen[0]).toEqual({ anthropic: { effort: 'xhigh' } });
+    expect(seen[1]).toBeUndefined();
+  });
+
   it('una risposta che non è nella forma richiesta diventa invalid_output', async () => {
     const adapter = aiSdkLlmAdapter(options, modelAnswering('non è JSON'));
 

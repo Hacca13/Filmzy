@@ -14,6 +14,7 @@ import { and, desc, eq, isNotNull } from 'drizzle-orm';
 
 import type { FilmzyDb } from './open.js';
 import {
+  APPLIED_SEED_ID,
   DRAFT_ID,
   instructionVersions,
   settings,
@@ -72,6 +73,12 @@ export interface TroupeStore {
   listReleases: (limit?: number) => TroupeRelease[];
   getSettings: () => StoredSettings;
   saveSettings: (value: UserSettings) => void;
+  /**
+   * Il seme dei file del programma applicato l'ultima volta (§6.2, D95): dice cosa della configurazione è
+   * del programma e cosa l'ha cambiato l'utente. `undefined` se non c'è, o non si legge.
+   */
+  getAppliedSeed: () => TroupeConfigData | undefined;
+  saveAppliedSeed: (config: TroupeConfigData) => void;
   addInstructionVersion: (version: InstructionVersion) => void;
   listInstructionVersions: (instructionsId?: string) => InstructionVersion[];
   getInstructionVersion: (
@@ -87,6 +94,15 @@ export interface TroupeStoreOptions {
 
 export function createTroupeStore(db: FilmzyDb, options: TroupeStoreOptions = {}): TroupeStore {
   const now = options.now ?? (() => new Date());
+
+  const saveSetting = (id: string, value: unknown) => {
+    const at = now().getTime();
+    const row = { id, value: JSON.stringify(value), updatedAt: at };
+    db.insert(settings)
+      .values(row)
+      .onConflictDoUpdate({ target: settings.id, set: { value: row.value, updatedAt: at } })
+      .run();
+  };
 
   return {
     getDraft() {
@@ -211,13 +227,18 @@ export function createTroupeStore(db: FilmzyDb, options: TroupeStoreOptions = {}
     },
 
     saveSettings(value) {
-      const at = now().getTime();
-      const row = { id: USER_SETTINGS_ID, value: JSON.stringify(value), updatedAt: at };
+      saveSetting(USER_SETTINGS_ID, value);
+    },
 
-      db.insert(settings)
-        .values(row)
-        .onConflictDoUpdate({ target: settings.id, set: { value: row.value, updatedAt: at } })
-        .run();
+    getAppliedSeed() {
+      const [row] = db.select().from(settings).where(eq(settings.id, APPLIED_SEED_ID)).all();
+      if (row === undefined) return undefined;
+      const parsed = troupeConfigSchema.safeParse(JSON.parse(row.value) as unknown);
+      return parsed.success ? parsed.data : undefined;
+    },
+
+    saveAppliedSeed(config) {
+      saveSetting(APPLIED_SEED_ID, config);
     },
 
     addInstructionVersion(version) {

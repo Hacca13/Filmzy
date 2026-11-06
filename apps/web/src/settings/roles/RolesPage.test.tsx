@@ -90,3 +90,27 @@ describe('RoleRow', () => {
     expect(html).toContain('Nessun servizio adatto: attivane uno in Connessioni');
   });
 });
+
+describe('impegno (D95)', () => {
+  it('compare solo dove il servizio lo accetta, coi suoi livelli detti a parole', () => {
+    expect(render(role())).not.toContain('Impegno');
+
+    const html = render(
+      role({ effort: { levels: ['low', 'medium', 'high', 'max'], chosen: false } }),
+    );
+
+    expect(html).toContain('Impegno');
+    expect(html).toContain('Quello del servizio');
+    expect(html).toContain('Basso · più veloce ed economico');
+    expect(html).toContain('Massimo · più lento e più caro');
+    expect(html).not.toContain('Molto alto');
+  });
+
+  it('il livello scelto è quello selezionato', () => {
+    const html = render(
+      role({ effort: { value: 'high', levels: ['low', 'medium', 'high'], chosen: true } }),
+    );
+
+    expect(html).toMatch(/<option value="high" selected="">Alto<\/option>/);
+  });
+});

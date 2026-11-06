@@ -50,7 +50,8 @@ describe('chi fa cosa (T2.7)', () => {
         connectionId: 'anthropic',
         label: 'Anthropic',
         services: expect.arrayContaining([
-          { modelId: 'claude-sonnet', label: 'Claude Sonnet' },
+          { modelId: 'claude-sonnet', label: 'Claude Sonnet 5.5' },
+          { modelId: 'claude-opus', label: 'Claude Opus 5.5' },
           { modelId: 'claude-haiku', label: expect.any(String) as string },
         ]) as unknown[],
       },

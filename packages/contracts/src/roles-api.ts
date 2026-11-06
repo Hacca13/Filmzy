@@ -20,6 +20,17 @@ export const temperatureStateSchema = z.object({
   chosen: z.boolean(),
 });
 
+/**
+ * L'impegno del servizio in uso (D95): quanto ragiona prima di rispondere. C'è solo dove il servizio lo
+ * accetta, con i livelli che accetta; senza scelta vale il predefinito del fornitore.
+ */
+export const effortStateSchema = z.object({
+  /** Quello scelto dall'utente, o quello scritto nella release; assente se nessuno. */
+  value: z.string().min(1).optional(),
+  levels: z.array(z.string().min(1)).min(1),
+  chosen: z.boolean(),
+});
+
 export const roleServiceOptionSchema = z.object({
   modelId: modelIdSchema,
   label: z.string().min(1),
@@ -52,6 +63,7 @@ export const roleStateSchema = z.object({
   /** I servizi fra cui scegliere: attivati, utilizzabili, del tipo giusto e adatti al ruolo. */
   providers: z.array(roleProviderOptionSchema),
   temperature: temperatureStateSchema.optional(),
+  effort: effortStateSchema.optional(),
   instructions: z
     .object({
       /** «Versione 2» o «Le mie istruzioni 1». */
@@ -78,13 +90,23 @@ export const setRoleTemperatureBodySchema = z.object({ value: z.number().nullabl
 
 export type SetRoleTemperatureBody = z.infer<typeof setRoleTemperatureBodySchema>;
 
+/** `PUT /roles/:id/effort`: `null` torna al predefinito. I livelli ammessi li controlla il server. */
+export const setRoleEffortBodySchema = z.object({ value: z.string().min(1).nullable() });
+
+export type SetRoleEffortBody = z.infer<typeof setRoleEffortBodySchema>;
+
+/** Le regolazioni di un ruolo che cambiando servizio si possono perdere. */
+export const ROLE_TUNINGS = ['temperature', 'effort'] as const;
+
+export type RoleTuning = (typeof ROLE_TUNINGS)[number];
+
 /**
  * La risposta a una modifica: il quadro aggiornato e le regolazioni che il servizio nuovo non
  * accetta e che si sono scartate, perché l'interfaccia lo dica (architettura §4.3).
  */
 export const roleChangeResultSchema = z.object({
   overview: rolesOverviewSchema,
-  discarded: z.array(z.enum(['temperature'])),
+  discarded: z.array(z.enum(ROLE_TUNINGS)),
 });
 
 export type RoleChangeResult = z.infer<typeof roleChangeResultSchema>;

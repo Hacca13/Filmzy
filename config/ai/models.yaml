@@ -21,36 +21,92 @@ version: 1
 
 models:
   # --- LLM -----------------------------------------------------------------
-  # Prezzi e limiti: https://platform.claude.com/docs/en/models/sonnet-5-5/overview (21/10/2026)
-  # Nessuno dei due accetta la temperatura: "Setting temperature, top_p, or top_k returns a 400
-  # error" (Sonnet 5.5) e Haiku 5.5 chiede di ometterla. Non è dichiarata, quindi le impostazioni
-  # avanzate non mostrano «Creatività» per questi servizi (D38, D42).
+  # Verificati il 06/11/2026 sulle pagine di Anthropic: https://platform.claude.com/docs/en/models/overview
+  # (id, prezzi, 128.000 token di risposta), …/about-claude/pricing e …/build-with-claude/effort.
+  # effort («Impegno» in «Chi fa cosa», D95): quanto il modello ragiona. Le 5.x e Fable 5.1 accettano i
+  # cinque livelli; le 4.6 non hanno xhigh. Senza scelta vale il predefinito del fornitore (medium su
+  # Opus 5.5 e Haiku 5.5, high sugli altri).
+  # Temperatura: le 5.x e Fable 5.1 la rifiutano ("Setting temperature, top_p, or top_k returns a 400
+  # error"), le 4.6 la accettano. Dove non è dichiarata, «Creatività» non si vede (D38, D42).
+  # Gli id del catalogo di Sonnet e Haiku restano quelli di prima: li usano i ruoli e le scelte degli utenti.
+  claude-fable:
+    label: Claude Fable 5.1
+    kind: llm
+    connection: anthropic
+    provider_model: claude-fable-5-1
+    capabilities: [structured_output, vision]
+    params:
+      max_tokens: { min: 1, max: 128000 }
+      effort: { values: [low, medium, high, xhigh, max] }
+    pricing: { unit: per_mtok, input: 10.00, output: 50.00, checked: 2026-11-06 }
+    status: active
+
+  claude-opus:
+    label: Claude Opus 5.5
+    kind: llm
+    connection: anthropic
+    provider_model: claude-opus-5-5
+    capabilities: [structured_output, vision]
+    params:
+      max_tokens: { min: 1, max: 128000 }
+      effort: { values: [low, medium, high, xhigh, max] }
+    pricing: { unit: per_mtok, input: 4.00, output: 20.00, checked: 2026-11-06 }
+    status: active
+
   claude-sonnet:
-    label: Claude Sonnet
+    label: Claude Sonnet 5.5
     kind: llm
     connection: anthropic
     provider_model: claude-sonnet-5-5
     capabilities: [structured_output, vision]
     params:
       max_tokens: { min: 1, max: 128000 }
-    pricing: { unit: per_mtok, input: 2.00, output: 10.00, checked: 2026-10-21 }
+      effort: { values: [low, medium, high, xhigh, max] }
+    pricing: { unit: per_mtok, input: 2.00, output: 10.00, checked: 2026-11-06 }
     status: active
 
   claude-haiku:
-    label: Claude Haiku
+    label: Claude Haiku 5.5
     kind: llm
     connection: anthropic
     provider_model: claude-haiku-5-5
     capabilities: [structured_output, vision]
     params:
       max_tokens: { min: 1, max: 128000 }
+      effort: { values: [low, medium, high, xhigh, max] }
     pricing:
       unit: per_mtok
       input: 0.10
       output: 0.50
       tiers:                                   # prezzo più alto oltre i 100.000 token di prompt
         - { above_prompt_tokens: 100000, input: 0.50, output: 2.50 }
-      checked: 2026-10-21
+      checked: 2026-11-06
+    status: active
+
+  claude-opus-4-6:
+    label: Claude Opus 4.6
+    kind: llm
+    connection: anthropic
+    provider_model: claude-opus-4-6
+    capabilities: [structured_output, vision]
+    params:
+      max_tokens: { min: 1, max: 128000 }
+      effort: { values: [low, medium, high, max] }
+      temperature: { min: 0, max: 1 }
+    pricing: { unit: per_mtok, input: 5.00, output: 25.00, checked: 2026-11-06 }
+    status: active
+
+  claude-sonnet-4-6:
+    label: Claude Sonnet 4.6
+    kind: llm
+    connection: anthropic
+    provider_model: claude-sonnet-4-6
+    capabilities: [structured_output, vision]
+    params:
+      max_tokens: { min: 1, max: 128000 }
+      effort: { values: [low, medium, high, max] }
+      temperature: { min: 0, max: 1 }
+    pricing: { unit: per_mtok, input: 3.00, output: 15.00, checked: 2026-11-06 }
     status: active
 
   # --- Immagini --------------------------------------------------------------

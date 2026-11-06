@@ -4,6 +4,7 @@ import {
   type ModelEntry,
   type RoleConfigEntry,
   type RoleId,
+  type RoleSettings,
   type UserSettings,
 } from '@filmzy/contracts';
 
@@ -54,12 +55,7 @@ export function resolveRole(
   }
 
   const roleSettings = settings?.roleSettings[roleId as RoleId];
-  const params = {
-    ...role.params,
-    ...(roleSettings?.params?.temperature === undefined
-      ? {}
-      : { temperature: roleSettings.params.temperature }),
-  };
+  const params = { ...role.params, ...chosenParams(roleSettings?.params) };
 
   const chosen = pickModel({ config, roleId, role: { ...role, params }, roleSettings, settings });
 
@@ -78,6 +74,15 @@ export function resolveRole(
       technical_error: role.retries?.technical_error ?? 0,
     },
   };
+}
+
+/** Le regolazioni scelte dall'utente che ci sono davvero: quelle assenti lasciano il valore della release. */
+function chosenParams(params: RoleSettings['params']): Record<string, string | number> {
+  const chosen: Record<string, string | number> = {};
+  // Una regolazione appena tolta resta come chiave senza valore: non deve coprire quella della release.
+  const entries = Object.entries(params ?? {}) as [string, string | number | undefined][];
+  for (const [name, value] of entries) if (value !== undefined) chosen[name] = value;
+  return chosen;
 }
 
 interface PickModelInput {

@@ -20,6 +20,7 @@ import {
   hasErrors,
   loadConfigFiles,
   loadEnvironmentOverlay,
+  mergeSeed,
   validateConfig,
   validateInstructions,
   validateServicePolicy,
@@ -53,6 +54,9 @@ export interface ImportResult extends PublishResult {
 /** Quante pubblicazioni mostra lo storico: abbastanza da non fermarsi mai, senza leggere all'infinito. */
 const MAX_HISTORY = 200;
 
+/** Chi firma le release che fa il programma da sé, dai suoi file di seme. */
+const PROGRAM_AUTHOR = 'programma';
+
 @Injectable()
 export class TroupeConfigService implements OnApplicationBootstrap {
   private readonly log = new Logger('Troupe');
@@ -66,18 +70,21 @@ export class TroupeConfigService implements OnApplicationBootstrap {
   ) {}
 
   /**
-   * Primo avvio: senza nessuna release pubblicata il programma non saprebbe chi fa cosa, quindi si
-   * importano i file di seme che arrivano con l'installazione e si pubblicano. Dall'avvio dopo
-   * questo passo non fa niente.
+   * All'avvio. Al primo, senza nessuna release, il programma non saprebbe chi fa cosa: si importano i
+   * file di seme che arrivano con l'installazione e si pubblicano. Agli altri si applica il seme della
+   * versione installata, se è cambiato (D95).
    */
   async onApplicationBootstrap(): Promise<void> {
     const { release } = this.store.activeRelease();
-    if (release !== undefined) return;
+    if (release !== undefined) {
+      await this.applyNewSeed(release);
+      return;
+    }
 
     const imported = await this.importFromFiles(this.configDir, {
       publish: true,
       note: 'configurazione iniziale, dai file del programma',
-      author: 'programma',
+      author: PROGRAM_AUTHOR,
     });
 
     if (imported.release === undefined) {
@@ -86,7 +93,55 @@ export class TroupeConfigService implements OnApplicationBootstrap {
       );
       return;
     }
+    this.store.saveAppliedSeed(imported.release.config);
     this.log.log(`Configurazione iniziale pubblicata (release ${imported.release.id}).`);
+  }
+
+  /**
+   * Una versione nuova porta un seme nuovo (§6.2, D95): i modelli, i ruoli e i preset nuovi si aggiungono,
+   * quello che l'utente non ha cambiato si aggiorna, quello che ha cambiato resta suo. Le sue scelte in
+   * «Chi fa cosa» e nelle connessioni stanno a parte e non si toccano. Un seme che non si legge, o che
+   * darebbe una configurazione con errori, non cambia niente.
+   */
+  private async applyNewSeed(active: TroupeRelease): Promise<void> {
+    const { config: seed, issues } = await loadConfigFiles(this.configDir);
+    if (seed === undefined) {
+      this.log.error(`Non riesco a leggere i file di seme: ${describe(issues)}`);
+      return;
+    }
+    const applied = this.store.getAppliedSeed() ?? this.firstSeed();
+    if (applied !== undefined && configHash(applied) === configHash(seed)) return;
+
+    const merged = mergeSeed(applied, active.config, seed);
+    if (configHash(merged) !== active.hash) {
+      const result = await this.publishConfig(merged, {
+        note: 'aggiornamento dai file del programma',
+        author: PROGRAM_AUTHOR,
+      });
+      if (result.release === undefined) {
+        this.log.error(`Non riesco ad applicare i file del programma: ${describe(result.issues)}`);
+        return;
+      }
+      this.log.log(
+        `Configurazione aggiornata dai file del programma (release ${result.release.id}).`,
+      );
+    }
+    // Una bozza aperta nelle impostazioni avanzate riceve le stesse novità: pubblicandola non si perdono.
+    const draft = this.store.getDraft();
+    if (draft !== undefined) {
+      this.store.saveDraft(mergeSeed(applied, draft.config, seed), draft.fromReleaseId);
+    }
+    this.store.saveAppliedSeed(seed);
+  }
+
+  /**
+   * Chi ha installato prima che il seme applicato si ricordasse ha una sola release del programma: la prima,
+   * fatta proprio dal seme di allora.
+   */
+  private firstSeed(): TroupeConfigData | undefined {
+    return this.store
+      .listReleases(Number.MAX_SAFE_INTEGER)
+      .findLast((release) => release.author === PROGRAM_AUTHOR)?.config;
   }
 
   draft(): TroupeDraft | undefined {

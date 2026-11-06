@@ -1,9 +1,11 @@
 import {
   modelGroupForRole,
+  ROLE_TUNINGS,
   type RoleChangeResult,
   type RoleId,
   type RoleInstructions,
   type RoleState,
+  type RoleTuning,
   type RolesOverview,
   type UserSettings,
 } from '@filmzy/contracts';
@@ -66,7 +68,7 @@ export class RolesService {
     const role = this.roleOf(config, roleId);
 
     // Un oggetto, non una variabile: lo cambia la funzione di aggiornamento qui sotto.
-    const outcome = { discarded: false };
+    const outcome: { discarded: RoleTuning[] } = { discarded: [] };
     this.userSettings.update(config, (settings) => {
       if (modelId !== null && !this.options(config, settings, role).has(modelId)) {
         throw domainError(409, 'no_eligible_model', { details: { role: roleId, modelId } });
@@ -75,15 +77,28 @@ export class RolesService {
         ...current,
         modelId: modelId ?? undefined,
       }));
-      const cleaned = this.withoutRefusedTemperature(config, next, roleId);
-      outcome.discarded = cleaned !== next;
+      const { settings: cleaned, discarded } = this.withoutRefusedTunings(config, next, roleId);
+      outcome.discarded = discarded;
       return cleaned;
     });
-    return { overview: await this.overview(), discarded: outcome.discarded ? ['temperature'] : [] };
+    return { overview: await this.overview(), discarded: outcome.discarded };
   }
 
   /** `null` torna al valore del programma. Il servizio in uso deve accettarla, nei suoi limiti (D42). */
-  async setTemperature(roleId: string, value: number | null): Promise<RoleChangeResult> {
+  setTemperature(roleId: string, value: number | null): Promise<RoleChangeResult> {
+    return this.setTuning(roleId, 'temperature', value);
+  }
+
+  /** `null` torna al predefinito del fornitore. Il servizio in uso deve accettare quel livello (D95). */
+  setEffort(roleId: string, value: string | null): Promise<RoleChangeResult> {
+    return this.setTuning(roleId, 'effort', value);
+  }
+
+  private async setTuning(
+    roleId: string,
+    tuning: RoleTuning,
+    value: number | string | null,
+  ): Promise<RoleChangeResult> {
     const config = await this.config();
     this.roleOf(config, roleId);
 
@@ -93,41 +108,59 @@ export class RolesService {
         if (model === undefined) {
           throw domainError(409, 'no_eligible_model', { details: { role: roleId } });
         }
-        if (paramProblems({ temperature: value }, model).length > 0) {
+        if (paramProblems({ [tuning]: value }, model).length > 0) {
           throw domainError(400, 'invalid_request', { details: { field: 'value', role: roleId } });
         }
       }
       return updateRoleSettings(settings, roleId, (current) => ({
         ...current,
-        params: { ...current.params, temperature: value ?? undefined },
+        params: { ...current.params, [tuning]: value ?? undefined },
       }));
     });
     return { overview: await this.overview(), discarded: [] };
   }
 
   /**
-   * Cambiando servizio, le regolazioni che il nuovo non accetta si scartano (§4.3). Si guarda il
-   * servizio che lavorerebbe **dopo** la modifica, anche quando si torna a quello della release.
+   * Cambiando servizio, le regolazioni che il nuovo non accetta si scartano (§4.3): la creatività, o un
+   * livello d'impegno che non ha. Si guarda il servizio che lavorerebbe **dopo** la modifica, anche quando
+   * si torna a quello della release.
    *
-   * Lo si cerca **senza** la creatività scelta: con quella dentro, un servizio che non la accetta
+   * Lo si cerca **senza** le regolazioni scelte: con quelle dentro, un servizio che non le accetta
    * risulterebbe non idoneo e non si saprebbe più quale sia, lasciando il ruolo bloccato.
    */
-  private withoutRefusedTemperature(
+  private withoutRefusedTunings(
     config: TroupeConfig,
     settings: UserSettings,
     roleId: string,
-  ): UserSettings {
-    const chosen = settings.roleSettings[roleId as RoleId]?.params?.temperature;
-    if (chosen === undefined) return settings;
+  ): { settings: UserSettings; discarded: RoleTuning[] } {
+    const params = settings.roleSettings[roleId as RoleId]?.params;
+    const chosen = ROLE_TUNINGS.filter((tuning) => params?.[tuning] !== undefined);
+    if (chosen.length === 0) return { settings, discarded: [] };
 
-    const withoutIt = updateRoleSettings(settings, roleId, (current) => ({
+    const without = updateRoleSettings(settings, roleId, (current) => ({
       ...current,
-      params: { ...current.params, temperature: undefined },
+      params: {
+        ...current.params,
+        ...Object.fromEntries(chosen.map((tuning) => [tuning, undefined])),
+      },
     }));
-    const model = this.inUse(config, withoutIt, roleId)?.model;
-    if (model === undefined) return settings;
+    const model = this.inUse(config, without, roleId)?.model;
+    if (model === undefined) return { settings, discarded: [] };
 
-    return paramProblems({ temperature: chosen }, model).length === 0 ? settings : withoutIt;
+    const discarded = chosen.filter(
+      (tuning) => paramProblems({ [tuning]: params?.[tuning] ?? '' }, model).length > 0,
+    );
+    if (discarded.length === 0) return { settings, discarded };
+    return {
+      settings: updateRoleSettings(settings, roleId, (current) => ({
+        ...current,
+        params: {
+          ...current.params,
+          ...Object.fromEntries(discarded.map((tuning) => [tuning, undefined])),
+        },
+      })),
+      discarded,
+    };
   }
 
   private async config(): Promise<TroupeConfig> {
@@ -209,7 +242,10 @@ export class RolesService {
       providers: this.providers(config, options),
       ...(resolved === undefined
         ? {}
-        : this.temperatureOf(resolved, roleSettings?.params?.temperature)),
+        : {
+            ...this.temperatureOf(resolved, roleSettings?.params?.temperature),
+            ...this.effortOf(resolved, roleSettings?.params?.effort),
+          }),
       ...(instructions === undefined ? {} : { instructions: summarize(instructions) }),
     };
   }
@@ -249,6 +285,21 @@ export class RolesService {
         ...(typeof current === 'number' ? { value: current } : {}),
         ...(spec.min === undefined ? {} : { min: spec.min }),
         ...(spec.max === undefined ? {} : { max: spec.max }),
+        chosen: chosen !== undefined,
+      },
+    };
+  }
+
+  /** L'impegno c'è solo dove il servizio in uso lo accetta, con i suoi livelli (D95). */
+  private effortOf(resolved: ResolvedRole, chosen: string | undefined): Pick<RoleState, 'effort'> {
+    const spec = resolved.model.params?.effort;
+    if (spec === undefined || !('values' in spec)) return {};
+
+    const current = chosen ?? resolved.role.params?.effort;
+    return {
+      effort: {
+        ...(typeof current === 'string' ? { value: current } : {}),
+        levels: spec.values.map(String),
         chosen: chosen !== undefined,
       },
     };

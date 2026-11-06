@@ -41,6 +41,7 @@ export type { ConfigEnvironment } from './config/environments.js';
 export { codeForbiddenTerms } from './config/forbidden-terms.js';
 export type { ForbiddenTerm } from './config/forbidden-terms.js';
 export { canonicalJson, configHash, hashRoleConfig } from './config/hash.js';
+export { mergeSeed } from './config/merge-seed.js';
 export { validateInstructions } from './config/instructions.js';
 export type { ValidateInstructionsOptions } from './config/instructions.js';
 export { checkInstructionText, unknownVariables } from './instructions/check.js';

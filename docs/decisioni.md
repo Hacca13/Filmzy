@@ -1190,3 +1190,17 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Perché:** una copia salvata oggi deve aprirsi fra due anni; e una migrazione che cambia i dati, senza questo passaggio, avrebbe perso parti delle copie vecchie senza dirlo.
 **Scartate:** scrivere a mano, per ogni migrazione che cambia i dati, la stessa correzione anche per le copie (due strade per la stessa cosa, prima o poi diverse); copie «compatibili» per le versioni vecchie (nessun programma lo fa, e moltiplica i casi).
 **Limiti:** una copia molto vecchia rifà tutte le migrazioni che mancano, in memoria: per un film sono millisecondi.
+
+## D95 · Tutti i modelli di Anthropic, l'«Impegno» e il seme nuovo a chi ha già installato — 06/11/2026
+
+**Realizza** una segnalazione dell'utente provando il programma: con Anthropic non si poteva scegliere Opus, i nomi non dicevano la versione, mancavano Fable 5.1 e le 4.6, e non si poteva scegliere l'effort.
+**Decisione:**
+1. **Il catalogo di Anthropic** ha Claude Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 4.6 e Sonnet 4.6, con la versione nel nome. Id, prezzi e limiti verificati il 06/11/2026 sulle pagine di Anthropic. Gli id del catalogo di Sonnet e Haiku restano `claude-sonnet` e `claude-haiku`: li usano i ruoli e le scelte salvate.
+2. **L'«Impegno»** è il parametro `effort` del modello (`output_config.effort`), dichiarato nel catalogo coi livelli che il modello accetta: tutti e cinque sulle 5.x e su Fable 5.1, senza `xhigh` sulle 4.6. Si sceglie in «Chi fa cosa» come la creatività (D38): un menu con «Quello del servizio» e i livelli detti a parole. Senza scelta vale il predefinito del fornitore. Cambiando servizio, un livello che il nuovo non ha si scarta e lo si dice.
+3. **La creatività** (temperatura) c'è solo sulle 4.6: le 5.x e Fable 5.1 la rifiutano.
+4. **Niente riserve sui rifiuti** anche con Fable 5.1: la libreria di Anthropic suggerisce un modello di riserva quando un servizio rifiuta, ma per la regola 6 un rifiuto si ferma lì.
+5. **Il seme di una versione nuova arriva a chi ha già installato** (§6.2): all'avvio si confronta voce per voce col seme applicato l'ultima volta; il nuovo si aggiunge, quello non toccato si aggiorna, quello cambiato dall'utente resta suo, quello tolto non torna. Prima arrivava solo alla prima installazione. Per chi aveva installato prima, il seme di riferimento è la prima release del programma. I modelli nuovi non si attivano da soli: l'utente li spunta in Connessioni.
+
+**Perché:** l'utente deve poter scegliere il modello e quanto ragiona; e senza il punto 5 nessuna correzione al catalogo o ai ruoli sarebbe arrivata a chi ha già il programma.
+**Scartate:** mostrare la temperatura dove il modello la rifiuta; attivare da soli i modelli nuovi (cambierebbe la spesa senza chiederlo); sovrascrivere tutta la configurazione col seme nuovo (si perderebbero le modifiche dell'utente).
+**Limiti:** con un impegno alto il ragionamento conta nei token di risposta del ruolo (`max_tokens`): se un ruolo si ferma a metà, va alzato il suo limite. Non provato con chiamate vere a Opus, Fable o alle 4.6.

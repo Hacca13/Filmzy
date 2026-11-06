@@ -110,7 +110,7 @@ export function StartupScreen({
   const closeButton =
     onClose === undefined ? null : (
       <button type="button" className="button" onClick={onClose}>
-        Chiudi Filmzy
+        Chiudi
       </button>
     );
   if (state.name === 'waiting') {

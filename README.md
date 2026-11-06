@@ -1,26 +1,79 @@
-# Filmzy
+<p align="center">
+  <img src="apps/desktop/build-resources/icon.png" alt="" width="96" />
+</p>
 
-Programma libero (AGPL-3.0) per creare cortometraggi con la gen AI, pensato per chi non sa programmare. Gira sul tuo computer, con le tue chiavi dei servizi AI: nessun server, nessun account, nessun pagamento a noi.
+<h1 align="center">Filmzy</h1>
 
-Dall'idea al film: scrivi l'idea, Filmzy ti aiuta con la storia, i personaggi, i luoghi e la sceneggiatura, poi gira le scene una alla volta, aggiunge musica ed effetti e monta il film coi titoli.
+<p align="center"><strong>Il tuo piccolo grande cinema.</strong><br />
+Cortometraggi con la gen AI, sul tuo computer, anche se non sai programmare.</p>
 
-## Scaricare Filmzy
+<p align="center">
+  <img src="docs/immagini/05-le-scene.png" alt="Le scene di un film in Filmzy" width="820" />
+</p>
 
-Gli installatori per Windows, macOS e Linux arriveranno nelle **Release** di questa pagina: si scarica solo il programma, non il codice. Non è ancora uscita la prima versione.
+Filmzy è un programma libero (AGPL-3.0) che ti accompagna dall'idea al film finito: la storia, i personaggi, i luoghi, la sceneggiatura, le scene girate una alla volta, la musica, gli effetti e il montaggio coi titoli. Gira **sul tuo computer**, con **le tue chiavi** dei servizi AI: nessun server, nessun account, nessun abbonamento, nessun pagamento a noi.
 
-Cosa ti serve:
+Filmzy fa il direttore di produzione: i servizi AI generano, Filmzy ricorda. Tiene i personaggi uguali da una scena all'altra, ti avvisa quando qualcosa non torna e ti dice quanto costa ogni passo **prima** di farlo.
 
-- un computer con Windows, macOS o Linux;
-- le chiavi dei servizi AI che vuoi usare. Per cominciare servono **Anthropic** (per il testo) e **fal.ai** (per immagini, video, musica ed effetti). Al primo avvio Filmzy ti guida, e ti dice dove prenderle;
-- un credito presso quei servizi: le generazioni le paghi a loro, non a Filmzy. Prima di ogni generazione vedi quanto costa.
+> **A che punto è:** in sviluppo. La prima versione non è ancora uscita; l'installatore per Windows si può già costruire dal codice (vedi [Provare Filmzy](#provare-filmzy)). Le immagini qui sotto vengono dal progetto grafico: il programma può differire in qualche dettaglio.
 
-Su Windows l'installatore si chiama `Filmzy-<versione>-installa.exe`. Il programma non è ancora firmato: Windows può mostrare l'avviso «Windows ha protetto il PC»; si va avanti con «Ulteriori informazioni» › «Esegui comunque». Disinstallando, i film restano dove sono.
+## Come funziona
 
-Se qualcosa si rompe, Filmzy lo scrive nel **registro**: un file al giorno nella cartella `log` dentro la cartella dei tuoi dati (qui sotto). Il registro non contiene le chiavi, e la tua cartella personale ci compare come `~`. Se chiedi aiuto, allega il file del giorno in cui è successo.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/immagini/02-la-tua-idea.png" alt="La tua idea" /></td>
+    <td width="50%"><img src="docs/immagini/03-personaggi.png" alt="I personaggi" /></td>
+  </tr>
+  <tr>
+    <td><strong>1 · La tua idea.</strong> Scrivi l'idea, scegli genere, tono, stile e quanto deve durare: vedi subito un costo indicativo.</td>
+    <td><strong>2 · Storia, personaggi e luoghi.</strong> Filmzy scrive la bozza e propone il cast. Blocchi il volto che ti piace, e il personaggio resta lui fino ai titoli di coda.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/immagini/04-le-inquadrature.png" alt="Le inquadrature" /></td>
+    <td><img src="docs/immagini/06-montaggio-ed-esporta.png" alt="Montaggio ed esporta" /></td>
+  </tr>
+  <tr>
+    <td><strong>3 · Le inquadrature.</strong> Ogni scena si divide in poche inquadrature, con storyboard, primo e ultimo fotogramma; poi si gira il video, scegliendo il servizio e vedendo il costo.</td>
+    <td><strong>4 · Montaggio ed esporta.</strong> Musica, effetti e titoli; scegli le scene che entrano nel film ed esporti il file, nella qualità e nel formato che vuoi.</td>
+  </tr>
+</table>
+
+Il primo avvio ti guida: colleghi i fornitori, inserisci le chiavi e scegli quanto vuoi spendere al massimo.
+
+<p align="center">
+  <img src="docs/immagini/01-benvenuto.png" alt="Il benvenuto al primo avvio" width="640" />
+</p>
+
+## Cosa ti serve
+
+- Un computer con Windows (macOS e Linux arrivano con le prossime versioni).
+- Le chiavi dei servizi AI che vuoi usare. Per cominciare servono **Anthropic** (per il testo) e **fal.ai** (per immagini, video, musica ed effetti). Al primo avvio Filmzy ti dice dove prenderle.
+- Un credito presso quei servizi: le generazioni le paghi a loro, non a Filmzy. Prima di ogni generazione vedi quanto costa, e puoi impostare dei limiti di spesa.
+
+## Provare Filmzy
+
+Quando uscirà la prima versione, l'installatore si scaricherà dalle **Release** di questa pagina: si scarica solo il programma, non il codice. Fino ad allora ci sono tre modi, tutti dal codice (servono [Node 24](https://nodejs.org) e [pnpm](https://pnpm.io)):
+
+```bash
+pnpm install
+```
+
+| Per… | Comando | Cosa succede |
+|---|---|---|
+| **installarlo su Windows** | `pnpm pacchetto` | crea `apps/desktop/release/Filmzy-0.1.0-installa.exe`: aprilo e segui l'installazione |
+| **provarlo senza spendere** | `TROUPE_ENV=offline FILMZY_DATA_DIR=./dati-di-prova pnpm dev` | si apre nel browser su <http://localhost:5173> con un fornitore finto: niente chiavi, niente costi, risultati di prova, dati in una cartella a parte |
+| **provarlo coi servizi veri** | `pnpm dev` | come sopra, ma con le tue chiavi nel file `.env` (nel browser il portachiavi non c'è: le chiavi si salvano solo dal programma installato) |
+
+Su Windows, nel terminale PowerShell, le variabili si scrivono così: `$env:TROUPE_ENV="offline"; $env:FILMZY_DATA_DIR="./dati-di-prova"; pnpm dev`.
+
+Il programma non è ancora firmato: Windows può mostrare l'avviso «Windows ha protetto il PC». Si va avanti con «Ulteriori informazioni» › «Esegui comunque». Disinstallando, i film restano dove sono.
+
+Se qualcosa si rompe, Filmzy lo scrive nel **registro**: un file al giorno nella cartella `log` dentro la cartella dei tuoi dati. Il registro non contiene le chiavi, e la tua cartella personale ci compare come `~`. Se chiedi aiuto, allega il file del giorno in cui è successo.
 
 ## I tuoi dati
 
-- I film, le immagini e i video stanno solo sul tuo computer. Su Windows in `%APPDATA%\Filmzy`, su macOS in `~/Library/Application Support/Filmzy`, su Linux in `~/.local/share/filmzy`. Li trovi anche in Impostazioni › I tuoi dati.
+- I film, le immagini e i video stanno solo sul tuo computer: su Windows in `%APPDATA%\Filmzy`, su macOS in `~/Library/Application Support/Filmzy`, su Linux in `~/.local/share/filmzy`. Li trovi anche in Impostazioni › I tuoi dati.
+- Un film si salva in un file `.filmzy`, da riaprire anche su un altro computer. Una versione nuova di Filmzy apre i film delle versioni vecchie.
 - Le chiavi stanno nel portachiavi del sistema e non finiscono mai nella copia di un film.
 - **Nessuna telemetria:** Filmzy non manda niente a chi l'ha fatto. Contatta solo i servizi che colleghi tu e, se lo lasci acceso, GitHub per sapere se c'è una versione nuova.
 
@@ -37,16 +90,16 @@ Se qualcosa si rompe, Filmzy lo scrive nel **registro**: un file al giorno nella
 | `config/` | seme della configurazione: troupe, preset, funzioni, prove sui modelli |
 | `design/` | il prossimo prompt per Figma, lo storico di quelli lanciati e i riferimenti grafici esportati |
 
-Sviluppo (serve Node 24 e pnpm; Docker no):
+Monorepo pnpm con TypeScript: server locale NestJS (`apps/api`), interfaccia React (`apps/web`), programma per computer Electron (`apps/desktop`), SQLite e ffmpeg. Docker non serve.
 
 ```bash
-pnpm install
-pnpm dev    # server locale su http://127.0.0.1:3001 e interfaccia su http://localhost:5173
+pnpm dev     # server locale su http://127.0.0.1:3001 e interfaccia su http://localhost:5173
+pnpm test    # col fornitore finto: zero costi
+pnpm check   # lint, tipi, test, build, stile e confini del codice: da far passare prima di una pull request
+pnpm --filter @filmzy/desktop build && pnpm --filter @filmzy/desktop start   # il programma per computer senza installarlo
 ```
 
-Il programma per computer (Electron, `apps/desktop`): `pnpm pacchetto` costruisce l'installatore per il sistema su cui gira (per ora Windows) in `apps/desktop/release`. Per provarlo senza installare: `pnpm --filter @filmzy/desktop build` e poi `pnpm --filter @filmzy/desktop start`.
-
-Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta); `pnpm dev` lo legge. Una variabile già impostata nel terminale ha la precedenza sul file. Prima di una pull request: `pnpm check`.
+Il file `.env` è facoltativo: copia `.env.example` in `.env` solo per cambiare le impostazioni (per esempio la porta); `pnpm dev` lo legge. Una variabile già impostata nel terminale ha la precedenza sul file.
 
 ## Licenza
 

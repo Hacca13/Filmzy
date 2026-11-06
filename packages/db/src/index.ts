@@ -26,6 +26,15 @@ export type {
   StoredReference,
 } from './moodboard-store.js';
 export { createProjectStore } from './project-store.js';
+export {
+  FILM_TABLE_NAMES,
+  filmExists,
+  filmHasOpenJobs,
+  foreignRowProblem,
+  readFilmRows,
+  writeFilmRows,
+  type FilmRow,
+} from './film-copy.js';
 export type { NewProject, ProjectChanges, ProjectStore } from './project-store.js';
 export { createReceiptStore } from './receipt-store.js';
 export { createScreenplayStore } from './screenplay-store.js';

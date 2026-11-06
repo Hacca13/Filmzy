@@ -96,6 +96,12 @@ const BY_INVALID_FIELD: Record<string, string> = {
   exportWorking: 'Il film si sta esportando. Aspetta che finisca.',
   exportSource: 'Monta prima il film: si esporta quello.',
   shortSide: 'Questa qualità non si può usare per questo film. Aggiorna la pagina e riprova.',
+  // La copia di un film (T6.3).
+  copyFile: 'Questo file non è una copia di un film di Filmzy, oppure è rovinato.',
+  filmTooNew:
+    'Questa copia è stata fatta con una versione più nuova di Filmzy. Aggiorna Filmzy per aprirla.',
+  filmWorking: 'Il film sta ancora lavorando: aspetta che finisca, poi sostituiscilo.',
+  importWorking: 'Sto già aprendo un altro film. Aspetta che finisca.',
   aspect: 'Questo formato non si può usare per questo film. Aggiorna la pagina e riprova.',
   currentFilm: 'Questo è l’ultimo film montato: quello non si toglie.',
   // Le tracce audio (T5.5, T5.6).

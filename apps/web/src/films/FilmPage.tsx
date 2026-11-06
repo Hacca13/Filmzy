@@ -15,6 +15,7 @@ import { LocationsPanel } from './locations/LocationsPanel';
 import { MoodboardPanel } from './moodboard/MoodboardPanel';
 import { StoryPanel } from './story/StoryPanel';
 import { FilmSpendLine } from './spend/FilmSpendLine';
+import { filmCopyUrl } from '../api/film-copy';
 import { ideaHref } from './routes';
 
 /**
@@ -63,6 +64,12 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       <p className="hint">
         Salvato sul tuo computer · modificato il {formatDateTime(film.updatedAt)}
       </p>
+      <div className="actions">
+        {/* Per conservarlo o portarlo su un altro computer (T6.3): le chiavi non ci sono. */}
+        <a className="button" href={filmCopyUrl(film.id)} download>
+          Salva una copia del film
+        </a>
+      </div>
 
       <section className="panel">
         <h2>La tua idea</h2>

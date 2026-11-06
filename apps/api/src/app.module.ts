@@ -15,6 +15,7 @@ import { JobsModule } from './modules/jobs/jobs.module.js';
 import { LocationsModule } from './modules/locations/locations.module.js';
 import { MoodboardModule } from './modules/moodboard/moodboard.module.js';
 import { AboutModule } from './modules/about/about.module.js';
+import { FilmCopyModule } from './modules/film-copy/film-copy.module.js';
 import { PreferencesModule } from './modules/preferences/preferences.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import type { SecretCipher } from './modules/secrets/secret-cipher.js';
@@ -65,6 +66,7 @@ export class AppModule {
         MoodboardModule,
         PreferencesModule,
         AboutModule,
+        FilmCopyModule,
         ProjectsModule,
         RolesModule,
         ScreenplayModule,

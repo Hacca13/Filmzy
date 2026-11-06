@@ -586,7 +586,7 @@ Così **un aggiornamento sostituisce solo il programma** e ritrova i dati dov'er
 - **Le migrazioni si applicano all'avvio**, in una transazione, dopo aver copiato il file del database (`filmzy.db.backup-<versione precedente>`). Se la migrazione fallisce, si torna alla copia e l'app lo dice con un messaggio semplice e il percorso del file, invece di aprirsi su dati a metà.
 - **Non si apre un database più nuovo del programma.** Nel database c'è la versione dello schema: se è più alta di quella che il programma conosce (l'utente è tornato a una versione vecchia), l'app non tocca niente e dice che quel film è stato creato con una versione più nuova di Filmzy.
 - **Il seme della troupe che arriva con la versione nuova non sovrascrive le scelte dell'utente** (§4.3, D38): modelli, preset e versioni nuove delle istruzioni si **aggiungono**; servizi attivati, predefiniti, versioni scelte e tetti di spesa restano quelli dell'utente. Delle istruzioni nuove l'interfaccia avvisa, con il loro registro dei cambiamenti.
-- **Copia di sicurezza e trasloco:** un film si esporta come cartella e si reimporta su un altro computer (T6.3). È anche il modo di portarsi i dati dietro cambiando macchina.
+- **Copia di sicurezza e trasloco:** un film si salva come file `.filmzy` e si riapre su un altro computer (T6.3, D92): uno zip con l'indice `filmzy-film.json` (le righe del film, tabella per tabella, e la versione dello schema) e i file del film sotto `files/`. Rotte: `GET /projects/:id/copy` e `POST /projects/import` (`?replace=1` per sostituire). È anche il modo di portarsi i dati dietro cambiando macchina.
 
 ## 7. Pipeline di una generazione
 

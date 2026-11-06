@@ -1144,3 +1144,17 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 4. **«Nessun dato a chi l'ha fatto» è scritto,** perché è vero: l'unico contatto che non è un servizio scelto dall'utente è il controllo degli aggiornamenti su GitHub, che si può spegnere.
 
 **Non fatto:** «Cambia la cartella dei film» (con lo spostamento dei film) e il menu per salvare la copia di un film, che arriva con T6.3. La licenza è `AGPL-3.0-only` nei `package.json`, come già deciso in D28.
+
+## D92 · La copia di un film: un file da riaprire anche su un altro computer — 06/11/2026
+
+**Realizza** T6.3 (§6.2).
+**Decisione:**
+1. **Un file solo, `.filmzy`:** è uno zip, e si sposta come un file qualunque. Dentro c'è un indice con le righe del film, tabella per tabella, e i file del film con lo stesso percorso della cartella dei dati. L'architettura parlava di una cartella: un file solo si sposta meglio, e il browser lo carica in un colpo.
+2. **Fuori dalla copia:** il film montato e i file esportati, che si rifanno gratis con «Monta il film»; i lavori in coda; le scelte, la configurazione e le chiavi dell'utente. Le chiavi non stanno nemmeno nel database (D45).
+3. **Gli scontrini entrano:** sono la storia di quanto è costato il film. Sull'altro computer contano anche nella spesa del mese, se il mese è lo stesso.
+4. **Si apre solo una copia che torna tutta:** prima l'indice, controllato riga per riga (ogni riga deve essere di quel film, nessuna tabella sconosciuta), poi i file, solo dentro la cartella dei film. Un file rovinato o fatto apposta si rifiuta senza scrivere niente.
+5. **Il film tiene il suo id.** Se c'è già si chiede prima di sostituirlo, perché si perde quello che è stato fatto dopo. Non si sostituisce un film che sta lavorando. Sostituendo, il film di prima resta da parte finché le righe nuove non sono scritte: se qualcosa va storto si rimette.
+6. **Una copia fatta con una versione più nuova non si apre:** potrebbe avere righe che questa non sa leggere. Una più vecchia sì: le colonne nuove prendono il loro valore di partenza.
+7. **Lo zip si scrive mentre si scarica,** e la copia che arriva si scrive su disco prima di leggerla: un film con molti video non passa dalla memoria. Immagini, video e suoni non si ricomprimono.
+
+**Limiti:** non c'è un limite alla dimensione della copia, e un disco pieno si scopre a metà (si ripulisce e lo si dice). Due film identici sullo stesso computer non si possono avere: hanno lo stesso id. Non provato fra Windows e macOS.

@@ -100,7 +100,8 @@ const BY_INVALID_FIELD: Record<string, string> = {
   copyFile: 'Questo file non è una copia di un film di Filmzy, oppure è rovinato.',
   filmTooNew:
     'Questa copia è stata fatta con una versione più nuova di Filmzy. Aggiorna Filmzy per aprirla.',
-  filmWorking: 'Il film sta ancora lavorando: aspetta che finisca, poi sostituiscilo.',
+  filmExists: 'Questo film è già su questo computer: lo trovi fra i tuoi film.',
+  filmWorking: 'Il film sta ancora lavorando: aspetta che finisca, poi salva la copia.',
   importWorking: 'Sto già aprendo un altro film. Aspetta che finisca.',
   aspect: 'Questo formato non si può usare per questo film. Aggiorna la pagina e riprova.',
   currentFilm: 'Questo è l’ultimo film montato: quello non si toglie.',
@@ -115,6 +116,18 @@ const BY_INVALID_FIELD: Record<string, string> = {
   startS: 'Questo secondo è oltre la fine. Scegline uno prima.',
   shotId: 'Questa inquadratura non c’è più. Aggiorna la pagina e riprova.',
   source: 'Questo suono è un file tuo: non si genera, e dura quanto il file.',
+};
+
+/** I problemi con i file che hanno una frase propria, per campo: quella di base parla di un video. */
+const BY_MEDIA_FIELD: Record<string, string> = {
+  // La copia di un film (T6.3).
+  copy: 'La copia del film non si è aperta. Riprova tra un attimo.',
+  diskFull: 'Il disco è pieno. Libera un po’ di spazio e riprova.',
+};
+
+const BY_FIELD: Partial<Record<string, Record<string, string>>> = {
+  invalid_request: BY_INVALID_FIELD,
+  media_failed: BY_MEDIA_FIELD,
 };
 
 /** Perché una foto si rifiuta, una frase per ogni motivo (D19): il server dice quali, qui si dicono in parole semplici. */
@@ -154,12 +167,13 @@ export function describeError(error: unknown): string {
     if (error.serverCode === 'content_rejected' && moderation !== undefined) {
       return describeModeration(moderation);
     }
-    // Una richiesta sbagliata che l'utente può sistemare: la frase dice cosa manca invece di «controlla i campi».
-    if (error.serverCode === 'invalid_request') {
-      const field = error.details?.field;
-      const specific = field === undefined ? undefined : BY_INVALID_FIELD[field];
-      if (specific !== undefined) return specific;
-    }
+    // Un errore col suo campo ha una frase propria: dice cosa manca invece di «controlla i campi».
+    const field = error.details?.field;
+    const specific =
+      error.serverCode === undefined || field === undefined
+        ? undefined
+        : BY_FIELD[error.serverCode]?.[field];
+    if (specific !== undefined) return specific;
     const known = error.serverCode === undefined ? undefined : BY_SERVER_CODE[error.serverCode];
     if (known !== undefined) return known;
   }

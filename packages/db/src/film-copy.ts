@@ -7,8 +7,8 @@ export type FilmRow = Record<string, unknown>;
 
 /**
  * Le tabelle di un film (T6.3, D92). Quelle col film dentro, e quelle che stanno sotto una di loro. Mancano di
- * proposito: il film montato e i file esportati (si rifanno gratis), i lavori in coda, le scelte e le chiavi
- * dell'utente, la configurazione della troupe. Le chiavi non stanno nemmeno nel database (D45).
+ * proposito quelle di `FILM_TABLES_LEFT_OUT`, e le scelte e la configurazione dell'utente, che non sono del
+ * film. Le chiavi non stanno nemmeno nel database (D45).
  */
 type FilmTable =
   | { table: string; key: 'id' | 'project_id' }
@@ -43,10 +43,17 @@ const FILM_TABLES: readonly FilmTable[] = [
   { table: 'generations', key: 'project_id' },
 ];
 
-/** Le righe che sostituendo un film vanno tolte anche se non entrano nella copia. */
-const DERIVED_TABLES = ['film_assemblies', 'film_exports'] as const;
-
 export const FILM_TABLE_NAMES: readonly string[] = FILM_TABLES.map(({ table }) => table);
+
+/**
+ * Le tabelle col film dentro che restano fuori dalla copia: il film montato e i file esportati si rifanno
+ * gratis, e i lavori in coda appartengono al computer che li fa. Una tabella nuova deve stare o qui o sopra:
+ * un test lo controlla, così non si dimentica.
+ */
+export const FILM_TABLES_LEFT_OUT: readonly string[] = ['jobs', 'film_assemblies', 'film_exports'];
+
+/** Le righe col contenuto come nome: due film possono avere la stessa, e la si tiene una volta sola. */
+const CONTENT_ADDRESSED = new Set(['assets']);
 
 const id = (name: string) => sql.identifier(name);
 
@@ -69,9 +76,24 @@ export function readFilmRows(db: FilmzyDb, projectId: string): Record<string, Fi
   );
 }
 
+/** Le righe dei file con questi id, di qualunque film: servono quando due film hanno lo stesso file. */
+export function assetRowsByIds(db: FilmzyDb, ids: readonly string[]): FilmRow[] {
+  if (ids.length === 0) return [];
+  return db.all<FilmRow>(
+    sql`select * from assets where id in (${sql.join(
+      ids.map((one) => sql`${one}`),
+      sql`, `,
+    )})`,
+  );
+}
+
+const isPlainValue = (value: unknown) =>
+  value === null || ['string', 'number', 'boolean'].includes(typeof value);
+
 /**
- * Cosa non torna in righe arrivate da fuori: ogni riga deve essere di **questo** film. Una copia rovinata, o
- * fatta apposta, non deve poter scrivere nelle righe di un altro film.
+ * Cosa non torna in righe arrivate da fuori: ogni riga deve essere di **questo** film, con valori semplici, e i
+ * file devono stare nella sua cartella. Una copia rovinata, o fatta apposta, non deve poter scrivere nelle righe
+ * di un altro film né far leggere un file qualunque della cartella dei dati.
  */
 export function foreignRowProblem(
   tables: Readonly<Record<string, readonly FilmRow[]>>,
@@ -83,26 +105,43 @@ export function foreignRowProblem(
   if (tables.projects?.length !== 1 || tables.projects[0]?.id !== projectId) {
     return 'il film non corrisponde';
   }
+  for (const [table, rows] of Object.entries(tables)) {
+    if (
+      rows.some((row) => Object.keys(row).length === 0 || !Object.values(row).every(isPlainValue))
+    ) {
+      return `righe vuote o strane in «${table}»`;
+    }
+  }
   for (const entry of FILM_TABLES) {
     const rows = tables[entry.table] ?? [];
     if ('key' in entry) {
-      if (rows.some((row) => row[entry.key] !== projectId))
+      if (rows.some((row) => row[entry.key] !== projectId)) {
         return `righe di un altro film in «${entry.table}»`;
+      }
       continue;
     }
-    const parents = new Set((tables[entry.parent.table] ?? []).map((row) => row.id));
-    if (rows.some((row) => !parents.has(row[entry.parent.column]))) {
+    const parents = new Set(
+      (tables[entry.parent.table] ?? []).flatMap((row) =>
+        typeof row.id === 'string' ? [row.id] : [],
+      ),
+    );
+    if (rows.some((row) => !parents.has(row[entry.parent.column] as string))) {
       return `righe senza il loro film in «${entry.table}»`;
     }
   }
-  return undefined;
+  const folder = `progetti/${projectId}/`;
+  const outside = (tables.assets ?? []).find(
+    (row) =>
+      typeof row.path !== 'string' || !row.path.startsWith(folder) || row.path.includes('..'),
+  );
+  return outside === undefined ? undefined : 'un file fuori dalla cartella del film';
 }
 
 export function filmExists(db: FilmzyDb, projectId: string): boolean {
   return db.all(sql`select 1 from projects where id = ${projectId}`).length > 0;
 }
 
-/** Ci sono lavori aperti su questo film: sostituirlo li lascerebbe senza le loro righe. */
+/** Ci sono lavori aperti su questo film: una copia adesso porterebbe con sé lavori a metà. */
 export function filmHasOpenJobs(db: FilmzyDb, projectId: string): boolean {
   return (
     db.all(
@@ -111,7 +150,7 @@ export function filmHasOpenJobs(db: FilmzyDb, projectId: string): boolean {
   );
 }
 
-function columnsOf(db: FilmzyDb, table: string): Set<string> {
+function columnsOf(db: Pick<FilmzyDb, 'all'>, table: string): Set<string> {
   return new Set(
     db
       .all<{ name: string }>(sql`select name from pragma_table_info(${table})`)
@@ -120,40 +159,23 @@ function columnsOf(db: FilmzyDb, table: string): Set<string> {
 }
 
 /**
- * Scrive le righe del film, sostituendo quelle che c'erano se `replace`. Tutto o niente: una riga che non entra
- * annulla il resto. Le colonne che il programma non conosce si lasciano fuori; quelle che mancano prendono il
- * valore di partenza della tabella.
+ * Scrive le righe di un film nuovo su questo computer. Tutto o niente: una riga che non entra annulla il resto.
+ * Le colonne che il programma non conosce si lasciano fuori; quelle che mancano prendono il valore di partenza
+ * della tabella. Un file che questo computer ha già (lo stesso contenuto, in un altro film) tiene la sua riga.
  */
 export function writeFilmRows(
   db: FilmzyDb,
-  projectId: string,
   tables: Readonly<Record<string, readonly FilmRow[]>>,
-  { replace }: { replace: boolean },
 ): void {
   db.transaction((tx) => {
-    if (replace) {
-      // Prima le tabelle che stanno sotto: poi non si saprebbe più quali righe erano del film.
-      for (const entry of [...FILM_TABLES].reverse()) {
-        if ('key' in entry) {
-          tx.run(sql`delete from ${id(entry.table)} where ${id(entry.key)} = ${projectId}`);
-        } else {
-          const { column, table } = entry.parent;
-          tx.run(
-            sql`delete from ${id(entry.table)} where ${id(column)} in (select id from ${id(table)} where project_id = ${projectId})`,
-          );
-        }
-      }
-      for (const table of DERIVED_TABLES) {
-        tx.run(sql`delete from ${id(table)} where project_id = ${projectId}`);
-      }
-    }
     for (const entry of FILM_TABLES) {
       const columns = columnsOf(tx, entry.table);
+      const verb = CONTENT_ADDRESSED.has(entry.table) ? sql`insert or ignore` : sql`insert`;
       for (const row of tables[entry.table] ?? []) {
         const names = Object.keys(row).filter((name) => columns.has(name));
         tx.run(
-          sql`insert into ${id(entry.table)} (${sql.join(names.map(id), sql`, `)}) values (${sql.join(
-            names.map((name) => sql`${row[name] as never}`),
+          sql`${verb} into ${id(entry.table)} (${sql.join(names.map(id), sql`, `)}) values (${sql.join(
+            names.map((name) => sql`${row[name] as string | number | null}`),
             sql`, `,
           )})`,
         );

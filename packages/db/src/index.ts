@@ -28,6 +28,8 @@ export type {
 export { createProjectStore } from './project-store.js';
 export {
   FILM_TABLE_NAMES,
+  FILM_TABLES_LEFT_OUT,
+  assetRowsByIds,
   filmExists,
   filmHasOpenJobs,
   foreignRowProblem,

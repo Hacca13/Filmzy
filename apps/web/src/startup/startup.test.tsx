@@ -171,17 +171,17 @@ describe('nel programma per computer', () => {
     );
 
   it('le schermate che fermano l’avvio si possono chiudere da un pulsante', () => {
-    expect(inDesktop({ name: 'unreachable' })).toContain('Chiudi Filmzy');
+    expect(inDesktop({ name: 'unreachable' })).toContain('>Chiudi</button>');
     expect(inDesktop({ name: 'blocked', block: { reason: 'database_too_new' } })).toContain(
-      'Chiudi Filmzy',
+      '>Chiudi</button>',
     );
     expect(inDesktop({ name: 'blocked', block: { reason: 'migration_failed' } })).toContain(
-      'Chiudi Filmzy',
+      '>Chiudi</button>',
     );
   });
 
   it('nel browser il pulsante non c’è: lì non chiuderebbe niente', () => {
-    expect(screen({ name: 'unreachable' })).not.toContain('Chiudi Filmzy');
+    expect(screen({ name: 'unreachable' })).not.toContain('>Chiudi</button>');
     expect(isDesktopApp('Mozilla/5.0 Chrome/152.0 Electron/44.9.3')).toBe(true);
     expect(isDesktopApp('Mozilla/5.0 Chrome/152.0 Safari/537.36')).toBe(false);
   });

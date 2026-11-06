@@ -1133,3 +1133,14 @@ La scelta viaggia nella **richiesta** (`audio`), non nei `params` del ruolo, per
 **Riletto con Opus xhigh:** 15 segnalazioni, verificate. Corrette tutte. La più seria: «Riprova» non funzionava mai, perché il server rispondeva in una forma che l'interfaccia prendeva per un errore: i test provavano le due parti ciascuna per conto suo. Ora c'è una prova vera, col browser.
 
 **Non preso dal disegno:** la barra della finestra coi tre pulsanti e «Chiudi» (T6.4); «Aggiorna Filmzy» (T6.4); nella home i filtri, «Apri un film salvato» (T6.3), il menu del film e «Ti serve una mano?»; nel benvenuto i pulsanti nel piede della finestra e il passo «Tutto pronto» a parte; la barra dei passi del film; le pagine delle Impostazioni, che tengono la loro intestazione.
+
+## D91 · Licenza, avvisi e «Informazioni» — 06/11/2026
+
+**Realizza** T6.2, tranne le donazioni.
+**Decisione:**
+1. **Le donazioni le decide l'autore** («ti dirò io quando mettiamo le donazioni»): niente `FUNDING.yml` e niente pulsante «Sostieni il progetto». La pagina dice «Un modo per contribuire arriverà presto», come il disegno.
+2. **Il README parla prima a chi scarica:** cosa fa Filmzy, cosa serve, dove stanno i dati, nessuna telemetria. La parte per chi sviluppa viene dopo.
+3. **«Informazioni» e «I tuoi dati» nelle Impostazioni,** dal disegno. La versione la dice il programma installato (`FILMZY_APP_VERSION`); in sviluppo è `0.0.0-sviluppo`. La cartella da aprire viene dal programma, mai dalla richiesta.
+4. **«Nessun dato a chi l'ha fatto» è scritto,** perché è vero: l'unico contatto che non è un servizio scelto dall'utente è il controllo degli aggiornamenti su GitHub, che si può spegnere.
+
+**Non fatto:** «Cambia la cartella dei film» (con lo spostamento dei film) e il menu per salvare la copia di un film, che arriva con T6.3. La licenza è `AGPL-3.0-only` nei `package.json`, come già deciso in D28.

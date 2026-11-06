@@ -64,6 +64,7 @@ export * from './shot-images-api.js';
 export * from './takes-api.js';
 export * from './assembly-api.js';
 export * from './export-api.js';
+export * from './about-api.js';
 export * from './audio-api.js';
 export * from './cast-api.js';
 export * from './sheet-api.js';

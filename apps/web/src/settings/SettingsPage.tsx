@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { AboutPage, DataPage } from './AboutPages';
 import { AdvancedPage } from './advanced/AdvancedPage';
 import { ConnectionsPage } from './connections/ConnectionsPage';
 import { GenerationPage } from './GenerationPage';
@@ -23,8 +24,10 @@ const SECTIONS: Section[] = [
   { id: 'generazione', label: 'Generazione', page: () => <GenerationPage /> },
   { id: 'prudenza', label: 'Prudenza', page: () => <PrudencePage /> },
   { id: 'aggiornamenti', label: 'Aggiornamenti', page: () => <UpdatesPage /> },
+  { id: 'dati', label: 'I tuoi dati', page: () => <DataPage /> },
   { id: 'istruzioni', label: 'Istruzioni', page: () => <InstructionsPage /> },
   { id: 'avanzate', label: 'Avanzate', page: () => <AdvancedPage /> },
+  { id: 'informazioni', label: 'Informazioni', page: () => <AboutPage /> },
 ];
 
 const SECTION_PREFIX = '/impostazioni/';

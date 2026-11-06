@@ -2,6 +2,26 @@
 
 Programma libero (AGPL-3.0) per creare cortometraggi con la gen AI, pensato per chi non sa programmare. Gira sul tuo computer, con le tue chiavi dei servizi AI: nessun server, nessun account, nessun pagamento a noi.
 
+Dall'idea al film: scrivi l'idea, Filmzy ti aiuta con la storia, i personaggi, i luoghi e la sceneggiatura, poi gira le scene una alla volta, aggiunge musica ed effetti e monta il film coi titoli.
+
+## Scaricare Filmzy
+
+Gli installatori per Windows, macOS e Linux arriveranno nelle **Release** di questa pagina: si scarica solo il programma, non il codice. Non è ancora uscita la prima versione.
+
+Cosa ti serve:
+
+- un computer con Windows, macOS o Linux;
+- le chiavi dei servizi AI che vuoi usare. Per cominciare servono **Anthropic** (per il testo) e **fal.ai** (per immagini, video, musica ed effetti). Al primo avvio Filmzy ti guida, e ti dice dove prenderle;
+- un credito presso quei servizi: le generazioni le paghi a loro, non a Filmzy. Prima di ogni generazione vedi quanto costa.
+
+## I tuoi dati
+
+- I film, le immagini e i video stanno solo sul tuo computer. Su Windows in `%APPDATA%\Filmzy`, su macOS in `~/Library/Application Support/Filmzy`, su Linux in `~/.local/share/filmzy`. Li trovi anche in Impostazioni › I tuoi dati.
+- Le chiavi stanno nel portachiavi del sistema e non finiscono mai nella copia di un film.
+- **Nessuna telemetria:** Filmzy non manda niente a chi l'ha fatto. Contatta solo i servizi che colleghi tu e, se lo lasci acceso, GitHub per sapere se c'è una versione nuova.
+
+## Per chi sviluppa
+
 | Documento | Contenuto |
 |---|---|
 | `CLAUDE.md` | regole per Claude Code |

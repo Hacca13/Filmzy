@@ -15,6 +15,7 @@ import { LocationsPanel } from './locations/LocationsPanel';
 import { MoodboardPanel } from './moodboard/MoodboardPanel';
 import { StoryPanel } from './story/StoryPanel';
 import { FilmSpendLine } from './spend/FilmSpendLine';
+import { SaveFilmCopy } from './OpenSavedFilm';
 import { ideaHref } from './routes';
 
 /**
@@ -63,6 +64,7 @@ function FilmView({ film, options }: { film: Project; options: ProjectOptions | 
       <p className="hint">
         Salvato sul tuo computer · modificato il {formatDateTime(film.updatedAt)}
       </p>
+      <SaveFilmCopy filmId={film.id} />
 
       <section className="panel">
         <h2>La tua idea</h2>

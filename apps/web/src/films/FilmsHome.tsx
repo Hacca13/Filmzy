@@ -6,6 +6,7 @@ import { formatDateTime } from '../lib/format';
 import { useResource } from '../lib/use-resource';
 import { describeError } from '../settings/messages';
 import { filmSubtitle, phaseLabel } from './model';
+import { OpenSavedFilm } from './OpenSavedFilm';
 import { NEW_FILM_HREF, filmHref } from './routes';
 
 /**
@@ -25,9 +26,12 @@ export function FilmsHome() {
           <h1>I tuoi film</h1>
           <p className="hint">Un’idea, qualche scena, il tuo prossimo film. Da dove ripartiamo?</p>
         </div>
-        <a className="button" data-kind="primary" href={NEW_FILM_HREF}>
-          Nuovo film
-        </a>
+        <div className="actions">
+          <OpenSavedFilm />
+          <a className="button" data-kind="primary" href={NEW_FILM_HREF}>
+            Nuovo film
+          </a>
+        </div>
       </div>
       {films.state.status === 'error' ? (
         <Notice tone="error">{describeError(films.state.error)}</Notice>

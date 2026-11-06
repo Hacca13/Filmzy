@@ -1018,6 +1018,13 @@ progress {
   margin: 0;
 }
 
+.open-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
 .resume-card {
   display: flex;
   flex-direction: column;

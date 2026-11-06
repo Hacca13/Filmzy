@@ -28,7 +28,7 @@ const FALLBACK_TITLE = 'Film';
  * un nome che il sistema rifiuta (CLAUDE.md, «Sicuro»). Un punto davanti nasconderebbe il file su Linux e
  * macOS. Il titolo ha già un limite di lunghezza (`TITLE_MAX_LENGTH`).
  */
-function titleInName(title: string): string {
+export function titleInName(title: string): string {
   const cleaned = title
     .replace(FORBIDDEN_IN_NAME, ' ')
     .replace(/\s+/g, ' ')

@@ -400,7 +400,13 @@ describe('salvare una copia', () => {
     const last = await exported(film.id, 480);
     await rm(last.path);
 
-    expect((await viewOf(film.id)).file?.shortSide).toBe(720);
+    // Su Windows un file tolto mentre qualcuno lo tiene ancora aperto si vede per un attimo.
+    await vi.waitFor(
+      async () => {
+        expect((await viewOf(film.id)).file?.shortSide).toBe(720);
+      },
+      { timeout: 5_000, interval: 100 },
+    );
   }, 60_000);
 
   it('un file tolto dalla cartella non si offre più', async () => {
